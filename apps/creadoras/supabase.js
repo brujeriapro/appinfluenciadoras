@@ -1,5 +1,5 @@
 const fetch = require('node-fetch');
-const config = require('../../scripts/influencers/config_influencers.json');
+const config = require('./config');
 
 const BASE_URL = config.supabase.url.replace(/\/$/, '') + '/rest/v1';
 const KEY = config.supabase.service_role_key;

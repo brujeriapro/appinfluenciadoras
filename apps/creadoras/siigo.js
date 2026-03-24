@@ -1,5 +1,5 @@
 const fetch = require('node-fetch');
-const config = require('../../scripts/influencers/config_influencers.json');
+const config = require('./config');
 
 const SIIGO_AUTH_URL = 'https://api.siigo.com/auth';
 const SIIGO_BASE_URL = 'https://api.siigo.com';
