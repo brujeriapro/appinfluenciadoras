@@ -1,5 +1,5 @@
 const fetch = require('node-fetch');
-const config = require('../../scripts/influencers/config_influencers.json');
+const config = require('./config');
 
 const SHOP = config.shopify.shop_name;
 const CLIENT_ID = config.shopify.client_id;
