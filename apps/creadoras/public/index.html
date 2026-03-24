@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Creadoras — Brujería Capilar</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0a1e;
+      --bg2: #1a1035;
+      --bg3: #241848;
+      --border: #3d2d6e;
+      --purple: #7C3AED;
+      --purple-light: #a855f7;
+      --purple-dark: #2D1B69;
+      --text: #f0ebff;
+      --text-muted: #9580c0;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --orange: #f97316;
+      --blue: #3b82f6;
+      --red: #ef4444;
+      --gold: #f59e0b;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* NAV */
+    nav {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand {
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--purple-light);
+      letter-spacing: -0.3px;
+      white-space: nowrap;
+    }
+    .nav-brand span { color: var(--text-muted); font-weight: 400; }
+    nav button {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+    nav button:hover { background: var(--bg3); color: var(--text); }
+    nav button.active { background: var(--purple-dark); color: var(--purple-light); }
+
+    /* LAYOUT */
+    main { padding: 28px 28px; max-width: 1400px; margin: 0 auto; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .page-subtitle { color: var(--text-muted); margin-bottom: 24px; font-size: 13px; }
+
+    /* STAT CARDS */
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .stat-card .label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .stat-card .value { font-size: 28px; font-weight: 700; color: var(--text); }
+    .stat-card .value.purple { color: var(--purple-light); }
+    .stat-card .value.green { color: var(--green); }
+    .stat-card .value.gold { color: var(--gold); }
+    .stat-card .sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+    /* BADGE */
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .badge-registrada   { background: #1e3a5f; color: #60a5fa; }
+    .badge-enviado      { background: #3f2e00; color: #facc15; }
+    .badge-entregado    { background: #3f1f00; color: #fb923c; }
+    .badge-calificada   { background: #052e16; color: #4ade80; }
+    .badge-prospectada  { background: #1e1b4b; color: #a5b4fc; }
+    .badge-contactada   { background: #312e81; color: #c7d2fe; }
+
+    .badge-nano  { background: #1f2937; color: #9ca3af; }
+    .badge-micro { background: #3b0764; color: #d8b4fe; }
+    .badge-macro { background: #2D1B69; color: var(--purple-light); }
+
+    .badge-semilla     { background: #052e16; color: #86efac; }
+    .badge-aprendiz    { background: #1e3a5f; color: #93c5fd; }
+    .badge-practicante { background: #3b0764; color: #d8b4fe; }
+    .badge-experta     { background: #2D1B69; color: var(--purple-light); }
+    .badge-gran        { background: #451a03; color: #fcd34d; }
+
+    /* TABLE */
+    .table-wrap {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .table-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .table-header h2 { font-size: 15px; font-weight: 600; }
+    .table-count { color: var(--text-muted); font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      text-align: left;
+      padding: 10px 16px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--bg3); cursor: pointer; }
+    tbody td { padding: 11px 16px; font-size: 13px; }
+    .td-muted { color: var(--text-muted); }
+    .td-mono { font-family: monospace; font-size: 12px; color: var(--text-muted); }
+
+    /* FILTERS */
+    .filters { display: flex; gap: 10px; flex-wrap: wrap; }
+    select, input[type="text"], input[type="date"] {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 7px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+    }
+    select:focus, input:focus { border-color: var(--purple); }
+    select option { background: var(--bg2); }
+
+    /* BUTTONS */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .btn-primary { background: var(--purple); color: white; }
+    .btn-primary:hover { background: var(--purple-light); }
+    .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--border); }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .btn-danger { background: #450a0a; color: #fca5a5; border: 1px solid #7f1d1d; }
+
+    /* DETAIL PANEL */
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr; } }
+    .detail-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .detail-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: var(--purple-light); }
+    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: var(--text-muted); }
+    .detail-value { font-weight: 500; text-align: right; }
+
+    /* BACK BUTTON */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      margin-bottom: 20px;
+      padding: 4px 0;
+    }
+    .back-btn:hover { color: var(--text); }
+
+    /* ROI */
+    .roi-form {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      align-items: flex-end;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+
+    /* INLINE EDIT */
+    .inline-edit { display: flex; gap: 8px; align-items: center; }
+    .inline-edit input { flex: 1; }
+
+    /* STATUS SELECTOR */
+    .status-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    /* LOADING / ERROR */
+    .loading { color: var(--text-muted); padding: 40px; text-align: center; }
+    .error-msg { color: #fca5a5; background: #450a0a; border: 1px solid #7f1d1d; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; }
+
+    /* SCORE BAR */
+    .score-bar { display: flex; align-items: center; gap: 8px; }
+    .score-bar-bg { flex: 1; height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+    .score-bar-fill { height: 100%; background: var(--purple); border-radius: 3px; transition: width 0.3s; }
+    .score-num { font-size: 12px; color: var(--text-muted); width: 32px; text-align: right; }
+
+    /* STATUS BREAKDOWN */
+    .status-breakdown { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+    .section-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; margin-top: 28px; }
+
+    .empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
+
+    input[type="text"].input-sm { width: 200px; }
+
+    /* MODAL ENVIAR KIT */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200;
+    }
+    .modal {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px; width: 500px; max-width: 95vw;
+      max-height: 85vh; overflow-y: auto;
+    }
+    .modal h2 { font-size: 16px; margin-bottom: 4px; }
+    .modal-subtitle { color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
+    .producto-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 8px; cursor: pointer;
+      border: 1px solid transparent; margin-bottom: 6px; transition: all 0.1s;
+    }
+    .producto-item:hover { background: var(--bg3); }
+    .producto-item.selected { border-color: var(--purple); background: rgba(124,58,237,0.12); }
+    .producto-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--purple); flex-shrink: 0; }
+    .producto-nombre { font-size: 13px; font-weight: 500; flex: 1; }
+    .producto-sku { font-size: 11px; color: var(--text-muted); font-family: monospace; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .modal-counter { font-size: 13px; color: var(--text-muted); margin-top: 12px; }
+    .modal-counter strong { color: var(--text); }
+    .envio-success { background: var(--bg3); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    .envio-success .line { font-size: 13px; padding: 5px 0; display: flex; align-items: center; gap: 8px; }
+    .envio-success .line.ok { color: var(--green); }
+    .envio-success .line.warn { color: var(--yellow); }
+    .tier-hint { background: rgba(124,58,237,0.1); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+    .tier-hint strong { color: var(--purple-light); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useCallback } = React;
+
+    // ── UTILS ──────────────────────────────────────────────────────
+    const API = async (path) => {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      return res.json();
+    };
+
+    const PATCH = async (path, body) => {
+      const res = await fetch(path, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      return res.json();
+    };
+
+    const fmt = (n) => n != null ? Number(n).toLocaleString('es-CO') : '—';
+    const fmtCOP = (n) => n != null ? `$${Number(n).toLocaleString('es-CO')}` : '—';
+    const fmtDate = (s) => s ? new Date(s).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+    // ── BADGES ────────────────────────────────────────────────────
+    function StatusBadge({ status }) {
+      const map = {
+        'Registrada': 'registrada',
+        'Producto Enviado': 'enviado',
+        'Contenido Entregado': 'entregado',
+        'Calificada': 'calificada',
+        'Prospectada': 'prospectada',
+        'Contactada': 'contactada',
+      };
+      return <span className={`badge badge-${map[status] || 'registrada'}`}>{status || '—'}</span>;
+    }
+
+    function TierBadge({ tier }) {
+      const map = { 'Nano': 'nano', 'Micro': 'micro', 'Macro': 'macro' };
+      return <span className={`badge badge-${map[tier] || 'nano'}`}>{tier || '—'}</span>;
+    }
+
+    function NivelBadge({ nivel }) {
+      const map = {
+        'Bruja Semilla': 'semilla',
+        'Bruja Aprendiz': 'aprendiz',
+        'Bruja Practicante': 'practicante',
+        'Bruja Experta': 'experta',
+        'Gran Bruja': 'gran',
+      };
+      return <span className={`badge badge-${map[nivel] || 'semilla'}`}>{nivel || '—'}</span>;
+    }
+
+    // ── STAT CARD ─────────────────────────────────────────────────
+    function StatCard({ label, value, sub, color }) {
+      return (
+        <div className="stat-card">
+          <div className="label">{label}</div>
+          <div className={`value ${color || ''}`}>{value}</div>
+          {sub && <div className="sub">{sub}</div>}
+        </div>
+      );
+    }
+
+    // ── SCORE BAR ─────────────────────────────────────────────────
+    function ScoreBar({ score }) {
+      const s = score != null ? Math.min(score, 100) : 0;
+      return (
+        <div className="score-bar">
+          <div className="score-bar-bg">
+            <div className="score-bar-fill" style={{ width: `${s}%` }} />
+          </div>
+          <span className="score-num">{score != null ? score.toFixed(1) : '—'}</span>
+        </div>
+      );
+    }
+
+    // ── DASHBOARD ─────────────────────────────────────────────────
+    function Dashboard({ onNavigate }) {
+      const [stats, setStats] = useState(null);
+      const [influencers, setInfluencers] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+
+      useEffect(() => {
+        Promise.all([API('/api/stats'), API('/api/influencers')])
+          .then(([s, inf]) => { setStats(s); setInfluencers(inf.slice(0, 8)); })
+          .catch(e => setError(e.message))
+          .finally(() => setLoading(false));
+      }, []);
+
+      if (loading) return <div className="loading">Cargando...</div>;
+      if (error) return <div className="error-msg">{error}</div>;
+
+      const statusOrder = ['Registrada', 'Producto Enviado', 'Contenido Entregado', 'Calificada'];
+
+      return (
+        <div>
+          <h1>Dashboard</h1>
+          <p className="page-subtitle">Vista general del Programa Creadoras</p>
+
+          <div className="stat-grid">
+            <StatCard label="Total Influencers" value={fmt(stats.total)} color="purple" />
+            <StatCard label="Kits Enviados" value={fmt(stats.enviadas)} sub="Producto Enviado + Calificadas" />
+            <StatCard label="Costo Total Kits" value={fmtCOP(stats.costoTotalKits)} sub="Valor retail acumulado" color="gold" />
+            <StatCard label="Contenidos" value={fmt(stats.totalContenidos)} sub="Piezas entregadas" />
+            <StatCard label="Score Promedio" value={stats.scorePromedio > 0 ? `${stats.scorePromedio}` : '—'} sub="Promedio general" color="green" />
+          </div>
+
+          {stats.porStatus && (
+            <div style={{ marginBottom: 28 }}>
+              <div className="table-wrap" style={{ padding: '16px 20px' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Distribución por Estado</div>
+                <div className="status-breakdown">
+                  {statusOrder.map(s => stats.porStatus[s] ? (
+                    <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <StatusBadge status={s} />
+                      <span style={{ fontSize: 15, fontWeight: 700 }}>{stats.porStatus[s]}</span>
+                    </div>
+                  ) : null)}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="table-wrap">
+            <div className="table-header">
+              <h2>Últimas Registradas</h2>
+              <button className="btn btn-secondary btn-sm" onClick={() => onNavigate('influencers')}>Ver todas →</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Instagram</th>
+                  <th>Tier</th>
+                  <th>Status</th>
+                  <th>Nivel Bruja</th>
+                  <th>Registro</th>
+                </tr>
+              </thead>
+              <tbody>
+                {influencers.map(inf => (
+                  <tr key={inf.id} onClick={() => onNavigate('detalle', inf.id)}>
+                    <td>{inf.nombre || '—'}</td>
+                    <td className="td-muted">{inf.instagram_handle || '—'}</td>
+                    <td><TierBadge tier={inf.tier} /></td>
+                    <td><StatusBadge status={inf.status} /></td>
+                    <td><NivelBadge nivel={inf.nivel_bruja} /></td>
+                    <td className="td-muted">{fmtDate(inf.fecha_registro)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    // ── INFLUENCERS ───────────────────────────────────────────────
+    function Influencers({ onNavigate }) {
+      const [all, setAll] = useState([]);
+      const [filtered, setFiltered] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [filters, setFilters] = useState({ status: '', tier: '', nivel_bruja: '', search: '' });
+
+      useEffect(() => {
+        API('/api/influencers')
+          .then(data => { setAll(data); setFiltered(data); })
+          .catch(e => setError(e.message))
+          .finally(() => setLoading(false));
+      }, []);
+
+      useEffect(() => {
+        let res = all;
+        if (filters.status) res = res.filter(i => i.status === filters.status);
+        if (filters.tier) res = res.filter(i => i.tier === filters.tier);
+        if (filters.nivel_bruja) res = res.filter(i => i.nivel_bruja === filters.nivel_bruja);
+        if (filters.search) {
+          const q = filters.search.toLowerCase();
+          res = res.filter(i =>
+            (i.nombre || '').toLowerCase().includes(q) ||
+            (i.email || '').toLowerCase().includes(q) ||
+            (i.instagram_handle || '').toLowerCase().includes(q)
+          );
+        }
+        setFiltered(res);
+      }, [filters, all]);
+
+      const setFilter = (k, v) => setFilters(f => ({ ...f, [k]: v }));
+
+      if (loading) return <div className="loading">Cargando influencers...</div>;
+      if (error) return <div className="error-msg">{error}</div>;
+
+      return (
+        <div>
+          <h1>Influencers</h1>
+          <p className="page-subtitle">{filtered.length} de {all.length} influencers</p>
+
+          <div className="table-wrap">
+            <div className="table-header">
+              <div className="filters">
+                <input
+                  type="text"
+                  placeholder="Buscar nombre, email, @..."
+                  value={filters.search}
+                  onChange={e => setFilter('search', e.target.value)}
+                  style={{ width: 220 }}
+                />
+                <select value={filters.status} onChange={e => setFilter('status', e.target.value)}>
+                  <option value="">Todos los estados</option>
+                  <option>Registrada</option>
+                  <option>Producto Enviado</option>
+                  <option>Contenido Entregado</option>
+                  <option>Calificada</option>
+                  <option>Prospectada</option>
+                  <option>Contactada</option>
+                </select>
+                <select value={filters.tier} onChange={e => setFilter('tier', e.target.value)}>
+                  <option value="">Todos los tiers</option>
+                  <option>Nano</option>
+                  <option>Micro</option>
+                  <option>Macro</option>
+                </select>
+                <select value={filters.nivel_bruja} onChange={e => setFilter('nivel_bruja', e.target.value)}>
+                  <option value="">Todos los niveles</option>
+                  <option>Bruja Semilla</option>
+                  <option>Bruja Aprendiz</option>
+                  <option>Bruja Practicante</option>
+                  <option>Bruja Experta</option>
+                  <option>Gran Bruja</option>
+                </select>
+                {(filters.status || filters.tier || filters.nivel_bruja || filters.search) && (
+                  <button className="btn btn-secondary btn-sm" onClick={() => setFilters({ status: '', tier: '', nivel_bruja: '', search: '' })}>
+                    Limpiar
+                  </button>
+                )}
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Instagram</th>
+                  <th>Seguidores</th>
+                  <th>Tier</th>
+                  <th>Kit</th>
+                  <th>Status</th>
+                  <th>Nivel Bruja</th>
+                  <th>Score</th>
+                  <th>Registro</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr><td colSpan="9" className="empty-state">Sin resultados</td></tr>
+                ) : filtered.map(inf => (
+                  <tr key={inf.id} onClick={() => onNavigate('detalle', inf.id)}>
+                    <td style={{ fontWeight: 500 }}>{inf.nombre || '—'}</td>
+                    <td className="td-muted">{inf.instagram_handle || '—'}</td>
+                    <td className="td-muted">{inf.seguidores_instagram ? fmt(inf.seguidores_instagram) : '—'}</td>
+                    <td><TierBadge tier={inf.tier} /></td>
+                    <td className="td-muted" style={{ fontSize: 12 }}>{inf.kit_asignado || '—'}</td>
+                    <td><StatusBadge status={inf.status} /></td>
+                    <td><NivelBadge nivel={inf.nivel_bruja} /></td>
+                    <td style={{ minWidth: 120 }}><ScoreBar score={inf.score_total} /></td>
+                    <td className="td-muted">{fmtDate(inf.fecha_registro)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    // ── DETALLE INFLUENCER ────────────────────────────────────────
+    function DetalleInfluencer({ id, onBack }) {
+      const [data, setData] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [saving, setSaving] = useState(false);
+      const [codigoEdit, setCodigoEdit] = useState('');
+      const [notasEdit, setNotasEdit] = useState('');
+      const [savedMsg, setSavedMsg] = useState('');
+      // Modal enviar kit
+      const [modalEnvio, setModalEnvio] = useState(false);
+      const [productos, setProductos] = useState({});
+      const [skusSeleccionados, setSkusSeleccionados] = useState([]);
+      const [enviando, setEnviando] = useState(false);
+      const [envioResult, setEnvioResult] = useState(null);
+
+      const load = useCallback(() => {
+        setLoading(true);
+        API(`/api/influencers/${id}`)
+          .then(d => {
+            setData(d);
+            setCodigoEdit(d.codigo_descuento || '');
+            setNotasEdit(d.notas_equipo || '');
+          })
+          .catch(e => setError(e.message))
+          .finally(() => setLoading(false));
+      }, [id]);
+
+      useEffect(() => { load(); }, [load]);
+
+      const guardar = async (fields) => {
+        setSaving(true);
+        try {
+          await PATCH(`/api/influencers/${id}`, fields);
+          setSavedMsg('Guardado');
+          setTimeout(() => setSavedMsg(''), 2000);
+          load();
+        } catch(e) {
+          setError(e.message);
+        } finally {
+          setSaving(false);
+        }
+      };
+
+      const abrirModal = async () => {
+        const cfg = await API('/api/config/productos');
+        setProductos(cfg.productos || {});
+        setSkusSeleccionados([]);
+        setEnvioResult(null);
+        setModalEnvio(true);
+      };
+
+      const toggleSku = (sku) => {
+        setSkusSeleccionados(prev =>
+          prev.includes(sku) ? prev.filter(s => s !== sku) : [...prev, sku]
+        );
+      };
+
+      const confirmarEnvio = async () => {
+        if (skusSeleccionados.length === 0) return;
+        setEnviando(true);
+        try {
+          const res = await fetch(`/api/influencers/${id}/enviar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              skus: skusSeleccionados,
+              kit_nombre: `Kit ${skusSeleccionados.length} producto(s)`,
+            }),
+          });
+          const result = await res.json();
+          if (!res.ok) throw new Error(result.error);
+          setEnvioResult(result);
+          load();
+        } catch(e) {
+          setError(e.message);
+          setModalEnvio(false);
+        } finally {
+          setEnviando(false);
+        }
+      };
+
+      const tierSugerencia = { 'Nano': 1, 'Micro': 2, 'Macro': 3 };
+
+      if (loading) return <div className="loading">Cargando...</div>;
+      if (error) return <div className="error-msg">{error}</div>;
+      if (!data) return null;
+
+      const statusOptions = ['Registrada', 'Contactada', 'Producto Enviado', 'Contenido Entregado', 'Calificada'];
+      const puedeEnviar = !['Producto Enviado', 'Contenido Entregado', 'Calificada'].includes(data.status);
+
+      return (
+        <div>
+          <button className="back-btn" onClick={onBack}>← Volver</button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4, flexWrap: 'wrap' }}>
+            <h1>{data.nombre || 'Sin nombre'}</h1>
+            {savedMsg && <span style={{ fontSize: 13, color: 'var(--green)' }}>✓ {savedMsg}</span>}
+            {puedeEnviar && (
+              <button className="btn btn-primary" onClick={abrirModal}>
+                📦 Enviar Kit
+              </button>
+            )}
+          </div>
+          <p className="page-subtitle">{data.email} · {data.telefono || '—'}</p>
+
+          {/* Modal Enviar Kit */}
+          {modalEnvio && (
+            <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget && !enviando) { setModalEnvio(false); } }}>
+              <div className="modal">
+                {!envioResult ? (
+                  <>
+                    <h2>Seleccionar productos para enviar</h2>
+                    <p className="modal-subtitle">{data.nombre} · <TierBadge tier={data.tier} /></p>
+
+                    {data.tier && tierSugerencia[data.tier] && (
+                      <div className="tier-hint">
+                        Sugerencia tier <strong>{data.tier}</strong>: {tierSugerencia[data.tier]} producto(s). Puedes seleccionar cualquier cantidad.
+                      </div>
+                    )}
+
+                    <div>
+                      {Object.entries(productos).map(([nombre, sku]) => {
+                        const sel = skusSeleccionados.includes(sku);
+                        return (
+                          <div
+                            key={sku}
+                            className={`producto-item ${sel ? 'selected' : ''}`}
+                            onClick={() => toggleSku(sku)}
+                          >
+                            <input type="checkbox" checked={sel} onChange={() => toggleSku(sku)} />
+                            <span className="producto-nombre">{nombre}</span>
+                            <span className="producto-sku">{sku}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="modal-counter">
+                      <strong>{skusSeleccionados.length}</strong> producto(s) seleccionado(s)
+                    </div>
+
+                    <div className="modal-footer">
+                      <button className="btn btn-secondary" onClick={() => setModalEnvio(false)} disabled={enviando}>
+                        Cancelar
+                      </button>
+                      <button
+                        className="btn btn-primary"
+                        onClick={confirmarEnvio}
+                        disabled={skusSeleccionados.length === 0 || enviando}
+                      >
+                        {enviando ? 'Creando orden...' : `Confirmar y enviar (${skusSeleccionados.length})`}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h2>¡Kit enviado!</h2>
+                    <p className="modal-subtitle" style={{ marginBottom: 16 }}>{data.nombre}</p>
+                    <div className="envio-success">
+                      <div className="line ok">
+                        ✓ Orden Shopify #{envioResult.shopify?.shopify_order_number || envioResult.shopify?.shopify_order_id}
+                      </div>
+                      <div className="line ok">
+                        ✓ Supabase actualizado — status: Producto Enviado
+                      </div>
+                      {envioResult.siigo && (
+                        <div className="line ok">✓ Inventario registrado en Siigo: {envioResult.siigo.name}</div>
+                      )}
+                      {envioResult.siigo_error && (
+                        <div className="line warn">⚠ Siigo: {envioResult.siigo_error}</div>
+                      )}
+                    </div>
+                    <div className="modal-footer">
+                      <button className="btn btn-primary" onClick={() => setModalEnvio(false)}>Cerrar</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="detail-grid">
+            {/* Datos personales */}
+            <div className="detail-card">
+              <h3>Datos</h3>
+              <div className="detail-row"><span className="detail-label">Instagram</span><span className="detail-value">{data.instagram_handle || '—'}</span></div>
+              <div className="detail-row"><span className="detail-label">TikTok</span><span className="detail-value">{data.tiktok_handle || '—'}</span></div>
+              <div className="detail-row"><span className="detail-label">Seguidores IG</span><span className="detail-value">{fmt(data.seguidores_instagram)}</span></div>
+              <div className="detail-row"><span className="detail-label">Seguidores TT</span><span className="detail-value">{fmt(data.seguidores_tiktok)}</span></div>
+              <div className="detail-row"><span className="detail-label">Ciudad</span><span className="detail-value">{data.ciudad || '—'}</span></div>
+              <div className="detail-row"><span className="detail-label">Dirección</span><span className="detail-value" style={{ maxWidth: 200, textAlign: 'right', fontSize: 12 }}>{data.direccion_envio || '—'}</span></div>
+              <div className="detail-row"><span className="detail-label">Registro</span><span className="detail-value">{fmtDate(data.fecha_registro)}</span></div>
+            </div>
+
+            {/* Programa */}
+            <div className="detail-card">
+              <h3>Programa</h3>
+              <div className="detail-row"><span className="detail-label">Tier</span><span className="detail-value"><TierBadge tier={data.tier} /></span></div>
+              <div className="detail-row"><span className="detail-label">Kit</span><span className="detail-value">{data.kit_asignado || '—'}</span></div>
+              <div className="detail-row"><span className="detail-label">Nivel Bruja</span><span className="detail-value"><NivelBadge nivel={data.nivel_bruja} /></span></div>
+              <div className="detail-row"><span className="detail-label">Score Total</span><span className="detail-value">{data.score_total != null ? data.score_total.toFixed(1) : '0.0'}</span></div>
+              <div className="detail-row"><span className="detail-label">Envío</span><span className="detail-value">{fmtDate(data.fecha_envio)}</span></div>
+              <div className="detail-row"><span className="detail-label">Guía</span><span className="detail-value td-mono" style={{ fontSize: 12 }}>{data.numero_guia || '—'}</span></div>
+
+              {/* Status editable */}
+              <div className="detail-row" style={{ flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+                <span className="detail-label">Estado actual</span>
+                <div className="status-row">
+                  <StatusBadge status={data.status} />
+                  <select
+                    value={data.status || ''}
+                    onChange={e => guardar({ status: e.target.value })}
+                    style={{ fontSize: 12, padding: '4px 8px' }}
+                  >
+                    {statusOptions.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Código de descuento */}
+            <div className="detail-card">
+              <h3>Código de Descuento Shopify</h3>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                Si la influencer tiene un código de descuento asignado, las ventas con ese código se atribuyen a ella en la vista ROI.
+              </p>
+              <div className="inline-edit">
+                <input
+                  type="text"
+                  value={codigoEdit}
+                  onChange={e => setCodigoEdit(e.target.value)}
+                  placeholder="Ej: BRUJA-ANA20"
+                  style={{ textTransform: 'uppercase' }}
+                />
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => guardar({ codigo_descuento: codigoEdit.toUpperCase() || null })}
+                  disabled={saving}
+                >
+                  {saving ? '...' : 'Guardar'}
+                </button>
+              </div>
+            </div>
+
+            {/* Notas */}
+            <div className="detail-card">
+              <h3>Notas del Equipo</h3>
+              <textarea
+                value={notasEdit}
+                onChange={e => setNotasEdit(e.target.value)}
+                placeholder="Observaciones internas..."
+                style={{
+                  width: '100%', minHeight: 80, background: 'var(--bg3)',
+                  border: '1px solid var(--border)', color: 'var(--text)',
+                  borderRadius: 8, padding: 10, fontSize: 13, resize: 'vertical',
+                  marginBottom: 10,
+                }}
+              />
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => guardar({ notas_equipo: notasEdit })}
+                disabled={saving}
+              >
+                {saving ? 'Guardando...' : 'Guardar notas'}
+              </button>
+            </div>
+          </div>
+
+          {/* Contenidos */}
+          {data.contenidos && data.contenidos.length > 0 && (
+            <div style={{ marginTop: 28 }}>
+              <div className="section-title">Contenidos Entregados ({data.contenidos.length})</div>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Plataforma</th>
+                      <th>Tipo</th>
+                      <th>Fecha Publicación</th>
+                      <th>Vistas</th>
+                      <th>Likes</th>
+                      <th>Guardados</th>
+                      <th>Score</th>
+                      <th>URL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.contenidos.map(c => (
+                      <tr key={c.id} style={{ cursor: 'default' }}>
+                        <td>{c.plataforma || '—'}</td>
+                        <td className="td-muted">{c.tipo_contenido || '—'}</td>
+                        <td className="td-muted">{fmtDate(c.fecha_publicacion)}</td>
+                        <td>{fmt(c.vistas)}</td>
+                        <td>{fmt(c.likes)}</td>
+                        <td>{fmt(c.guardados)}</td>
+                        <td style={{ minWidth: 120 }}><ScoreBar score={c.score_contenido} /></td>
+                        <td>
+                          {c.url_contenido
+                            ? <a href={c.url_contenido} target="_blank" rel="noreferrer" style={{ color: 'var(--purple-light)', fontSize: 12 }} onClick={e => e.stopPropagation()}>Ver →</a>
+                            : '—'
+                          }
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {data.contenidos && data.contenidos.length === 0 && (
+            <div className="empty-state" style={{ marginTop: 28 }}>Sin contenidos entregados aún</div>
+          )}
+        </div>
+      );
+    }
+
+    // ── CONTENIDOS ────────────────────────────────────────────────
+    function Contenidos() {
+      const [contenidos, setContenidos] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+
+      useEffect(() => {
+        API('/api/contenidos')
+          .then(setContenidos)
+          .catch(e => setError(e.message))
+          .finally(() => setLoading(false));
+      }, []);
+
+      if (loading) return <div className="loading">Cargando contenidos...</div>;
+      if (error) return <div className="error-msg">{error}</div>;
+
+      const conScore = contenidos.filter(c => c.score_contenido != null);
+      const promedio = conScore.length > 0
+        ? (conScore.reduce((s, c) => s + c.score_contenido, 0) / conScore.length).toFixed(1)
+        : '—';
+
+      return (
+        <div>
+          <h1>Contenidos</h1>
+          <p className="page-subtitle">{contenidos.length} piezas · Score promedio: {promedio}</p>
+
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Influencer</th>
+                  <th>Plataforma</th>
+                  <th>Tipo</th>
+                  <th>Fecha Pub.</th>
+                  <th>Vistas</th>
+                  <th>Likes</th>
+                  <th>Guardados</th>
+                  <th>Score</th>
+                  <th>Submisión</th>
+                  <th>URL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contenidos.length === 0 ? (
+                  <tr><td colSpan="10" className="empty-state">Sin contenidos aún</td></tr>
+                ) : contenidos.map(c => (
+                  <tr key={c.id} style={{ cursor: 'default' }}>
+                    <td style={{ fontWeight: 500 }}>{c.influencers?.nombre || '—'}</td>
+                    <td>{c.plataforma || '—'}</td>
+                    <td className="td-muted">{c.tipo_contenido || '—'}</td>
+                    <td className="td-muted">{fmtDate(c.fecha_publicacion)}</td>
+                    <td>{fmt(c.vistas)}</td>
+                    <td>{fmt(c.likes)}</td>
+                    <td>{fmt(c.guardados)}</td>
+                    <td style={{ minWidth: 120 }}><ScoreBar score={c.score_contenido} /></td>
+                    <td className="td-muted">{fmtDate(c.fecha_submision)}</td>
+                    <td>
+                      {c.url_contenido
+                        ? <a href={c.url_contenido} target="_blank" rel="noreferrer" style={{ color: 'var(--purple-light)', fontSize: 12 }}>Ver →</a>
+                        : '—'
+                      }
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    // ── ROI ───────────────────────────────────────────────────────
+    function ROI() {
+      const hoy = new Date().toISOString().split('T')[0];
+      const hace90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      const [desde, setDesde] = useState(hace90);
+      const [hasta, setHasta] = useState(hoy);
+      const [resultado, setResultado] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState(null);
+
+      const calcular = async () => {
+        setLoading(true);
+        setError(null);
+        setResultado(null);
+        try {
+          const data = await API(`/api/roi?desde=${desde}&hasta=${hasta}`);
+          setResultado(data);
+        } catch(e) {
+          setError(e.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div>
+          <h1>ROI del Programa</h1>
+          <p className="page-subtitle">Compara el costo de kits enviados vs ventas de Shopify en el mismo período</p>
+
+          <div className="roi-form">
+            <div className="form-group">
+              <label>Desde</label>
+              <input type="date" value={desde} onChange={e => setDesde(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Hasta</label>
+              <input type="date" value={hasta} onChange={e => setHasta(e.target.value)} />
+            </div>
+            <button className="btn btn-primary" onClick={calcular} disabled={loading}>
+              {loading ? 'Calculando...' : 'Calcular ROI'}
+            </button>
+          </div>
+
+          {error && <div className="error-msg">{error}</div>}
+
+          {resultado && (
+            <div>
+              <div className="stat-grid">
+                <StatCard
+                  label="Ventas Shopify"
+                  value={fmtCOP(resultado.ventas)}
+                  sub={`${fmt(resultado.totalOrdenes)} órdenes pagadas`}
+                  color="green"
+                />
+                <StatCard
+                  label="Costo Kits"
+                  value={fmtCOP(resultado.costoKits)}
+                  sub={`${fmt(resultado.influenciasEnviadas)} kits enviados en el período`}
+                  color="gold"
+                />
+                <StatCard
+                  label="ROI Global"
+                  value={resultado.roi}
+                  sub={resultado.roi !== 'N/A' ? `Por cada $1 invertido en kits, se vendieron $${resultado.costoKits > 0 ? (resultado.ventas / resultado.costoKits).toFixed(1) : '—'}` : 'Sin kits enviados en el período'}
+                  color={resultado.roi !== 'N/A' ? 'purple' : ''}
+                />
+              </div>
+
+              <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 20px', marginTop: 8 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Nota sobre el cálculo</div>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                  El <strong style={{ color: 'var(--text)' }}>costo de kits</strong> incluye influencers con <code>fecha_envio</code> dentro del período seleccionado.
+                  Las <strong style={{ color: 'var(--text)' }}>ventas</strong> son el total de órdenes pagadas en Shopify en ese mismo rango — no atribución directa.
+                  Para atribución por influencer, asigna un código de descuento desde el detalle de cada influencer.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!resultado && !loading && (
+            <div className="empty-state" style={{ marginTop: 40 }}>
+              Selecciona un período y haz clic en "Calcular ROI"
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ── APP ROOT ──────────────────────────────────────────────────
+    function App() {
+      const [view, setView] = useState('dashboard');
+      const [detalleId, setDetalleId] = useState(null);
+
+      const navigate = (v, id = null) => {
+        setView(v);
+        setDetalleId(id);
+      };
+
+      return (
+        <div>
+          <nav>
+            <div className="nav-brand">🔮 Creadoras <span>Brujería Capilar</span></div>
+            <button className={view === 'dashboard' ? 'active' : ''} onClick={() => navigate('dashboard')}>Dashboard</button>
+            <button className={view === 'influencers' || view === 'detalle' ? 'active' : ''} onClick={() => navigate('influencers')}>Influencers</button>
+            <button className={view === 'contenidos' ? 'active' : ''} onClick={() => navigate('contenidos')}>Contenidos</button>
+            <button className={view === 'roi' ? 'active' : ''} onClick={() => navigate('roi')}>ROI</button>
+          </nav>
+          <main>
+            {view === 'dashboard' && <Dashboard onNavigate={navigate} />}
+            {view === 'influencers' && <Influencers onNavigate={navigate} />}
+            {view === 'detalle' && detalleId && <DetalleInfluencer id={detalleId} onBack={() => navigate('influencers')} />}
+            {view === 'contenidos' && <Contenidos />}
+            {view === 'roi' && <ROI />}
+          </main>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

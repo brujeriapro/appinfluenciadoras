@@ -1,0 +1,5 @@
+fecha_proceso,influencer_id,nombre,instagram_handle,email,tier,kit_asignado,shopify_order_id,shopify_order_number,ciudad,status
+2026-03-20T22:18:23.441320+00:00,5f0282c0-2c46-4167-aaf0-a6f4b9bb7f22,Influencer Prueba,influencer_prueba,prueba@test.com,Micro,Kit Estándar,10728548499750,,Medellin,Producto Enviado
+2026-03-20T22:22:34.700970+00:00,e06c860e-46e9-47e4-8b8b-cfa89978c3f8,Influencer Prueba,influencer_prueba,prueba@test.com,Micro,Kit Estándar,10728552923430,,Medellin,Producto Enviado
+2026-03-24T20:52:24.424135+00:00,a90dc1a5-f955-40f9-9130-19180d16b892,Isabel Arango,isarangomesa,isarangomesa@hotmail.com,Nano,Kit Básico,10735876473126,,medellin,Producto Enviado
+2026-03-24T21:07:21.788369+00:00,a90dc1a5-f955-40f9-9130-19180d16b892,Isabel Arango,isarangomesa,isarangomesa@hotmail.com,Nano,Kit Básico,10735895216422,,medellin,Producto Enviado

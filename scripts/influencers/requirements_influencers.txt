@@ -1,0 +1,7 @@
+# Dependencias del Sistema de Gestion de Influencers -- Programa Creadoras Brujeria Capilar
+# Instalar con: pip install -r requirements_influencers.txt
+
+# HTTP (para Shopify API, Supabase REST API, Siigo API)
+requests>=2.31.0
+
+# csv, json, smtplib, re, datetime, http.server -- modulos de la libreria estandar, no requieren instalacion
