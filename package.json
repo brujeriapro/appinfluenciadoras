@@ -1,0 +1,12 @@
+{
+  "name": "creadoras-app",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node apps/creadoras/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0",
+    "cors": "^2.8.5"
+  }
+}
