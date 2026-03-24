@@ -1,7 +1,5 @@
 // Lee credenciales desde variables de entorno (producción Railway)
 // o desde el JSON local (desarrollo).
-console.log('[config] SUPABASE_URL:', process.env.SUPABASE_URL ? 'SET' : 'NOT SET');
-console.log('[config] SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'NOT SET');
 const PRODUCTOS = {
   "Termoprotector Capilar":           "BRTP0001",
   "Mascarilla Hechizo Total":         "BRMA0001",
