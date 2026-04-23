@@ -197,9 +197,56 @@ async function getVentas(fechaDesde, fechaHasta, codigoDescuento = null) {
   return { totalVentas: Math.round(totalVentas), totalOrdenes: ordenes.length };
 }
 
-// Generar código de descuento sugerido (formato local, admin lo crea en Shopify)
+async function shopifyGraphQL(query, variables = {}) {
+  const token = await getToken();
+  const res = await fetch(`https://${SHOP}.myshopify.com/admin/api/2024-01/graphql.json`, {
+    method: 'POST',
+    headers: { 'X-Shopify-Access-Token': token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, variables }),
+  });
+  if (!res.ok) throw new Error(`Shopify GraphQL error: ${res.status} ${await res.text()}`);
+  return res.json();
+}
+
+// Crear código de descuento 10% via GraphQL (scope: write_discounts)
+async function createDiscountCode(instagram_handle) {
+  const code = instagram_handle.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() + '10';
+
+  const mutation = `
+    mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
+      discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
+        codeDiscountNode { id }
+        userErrors { field message }
+      }
+    }
+  `;
+
+  const result = await shopifyGraphQL(mutation, {
+    basicCodeDiscount: {
+      title: `Influencer ${instagram_handle}`,
+      code,
+      startsAt: new Date().toISOString(),
+      customerSelection: { all: true },
+      customerGets: {
+        value: { percentage: 0.1 },
+        items: { all: true },
+      },
+      appliesOncePerCustomer: false,
+    },
+  });
+
+  const errors = result.data?.discountCodeBasicCreate?.userErrors;
+  if (errors?.length > 0) throw new Error(errors.map(e => e.message).join(', '));
+  if (!result.data?.discountCodeBasicCreate?.codeDiscountNode) {
+    throw new Error(JSON.stringify(result.errors || result));
+  }
+
+  return code;
+}
+
+// Formato local como fallback si no hay permisos Shopify
 function generateDiscountCode(instagram_handle) {
   return instagram_handle.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() + '10';
 }
 
-module.exports = { getVentas, createGiftingOrder, generateDiscountCode };
+module.exports = { getVentas, createGiftingOrder, createDiscountCode, generateDiscountCode };

@@ -104,10 +104,16 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
       kit_asignado: kit_nombre || null,
     });
 
-    // 2b. Auto-generar código de descuento sugerido si no tiene uno
+    // 2b. Auto-crear código de descuento si no tiene uno
     if (!influencer.codigo_descuento) {
       const handle = (influencer.instagram_handle || influencer.nombre || 'CREADORA').replace(/[^a-zA-Z0-9]/g, '');
-      const codigo = shopify.generateDiscountCode(handle);
+      let codigo;
+      try {
+        codigo = await shopify.createDiscountCode(handle);
+      } catch (e) {
+        console.warn('createDiscountCode falló, usando código local:', e.message);
+        codigo = shopify.generateDiscountCode(handle);
+      }
       await supabase.updateInfluencer(req.params.id, { codigo_descuento: codigo });
       shopifyResult.codigo_descuento = codigo;
     }
@@ -279,7 +285,12 @@ app.post('/api/webhooks/registro', async (req, res) => {
 
         // Auto-código de descuento
         const handle = (instagram || nombre).replace(/[^a-zA-Z0-9]/g, '');
-        codigoDescuento = shopify.generateDiscountCode(handle);
+        try {
+          codigoDescuento = await shopify.createDiscountCode(handle);
+        } catch (e) {
+          console.warn('createDiscountCode falló, usando código local:', e.message);
+          codigoDescuento = shopify.generateDiscountCode(handle);
+        }
 
         await supabase.updateEnvio(influencer.id, {
           skus,
