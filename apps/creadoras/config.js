@@ -17,6 +17,13 @@ const KITS = {
   "Kit Premium":  { "productos": 3, "note": "Macro — influencer elige 3 o más productos" },
 };
 
+// SKUs por defecto para auto-envío (cuando no elige la influencer)
+const KIT_DEFAULTS = {
+  "Kit Básico":   ["BRTP0001", "BRCR0001"],
+  "Kit Estándar": ["BRTP0001", "BRCR0001", "BRPROTR01"],
+  "Kit Premium":  ["BRTP0001", "BRCR0001", "BRPROTR01", "BRSHN001", "BRVA0001"],
+};
+
 // Intenta cargar el JSON local (solo existe en desarrollo)
 let localConfig = null;
 try {
@@ -41,6 +48,15 @@ const config = {
   },
   productos_disponibles: PRODUCTOS,
   kits: KITS,
+  kit_defaults: KIT_DEFAULTS,
+  jwt_secret: process.env.JWT_SECRET || localConfig?.jwt_secret || 'dev-secret-local',
+  tally_contenido_url: process.env.TALLY_CONTENIDO_URL || localConfig?.email?.tally_form_contenido_url || 'https://tally.so/r/rjEZdo',
+  tally_registro_url: process.env.TALLY_REGISTRO_URL || localConfig?.tally_registro_url || '',
+  tally_webhook_secret: process.env.TALLY_WEBHOOK_SECRET || localConfig?.tally_webhook_secret || '',
+  gmail: {
+    user: process.env.GMAIL_USER || localConfig?.email?.gmail_user || '',
+    pass: process.env.GMAIL_APP_PASSWORD || localConfig?.email?.gmail_app_password || '',
+  },
 };
 
 // Validar que las credenciales esenciales están presentes

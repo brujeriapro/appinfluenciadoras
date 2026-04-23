@@ -5,6 +5,24 @@ const config = require('./config');
 const supabase = require('./supabase');
 const shopify = require('./shopify');
 const siigo = require('./siigo');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
+const { enviarRecordatorioContenido } = require('./email');
+
+function authMiddleware(req, res, next) {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+  try {
+    const payload = jwt.verify(auth.slice(7), config.jwt_secret);
+    req.influencerId = payload.id;
+    next();
+  } catch (e) {
+    res.status(401).json({ error: 'Token inválido o expirado' });
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 3030;
@@ -85,6 +103,14 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
       shopify_order_id: shopifyResult.shopify_order_id,
       kit_asignado: kit_nombre || null,
     });
+
+    // 2b. Auto-generar código de descuento sugerido si no tiene uno
+    if (!influencer.codigo_descuento) {
+      const handle = (influencer.instagram_handle || influencer.nombre || 'CREADORA').replace(/[^a-zA-Z0-9]/g, '');
+      const codigo = shopify.generateDiscountCode(handle);
+      await supabase.updateInfluencer(req.params.id, { codigo_descuento: codigo });
+      shopifyResult.codigo_descuento = codigo;
+    }
 
     // 3. Intentar Siigo (no bloquea si falla)
     let siigoResult = null;
@@ -177,6 +203,301 @@ app.get('/api/roi/influencer/:id', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// ── HELPERS TALLY ─────────────────────────────────────────────────
+function parseTallyFields(fields = []) {
+  const map = {};
+  fields.forEach(f => {
+    const key = (f.label || '').toLowerCase().trim();
+    map[key] = f.value;
+  });
+  return map;
+}
+
+function tallyVal(map, ...keys) {
+  for (const k of keys) {
+    const v = map[k.toLowerCase()];
+    if (v != null && v !== '') return v;
+  }
+  return null;
+}
+
+// ── WEBHOOK REGISTRO (Tally → auto-envío) ────────────────────────
+app.post('/api/webhooks/registro', async (req, res) => {
+  try {
+    const fields = parseTallyFields(req.body?.data?.fields || []);
+
+    const nombre    = tallyVal(fields, 'nombre completo', 'nombre', 'name');
+    const email     = tallyVal(fields, 'email', 'correo', 'e-mail');
+    const telefono  = tallyVal(fields, 'teléfono', 'telefono', 'celular', 'whatsapp');
+    const instagram = tallyVal(fields, 'instagram', 'usuario instagram', 'handle instagram', '@instagram');
+    const tiktok    = tallyVal(fields, 'tiktok', 'usuario tiktok', 'handle tiktok', '@tiktok');
+    const segInsta  = parseInt(tallyVal(fields, 'seguidores instagram', 'seguidores en instagram', 'followers instagram') || '0');
+    const segTiktok = parseInt(tallyVal(fields, 'seguidores tiktok', 'seguidores en tiktok', 'followers tiktok') || '0');
+    const ciudad    = tallyVal(fields, 'ciudad', 'city');
+    const direccion = tallyVal(fields, 'dirección de envío', 'direccion de envio', 'dirección', 'direccion', 'address');
+
+    if (!nombre || !email) {
+      return res.status(400).json({ error: 'Faltan campos obligatorios: nombre y email' });
+    }
+
+    // Verificar si ya existe
+    const existe = await supabase.getInfluencerByEmail(email.toLowerCase().trim());
+    if (existe) {
+      return res.json({ ok: true, mensaje: 'Ya registrada', id: existe.id });
+    }
+
+    // Calcular tier y kit
+    const { tier, kit } = calcularTier(segInsta || segTiktok);
+    const skus = config.kit_defaults[kit] || [];
+
+    // Insertar en Supabase
+    const influencer = await supabase.insertInfluencer({
+      nombre,
+      email: email.toLowerCase().trim(),
+      telefono: telefono || null,
+      instagram_handle: (instagram || '').replace('@', ''),
+      tiktok_handle: (tiktok || '').replace('@', '') || null,
+      seguidores_instagram: segInsta || null,
+      seguidores_tiktok: segTiktok || null,
+      ciudad: ciudad || null,
+      direccion_envio: direccion || null,
+      tier,
+      status: 'Registrada',
+      skus_pedidos: skus,
+    });
+
+    // Auto-envío kit
+    let shopifyResult = null;
+    let codigoDescuento = null;
+    let autoEnvioError = null;
+
+    if (skus.length > 0 && influencer?.id) {
+      try {
+        shopifyResult = await shopify.createGiftingOrder(influencer, skus, kit);
+
+        // Auto-código de descuento
+        const handle = (instagram || nombre).replace(/[^a-zA-Z0-9]/g, '');
+        codigoDescuento = shopify.generateDiscountCode(handle);
+
+        await supabase.updateEnvio(influencer.id, {
+          skus,
+          shopify_order_id: shopifyResult.shopify_order_id,
+          kit_asignado: kit,
+          tier,
+        });
+
+        await supabase.updateInfluencer(influencer.id, { codigo_descuento: codigoDescuento });
+      } catch (e) {
+        autoEnvioError = e.message;
+        console.error('Auto-envío error (no fatal):', e.message);
+      }
+    }
+
+    console.log(`[webhook/registro] Nueva influencer: ${nombre} | ${tier} | kit: ${kit} | envío: ${shopifyResult ? 'OK' : 'PENDIENTE'}`);
+
+    res.json({
+      ok: true,
+      influencer_id: influencer?.id,
+      tier,
+      kit,
+      shopify: shopifyResult,
+      codigo_descuento: codigoDescuento,
+      auto_envio_error: autoEnvioError,
+    });
+  } catch (e) {
+    console.error('[webhook/registro] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── WEBHOOK CONTENIDO (Tally → auto-score) ───────────────────────
+app.post('/api/webhooks/contenido', async (req, res) => {
+  try {
+    const fields = parseTallyFields(req.body?.data?.fields || []);
+
+    const email         = tallyVal(fields, 'email', 'correo', 'e-mail');
+    const urlContenido  = tallyVal(fields, 'url del contenido', 'url contenido', 'link', 'url');
+    const plataforma    = tallyVal(fields, 'plataforma', 'red social', 'platform') || 'Instagram';
+    const tipoContenido = tallyVal(fields, 'tipo de contenido', 'tipo', 'format', 'formato') || 'Reel';
+    const vistas        = parseInt(tallyVal(fields, 'vistas', 'reproducciones', 'views', 'plays') || '0');
+    const likes         = parseInt(tallyVal(fields, 'likes', 'me gusta') || '0');
+    const guardados     = parseInt(tallyVal(fields, 'guardados', 'saves', 'guardados/saves') || '0') || null;
+
+    if (!email || !urlContenido) {
+      return res.status(400).json({ error: 'Faltan campos: email y url del contenido' });
+    }
+
+    const influencer = await supabase.getInfluencerByEmail(email.toLowerCase().trim());
+    if (!influencer) return res.status(404).json({ error: 'Email no registrado en el programa' });
+
+    const seguidores = plataforma.toLowerCase() === 'tiktok'
+      ? (influencer.seguidores_tiktok || influencer.seguidores_instagram || 1)
+      : (influencer.seguidores_instagram || 1);
+
+    const score = calcularScore({
+      vistas, likes, guardados, seguidores,
+      plataforma, tipo_contenido: tipoContenido,
+      calificacion_equipo: null,
+    });
+
+    // Insertar contenido
+    await supabase.insertContenido({
+      influencer_id: influencer.id,
+      fecha_submision: new Date().toISOString(),
+      tipo_contenido: tipoContenido,
+      plataforma,
+      url_contenido: urlContenido,
+      vistas,
+      likes,
+      guardados: guardados || null,
+      score_contenido: score,
+    });
+
+    // Actualizar nivel bruja y status
+    const todosLosContenidos = await supabase.getContenidos(influencer.id);
+    const scoreAcumulado = todosLosContenidos.reduce((s, c) => s + (c.score_contenido || 0), 0);
+    const nivel = calcularNivel(scoreAcumulado);
+
+    await supabase.updateInfluencer(influencer.id, {
+      status: 'Contenido Entregado',
+      nivel_bruja: nivel,
+      score_total: scoreAcumulado,
+    });
+
+    console.log(`[webhook/contenido] ${influencer.nombre} | score: ${score} | nivel: ${nivel} | acumulado: ${scoreAcumulado.toFixed(1)}`);
+
+    res.json({ ok: true, score, nivel, score_acumulado: scoreAcumulado });
+  } catch (e) {
+    console.error('[webhook/contenido] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── CRON SEGUIMIENTO (Railway cron → POST cada lunes) ─────────────
+app.post('/api/cron/seguimiento', async (req, res) => {
+  // Validar secret para que solo Railway pueda llamarlo
+  const secret = req.headers['x-cron-secret'] || req.query.secret;
+  if (config.tally_webhook_secret && secret !== config.tally_webhook_secret) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+
+  try {
+    const pendientes = await supabase.getInfluencersPendingSeguimiento();
+    const resultados = [];
+
+    for (const inf of pendientes) {
+      try {
+        const r = await enviarRecordatorioContenido(inf);
+        resultados.push({ nombre: inf.nombre, email: inf.email, ...r });
+      } catch (e) {
+        resultados.push({ nombre: inf.nombre, email: inf.email, error: e.message });
+      }
+    }
+
+    console.log(`[cron/seguimiento] ${resultados.length} influencers procesadas`);
+    res.json({ ok: true, total: resultados.length, resultados });
+  } catch (e) {
+    console.error('[cron/seguimiento] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── PORTAL INFLUENCERS ────────────────────────────────────────────
+app.get('/influencer', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'influencer.html'));
+});
+app.get('/influencer/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'influencer.html'));
+});
+
+// Auth: verificar email
+app.post('/api/auth/check-email', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email requerido' });
+  try {
+    const influencer = await supabase.getInfluencerByEmail(email.toLowerCase().trim());
+    if (!influencer) return res.status(404).json({ error: 'Email no registrado en el programa' });
+    res.json({ exists: true, hasPassword: !!influencer.password_hash });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Auth: crear contraseña (primera vez)
+app.post('/api/auth/set-password', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
+  if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+  try {
+    const influencer = await supabase.getInfluencerByEmail(email.toLowerCase().trim());
+    if (!influencer) return res.status(404).json({ error: 'Email no registrado' });
+    if (influencer.password_hash) return res.status(400).json({ error: 'Ya tienes una contraseña. Usa iniciar sesión.' });
+    const hash = await bcrypt.hash(password, 10);
+    await supabase.updatePasswordHash(influencer.id, hash);
+    const token = jwt.sign({ id: influencer.id, email: influencer.email }, config.jwt_secret, { expiresIn: '30d' });
+    res.json({ token, nombre: influencer.nombre });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Auth: login con contraseña
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
+  try {
+    const influencer = await supabase.getInfluencerByEmail(email.toLowerCase().trim());
+    if (!influencer) return res.status(404).json({ error: 'Email no registrado' });
+    if (!influencer.password_hash) return res.status(400).json({ error: 'Aún no tienes contraseña. Usa "primera vez".' });
+    const ok = await bcrypt.compare(password, influencer.password_hash);
+    if (!ok) return res.status(401).json({ error: 'Contraseña incorrecta' });
+    const token = jwt.sign({ id: influencer.id, email: influencer.email }, config.jwt_secret, { expiresIn: '30d' });
+    res.json({ token, nombre: influencer.nombre });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Datos del dashboard (autenticado)
+app.get('/api/influencer/me', authMiddleware, async (req, res) => {
+  try {
+    const influencer = await supabase.getInfluencerById(req.influencerId);
+    if (!influencer) return res.status(404).json({ error: 'No encontrada' });
+    const contenidos = await supabase.getContenidos(req.influencerId);
+    const { password_hash, ...safe } = influencer;
+    res.json({ ...safe, contenidos });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Ventas atribuidas (autenticado)
+app.get('/api/influencer/ventas', authMiddleware, async (req, res) => {
+  try {
+    const influencer = await supabase.getInfluencerById(req.influencerId);
+    if (!influencer) return res.status(404).json({ error: 'No encontrada' });
+    if (!influencer.codigo_descuento) {
+      return res.json({ atribuido: 0, mensaje: 'Sin código de descuento asignado aún' });
+    }
+    const ventas = await shopify.getVentas(null, null, influencer.codigo_descuento);
+    res.json({
+      codigo_descuento: influencer.codigo_descuento,
+      ventasAtribuidas: ventas.totalVentas,
+      ordenesAtribuidas: ventas.totalOrdenes,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// URLs de Tally (público)
+app.get('/api/influencer/tally-urls', (req, res) => {
+  res.json({
+    contenido: config.tally_contenido_url,
+    registro: config.tally_registro_url,
+  });
 });
 
 // Servir frontend para cualquier ruta no-API

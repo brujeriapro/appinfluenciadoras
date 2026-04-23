@@ -117,4 +117,47 @@ async function updateEnvio(influencer_id, { skus, shopify_order_id, kit_asignado
   return supabasePatch('influencers', { id: influencer_id }, data);
 }
 
-module.exports = { getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats };
+async function supabasePost(table, data) {
+  const url = `${BASE_URL}/${table}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: HEADERS,
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`Supabase POST ${table} error: ${res.status} ${await res.text()}`);
+  return res.json();
+}
+
+async function insertInfluencer(data) {
+  const results = await supabasePost('influencers', data);
+  return Array.isArray(results) ? results[0] : results;
+}
+
+async function insertContenido(data) {
+  const results = await supabasePost('contenidos', data);
+  return Array.isArray(results) ? results[0] : results;
+}
+
+async function getInfluencersPendingSeguimiento() {
+  const hace30dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  return supabaseGet('influencers', {
+    select: '*',
+    status: 'eq.Producto Enviado',
+    fecha_envio: `lte.${hace30dias}`,
+  });
+}
+
+async function getInfluencerByEmail(email) {
+  const results = await supabaseGet('influencers', {
+    email: `eq.${email}`,
+    limit: 1,
+    select: '*',
+  });
+  return results[0] || null;
+}
+
+async function updatePasswordHash(id, password_hash) {
+  return supabasePatch('influencers', { id }, { password_hash });
+}
+
+module.exports = { getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, updatePasswordHash, insertInfluencer, insertContenido, getInfluencersPendingSeguimiento };

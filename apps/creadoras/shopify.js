@@ -176,11 +176,11 @@ async function getVentas(fechaDesde, fechaHasta, codigoDescuento = null) {
   const params = {
     status: 'any',
     financial_status: 'paid',
-    created_at_min: fechaDesde,
-    created_at_max: fechaHasta,
     limit: 250,
     fields: 'id,created_at,total_price,discount_codes',
   };
+  if (fechaDesde) params.created_at_min = fechaDesde;
+  if (fechaHasta) params.created_at_max = fechaHasta;
 
   const data = await shopifyGet('orders.json', params);
   let ordenes = data.orders || [];
@@ -197,4 +197,9 @@ async function getVentas(fechaDesde, fechaHasta, codigoDescuento = null) {
   return { totalVentas: Math.round(totalVentas), totalOrdenes: ordenes.length };
 }
 
-module.exports = { getVentas, createGiftingOrder };
+// Generar código de descuento sugerido (formato local, admin lo crea en Shopify)
+function generateDiscountCode(instagram_handle) {
+  return instagram_handle.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() + '10';
+}
+
+module.exports = { getVentas, createGiftingOrder, generateDiscountCode };
