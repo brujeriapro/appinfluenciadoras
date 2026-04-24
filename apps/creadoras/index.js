@@ -79,6 +79,7 @@ app.patch('/api/influencers/:id', async (req, res) => {
 app.get('/api/config/productos', async (req, res) => {
   try {
     const productos = await shopify.getProductosConStock();
+    productos.sort((a, b) => (b.stock ?? -1) - (a.stock ?? -1));
     res.json({ productos, kits: config.kits });
   } catch (e) {
     res.status(500).json({ error: e.message });
