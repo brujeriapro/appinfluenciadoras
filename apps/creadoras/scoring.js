@@ -36,11 +36,11 @@ function calcularScore({ vistas, likes, guardados, seguidores, plataforma, tipo_
 
 function calcularNivel(scoreAcumulado) {
   const s = scoreAcumulado || 0;
-  if (s >= 201) return 'Gran Bruja';
-  if (s >= 101) return 'Bruja Experta';
-  if (s >= 51)  return 'Bruja Practicante';
-  if (s >= 21)  return 'Bruja Aprendiz';
-  return 'Bruja Semilla';
+  if (s >= 201) return 'Gran Magia';
+  if (s >= 101) return 'Magia Pura';
+  if (s >= 51)  return 'Magia Profunda';
+  if (s >= 21)  return 'Magia Viva';
+  return 'Magia Naciente';
 }
 
 function calcularTier(seguidores) {

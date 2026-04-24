@@ -168,13 +168,13 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // ── NIVELES BRUJA ──────────────────────────────────────────────
+    // ── NIVELES ────────────────────────────────────────────────────
     const NIVELES = [
-      { nombre: 'Bruja Semilla',     min: 0,   max: 20,  badge: 'semilla'     },
-      { nombre: 'Bruja Aprendiz',    min: 21,  max: 50,  badge: 'aprendiz'    },
-      { nombre: 'Bruja Practicante', min: 51,  max: 100, badge: 'practicante' },
-      { nombre: 'Bruja Experta',     min: 101, max: 200, badge: 'experta'     },
-      { nombre: 'Gran Bruja',        min: 201, max: null, badge: 'gran'       },
+      { nombre: 'Magia Naciente',  min: 0,   max: 20,  badge: 'semilla'     },
+      { nombre: 'Magia Viva',      min: 21,  max: 50,  badge: 'aprendiz'    },
+      { nombre: 'Magia Profunda',  min: 51,  max: 100, badge: 'practicante' },
+      { nombre: 'Magia Pura',      min: 101, max: 200, badge: 'experta'     },
+      { nombre: 'Gran Magia',      min: 201, max: null, badge: 'gran'       },
     ];
 
     function getNivel(score) {
@@ -495,7 +495,7 @@
                   Faltan <strong>{progreso.falta} pts</strong> para llegar a <strong>{progreso.next}</strong>
                 </div>
               ) : (
-                <div className="progress-label">¡Eres <strong>Gran Bruja</strong>! Nivel máximo alcanzado 🌟</div>
+                <div className="progress-label">¡Eres <strong>Gran Magia</strong>! Nivel máximo alcanzado 🌟</div>
               )}
             </div>
 
