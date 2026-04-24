@@ -274,9 +274,14 @@
     }
     .producto-item:hover { background: var(--bg3); }
     .producto-item.selected { border-color: var(--purple); background: rgba(124,58,237,0.12); }
+    .producto-item.sin-stock { opacity: 0.45; cursor: not-allowed; }
     .producto-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--purple); flex-shrink: 0; }
     .producto-nombre { font-size: 13px; font-weight: 500; flex: 1; }
     .producto-sku { font-size: 11px; color: var(--text-muted); font-family: monospace; }
+    .producto-stock { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+    .stock-ok { background: #052e16; color: #86efac; }
+    .stock-bajo { background: #451a03; color: #fcd34d; }
+    .stock-cero { background: #450a0a; color: #fca5a5; }
     .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
     .modal-counter { font-size: 13px; color: var(--text-muted); margin-top: 12px; }
     .modal-counter strong { color: var(--text); }
@@ -579,7 +584,7 @@
       const [savedMsg, setSavedMsg] = useState('');
       // Modal enviar kit
       const [modalEnvio, setModalEnvio] = useState(false);
-      const [productos, setProductos] = useState({});
+      const [productos, setProductos] = useState([]);
       const [skusSeleccionados, setSkusSeleccionados] = useState([]);
       const [enviando, setEnviando] = useState(false);
       const [envioResult, setEnvioResult] = useState(null);
@@ -614,7 +619,7 @@
 
       const abrirModal = async () => {
         const cfg = await API('/api/config/productos');
-        setProductos(cfg.productos || {});
+        setProductos(cfg.productos || []);
         setSkusSeleccionados([]);
         setEnvioResult(null);
         setModalEnvio(true);
@@ -690,17 +695,21 @@
                     )}
 
                     <div>
-                      {Object.entries(productos).map(([nombre, sku]) => {
-                        const sel = skusSeleccionados.includes(sku);
+                      {productos.map((p) => {
+                        const sel = skusSeleccionados.includes(p.sku);
+                        const sinStock = p.stock !== null && p.stock <= 0;
+                        const stockClass = p.stock === null ? '' : p.stock <= 0 ? 'stock-cero' : p.stock <= 5 ? 'stock-bajo' : 'stock-ok';
+                        const stockLabel = p.stock === null ? '' : p.stock <= 0 ? 'Sin stock' : `${p.stock} uds`;
                         return (
                           <div
-                            key={sku}
-                            className={`producto-item ${sel ? 'selected' : ''}`}
-                            onClick={() => toggleSku(sku)}
+                            key={p.sku}
+                            className={`producto-item ${sel ? 'selected' : ''} ${sinStock ? 'sin-stock' : ''}`}
+                            onClick={() => !sinStock && toggleSku(p.sku)}
                           >
-                            <input type="checkbox" checked={sel} onChange={() => toggleSku(sku)} />
-                            <span className="producto-nombre">{nombre}</span>
-                            <span className="producto-sku">{sku}</span>
+                            <input type="checkbox" checked={sel} disabled={sinStock} onChange={() => !sinStock && toggleSku(p.sku)} />
+                            <span className="producto-nombre">{p.nombre}</span>
+                            <span className="producto-sku">{p.sku}</span>
+                            {stockLabel && <span className={`producto-stock ${stockClass}`}>{stockLabel}</span>}
                           </div>
                         );
                       })}

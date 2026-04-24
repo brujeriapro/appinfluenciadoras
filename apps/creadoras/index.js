@@ -75,11 +75,14 @@ app.patch('/api/influencers/:id', async (req, res) => {
   }
 });
 
-// ── CONFIG PRODUCTOS ─────────────────────────────────────────────
-app.get('/api/config/productos', (req, res) => {
-  const productos = config.productos_disponibles || {};
-  const kits = config.kits || {};
-  res.json({ productos, kits });
+// ── PRODUCTOS SHOPIFY (con stock real) ───────────────────────────
+app.get('/api/config/productos', async (req, res) => {
+  try {
+    const productos = await shopify.getProductosConStock();
+    res.json({ productos, kits: config.kits });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── ENVIAR KIT ────────────────────────────────────────────────────

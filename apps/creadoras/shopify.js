@@ -93,6 +93,27 @@ async function shopifyPut(path, body) {
   return res.json();
 }
 
+// Obtener todos los productos con stock real de Shopify
+async function getProductosConStock() {
+  const data = await shopifyGet('products.json', { limit: 250, status: 'active', fields: 'id,title,variants,image' });
+  const productos = [];
+  for (const product of data.products || []) {
+    for (const variant of product.variants || []) {
+      if (!variant.sku) continue;
+      productos.push({
+        nombre: product.variants.length > 1
+          ? `${product.title} — ${variant.title}`
+          : product.title,
+        sku: variant.sku,
+        variant_id: String(variant.id),
+        stock: variant.inventory_quantity ?? null,
+        imagen: product.image?.src || null,
+      });
+    }
+  }
+  return productos;
+}
+
 // Resolver SKU → variant_id
 async function getVariantIdForSku(sku) {
   const data = await shopifyGet('products.json', { limit: 250, fields: 'id,variants' });
@@ -249,4 +270,4 @@ function generateDiscountCode(instagram_handle) {
   return instagram_handle.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() + '10';
 }
 
-module.exports = { getVentas, createGiftingOrder, createDiscountCode, generateDiscountCode };
+module.exports = { getVentas, createGiftingOrder, createDiscountCode, generateDiscountCode, getProductosConStock };
