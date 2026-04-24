@@ -157,7 +157,7 @@ async function createGiftingOrder(influencer, skus, kitNombre) {
   const draftPayload = {
     draft_order: {
       line_items: lineItems,
-      customer: { email: influencer.email },
+      email: influencer.email,
       shipping_address: {
         first_name: firstName,
         last_name: lastName,
@@ -166,6 +166,7 @@ async function createGiftingOrder(influencer, skus, kitNombre) {
         province,
         country: 'CO',
         phone: influencer.telefono || '',
+        email: influencer.email,
       },
       note: `Gifting Influencer | ${kitNombre} | @${influencer.instagram_handle || 'N/A'} | Tier: ${influencer.tier || 'N/A'}`,
       tags: 'influencer-gifting,programa-creadoras',
