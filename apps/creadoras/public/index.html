@@ -465,7 +465,10 @@
 
       useEffect(() => {
         API('/api/influencers')
-          .then(data => { setAll(data); setFiltered(data); })
+          .then(data => {
+            const sorted = data.sort((a, b) => new Date(b.fecha_registro) - new Date(a.fecha_registro));
+            setAll(sorted); setFiltered(sorted);
+          })
           .catch(e => setError(e.message))
           .finally(() => setLoading(false));
       }, []);
