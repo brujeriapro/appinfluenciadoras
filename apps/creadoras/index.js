@@ -229,7 +229,7 @@ function tallyVal(map, ...keys) {
   return null;
 }
 
-// ── WEBHOOK REGISTRO (Tally → auto-envío) ────────────────────────
+// ── WEBHOOK REGISTRO (Tally → Supabase, sin auto-envío) ──────────
 app.post('/api/webhooks/registro', async (req, res) => {
   try {
     const fields = parseTallyFields(req.body?.data?.fields || []);
@@ -237,10 +237,10 @@ app.post('/api/webhooks/registro', async (req, res) => {
     const nombre    = tallyVal(fields, 'nombre completo', 'nombre', 'name');
     const email     = tallyVal(fields, 'email', 'correo', 'e-mail');
     const telefono  = tallyVal(fields, 'teléfono', 'telefono', 'celular', 'whatsapp');
-    const instagram = tallyVal(fields, 'instagram', 'usuario instagram', 'handle instagram', '@instagram');
-    const tiktok    = tallyVal(fields, 'tiktok', 'usuario tiktok', 'handle tiktok', '@tiktok');
-    const segInsta  = parseInt(tallyVal(fields, 'seguidores instagram', 'seguidores en instagram', 'followers instagram') || '0');
-    const segTiktok = parseInt(tallyVal(fields, 'seguidores tiktok', 'seguidores en tiktok', 'followers tiktok') || '0');
+    const instagram = tallyVal(fields, 'instagram', 'usuario instagram', 'handle instagram', '@instagram', 'cuenta de instagram');
+    const tiktok    = tallyVal(fields, 'tiktok', 'usuario tiktok', 'handle tiktok', '@tiktok', 'cuenta de tiktok');
+    const segInsta  = parseInt(tallyVal(fields, 'seguidores instagram', 'seguidores en instagram', 'número de seguidores en instagram', 'followers instagram') || '0');
+    const segTiktok = parseInt(tallyVal(fields, 'seguidores tiktok', 'seguidores en tiktok', 'número de seguidores en tiktok', 'followers tiktok') || '0');
     const ciudad    = tallyVal(fields, 'ciudad', 'city');
     const direccion = tallyVal(fields, 'dirección de envío', 'direccion de envio', 'dirección', 'direccion', 'address');
 
@@ -254,11 +254,10 @@ app.post('/api/webhooks/registro', async (req, res) => {
       return res.json({ ok: true, mensaje: 'Ya registrada', id: existe.id });
     }
 
-    // Calcular tier y kit
-    const { tier, kit } = calcularTier(segInsta || segTiktok);
-    const skus = config.kit_defaults[kit] || [];
+    // Calcular tier según seguidores
+    const { tier } = calcularTier(segInsta || segTiktok);
 
-    // Insertar en Supabase
+    // Insertar en Supabase — el admin elige y envía el kit desde el dashboard
     const influencer = await supabase.insertInfluencer({
       nombre,
       email: email.toLowerCase().trim(),
@@ -271,52 +270,11 @@ app.post('/api/webhooks/registro', async (req, res) => {
       direccion_envio: direccion || null,
       tier,
       status: 'Registrada',
-      skus_pedidos: skus,
     });
 
-    // Auto-envío kit
-    let shopifyResult = null;
-    let codigoDescuento = null;
-    let autoEnvioError = null;
+    console.log(`[webhook/registro] Nueva influencer: ${nombre} | ${tier} | pendiente de envío por admin`);
 
-    if (skus.length > 0 && influencer?.id) {
-      try {
-        shopifyResult = await shopify.createGiftingOrder(influencer, skus, kit);
-
-        // Auto-código de descuento
-        const handle = (instagram || nombre).replace(/[^a-zA-Z0-9]/g, '');
-        try {
-          codigoDescuento = await shopify.createDiscountCode(handle);
-        } catch (e) {
-          console.warn('createDiscountCode falló, usando código local:', e.message);
-          codigoDescuento = shopify.generateDiscountCode(handle);
-        }
-
-        await supabase.updateEnvio(influencer.id, {
-          skus,
-          shopify_order_id: shopifyResult.shopify_order_id,
-          kit_asignado: kit,
-          tier,
-        });
-
-        await supabase.updateInfluencer(influencer.id, { codigo_descuento: codigoDescuento });
-      } catch (e) {
-        autoEnvioError = e.message;
-        console.error('Auto-envío error (no fatal):', e.message);
-      }
-    }
-
-    console.log(`[webhook/registro] Nueva influencer: ${nombre} | ${tier} | kit: ${kit} | envío: ${shopifyResult ? 'OK' : 'PENDIENTE'}`);
-
-    res.json({
-      ok: true,
-      influencer_id: influencer?.id,
-      tier,
-      kit,
-      shopify: shopifyResult,
-      codigo_descuento: codigoDescuento,
-      auto_envio_error: autoEnvioError,
-    });
+    res.json({ ok: true, influencer_id: influencer?.id, tier });
   } catch (e) {
     console.error('[webhook/registro] Error:', e.message);
     res.status(500).json({ error: e.message });
