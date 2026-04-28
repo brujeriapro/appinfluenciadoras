@@ -22,6 +22,8 @@ Esto va a ser un proceso continuo y la idea es que opere continuamente.
 1. **Automatización logística** — Órdenes online → guía de envío automática (en progreso)
 2. **Automatización programa de influencers** — Sistema Creadoras Brujería Capilar: registro, gifting, scoring y seguimiento sin intervención manual (en progreso — sistema construido 2026-03-20)
 
+> **Nota:** El Polymarket bot es un proyecto separado (`C:\Users\andre\Documents\polymarket-bot`) — no pertenece a este workspace.
+
 ## What Success Looks Like
 
 Procesos 100% automatizados sin intervención humana:

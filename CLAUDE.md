@@ -6,9 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-This is a **Claude Workspace Template** — a structured environment designed for working with Claude Code as a powerful agent assistant across sessions. The user will spin up fresh Claude Code sessions repeatedly, using `/prime` at the start of each to load essential context without bloat.
+This is a **shared workspace** for Brujería Capilar's Programa Creadoras (gifting de influencers). Múltiples colaboradoras (la fundadora y su socia) trabajan sobre este repo desde sus propios Claude Code, clonando el repo de GitHub. Para nuevas colaboradoras, el entry point humano es [README.md](README.md); este archivo (CLAUDE.md) es el contexto que Claude carga automáticamente en cada sesión.
 
 **This file (CLAUDE.md) is the foundation.** It is automatically loaded at the start of every session. Keep it current — it is the single source of truth for how Claude should understand and operate within this workspace.
+
+**Onboarding rápido para colaboradoras nuevas:** clonar el repo, abrir en Claude Code, correr `/prime`. El pipeline corre 100% en Railway — no se necesita instalación local salvo para debugging puntual.
 
 ---
 
@@ -49,9 +51,9 @@ Claude should always orient itself through `/prime` at session start, then act w
 │   └── influencers/
 │       ├── envios_log.csv # Log of all gifting orders created via Shopify
 │       └── scores_log.csv # Log of all content scores calculated
-├── scripts/               # Automation scripts
+├── scripts/               # Automation scripts (Python)
 │   ├── config.json        # Property list: all Hopco + competitor properties
-│   ├── requirements.txt   # Python dependencies
+│   ├── requirements.txt   # Python dependencies (competitor analysis)
 │   ├── run.py             # Main pipeline orchestrator
 │   ├── scraper.py         # Booking.com Playwright scraper
 │   ├── scraper_direct.py  # Direct booking engine scraper
@@ -59,29 +61,13 @@ Claude should always orient itself through `/prime` at session start, then act w
 │   ├── report_generator.py # Excel report builder
 │   ├── import_historical.py # One-time historical data importer
 │   ├── SETUP.md           # First-time setup (competitor analysis)
-│   └── influencers/       # Influencer management system
-│       ├── config_influencers.json  # Credentials, kit SKUs, tier rules, scoring weights
-│       ├── supabase_client.py       # Supabase read/write wrapper
-│       ├── shopify_client.py        # Shopify $0 draft order creator
-│       ├── tier_calculator.py       # Nano/Micro/Macro tier assignment
-│       ├── scoring.py               # Content score formula (0-100)
-│       ├── nivel_bruja.py           # Bruja level from cumulative score
-│       ├── crear_envio.py           # Phase 1: create Shopify orders for registered influencers
-│       ├── calcular_scores.py       # Phase 2: score delivered content
-│       ├── seguimiento.py           # Phase 3: send reminders to late influencers
-│       ├── webhook_receiver.py      # HTTP server for Tally.so webhook submissions
-│       ├── requirements_influencers.txt
-│       └── SETUP_INFLUENCERS.md     # Full setup guide
+│   └── influencers/
+│       ├── config_influencers.json  # Credentials (gitignored — local fallback only)
+│       └── _legacy/                 # Scripts Python deprecados — lógica portada a apps/creadoras/
 ├── apps/
-│   └── creadoras/         # App web de gestión del Programa Creadoras
-│       ├── index.js       # Servidor Express — API REST + sirve el frontend
-│       ├── supabase.js    # Cliente Supabase en JS (fetch directo a REST API)
-│       ├── shopify.js     # Cliente Shopify — token OAuth + consulta órdenes
-│       ├── package.json   # Dependencias: express, node-fetch, cors
-│       ├── README.md      # Instrucciones de instalación y uso
-│       └── public/
-│           └── index.html # Frontend React 18 CDN — Dashboard, Influencers, Contenidos, ROI
+│   └── creadoras/         # App Node del Programa Creadoras (desplegada en Railway)
 ├── reference/             # Templates, examples, reusable patterns
+├── README.md              # Onboarding entry point para colaboradoras
 └── shell-aliases.md       # Shell aliases reference
 ```
 
@@ -94,9 +80,8 @@ Claude should always orient itself through `/prime` at session start, then act w
 | `outputs/competitor-analysis/` | Daily Excel reports and accumulated scrape data. |
 | `outputs/influencers/` | Gifting order log and content score log for the influencer program. |
 | `scripts/`   | Competitor analysis automation — scraper, report generator, config.                 |
-| `scripts/influencers/` | Influencer program automation — Supabase, Shopify, scoring, reminders. |
-| `scripts/influencers/` | Influencer program automation — Supabase, Shopify, scoring, reminders. |
-| `apps/creadoras/` | Web app — admin dashboard for managing the influencer program. |
+| `scripts/influencers/_legacy/` | Scripts Python archivados del pipeline (lógica ahora en `apps/creadoras/`). |
+| `apps/creadoras/` | App Node del Programa Creadoras — dashboard admin, webhooks Tally, scoring, cron. Desplegada en Railway. |
 | `reference/` | Helpful docs, templates and patterns to assist in various workflows.                |
 
 ---
@@ -190,63 +175,46 @@ Reports saved to: `outputs/competitor-analysis/reports/competitor-analysis-YYYY-
 
 ## Sistema de Gestión de Influencers — Programa Creadoras Brujería Capilar
 
-Automated Python system for managing the influencer gifting program for Brujería Capilar (B2C hair care brand). Replaces the 100% manual process with a pipeline that centralizes data in Supabase, automates $0 Shopify orders (which trigger existing Shopify→Effi and Shopify→Siigo integrations), and lets influencers report their own content autonomously.
+Sistema para administrar el programa de gifting de influencers de Brujería Capilar (marca B2C de cuidado capilar). Centraliza datos en Supabase, automatiza órdenes Shopify $0 (que disparan las integraciones Shopify→Effi y Shopify→Siigo), y permite a las influencers reportar su propio contenido. **Toda la lógica corre en Node** (`apps/creadoras/`), desplegada en Railway. Los scripts Python originales viven archivados en `scripts/influencers/_legacy/` solo como referencia.
 
-**Context:** `context/programa-creadoras.md` — program rules, kits, Bruja levels, scoring formula, DM templates.
+**Context:** `context/programa-creadoras.md` — program rules, kits, niveles de Magia, scoring formula, DM templates.
 
-**Setup:** `scripts/influencers/SETUP_INFLUENCERS.md` — step-by-step configuration guide.
+### Pipeline Phases (corre en `apps/creadoras/`, desplegado en Railway)
 
-### Pipeline Phases
+| Fase          | Endpoint / archivo                       | Trigger                                      |
+| ------------- | ---------------------------------------- | -------------------------------------------- |
+| Registro      | `POST /api/webhooks/registro`            | Tally form submission → webhook              |
+| Envío         | UI admin en dashboard + `shopify.js`     | Admin elige productos y crea draft order $0  |
+| Scoring       | `POST /api/webhooks/contenido`           | Tally form submission → cálculo automático   |
+| Seguimiento   | `POST /api/cron/seguimiento`             | Railway cron (lunes 14:00 UTC = 9am Bogotá)  |
 
-| Phase | Script | When to Run |
-|---|---|---|
-| Registration | `webhook_receiver.py` | Always running (or via Make.com) — receives Tally.so form submissions |
-| Shipping | `crear_envio.py` | When new influencers have status "Registrada" — creates $0 Shopify orders |
-| Scoring | `calcular_scores.py` | When content has been delivered — calculates scores and Bruja levels |
-| Follow-up | `seguimiento.py` | Weekly — sends email reminders to influencers past their deadline |
-
-### Quick Start
-
-```bash
-cd scripts/influencers/
-pip install -r requirements_influencers.txt
-
-# Fill credentials first (see SETUP_INFLUENCERS.md)
-
-python crear_envio.py --dry-run    # preview pending shipments
-python crear_envio.py              # process shipments (creates Shopify orders)
-python calcular_scores.py          # score delivered content
-python seguimiento.py --preview    # preview pending reminders
-python seguimiento.py              # send reminder emails
-```
+> Los scripts Python en `scripts/influencers/_legacy/` están archivados — solo para referencia. La lógica activa vive en Node. Ver [scripts/influencers/_legacy/README.md](scripts/influencers/_legacy/README.md) para el mapeo Python → Node.
 
 ### Key Configuration
 
-`scripts/influencers/config_influencers.json` — Supabase URL + service_role_key, Shopify client_id + client_secret (OAuth auto-refresh), Siigo username + access_key, kit tier limits, available product SKUs, scoring weights, Gmail credentials.
-
-**IMPORTANT — before first run:** Replace placeholder SKUs in config with real Shopify SKUs (Admin → Products → each product → SKU field).
+`scripts/influencers/config_influencers.json` (gitignored) — Supabase URL + service_role_key, Shopify client_id + client_secret, Siigo username + access_key, kit tier limits, scoring weights, Gmail credentials. Solo se usa como fallback en desarrollo local; en producción todo viene de env vars en Railway.
 
 ### Tiers & Kits
 
-Kits are flexible — influencer chooses their own products, quantity capped by tier. Products chosen are stored in `skus_pedidos[]` in Supabase before running `crear_envio.py`.
+Kits flexibles — la influencer elige productos, cantidad capada por tier. Los productos elegidos se asignan desde el dashboard admin antes de crear la orden Shopify.
 
-| Tier | Followers | Kit | Products to Choose |
+| Tier | Followers | Kit | Productos a elegir |
 |---|---|---|---|
 | Nano | <10K | Kit Básico | 1 |
 | Micro | 10K–100K | Kit Estándar | 2 |
 | Macro | >100K | Kit Premium | 3+ |
 
-**Inventory in Siigo**: `crear_envio.py` calls Siigo API directly to create a FV NoElectronic document (document_type_id 28599, discount 100%, no DIAN stamp) that decrements inventory for each SKU sent. This is separate from the Shopify→Siigo connector (which is bypassed for gifting orders tagged `influencer-gifting`).
+**Inventario en Siigo**: La app Node llama directamente a la API de Siigo para crear un documento FV NoElectronic (document_type_id 28599, discount 100%, sin estampa DIAN) que descuenta inventario por SKU enviado. Esto es independiente del conector Shopify→Siigo (que se bypassea para órdenes con tag `influencer-gifting`).
 
-### Bruja Levels (Gamification)
+### Niveles de Magia (Gamificación)
 
-Semilla (0-20) → Aprendiz (21-50) → Practicante (51-100) → Experta (101-200) → Gran Bruja (201+)
+Semilla (0-20) → Aprendiz (21-50) → Practicante (51-100) → Experta (101-200) → Gran Maga (201+)
 
 ---
 
 ## App de Gestión Creadoras
 
-Web app (Node.js + Express + React CDN) para administrar el Programa Creadoras. Lee datos de Supabase y ventas de Shopify. Sin build step — corre desde `node index.js`.
+Web app (Node.js + Express + React CDN) para administrar el Programa Creadoras. Sin build step — corre desde `node index.js`. **Producción:** Railway, autodeploy en cada push a `main`.
 
 ### Vistas
 
@@ -257,25 +225,25 @@ Web app (Node.js + Express + React CDN) para administrar el Programa Creadoras. 
 | Detalle | Datos, contenidos, scores, editar status, asignar código de descuento, notas |
 | Contenidos | Todas las piezas entregadas con scores y links |
 | ROI | Selector de período: ventas Shopify vs costo kits → ROI global del programa |
-
-### Quick Start
-
-```bash
-# Primer uso: agregar columna en Supabase SQL Editor:
-# ALTER TABLE influencers ADD COLUMN IF NOT EXISTS codigo_descuento text;
-
-cd apps/creadoras/
-npm install
-node index.js
-# → http://localhost:3030
-```
+| Portal Influencer (`/influencer`) | Landing pública, login (email+contraseña), dashboard personal con nivel de Magia, progreso, contenidos y ventas |
 
 ### Stack
 
-- Backend: Node.js + Express, lee `scripts/influencers/config_influencers.json` para credenciales
+- Backend: Node.js + Express. Lee env vars en producción; cae a `scripts/influencers/config_influencers.json` solo en desarrollo local.
 - Frontend: React 18 CDN + Babel standalone (sin build step)
 - DB: Supabase REST API directa
 - Ventas: Shopify Admin API 2024-01 con OAuth client_credentials
+- Email: Nodemailer + Gmail (recordatorios de seguimiento)
+
+### Local dev (opcional, solo para debugging)
+
+```bash
+cd apps/creadoras/
+npm install
+node index.js   # → http://localhost:3030
+```
+
+Requiere `scripts/influencers/config_influencers.json` con credenciales válidas (no incluido en repo). Para trabajo normal, edita en Claude Code, commitea y pushea — Railway redeploya solo.
 
 ---
 

@@ -21,6 +21,7 @@ Thumbs.db
 # Logs & runtime
 *.log
 .claude/scheduled_tasks.lock
+.claude/settings.local.json
 
 # Build / artifacts
 dist/
