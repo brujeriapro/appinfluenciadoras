@@ -1,1 +1,34 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Secrets & local config
+.env
+.env.local
+.env.*.local
 scripts/influencers/config_influencers.json
+
+# OS / Editor cruft
+.DS_Store
+._*
+Thumbs.db
+*.swp
+*~
+
+# Logs & runtime
+*.log
+.claude/scheduled_tasks.lock
+
+# Build / artifacts
+dist/
+build/
+*.tsbuildinfo
+
+# Generated data
+portfolio.db
+outputs/competitor-analysis/data/raw_data.csv
+~$*.xlsx
+*.xlsx.tmp
