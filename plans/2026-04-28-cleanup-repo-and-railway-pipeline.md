@@ -1,7 +1,7 @@
 # Plan: Limpiar el repo y consolidar el pipeline en Railway
 
 **Created:** 2026-04-28
-**Status:** Draft
+**Status:** Implemented
 **Request:** Que la herramienta deje de depender del computador de la usuaria — repo limpio para que la socia colabore desde su Claude Code, y pipeline del Programa Creadoras corriendo 100% en Railway.
 
 ---
@@ -634,3 +634,42 @@ The implementation is complete when:
   - Documentar runbook para resolver bugs en producción.
   - Hookup de monitoring/alertas (Sentry o similar) para errores en Railway.
   - Resolver `forecast de demanda` que la usuaria mencionó como dolor en `business-info.md` (otro proyecto).
+
+---
+
+## Implementation Notes
+
+**Implemented:** 2026-04-28
+
+### Summary
+
+- `apps/atencion-cliente/` movida fuera del workspace a `C:\Users\andre\Downloads\atencion-cliente\`.
+- `portfolio.db` y `.claude/scheduled_tasks.lock` borrados.
+- `.gitignore` reescrito con exclusiones agresivas; también se agregó `.claude/settings.local.json` (decisión durante implementación tras descubrir secretos).
+- ~686 archivos basura sacados del index (node_modules, archivos `._*` de macOS, `.DS_Store`).
+- 13 scripts Python movidos a `scripts/influencers/_legacy/` con README de mapeo Python → Node.
+- README raíz creado para onboarding de colaboradoras nuevas (clonar + abrir en Claude Code).
+- CLAUDE.md actualizado: eliminada sección "Bot de Atención al Cliente", pipeline phases reescritas con endpoints Node activos, scripts Python marcados como archivados, nota de onboarding colaborativo.
+- 3 commits pusheados a `origin/main`: `c1abe4e` (.gitignore + cleanup masivo), `c82fca9` (READMEs), `a21e043` (CLAUDE.md + strategy + plans).
+- Memoria de Claude actualizada: `project_influencers.md` con estado real (pipeline en Node, repo colaborativo) y `project_atencion_cliente.md` aclarando que el bot ya no vive en este workspace.
+
+### Deviations from Plan
+
+1. **Commits fusionados.** El plan describía 5 commits separados (gitignore, cleanup, _legacy, README, CLAUDE.md). En la práctica se hicieron 3 porque al stagear `.gitignore` el primer commit ya arrastró todos los `git rm --cached` y los renames de Python que estaban en el index desde Steps 4 y 5. Resultado funcional idéntico, histórico aún legible.
+
+2. **Bloqueo de GitHub secret scanning.** `.claude/settings.local.json` contenía un GitHub PAT y un Shopify Access Token. La usuaria autorizó incluirlo, pero la regla del repo en GitHub bloqueó el push automáticamente. Decisión correctiva durante implementación: revertir el commit problemático con `git reset --soft`, agregar `.claude/settings.local.json` al `.gitignore`, sacarlo del trackeo con `git rm --cached`, y rehacer el commit. El archivo sigue en disco local con sus permisos. **Acción pendiente para la usuaria:** revocar manualmente el GitHub PAT y el Shopify Access Token en sus dashboards (igual GitHub probablemente los auto-revocó por detección).
+
+3. **Steps 10, 11, 12 (parciales) no ejecutados.** Verificación de cron de Railway, webhooks de Tally y validación end-to-end requieren acceso a dashboards externos. Quedan como tareas manuales para la usuaria (ver "Next steps" abajo).
+
+### Issues Encountered
+
+- **Push rechazado por secret scanning de GitHub:** resuelto sacando `settings.local.json` del trackeo y rehaciendo el commit. Push exitoso en segundo intento.
+- **Comandos `cd` en Bash dejan working directory cambiado entre tool calls:** se observó que tras el `cd scripts/influencers` del Step 5, los comandos siguientes no veían los paths esperados. Mitigación: usar paths absolutos (`cd "/c/Users/andre/Downloads/Workspace Ettos"`) en cada comando.
+
+### Next Steps (manuales para la usuaria)
+
+1. **Revocar tokens expuestos:** GitHub PAT y Shopify Access Token que estaban en `settings.local.json` (aunque ya no se subieron al repo, quedaron en commits efímeros que GitHub vio).
+2. **Step 10 — Cron de Railway:** abrir dashboard de Railway → servicio `creadoras-app` → Settings → Cron Schedule. Verificar si ya existe uno para `/api/cron/seguimiento`. Si no, crear con `0 14 * * 1`. Validar que `TALLY_WEBHOOK_SECRET` está configurada como env var.
+3. **Step 11 — Webhooks de Tally:** abrir Tally.so → forms de registro y entrega de contenido → confirmar que las URLs apuntan al dominio de Railway (no a localhost/ngrok).
+4. **Step 12 — Validación de cron:** disparar manualmente con `curl -X POST -H "x-cron-secret: <valor>" https://<dominio-railway>/api/cron/seguimiento` y revisar respuesta.
+5. **Step 14 — Onboarding de la socia:** invitarla como collaborator en GitHub. Decirle "clona, abre en Claude Code, corre /prime".
