@@ -242,7 +242,15 @@ function parseTallyFields(fields = []) {
   const map = {};
   fields.forEach(f => {
     const key = (f.label || '').toLowerCase().trim();
-    map[key] = f.value;
+    let value = f.value;
+    // Resolver UUIDs de MULTIPLE_CHOICE / CHECKBOXES al texto de la opción
+    if (Array.isArray(value) && Array.isArray(f.options) && f.options.length > 0) {
+      const optMap = {};
+      f.options.forEach(o => { if (o.id && o.text) optMap[o.id] = o.text; });
+      const resueltos = value.map(uuid => optMap[uuid]).filter(Boolean);
+      value = resueltos.length === 1 ? resueltos[0] : resueltos.join(', ');
+    }
+    map[key] = value;
   });
   return map;
 }
@@ -262,9 +270,9 @@ app.post('/api/webhooks/registro', async (req, res) => {
 
     const nombre    = tallyVal(fields, 'nombre completo', 'nombre', 'name');
     const email     = tallyVal(fields, 'email', 'correo', 'e-mail');
-    const telefono  = tallyVal(fields, 'teléfono', 'telefono', 'celular', 'whatsapp');
-    const instagram = tallyVal(fields, 'instagram', 'usuario instagram', 'handle instagram', '@instagram', 'cuenta de instagram');
-    const tiktok    = tallyVal(fields, 'tiktok', 'usuario tiktok', 'handle tiktok', '@tiktok', 'cuenta de tiktok');
+    const telefono  = tallyVal(fields, 'teléfono', 'telefono', 'celular', 'whatsapp', 'teléfono / whatsapp', 'telefono / whatsapp');
+    const instagram = tallyVal(fields, 'instagram', 'usuario instagram', 'handle instagram', '@instagram', 'cuenta de instagram', 'cuenta de instagram (sin @)');
+    const tiktok    = tallyVal(fields, 'tiktok', 'usuario tiktok', 'handle tiktok', '@tiktok', 'cuenta de tiktok', 'cuenta de tiktok (sin @)');
     const segInsta  = parseInt(tallyVal(fields, 'seguidores instagram', 'seguidores en instagram', 'número de seguidores en instagram', 'followers instagram') || '0');
     const segTiktok = parseInt(tallyVal(fields, 'seguidores tiktok', 'seguidores en tiktok', 'número de seguidores en tiktok', 'followers tiktok') || '0');
     const ciudad       = tallyVal(fields, 'ciudad', 'city');
