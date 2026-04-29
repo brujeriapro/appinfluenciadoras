@@ -9,6 +9,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp } = require('./whatsapp');
 
 function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
@@ -122,7 +123,15 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
       shopifyResult.codigo_descuento = codigo;
     }
 
-    // 3. Intentar Siigo (no bloquea si falla)
+    // 3. WhatsApp de bienvenida (no bloquea si falla)
+    try {
+      const waResult = await enviarBienvenidaKit(influencer, shopifyResult.codigo_descuento || influencer.codigo_descuento);
+      console.log('[enviar-kit] WhatsApp bienvenida:', waResult);
+    } catch (e) {
+      console.error('[enviar-kit] WhatsApp error (no fatal):', e.message);
+    }
+
+    // 4. Intentar Siigo (no bloquea si falla)
     let siigoResult = null;
     let siigoError = null;
     try {
@@ -364,10 +373,11 @@ app.post('/api/cron/seguimiento', async (req, res) => {
 
     for (const inf of pendientes) {
       try {
-        const r = await enviarRecordatorioContenido(inf);
-        resultados.push({ nombre: inf.nombre, email: inf.email, ...r });
+        const wa = await enviarRecordatorioWhatsApp(inf);
+        const email = await enviarRecordatorioContenido(inf);
+        resultados.push({ nombre: inf.nombre, whatsapp: wa, email });
       } catch (e) {
-        resultados.push({ nombre: inf.nombre, email: inf.email, error: e.message });
+        resultados.push({ nombre: inf.nombre, error: e.message });
       }
     }
 

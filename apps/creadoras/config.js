@@ -57,6 +57,10 @@ const config = {
     user: process.env.GMAIL_USER || localConfig?.email?.gmail_user || '',
     pass: process.env.GMAIL_APP_PASSWORD || localConfig?.email?.gmail_app_password || '',
   },
+  whatsapp: {
+    token:    process.env.WHATSAPP_TOKEN    || localConfig?.whatsapp?.token    || '',
+    phone_id: process.env.WHATSAPP_PHONE_ID || localConfig?.whatsapp?.phone_id || '',
+  },
 };
 
 // Validar que las credenciales esenciales están presentes
