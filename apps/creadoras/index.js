@@ -66,7 +66,7 @@ app.get('/api/influencers/:id', async (req, res) => {
 
 app.patch('/api/influencers/:id', async (req, res) => {
   try {
-    const allowed = ['status', 'codigo_descuento', 'notas_equipo', 'tipo_cabello'];
+    const allowed = ['status', 'codigo_descuento', 'notas_equipo', 'tipo_cabello', 'telefono', 'ciudad', 'departamento', 'direccion_envio', 'codigo_postal'];
     const data = {};
     allowed.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
     await supabase.updateInfluencer(req.params.id, data);
@@ -285,9 +285,20 @@ app.post('/api/webhooks/registro', async (req, res) => {
       return res.status(400).json({ error: 'Faltan campos obligatorios: nombre y email' });
     }
 
-    // Verificar si ya existe
+    // Verificar si ya existe — si existe, actualizar campos que estén vacíos
     const existe = await supabase.getInfluencerByEmail(email.toLowerCase().trim());
     if (existe) {
+      const actualizaciones = {};
+      if (!existe.telefono && telefono) actualizaciones.telefono = telefono;
+      if (!existe.instagram_handle && instagram) actualizaciones.instagram_handle = (instagram || '').replace('@', '');
+      if (!existe.tiktok_handle && tiktok) actualizaciones.tiktok_handle = (tiktok || '').replace('@', '') || null;
+      if (!existe.ciudad && ciudad) actualizaciones.ciudad = ciudad;
+      if (!existe.departamento && departamento) actualizaciones.departamento = departamento;
+      if (!existe.direccion_envio && direccion) actualizaciones.direccion_envio = direccion;
+      if (!existe.tipo_cabello && tipoCabello) actualizaciones.tipo_cabello = tipoCabello;
+      if (Object.keys(actualizaciones).length > 0) {
+        await supabase.updateInfluencer(existe.id, actualizaciones);
+      }
       return res.json({ ok: true, mensaje: 'Ya registrada', id: existe.id });
     }
 
