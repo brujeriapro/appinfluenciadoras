@@ -684,7 +684,7 @@
       if (error) return <div className="error-msg">{error}</div>;
       if (!data) return null;
 
-      const statusOptions = ['Registrada', 'Contactada', 'Producto Enviado', 'Contenido Entregado', 'Calificada'];
+      const statusOptions = ['Registrada', 'Contactada', 'Producto Enviado', 'Contenido Entregado', 'Calificada', 'Pausada'];
       const puedeEnviar = !['Producto Enviado', 'Contenido Entregado', 'Calificada'].includes(data.status);
 
       return (
