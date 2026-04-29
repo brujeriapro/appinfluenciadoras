@@ -89,7 +89,7 @@ app.get('/api/config/productos', async (req, res) => {
 
 // ── ENVIAR KIT ────────────────────────────────────────────────────
 app.post('/api/influencers/:id/enviar', async (req, res) => {
-  const { skus, kit_nombre, direccion_envio, ciudad, telefono } = req.body;
+  const { skus, kit_nombre, direccion_envio, ciudad, telefono, codigo_postal } = req.body;
   if (!skus || !Array.isArray(skus) || skus.length === 0) {
     return res.status(400).json({ error: 'Se requiere al menos un SKU' });
   }
@@ -103,6 +103,7 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
     if (direccion_envio !== undefined) camposDir.direccion_envio = direccion_envio;
     if (ciudad !== undefined) camposDir.ciudad = ciudad;
     if (telefono !== undefined) camposDir.telefono = telefono;
+    if (codigo_postal !== undefined) camposDir.codigo_postal = codigo_postal;
 
     const influencerParaOrden = { ...influencer, ...camposDir };
 
