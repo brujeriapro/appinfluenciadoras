@@ -89,7 +89,7 @@ app.get('/api/config/productos', async (req, res) => {
 
 // ── ENVIAR KIT ────────────────────────────────────────────────────
 app.post('/api/influencers/:id/enviar', async (req, res) => {
-  const { skus, kit_nombre, direccion_envio, ciudad, telefono, codigo_postal } = req.body;
+  const { skus, kit_nombre, direccion_envio, ciudad, departamento, telefono, codigo_postal } = req.body;
   if (!skus || !Array.isArray(skus) || skus.length === 0) {
     return res.status(400).json({ error: 'Se requiere al menos un SKU' });
   }
@@ -102,6 +102,7 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
     const camposDir = {};
     if (direccion_envio !== undefined) camposDir.direccion_envio = direccion_envio;
     if (ciudad !== undefined) camposDir.ciudad = ciudad;
+    if (departamento !== undefined) camposDir.departamento = departamento;
     if (telefono !== undefined) camposDir.telefono = telefono;
     if (codigo_postal !== undefined) camposDir.codigo_postal = codigo_postal;
 
@@ -276,6 +277,7 @@ app.post('/api/webhooks/registro', async (req, res) => {
     const segInsta  = parseInt(tallyVal(fields, 'seguidores instagram', 'seguidores en instagram', 'número de seguidores en instagram', 'followers instagram') || '0');
     const segTiktok = parseInt(tallyVal(fields, 'seguidores tiktok', 'seguidores en tiktok', 'número de seguidores en tiktok', 'followers tiktok') || '0');
     const ciudad       = tallyVal(fields, 'ciudad', 'city');
+    const departamento = tallyVal(fields, 'departamento', 'department', 'depto');
     const direccion    = tallyVal(fields, 'dirección de envío', 'direccion de envio', 'dirección', 'direccion', 'address');
     const tipoCabello  = tallyVal(fields, 'tipo de cabello', 'tipo cabello', 'hair type', 'cabello');
 
@@ -302,6 +304,7 @@ app.post('/api/webhooks/registro', async (req, res) => {
       seguidores_instagram: segInsta || null,
       seguidores_tiktok: segTiktok || null,
       ciudad: ciudad || null,
+      departamento: departamento || null,
       direccion_envio: direccion || null,
       tipo_cabello: tipoCabello || null,
       tier,
