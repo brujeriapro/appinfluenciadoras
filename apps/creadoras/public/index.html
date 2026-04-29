@@ -584,6 +584,7 @@
       const [saving, setSaving] = useState(false);
       const [codigoEdit, setCodigoEdit] = useState('');
       const [notasEdit, setNotasEdit] = useState('');
+      const [tipoCabelloEdit, setTipoCabelloEdit] = useState('');
       const [savedMsg, setSavedMsg] = useState('');
       // Modal enviar kit
       const [modalEnvio, setModalEnvio] = useState(false);
@@ -599,6 +600,7 @@
             setData(d);
             setCodigoEdit(d.codigo_descuento || '');
             setNotasEdit(d.notas_equipo || '');
+            setTipoCabelloEdit(d.tipo_cabello || '');
           })
           .catch(e => setError(e.message))
           .finally(() => setLoading(false));
@@ -773,6 +775,20 @@
               <div className="detail-row"><span className="detail-label">Ciudad</span><span className="detail-value">{data.ciudad || '—'}</span></div>
               <div className="detail-row"><span className="detail-label">Dirección</span><span className="detail-value" style={{ maxWidth: 200, textAlign: 'right', fontSize: 12 }}>{data.direccion_envio || '—'}</span></div>
               <div className="detail-row"><span className="detail-label">Registro</span><span className="detail-value">{fmtDate(data.fecha_registro)}</span></div>
+              <div className="detail-row">
+                <span className="detail-label">Tipo de Cabello</span>
+                <select
+                  value={tipoCabelloEdit}
+                  onChange={e => { setTipoCabelloEdit(e.target.value); guardar({ tipo_cabello: e.target.value || null }); }}
+                  style={{ fontSize: 12, padding: '4px 8px', background: 'var(--bg3)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6 }}
+                >
+                  <option value="">— Sin definir —</option>
+                  <option value="Liso">Liso</option>
+                  <option value="Ondulado">Ondulado</option>
+                  <option value="Rizado">Rizado</option>
+                  <option value="Muy rizado">Muy rizado</option>
+                </select>
+              </div>
             </div>
 
             {/* Programa */}

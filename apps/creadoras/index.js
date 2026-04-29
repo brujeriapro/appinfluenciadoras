@@ -65,7 +65,7 @@ app.get('/api/influencers/:id', async (req, res) => {
 
 app.patch('/api/influencers/:id', async (req, res) => {
   try {
-    const allowed = ['status', 'codigo_descuento', 'notas_equipo'];
+    const allowed = ['status', 'codigo_descuento', 'notas_equipo', 'tipo_cabello'];
     const data = {};
     allowed.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
     await supabase.updateInfluencer(req.params.id, data);
@@ -245,8 +245,9 @@ app.post('/api/webhooks/registro', async (req, res) => {
     const tiktok    = tallyVal(fields, 'tiktok', 'usuario tiktok', 'handle tiktok', '@tiktok', 'cuenta de tiktok');
     const segInsta  = parseInt(tallyVal(fields, 'seguidores instagram', 'seguidores en instagram', 'número de seguidores en instagram', 'followers instagram') || '0');
     const segTiktok = parseInt(tallyVal(fields, 'seguidores tiktok', 'seguidores en tiktok', 'número de seguidores en tiktok', 'followers tiktok') || '0');
-    const ciudad    = tallyVal(fields, 'ciudad', 'city');
-    const direccion = tallyVal(fields, 'dirección de envío', 'direccion de envio', 'dirección', 'direccion', 'address');
+    const ciudad       = tallyVal(fields, 'ciudad', 'city');
+    const direccion    = tallyVal(fields, 'dirección de envío', 'direccion de envio', 'dirección', 'direccion', 'address');
+    const tipoCabello  = tallyVal(fields, 'tipo de cabello', 'tipo cabello', 'hair type', 'cabello');
 
     if (!nombre || !email) {
       return res.status(400).json({ error: 'Faltan campos obligatorios: nombre y email' });
@@ -272,6 +273,7 @@ app.post('/api/webhooks/registro', async (req, res) => {
       seguidores_tiktok: segTiktok || null,
       ciudad: ciudad || null,
       direccion_envio: direccion || null,
+      tipo_cabello: tipoCabello || null,
       tier,
       status: 'Registrada',
     });
