@@ -89,7 +89,7 @@ app.get('/api/config/productos', async (req, res) => {
 
 // ── ENVIAR KIT ────────────────────────────────────────────────────
 app.post('/api/influencers/:id/enviar', async (req, res) => {
-  const { skus, kit_nombre } = req.body;
+  const { skus, kit_nombre, direccion_envio, ciudad, telefono } = req.body;
   if (!skus || !Array.isArray(skus) || skus.length === 0) {
     return res.status(400).json({ error: 'Se requiere al menos un SKU' });
   }
@@ -98,9 +98,21 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
     const influencer = await supabase.getInfluencerById(req.params.id);
     if (!influencer) return res.status(404).json({ error: 'Influencer no encontrada' });
 
+    // Aplicar dirección del modal (puede estar corregida por el admin)
+    const camposDir = {};
+    if (direccion_envio !== undefined) camposDir.direccion_envio = direccion_envio;
+    if (ciudad !== undefined) camposDir.ciudad = ciudad;
+    if (telefono !== undefined) camposDir.telefono = telefono;
+
+    const influencerParaOrden = { ...influencer, ...camposDir };
+
+    // Persistir correcciones de dirección en Supabase si cambiaron
+    const huboCambio = Object.entries(camposDir).some(([k, v]) => v && v !== influencer[k]);
+    if (huboCambio) await supabase.updateInfluencer(req.params.id, camposDir);
+
     // 1. Crear orden Shopify
     const kitLabel = kit_nombre || `${skus.length} producto(s)`;
-    const shopifyResult = await shopify.createGiftingOrder(influencer, skus, kitLabel);
+    const shopifyResult = await shopify.createGiftingOrder(influencerParaOrden, skus, kitLabel);
 
     // 2. Actualizar Supabase
     await supabase.updateEnvio(req.params.id, {
@@ -125,7 +137,7 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
 
     // 3. WhatsApp de bienvenida (no bloquea si falla)
     try {
-      const waResult = await enviarBienvenidaKit(influencer, shopifyResult.codigo_descuento || influencer.codigo_descuento);
+      const waResult = await enviarBienvenidaKit(influencerParaOrden, shopifyResult.codigo_descuento || influencerParaOrden.codigo_descuento);
       console.log('[enviar-kit] WhatsApp bienvenida:', waResult);
     } catch (e) {
       console.error('[enviar-kit] WhatsApp error (no fatal):', e.message);
