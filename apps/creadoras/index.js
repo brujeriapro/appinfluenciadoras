@@ -245,11 +245,15 @@ function parseTallyFields(fields = []) {
     const key = (f.label || '').toLowerCase().trim();
     let value = f.value;
     // Resolver UUIDs de MULTIPLE_CHOICE / CHECKBOXES al texto de la opción
-    if (Array.isArray(value) && Array.isArray(f.options) && f.options.length > 0) {
-      const optMap = {};
-      f.options.forEach(o => { if (o.id && o.text) optMap[o.id] = o.text; });
-      const resueltos = value.map(uuid => optMap[uuid]).filter(Boolean);
-      value = resueltos.length === 1 ? resueltos[0] : resueltos.join(', ');
+    if (Array.isArray(value)) {
+      if (Array.isArray(f.options) && f.options.length > 0) {
+        const optMap = {};
+        f.options.forEach(o => { if (o.id && o.text) optMap[o.id] = o.text; });
+        const resueltos = value.map(uuid => optMap[uuid]).filter(Boolean);
+        value = resueltos.length === 1 ? resueltos[0] : resueltos.join(', ') || null;
+      } else {
+        value = null; // Array de UUIDs sin opciones para resolver — ignorar
+      }
     }
     map[key] = value;
   });
@@ -295,7 +299,7 @@ app.post('/api/webhooks/registro', async (req, res) => {
       if (!existe.ciudad && ciudad) actualizaciones.ciudad = ciudad;
       if (!existe.departamento && departamento) actualizaciones.departamento = departamento;
       if (!existe.direccion_envio && direccion) actualizaciones.direccion_envio = direccion;
-      if (!existe.tipo_cabello && tipoCabello) actualizaciones.tipo_cabello = tipoCabello;
+      if (tipoCabello) actualizaciones.tipo_cabello = tipoCabello;
       if (Object.keys(actualizaciones).length > 0) {
         await supabase.updateInfluencer(existe.id, actualizaciones);
       }
