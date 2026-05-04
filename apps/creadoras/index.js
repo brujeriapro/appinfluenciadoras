@@ -9,7 +9,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub } = require('./whatsapp');
 
 function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
@@ -328,6 +328,15 @@ app.post('/api/webhooks/registro', async (req, res) => {
 
     console.log(`[webhook/registro] Nueva influencer: ${nombre} | ${tier} | pendiente de envío por admin`);
 
+    if (influencer?.telefono) {
+      try {
+        const wa = await enviarBienvenidaClub(influencer);
+        console.log('[webhook/registro] WhatsApp bienvenida club:', wa);
+      } catch (e) {
+        console.error('[webhook/registro] WhatsApp error (no fatal):', e.message);
+      }
+    }
+
     res.json({ ok: true, influencer_id: influencer?.id, tier });
   } catch (e) {
     console.error('[webhook/registro] Error:', e.message);
@@ -522,6 +531,42 @@ app.get('/api/influencer/tally-urls', (req, res) => {
     contenido: config.tally_contenido_url,
     registro: config.tally_registro_url,
   });
+});
+
+// ── NOTIFICACIONES MANUALES (admin → WhatsApp) ───────────────────
+app.post('/api/admin/notificaciones', async (req, res) => {
+  const { influencer_ids, template } = req.body;
+  if (!template) return res.status(400).json({ error: 'Template requerido' });
+
+  try {
+    let influencers;
+    if (influencer_ids === 'all') {
+      influencers = await supabase.getInfluencersConTelefono();
+    } else if (Array.isArray(influencer_ids) && influencer_ids.length > 0) {
+      influencers = (await Promise.all(influencer_ids.map(id => supabase.getInfluencerById(id)))).filter(Boolean);
+    } else {
+      return res.status(400).json({ error: 'influencer_ids debe ser "all" o un array de IDs' });
+    }
+
+    const resultados = [];
+    for (const inf of influencers) {
+      try {
+        let wa;
+        if (template === 'bienvenida_club') wa = await enviarBienvenidaClub(inf);
+        else if (template === 'recordatorio') wa = await enviarRecordatorioWhatsApp(inf);
+        else throw new Error('Template no reconocido: usa bienvenida_club o recordatorio');
+        resultados.push({ id: inf.id, nombre: inf.nombre, ok: true, resultado: wa });
+      } catch (e) {
+        resultados.push({ id: inf.id, nombre: inf.nombre, ok: false, error: e.message });
+      }
+    }
+
+    console.log(`[admin/notificaciones] Template "${template}" → ${resultados.length} enviadas`);
+    res.json({ ok: true, total: resultados.length, resultados });
+  } catch (e) {
+    console.error('[admin/notificaciones] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Servir frontend para cualquier ruta no-API

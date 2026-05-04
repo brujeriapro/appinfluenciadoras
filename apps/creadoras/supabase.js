@@ -147,6 +147,14 @@ async function getInfluencersPendingSeguimiento() {
   });
 }
 
+async function getInfluencersConTelefono() {
+  return supabaseGet('influencers', {
+    select: '*',
+    telefono: 'not.is.null',
+    order: 'fecha_registro.desc',
+  });
+}
+
 async function getInfluencerByEmail(email) {
   const results = await supabaseGet('influencers', {
     email: `eq.${email}`,
@@ -160,4 +168,4 @@ async function updatePasswordHash(id, password_hash) {
   return supabasePatch('influencers', { id }, { password_hash });
 }
 
-module.exports = { getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, updatePasswordHash, insertInfluencer, insertContenido, getInfluencersPendingSeguimiento };
+module.exports = { getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, updatePasswordHash, insertInfluencer, insertContenido, getInfluencersPendingSeguimiento, getInfluencersConTelefono };

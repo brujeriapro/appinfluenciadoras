@@ -316,6 +316,17 @@
       return res.json();
     };
 
+    const POSTJSON = async (path, body) => {
+      const res = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+      return data;
+    };
+
     const fmt = (n) => n != null ? Number(n).toLocaleString('es-CO') : '—';
     const fmtCOP = (n) => n != null ? `$${Number(n).toLocaleString('es-CO')}` : '—';
     const fmtDate = (s) => s ? new Date(s).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -1178,6 +1189,167 @@
       );
     }
 
+    // ── NOTIFICACIONES ────────────────────────────────────────────
+    const TEMPLATES = [
+      { value: 'bienvenida_club', label: 'Bienvenida al Club', desc: 'Saluda a la influencer cuando se une al programa (template: bienvenida_club_brujeria)' },
+      { value: 'recordatorio', label: 'Recordatorio de Contenido', desc: 'Recuerda que debe publicar su reseña del kit (template: recordatorio_contenido_brujeria)' },
+    ];
+
+    function Notificaciones() {
+      const [influencers, setInfluencers] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [template, setTemplate] = useState('bienvenida_club');
+      const [destinatarios, setDestinatarios] = useState('all');
+      const [seleccionados, setSeleccionados] = useState([]);
+      const [sending, setSending] = useState(false);
+      const [resultado, setResultado] = useState(null);
+      const [sendError, setSendError] = useState(null);
+
+      useEffect(() => {
+        API('/api/influencers')
+          .then(inf => setInfluencers(inf.filter(i => i.telefono)))
+          .catch(e => setError(e.message))
+          .finally(() => setLoading(false));
+      }, []);
+
+      const toggleSeleccion = (id) => {
+        setSeleccionados(prev =>
+          prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+      };
+
+      const enviar = async () => {
+        setSending(true);
+        setSendError(null);
+        setResultado(null);
+        try {
+          const ids = destinatarios === 'all' ? 'all' : seleccionados;
+          if (ids !== 'all' && ids.length === 0) {
+            setSendError('Selecciona al menos una influencer');
+            setSending(false);
+            return;
+          }
+          const data = await POSTJSON('/api/admin/notificaciones', { influencer_ids: ids, template });
+          setResultado(data);
+        } catch (e) {
+          setSendError(e.message);
+        } finally {
+          setSending(false);
+        }
+      };
+
+      const tpl = TEMPLATES.find(t => t.value === template);
+      const enviadas = resultado?.resultados?.filter(r => r.ok) || [];
+      const fallidas = resultado?.resultados?.filter(r => !r.ok) || [];
+
+      return (
+        <div>
+          <h1>Notificaciones WhatsApp</h1>
+          <p className="page-subtitle">Envía mensajes directos a las influencers desde el dashboard</p>
+
+          {error && <div className="error-msg">{error}</div>}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+            {/* Configuración */}
+            <div className="detail-card">
+              <h3>Configurar Envío</h3>
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8 }}>Template</div>
+                {TEMPLATES.map(t => (
+                  <label key={t.value} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1px solid ${template === t.value ? 'var(--purple)' : 'var(--border)'}`, background: template === t.value ? 'rgba(124,58,237,0.1)' : 'transparent', cursor: 'pointer', marginBottom: 8 }}>
+                    <input type="radio" name="template" value={t.value} checked={template === t.value} onChange={() => setTemplate(t.value)} style={{ accentColor: 'var(--purple)', marginTop: 2 }} />
+                    <div>
+                      <div style={{ fontWeight: 500, fontSize: 13 }}>{t.label}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{t.desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8 }}>Destinatarias</div>
+                <select value={destinatarios} onChange={e => { setDestinatarios(e.target.value); setSeleccionados([]); }} style={{ width: '100%' }}>
+                  <option value="all">Todas las influencers con teléfono ({loading ? '...' : influencers.length})</option>
+                  <option value="seleccion">Selección manual</option>
+                </select>
+              </div>
+
+              {sendError && <div className="error-msg" style={{ marginBottom: 12 }}>{sendError}</div>}
+
+              <button className="btn btn-primary" onClick={enviar} disabled={sending || loading} style={{ width: '100%' }}>
+                {sending ? 'Enviando...' : `Enviar WhatsApp — ${tpl?.label}`}
+              </button>
+
+              <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                Solo se envía a influencers que tienen número de teléfono registrado. Si el template no está aprobado en Meta, el mensaje fallará silenciosamente.
+              </div>
+            </div>
+
+            {/* Lista de selección manual / resultado */}
+            <div>
+              {destinatarios === 'seleccion' && !resultado && (
+                <div className="detail-card">
+                  <h3>Seleccionar Influencers ({seleccionados.length} seleccionadas)</h3>
+                  {loading
+                    ? <div className="loading" style={{ padding: 20 }}>Cargando...</div>
+                    : influencers.length === 0
+                      ? <div className="empty-state">Sin influencers con teléfono registrado</div>
+                      : (
+                        <div style={{ maxHeight: 380, overflowY: 'auto' }}>
+                          {influencers.map(inf => (
+                            <label key={inf.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}>
+                              <input type="checkbox" checked={seleccionados.includes(inf.id)} onChange={() => toggleSeleccion(inf.id)} style={{ accentColor: 'var(--purple)' }} />
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 500, fontSize: 13 }}>{inf.nombre}</div>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>@{inf.instagram_handle} · {inf.telefono}</div>
+                              </div>
+                              <TierBadge tier={inf.tier} />
+                            </label>
+                          ))}
+                        </div>
+                      )
+                  }
+                </div>
+              )}
+
+              {resultado && (
+                <div className="detail-card">
+                  <h3>Resultado del Envío</h3>
+                  <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+                    <div style={{ background: '#052e16', border: '1px solid #166534', borderRadius: 8, padding: '10px 16px', flex: 1, textAlign: 'center' }}>
+                      <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--green)' }}>{enviadas.length}</div>
+                      <div style={{ fontSize: 12, color: '#86efac' }}>Enviados</div>
+                    </div>
+                    <div style={{ background: fallidas.length > 0 ? '#450a0a' : 'var(--bg3)', border: `1px solid ${fallidas.length > 0 ? '#7f1d1d' : 'var(--border)'}`, borderRadius: 8, padding: '10px 16px', flex: 1, textAlign: 'center' }}>
+                      <div style={{ fontSize: 24, fontWeight: 700, color: fallidas.length > 0 ? 'var(--red)' : 'var(--text-muted)' }}>{fallidas.length}</div>
+                      <div style={{ fontSize: 12, color: fallidas.length > 0 ? '#fca5a5' : 'var(--text-muted)' }}>Fallidos</div>
+                    </div>
+                  </div>
+
+                  <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                    {resultado.resultados.map((r, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                        <span style={{ color: r.ok ? 'var(--green)' : 'var(--red)', fontWeight: 700 }}>{r.ok ? '✓' : '✗'}</span>
+                        <span style={{ flex: 1 }}>{r.nombre}</span>
+                        {!r.ok && <span style={{ fontSize: 11, color: 'var(--red)' }}>{r.error}</span>}
+                        {r.resultado?.skipped && <span style={{ fontSize: 11, color: 'var(--yellow)' }}>Sin teléfono</span>}
+                      </div>
+                    ))}
+                  </div>
+
+                  <button className="btn btn-secondary" style={{ marginTop: 16, width: '100%' }} onClick={() => setResultado(null)}>
+                    Nuevo envío
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // ── APP ROOT ──────────────────────────────────────────────────
     function App() {
       const [view, setView] = useState('dashboard');
@@ -1196,6 +1368,7 @@
             <button className={view === 'influencers' || view === 'detalle' ? 'active' : ''} onClick={() => navigate('influencers')}>Influencers</button>
             <button className={view === 'contenidos' ? 'active' : ''} onClick={() => navigate('contenidos')}>Contenidos</button>
             <button className={view === 'roi' ? 'active' : ''} onClick={() => navigate('roi')}>ROI</button>
+            <button className={view === 'notificaciones' ? 'active' : ''} onClick={() => navigate('notificaciones')}>Notificaciones</button>
           </nav>
           <main>
             {view === 'dashboard' && <Dashboard onNavigate={navigate} />}
@@ -1203,6 +1376,7 @@
             {view === 'detalle' && detalleId && <DetalleInfluencer id={detalleId} onBack={() => navigate('influencers')} />}
             {view === 'contenidos' && <Contenidos />}
             {view === 'roi' && <ROI />}
+            {view === 'notificaciones' && <Notificaciones />}
           </main>
         </div>
       );

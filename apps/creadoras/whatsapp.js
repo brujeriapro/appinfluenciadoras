@@ -86,4 +86,12 @@ async function enviarRecordatorioWhatsApp(influencer) {
   );
 }
 
-module.exports = { enviarBienvenidaKit, enviarRecordatorioWhatsApp };
+// Bienvenida al club cuando se registra (antes de recibir el kit)
+// Template: bienvenida_club_brujeria
+// Variables: {{1}} nombre
+async function enviarBienvenidaClub(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
+  return enviarTemplate(influencer.telefono, 'bienvenida_club_brujeria', [nombre]);
+}
+
+module.exports = { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub };
