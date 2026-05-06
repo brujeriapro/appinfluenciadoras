@@ -94,4 +94,34 @@ async function enviarBienvenidaClub(influencer) {
   return enviarTemplate(influencer.telefono, 'bienvenida_club_brujeria', [nombre]);
 }
 
-module.exports = { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub };
+// Feedback al recibir y calificar contenido
+// Template: feedback_contenido_brujeria
+// Variables: {{1}} nombre, {{2}} score (0-100), {{3}} nivel actual
+async function enviarFeedbackContenido(influencer, score, nivel) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
+  return enviarTemplate(
+    influencer.telefono,
+    'feedback_contenido_brujeria',
+    [nombre, String(Math.round(score)), nivel]
+  );
+}
+
+// Celebración al subir de nivel
+// Template: subida_nivel_brujeria
+// Variables: {{1}} nombre, {{2}} nombre del nuevo nivel
+async function enviarCelebracionNivel(influencer, nivelNuevo) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
+  return enviarTemplate(
+    influencer.telefono,
+    'subida_nivel_brujeria',
+    [nombre, nivelNuevo]
+  );
+}
+
+module.exports = {
+  enviarBienvenidaKit,
+  enviarRecordatorioWhatsApp,
+  enviarBienvenidaClub,
+  enviarFeedbackContenido,
+  enviarCelebracionNivel,
+};

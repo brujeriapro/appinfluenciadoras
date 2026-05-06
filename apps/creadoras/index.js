@@ -9,7 +9,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarCelebracionNivel } = require('./whatsapp');
 
 function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
@@ -392,6 +392,7 @@ app.post('/api/webhooks/contenido', async (req, res) => {
     const scoreAcumulado = todosLosContenidos.reduce((s, c) => s + (c.score_contenido || 0), 0);
     const nivel = calcularNivel(scoreAcumulado);
 
+    const nivelAnterior = influencer.nivel_bruja;
     await supabase.updateInfluencer(influencer.id, {
       status: 'Contenido Entregado',
       nivel_bruja: nivel,
@@ -399,6 +400,26 @@ app.post('/api/webhooks/contenido', async (req, res) => {
     });
 
     console.log(`[webhook/contenido] ${influencer.nombre} | score: ${score} | nivel: ${nivel} | acumulado: ${scoreAcumulado.toFixed(1)}`);
+
+    // WhatsApp: feedback de score (no bloquea si falla)
+    if (influencer.telefono) {
+      try {
+        const waFeedback = await enviarFeedbackContenido(influencer, score, nivel);
+        console.log('[webhook/contenido] WhatsApp feedback:', waFeedback);
+      } catch (e) {
+        console.error('[webhook/contenido] WhatsApp feedback error (no fatal):', e.message);
+      }
+
+      // WhatsApp extra: celebración si subió de nivel
+      if (nivelAnterior && nivelAnterior !== nivel) {
+        try {
+          const waNivel = await enviarCelebracionNivel(influencer, nivel);
+          console.log('[webhook/contenido] WhatsApp nivel:', waNivel);
+        } catch (e) {
+          console.error('[webhook/contenido] WhatsApp nivel error (no fatal):', e.message);
+        }
+      }
+    }
 
     res.json({ ok: true, score, nivel, score_acumulado: scoreAcumulado });
   } catch (e) {
@@ -554,7 +575,13 @@ app.post('/api/admin/notificaciones', async (req, res) => {
         let wa;
         if (template === 'bienvenida_club') wa = await enviarBienvenidaClub(inf);
         else if (template === 'recordatorio') wa = await enviarRecordatorioWhatsApp(inf);
-        else throw new Error('Template no reconocido: usa bienvenida_club o recordatorio');
+        else if (template === 'bienvenida_kit') wa = await enviarBienvenidaKit(inf, inf.codigo_descuento);
+        else if (template === 'feedback_contenido') {
+          const score = inf.score_total || 0;
+          const nivel = inf.nivel_bruja || 'Magia Naciente';
+          wa = await enviarFeedbackContenido(inf, score, nivel);
+        }
+        else throw new Error('Template no reconocido: usa bienvenida_club, bienvenida_kit, recordatorio o feedback_contenido');
         resultados.push({ id: inf.id, nombre: inf.nombre, ok: true, resultado: wa });
       } catch (e) {
         resultados.push({ id: inf.id, nombre: inf.nombre, ok: false, error: e.message });

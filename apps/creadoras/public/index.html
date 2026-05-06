@@ -1191,8 +1191,38 @@
 
     // ── NOTIFICACIONES ────────────────────────────────────────────
     const TEMPLATES = [
-      { value: 'bienvenida_club', label: 'Bienvenida al Club', desc: 'Saluda a la influencer cuando se une al programa (template: bienvenida_club_brujeria)' },
-      { value: 'recordatorio', label: 'Recordatorio de Contenido', desc: 'Recuerda que debe publicar su reseña del kit (template: recordatorio_contenido_brujeria)' },
+      {
+        value: 'bienvenida_club',
+        label: 'Bienvenida al Club',
+        tag: 'Automático al registrarse',
+        tagColor: 'var(--blue)',
+        desc: 'Saluda cuando la influencer completa el formulario de registro.',
+        preview: '💜 Hola [Nombre]! Bienvenida al Programa Creadoras de Brujería Capilar. Ya estás registrada y pronto recibirás tu kit...',
+      },
+      {
+        value: 'bienvenida_kit',
+        label: 'Bienvenida con Kit',
+        tag: 'Automático al enviar kit',
+        tagColor: 'var(--green)',
+        desc: 'Se envía cuando el admin despacha el kit. Incluye link de reporte y código de descuento.',
+        preview: '📦 Hola [Nombre]! Tu kit de Brujería Capilar ya está en camino. Link de reporte: [...] Código: [CODIGO]',
+      },
+      {
+        value: 'recordatorio',
+        label: 'Recordatorio de Contenido',
+        tag: 'Automático los lunes',
+        tagColor: 'var(--yellow)',
+        desc: 'Recuerda que debe publicar su reseña. Se dispara automáticamente cada lunes por Railway cron.',
+        preview: '⏰ Hola [Nombre]! Han pasado [N] días desde que recibiste tu kit. Tu fecha límite es el [Fecha]...',
+      },
+      {
+        value: 'feedback_contenido',
+        label: 'Feedback de Contenido',
+        tag: 'Automático al recibir contenido',
+        tagColor: 'var(--purple-light)',
+        desc: 'Confirma que se recibió el contenido y le muestra su score y nivel actual.',
+        preview: '✨ Hola [Nombre]! Recibimos tu contenido. Tu score: [N]/100 puntos. Nivel: [Nivel]. ¡Sigue así!',
+      },
     ];
 
     function Notificaciones() {
@@ -1260,9 +1290,17 @@
                 {TEMPLATES.map(t => (
                   <label key={t.value} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', borderRadius: 8, border: `1px solid ${template === t.value ? 'var(--purple)' : 'var(--border)'}`, background: template === t.value ? 'rgba(124,58,237,0.1)' : 'transparent', cursor: 'pointer', marginBottom: 8 }}>
                     <input type="radio" name="template" value={t.value} checked={template === t.value} onChange={() => setTemplate(t.value)} style={{ accentColor: 'var(--purple)', marginTop: 2 }} />
-                    <div>
-                      <div style={{ fontWeight: 500, fontSize: 13 }}>{t.label}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{t.desc}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600, fontSize: 13 }}>{t.label}</span>
+                        <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 99, background: 'rgba(0,0,0,0.3)', color: t.tagColor, border: `1px solid ${t.tagColor}`, whiteSpace: 'nowrap' }}>{t.tag}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{t.desc}</div>
+                      {template === t.value && (
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg3)', borderRadius: 6, padding: '6px 10px', fontStyle: 'italic', lineHeight: 1.5 }}>
+                          {t.preview}
+                        </div>
+                      )}
                     </div>
                   </label>
                 ))}
