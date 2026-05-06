@@ -70,20 +70,27 @@ async function enviarBienvenidaKit(influencer, codigoDescuento) {
 
 // Recordatorio semanal para influencers que no han publicado
 // Template: recordatorio_contenido_brujeria
-// Variables: {{1}} nombre, {{2}} días desde envío, {{3}} fecha límite (día del mes)
+// Variables: {{1}} nombre, {{2}} días restantes para publicar
 async function enviarRecordatorioWhatsApp(influencer) {
   const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
   const diasDesdeEnvio = Math.floor(
     (Date.now() - new Date(influencer.fecha_envio).getTime()) / (1000 * 60 * 60 * 24)
   );
-  const fechaLimite = new Date(new Date(influencer.fecha_envio).getTime() + 30 * 24 * 60 * 60 * 1000);
-  const fechaStr = fechaLimite.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' });
+  const diasRestantes = Math.max(0, 30 - diasDesdeEnvio);
 
   return enviarTemplate(
     influencer.telefono,
     'recordatorio_contenido_brujeria',
-    [nombre, String(diasDesdeEnvio), fechaStr]
+    [nombre, String(diasRestantes)]
   );
+}
+
+// Ideas de contenido 4 días después del envío del kit
+// Template: ideas_contenido_brujeria
+// Variables: {{1}} nombre
+async function enviarIdeasContenido(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
+  return enviarTemplate(influencer.telefono, 'ideas_contenido_brujeria', [nombre]);
 }
 
 // Bienvenida al club cuando se registra (antes de recibir el kit)
@@ -124,4 +131,5 @@ module.exports = {
   enviarBienvenidaClub,
   enviarFeedbackContenido,
   enviarCelebracionNivel,
+  enviarIdeasContenido,
 };

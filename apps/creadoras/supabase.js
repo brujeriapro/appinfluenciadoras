@@ -147,6 +147,19 @@ async function getInfluencersPendingSeguimiento() {
   });
 }
 
+async function getInfluencersPendingIdeas() {
+  // Influencers con kit enviado hace exactamente 4 días (±1 día de margen)
+  const hace3dias = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const hace5dias = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  return supabaseGet('influencers', {
+    select: '*',
+    status: 'eq.Producto Enviado',
+    fecha_envio: `gte.${hace5dias}`,
+    'fecha_envio.lte': hace3dias,
+    telefono: 'not.is.null',
+  });
+}
+
 async function getInfluencersConTelefono() {
   return supabaseGet('influencers', {
     select: '*',
@@ -168,4 +181,4 @@ async function updatePasswordHash(id, password_hash) {
   return supabasePatch('influencers', { id }, { password_hash });
 }
 
-module.exports = { getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, updatePasswordHash, insertInfluencer, insertContenido, getInfluencersPendingSeguimiento, getInfluencersConTelefono };
+module.exports = { getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, updatePasswordHash, insertInfluencer, insertContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono };

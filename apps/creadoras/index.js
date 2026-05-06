@@ -9,7 +9,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarCelebracionNivel } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarCelebracionNivel, enviarIdeasContenido } = require('./whatsapp');
 
 function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
@@ -327,16 +327,6 @@ app.post('/api/webhooks/registro', async (req, res) => {
     });
 
     console.log(`[webhook/registro] Nueva influencer: ${nombre} | ${tier} | pendiente de envío por admin`);
-
-    if (influencer?.telefono) {
-      try {
-        const wa = await enviarBienvenidaClub(influencer);
-        console.log('[webhook/registro] WhatsApp bienvenida club:', wa);
-      } catch (e) {
-        console.error('[webhook/registro] WhatsApp error (no fatal):', e.message);
-      }
-    }
-
     res.json({ ok: true, influencer_id: influencer?.id, tier });
   } catch (e) {
     console.error('[webhook/registro] Error:', e.message);
@@ -456,6 +446,39 @@ app.post('/api/cron/seguimiento', async (req, res) => {
     console.error('[cron/seguimiento] Error:', e.message);
     res.status(500).json({ error: e.message });
   }
+});
+
+// ── CRON IDEAS DE CONTENIDO (Railway cron diario → 4 días post-envío) ───
+app.post('/api/cron/ideas', async (req, res) => {
+  const secret = req.headers['x-cron-secret'] || req.query.secret;
+  if (config.tally_webhook_secret && secret !== config.tally_webhook_secret) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+
+  try {
+    const pendientes = await supabase.getInfluencersPendingIdeas();
+    const resultados = [];
+
+    for (const inf of pendientes) {
+      try {
+        const wa = await enviarIdeasContenido(inf);
+        resultados.push({ nombre: inf.nombre, whatsapp: wa });
+      } catch (e) {
+        resultados.push({ nombre: inf.nombre, error: e.message });
+      }
+    }
+
+    console.log(`[cron/ideas] ${resultados.length} influencers procesadas`);
+    res.json({ ok: true, total: resultados.length, resultados });
+  } catch (e) {
+    console.error('[cron/ideas] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── GUÍA DEL PROGRAMA ────────────────────────────────────────────
+app.get('/guia', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'guia.html'));
 });
 
 // ── PORTAL INFLUENCERS ────────────────────────────────────────────

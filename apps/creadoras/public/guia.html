@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guía Creadoras — Brujería Capilar</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f0a1e; --bg2: #1a1035; --bg3: #241848; --border: #3d2d6e;
+      --purple: #7C3AED; --purple-light: #a855f7; --purple-dark: #2D1B69;
+      --text: #f0ebff; --text-muted: #9580c0;
+      --green: #22c55e; --yellow: #eab308; --gold: #f59e0b;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* HEADER */
+    .header {
+      background: var(--bg2); border-bottom: 1px solid var(--border);
+      padding: 20px 24px; text-align: center;
+    }
+    .header .logo { font-size: 36px; margin-bottom: 8px; }
+    .header h1 { font-size: 22px; font-weight: 800; color: var(--purple-light); margin-bottom: 4px; }
+    .header p { color: var(--text-muted); font-size: 13px; }
+
+    /* CONTENIDO */
+    .wrap { max-width: 720px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    /* STEPS */
+    .step { display: flex; gap: 20px; margin-bottom: 40px; }
+    .step-num {
+      flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%;
+      background: var(--purple); color: white; font-weight: 800; font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 2px;
+    }
+    .step-body { flex: 1; }
+    .step-body h2 { font-size: 17px; font-weight: 700; color: var(--purple-light); margin-bottom: 8px; }
+    .step-body p { color: var(--text-muted); font-size: 14px; margin-bottom: 10px; }
+    .step-body ul { padding-left: 18px; color: var(--text-muted); font-size: 14px; }
+    .step-body ul li { margin-bottom: 4px; }
+    .step-body .note {
+      background: var(--bg3); border-left: 3px solid var(--purple); border-radius: 0 8px 8px 0;
+      padding: 10px 14px; font-size: 13px; color: var(--text-muted); margin-top: 10px;
+    }
+    .step-body .note strong { color: var(--text); }
+
+    /* DIVIDER */
+    .divider { height: 1px; background: var(--border); margin: 32px 0; }
+
+    /* TABLA NIVELES */
+    .section-title {
+      font-size: 18px; font-weight: 700; color: var(--purple-light);
+      margin-bottom: 16px; margin-top: 8px;
+    }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+    thead th {
+      text-align: left; padding: 10px 14px; font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);
+      border-bottom: 1px solid var(--border); background: var(--bg2);
+    }
+    tbody tr { border-bottom: 1px solid var(--border); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody td { padding: 10px 14px; font-size: 14px; }
+    .td-muted { color: var(--text-muted); font-size: 13px; }
+
+    /* SCORE CARDS */
+    .score-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    @media (max-width: 540px) { .score-grid { grid-template-columns: 1fr; } }
+    .score-card {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+    }
+    .score-card .score-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+    .score-card .score-pct { font-size: 28px; font-weight: 800; color: var(--purple-light); margin-bottom: 6px; }
+    .score-card .score-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+    .score-card .score-example { margin-top: 8px; font-size: 12px; color: var(--text-muted); background: var(--bg3); border-radius: 6px; padding: 6px 10px; font-style: italic; }
+
+    /* MULTIPLICADORES */
+    .multi-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 14px;
+    }
+    .multi-row:last-child { border-bottom: none; }
+    .multi-tag { background: var(--bg3); border: 1px solid var(--border); border-radius: 99px; padding: 2px 12px; font-size: 13px; font-weight: 700; color: var(--purple-light); }
+
+    /* EJEMPLO CARD */
+    .ejemplo-card {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+      padding: 20px; margin-bottom: 24px;
+    }
+    .ejemplo-card h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--text); }
+    .ejemplo-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
+    .ejemplo-row:last-child { border-bottom: none; font-weight: 700; color: var(--purple-light); font-size: 14px; }
+    .ejemplo-row .ej-label { color: var(--text-muted); }
+
+    /* PORTAL LINK */
+    .portal-cta {
+      background: linear-gradient(135deg, var(--purple-dark), #1a0a3e);
+      border: 1px solid var(--purple); border-radius: 14px;
+      padding: 28px; text-align: center; margin-top: 40px;
+    }
+    .portal-cta h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .portal-cta p { color: var(--text-muted); font-size: 14px; margin-bottom: 20px; }
+    .portal-cta a {
+      display: inline-block; background: var(--purple); color: white;
+      padding: 12px 32px; border-radius: 10px; font-weight: 700; text-decoration: none;
+      font-size: 15px; transition: background 0.15s;
+    }
+    .portal-cta a:hover { background: var(--purple-light); }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="logo">🔮</div>
+    <h1>Guía del Programa Creadoras</h1>
+    <p>Brujería Capilar — Todo lo que necesitas saber para participar</p>
+  </div>
+
+  <div class="wrap">
+
+    <!-- PASO 1 -->
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h2>Fuiste seleccionada 💜</h2>
+        <p>El equipo de Brujería Capilar revisó tu perfil y decidió invitarte al Programa Creadoras. Recibirás tu kit por correo y por WhatsApp te avisamos cuando esté en camino.</p>
+        <div class="note">No se requiere exclusividad — puedes trabajar con otras marcas sin problema.</div>
+      </div>
+    </div>
+
+    <!-- PASO 2 -->
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h2>Recibir el kit</h2>
+        <p>Recibes por correo la confirmación del pedido de Shopify. El kit llega a tu dirección en los días siguientes según tu ciudad.</p>
+        <div class="note"><strong>¿No llegó?</strong> Escríbenos por WhatsApp y lo revisamos.</div>
+      </div>
+    </div>
+
+    <!-- PASO 3 -->
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h2>Crear tu contenido</h2>
+        <p>Tienes <strong>30 días</strong> desde que recibes el kit para publicar tu reseña. Puede ser:</p>
+        <ul>
+          <li>Un Reel en Instagram</li>
+          <li>Un video en TikTok</li>
+          <li>Una Story (vale menos puntos)</li>
+          <li>Un post estático</li>
+        </ul>
+        <div class="note">Sin guión obligatorio — solo tu experiencia honesta con los productos. Que se vea real y como contenido normal de tu perfil.</div>
+      </div>
+    </div>
+
+    <!-- PASO 4 -->
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h2>Reportar tu contenido</h2>
+        <p>Cuando publiques, entra a tu portal personal:</p>
+        <ul>
+          <li>Login con tu email y la contraseña que creaste</li>
+          <li>Haz clic en <strong>"Subir Contenido"</strong></li>
+          <li>Llena el formulario con el link de tu publicación y las métricas (vistas, likes, guardados)</li>
+        </ul>
+        <div class="note"><strong>Sin reporte no se cuentan los puntos</strong> — el sistema no puede buscar el contenido automáticamente.</div>
+      </div>
+    </div>
+
+    <!-- PASO 5 -->
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h2>Ver tu progreso</h2>
+        <p>En tu portal puedes ver en tiempo real:</p>
+        <ul>
+          <li>Tu Nivel Bruja actual</li>
+          <li>Tu score acumulado</li>
+          <li>Cuántos puntos te faltan para el siguiente nivel</li>
+          <li>Tu código de descuento para compartir con tu audiencia</li>
+          <li>Las ventas generadas con tu código</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- NIVELES -->
+    <div class="section-title">🧙‍♀️ Niveles Bruja</div>
+    <p style="color:var(--text-muted); font-size:14px; margin-bottom:16px;">Cada contenido que publicas suma puntos. A más contenido y mejor calidad, más rápido subes de nivel.</p>
+    <div style="background:var(--bg2); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:32px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Nivel</th>
+            <th>Puntos acumulados</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>🌱 Magia Naciente</td><td class="td-muted">0 – 20</td></tr>
+          <tr><td>📚 Magia Viva</td><td class="td-muted">21 – 50</td></tr>
+          <tr><td>✨ Magia Profunda</td><td class="td-muted">51 – 100</td></tr>
+          <tr><td>💜 Magia Pura</td><td class="td-muted">101 – 200</td></tr>
+          <tr><td>🔮 Gran Magia</td><td class="td-muted">201+</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- SCORE -->
+    <div class="section-title">📊 Cómo se calcula tu score</div>
+    <p style="color:var(--text-muted); font-size:14px; margin-bottom:20px;">Cada pieza de contenido recibe un score de 0 a 100 puntos. Así se compone:</p>
+
+    <div class="score-grid">
+      <div class="score-card">
+        <div class="score-label">Reach</div>
+        <div class="score-pct">40%</div>
+        <div class="score-desc">Cuánta gente vio el video vs cuántos seguidores tienes.</div>
+        <div class="score-example">10.000 seguidores, 8.000 vistas → reach 80% → 80 pts</div>
+      </div>
+      <div class="score-card">
+        <div class="score-label">Engagement</div>
+        <div class="score-pct">25%</div>
+        <div class="score-desc">Cuántos likes por vista. Referencia: 5% likes/vistas = 100 pts.</div>
+        <div class="score-example">8.000 vistas, 400 likes = 5% → 100 pts</div>
+      </div>
+      <div class="score-card">
+        <div class="score-label">Guardados</div>
+        <div class="score-pct">20%</div>
+        <div class="score-desc">La señal más fuerte — significa que tu audiencia quiere volver a ver el video.</div>
+        <div class="score-example">8.000 vistas, 160 guardados = 2% → 100 pts</div>
+      </div>
+      <div class="score-card">
+        <div class="score-label">Calificación del equipo</div>
+        <div class="score-pct">15%</div>
+        <div class="score-desc">El equipo revisa calidad visual, presentación del producto y autenticidad.</div>
+        <div class="score-example">Nota del 1 al 5 → normalizada a 0-100 pts</div>
+      </div>
+    </div>
+
+    <!-- MULTIPLICADORES -->
+    <div class="section-title" style="margin-top:8px;">✖️ Multiplicadores por formato</div>
+    <div style="background:var(--bg2); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:32px;">
+      <div class="multi-row"><span>TikTok</span><span class="multi-tag">×1.2</span></div>
+      <div class="multi-row"><span>Reel Instagram</span><span class="multi-tag">×1.0</span></div>
+      <div class="multi-row"><span>Post estático</span><span class="multi-tag">×0.8</span></div>
+      <div class="multi-row"><span>Story</span><span class="multi-tag">×0.7</span></div>
+    </div>
+
+    <!-- EJEMPLO -->
+    <div class="section-title">💡 Ejemplo completo</div>
+    <div class="ejemplo-card">
+      <h4>Reel en Instagram — 5.000 seguidores</h4>
+      <div class="ejemplo-row"><span class="ej-label">Vistas: 6.000 → reach 120% → tope</span><span>100 pts × 40%</span></div>
+      <div class="ejemplo-row"><span class="ej-label">Likes: 180 → 3% de vistas</span><span>60 pts × 25%</span></div>
+      <div class="ejemplo-row"><span class="ej-label">Guardados: 90 → 1.5% de vistas</span><span>75 pts × 20%</span></div>
+      <div class="ejemplo-row"><span class="ej-label">Calificación equipo: 4/5</span><span>75 pts × 15%</span></div>
+      <div class="ejemplo-row"><span class="ej-label">Score final (×1.0 Reel)</span><span>81.25 puntos — Magia Profunda ✨</span></div>
+    </div>
+
+    <!-- CTA PORTAL -->
+    <div class="portal-cta">
+      <h3>Tu portal personal 🔮</h3>
+      <p>Acá ves tu nivel, tu score, tu código de descuento y reportas tu contenido.</p>
+      <a href="/influencer">Entrar al portal</a>
+    </div>
+
+  </div>
+</body>
+</html>
