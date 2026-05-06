@@ -629,11 +629,12 @@ app.listen(PORT, () => {
   console.log('Ctrl+C para detener\n');
 });
 
-// ── CRONS INTERNOS ────────────────────────────────────────────────
-const cron = require('node-cron');
+// ── CRONS INTERNOS (sin dependencias externas) ───────────────────
+// Revisa cada hora si hay crons que correr según hora UTC
+let ultimoIdeas = null;
+let ultimoSeguimiento = null;
 
-// Diario 10am Bogotá (15:00 UTC) — ideas de contenido 4 días post-envío
-cron.schedule('0 15 * * *', async () => {
+async function runCronIdeas() {
   console.log('[cron/ideas] Ejecutando...');
   try {
     const pendientes = await supabase.getInfluencersPendingIdeas();
@@ -649,10 +650,9 @@ cron.schedule('0 15 * * *', async () => {
   } catch (e) {
     console.error('[cron/ideas] Error:', e.message);
   }
-});
+}
 
-// Lunes 9am Bogotá (14:00 UTC) — seguimiento semanal
-cron.schedule('0 14 * * 1', async () => {
+async function runCronSeguimiento() {
   console.log('[cron/seguimiento] Ejecutando...');
   try {
     const pendientes = await supabase.getInfluencersPendingSeguimiento();
@@ -669,4 +669,23 @@ cron.schedule('0 14 * * 1', async () => {
   } catch (e) {
     console.error('[cron/seguimiento] Error:', e.message);
   }
-});
+}
+
+setInterval(() => {
+  const now = new Date();
+  const hoy = now.toISOString().split('T')[0];
+  const horaUTC = now.getUTCHours();
+  const diaUTC = now.getUTCDay(); // 1 = lunes
+
+  // Diario a las 15:00 UTC (10am Bogotá) — ideas post-envío
+  if (horaUTC === 15 && ultimoIdeas !== hoy) {
+    ultimoIdeas = hoy;
+    runCronIdeas();
+  }
+
+  // Lunes a las 14:00 UTC (9am Bogotá) — seguimiento semanal
+  if (diaUTC === 1 && horaUTC === 14 && ultimoSeguimiento !== hoy) {
+    ultimoSeguimiento = hoy;
+    runCronSeguimiento();
+  }
+}, 60 * 60 * 1000); // revisa cada hora
