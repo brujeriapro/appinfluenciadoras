@@ -628,3 +628,45 @@ app.listen(PORT, () => {
   console.log(`\nApp Creadoras corriendo en http://localhost:${PORT}`);
   console.log('Ctrl+C para detener\n');
 });
+
+// ── CRONS INTERNOS ────────────────────────────────────────────────
+const cron = require('node-cron');
+
+// Diario 10am Bogotá (15:00 UTC) — ideas de contenido 4 días post-envío
+cron.schedule('0 15 * * *', async () => {
+  console.log('[cron/ideas] Ejecutando...');
+  try {
+    const pendientes = await supabase.getInfluencersPendingIdeas();
+    for (const inf of pendientes) {
+      try {
+        const wa = await enviarIdeasContenido(inf);
+        console.log(`[cron/ideas] ${inf.nombre}:`, wa);
+      } catch (e) {
+        console.error(`[cron/ideas] ${inf.nombre} error:`, e.message);
+      }
+    }
+    console.log(`[cron/ideas] ${pendientes.length} procesadas`);
+  } catch (e) {
+    console.error('[cron/ideas] Error:', e.message);
+  }
+});
+
+// Lunes 9am Bogotá (14:00 UTC) — seguimiento semanal
+cron.schedule('0 14 * * 1', async () => {
+  console.log('[cron/seguimiento] Ejecutando...');
+  try {
+    const pendientes = await supabase.getInfluencersPendingSeguimiento();
+    for (const inf of pendientes) {
+      try {
+        const wa = await enviarRecordatorioWhatsApp(inf);
+        const email = await enviarRecordatorioContenido(inf);
+        console.log(`[cron/seguimiento] ${inf.nombre}:`, { wa, email });
+      } catch (e) {
+        console.error(`[cron/seguimiento] ${inf.nombre} error:`, e.message);
+      }
+    }
+    console.log(`[cron/seguimiento] ${pendientes.length} procesadas`);
+  } catch (e) {
+    console.error('[cron/seguimiento] Error:', e.message);
+  }
+});
