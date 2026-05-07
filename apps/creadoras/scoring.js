@@ -36,10 +36,10 @@ function calcularScore({ vistas, likes, guardados, seguidores, plataforma, tipo_
 
 function calcularNivel(scoreAcumulado) {
   const s = scoreAcumulado || 0;
-  if (s >= 201) return 'Gran Magia';
-  if (s >= 101) return 'Magia Pura';
-  if (s >= 51)  return 'Magia Profunda';
-  if (s >= 21)  return 'Magia Viva';
+  if (s >= 1001) return 'Gran Magia';
+  if (s >= 601)  return 'Magia Pura';
+  if (s >= 301)  return 'Magia Profunda';
+  if (s >= 101)  return 'Magia Viva';
   return 'Magia Naciente';
 }
 

@@ -351,6 +351,12 @@
 
     function NivelBadge({ nivel }) {
       const map = {
+        'Magia Naciente':  'semilla',
+        'Magia Viva':      'aprendiz',
+        'Magia Profunda':  'practicante',
+        'Magia Pura':      'experta',
+        'Gran Magia':      'gran',
+        // nombres legacy
         'Bruja Semilla': 'semilla',
         'Bruja Aprendiz': 'aprendiz',
         'Bruja Practicante': 'practicante',
@@ -537,11 +543,11 @@
                 </select>
                 <select value={filters.nivel_bruja} onChange={e => setFilter('nivel_bruja', e.target.value)}>
                   <option value="">Todos los niveles</option>
-                  <option>Bruja Semilla</option>
-                  <option>Bruja Aprendiz</option>
-                  <option>Bruja Practicante</option>
-                  <option>Bruja Experta</option>
-                  <option>Gran Bruja</option>
+                  <option>Magia Naciente</option>
+                  <option>Magia Viva</option>
+                  <option>Magia Profunda</option>
+                  <option>Magia Pura</option>
+                  <option>Gran Magia</option>
                 </select>
                 {(filters.status || filters.tier || filters.nivel_bruja || filters.search) && (
                   <button className="btn btn-secondary btn-sm" onClick={() => setFilters({ status: '', tier: '', nivel_bruja: '', search: '' })}>

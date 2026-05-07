@@ -259,11 +259,11 @@
 
     // ── NIVELES ────────────────────────────────────────────────────
     const NIVELES = [
-      { nombre: 'Magia Naciente',  emoji: '🌱', min: 0,   max: 20,  color: '#16a34a' },
-      { nombre: 'Magia Viva',      emoji: '🌸', min: 21,  max: 50,  color: '#7c3aed' },
-      { nombre: 'Magia Profunda',  emoji: '✨', min: 51,  max: 100, color: '#c0298b' },
-      { nombre: 'Magia Pura',      emoji: '💜', min: 101, max: 200, color: '#c0298b' },
-      { nombre: 'Gran Magia',      emoji: '🔮', min: 201, max: null, color: '#ff7b78' },
+      { nombre: 'Magia Naciente',  emoji: '🌱', min: 0,    max: 100,  color: '#16a34a', desc: 'Primeros pasos en el club' },
+      { nombre: 'Magia Viva',      emoji: '🌸', min: 101,  max: 300,  color: '#7c3aed', desc: 'Tu magia empieza a florecer' },
+      { nombre: 'Magia Profunda',  emoji: '✨', min: 301,  max: 600,  color: '#c0298b', desc: 'Contenido que enamora' },
+      { nombre: 'Magia Pura',      emoji: '💜', min: 601,  max: 1000, color: '#c0298b', desc: 'Creadora de alto impacto' },
+      { nombre: 'Gran Magia',      emoji: '🔮', min: 1001, max: null,  color: '#ff7b78', desc: 'Nivel máximo — beneficios exclusivos' },
     ];
 
     function getNivel(score) {
@@ -599,11 +599,48 @@
               </div>
               {progreso.next ? (
                 <div className="progress-label">
-                  Te faltan <strong>{progreso.falta} pts</strong> para llegar a <strong>{progreso.next}</strong>
+                  Te faltan <strong>{parseFloat(progreso.falta).toFixed(2)} pts</strong> para llegar a <strong>{progreso.next}</strong>
                 </div>
               ) : (
                 <div className="progress-label"><strong>Gran Magia</strong> — nivel máximo alcanzado 🌟</div>
               )}
+            </div>
+
+            {/* MAPA DE NIVELES */}
+            <div className="section-title">Camino de Magia</div>
+            <div style={{background:'var(--white)', border:'1.5px solid var(--border)', borderRadius:16, padding:'16px 20px', marginBottom:16}}>
+              {NIVELES.map((n, i) => {
+                const actual = scoreAcum >= n.min && (n.max === null || scoreAcum <= n.max);
+                const superado = n.max !== null && scoreAcum > n.max;
+                return (
+                  <div key={n.nombre} style={{display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom: i < NIVELES.length-1 ? '1px solid var(--border)' : 'none', opacity: superado ? 0.5 : 1}}>
+                    <div style={{fontSize:22, width:32, textAlign:'center'}}>{n.emoji}</div>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:700, fontSize:13, color: actual ? n.color : 'var(--text)', display:'flex', alignItems:'center', gap:6}}>
+                        {n.nombre}
+                        {actual && <span style={{background:'var(--pink)', color:'white', fontSize:10, padding:'1px 7px', borderRadius:99, fontWeight:700}}>TÚ ESTÁS AQUÍ</span>}
+                        {superado && <span style={{color:'var(--green)', fontSize:11}}>✓ Superado</span>}
+                      </div>
+                      <div style={{fontSize:12, color:'var(--text-muted)', marginTop:2}}>{n.desc}</div>
+                    </div>
+                    <div style={{fontSize:11, color:'var(--text-muted)', textAlign:'right', whiteSpace:'nowrap'}}>
+                      {n.max ? `${n.min} – ${n.max} pts` : `${n.min}+ pts`}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* SOLICITAR MÁS PRODUCTO */}
+            <div style={{background:'linear-gradient(135deg, #fff0f9, #fff5ea)', border:'1.5px solid var(--border)', borderRadius:16, padding:'18px 20px', marginBottom:16, textAlign:'center'}}>
+              <div style={{fontSize:22, marginBottom:6}}>📦</div>
+              <div style={{fontWeight:700, fontSize:14, color:'var(--text)', marginBottom:4}}>¿Quieres probar más productos?</div>
+              <div style={{fontSize:12, color:'var(--text-muted)', marginBottom:14, lineHeight:1.6}}>Escríbenos por WhatsApp y con gusto te enviamos más productos para reseñar.</div>
+              <a href="https://wa.me/573332785065?text=Hola!%20Soy%20creadora%20del%20Club%20Brujería%20Capilar%20y%20me%20gustaría%20solicitar%20más%20productos%20para%20reseñar%20🌸"
+                target="_blank" rel="noopener noreferrer"
+                style={{display:'inline-block', background:'linear-gradient(135deg, var(--pink), var(--coral))', color:'white', padding:'10px 28px', borderRadius:99, fontWeight:700, textDecoration:'none', fontSize:14}}>
+                Solicitar producto →
+              </a>
             </div>
 
             {/* CÓDIGO DE DESCUENTO */}
