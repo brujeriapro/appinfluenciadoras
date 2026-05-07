@@ -20,6 +20,7 @@ async function enviarTemplate(telefono, templateName, params = []) {
   }
 
   const numero = normalizarTelefono(telefono);
+  console.log(`[whatsapp] telefono raw="${telefono}" → normalizado="${numero}" template="${templateName}"`);
   if (!numero) {
     console.warn('[whatsapp] Teléfono inválido:', telefono);
     return { skipped: true };

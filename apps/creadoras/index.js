@@ -625,6 +625,7 @@ app.post('/api/admin/notificaciones', async (req, res) => {
     }
 
     console.log(`[admin/notificaciones] Template "${template}" → ${resultados.length} enviadas`);
+    resultados.forEach(r => console.log(`  ${r.nombre}: ok=${r.ok}`, r.resultado || r.error));
     res.json({ ok: true, total: resultados.length, resultados });
   } catch (e) {
     console.error('[admin/notificaciones] Error:', e.message);
