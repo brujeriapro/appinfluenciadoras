@@ -43,6 +43,16 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // ── INFLUENCERS ───────────────────────────────────────────────────
+// Debe ir antes de /api/influencers/:id para que Express no lo confunda con un ID
+app.get('/api/influencers/con-telefono', async (req, res) => {
+  try {
+    const influencers = await supabase.getInfluencersConTelefono();
+    res.json(influencers);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/influencers', async (req, res) => {
   try {
     const { status, tier, nivel_bruja } = req.query;
@@ -71,16 +81,6 @@ app.patch('/api/influencers/:id', async (req, res) => {
     allowed.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
     await supabase.updateInfluencer(req.params.id, data);
     res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// ── INFLUENCERS CON TELÉFONO ─────────────────────────────────────
-app.get('/api/influencers/con-telefono', async (req, res) => {
-  try {
-    const influencers = await supabase.getInfluencersConTelefono();
-    res.json(influencers);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
