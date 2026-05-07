@@ -538,7 +538,9 @@
 
       const inf = data;
       const contenidos = data.contenidos || [];
-      const scoreAcum = contenidos.reduce((s, c) => s + (c.score_contenido || 0), 0);
+      const scoreAcum = inf.score_total != null
+        ? inf.score_total
+        : contenidos.reduce((s, c) => s + (parseFloat(c.score_contenido) || 0), 0);
       const nivel = getNivel(scoreAcum);
       const progreso = getProgreso(scoreAcum);
       const tierMap = { 'Nano': 'nano', 'Micro': 'micro', 'Macro': 'macro' };
@@ -687,9 +689,9 @@
                           {c.score_contenido != null ? (
                             <div className="score-bar">
                               <div className="score-bar-bg">
-                                <div className="score-bar-fill" style={{width:`${Math.min(c.score_contenido, 100)}%`}} />
+                                <div className="score-bar-fill" style={{width:`${Math.min(parseFloat(c.score_contenido), 100)}%`}} />
                               </div>
-                              <span className="score-num">{c.score_contenido.toFixed(1)}</span>
+                              <span className="score-num">{parseFloat(c.score_contenido).toFixed(1)}</span>
                             </div>
                           ) : <span className="td-muted">Pendiente</span>}
                         </td>
