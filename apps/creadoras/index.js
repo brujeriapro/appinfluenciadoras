@@ -624,6 +624,7 @@ app.post('/api/admin/notificaciones', async (req, res) => {
         const templateMeta = template === 'bienvenida_kit' ? 'bienvenida_club_brujeria'
           : template === 'bienvenida_club' ? 'bienvenida_club_brujeria'
           : template === 'recordatorio' ? 'explicacion_contenido_brujeria'
+          : template === 'ideas' ? 'ideas_contenido_brujeria1'
           : template === 'feedback_contenido' ? 'feedback_contenido_brujeria'
           : null;
 
@@ -639,6 +640,7 @@ app.post('/api/admin/notificaciones', async (req, res) => {
         if (template === 'bienvenida_club') wa = await enviarBienvenidaClub(inf);
         else if (template === 'recordatorio') wa = await enviarRecordatorioWhatsApp(inf);
         else if (template === 'bienvenida_kit') wa = await enviarBienvenidaKit(inf, inf.codigo_descuento);
+        else if (template === 'ideas') wa = await enviarIdeasContenido(inf);
         else if (template === 'feedback_contenido') {
           const score = inf.score_total || 0;
           const nivel = inf.nivel_bruja || 'Magia Naciente';

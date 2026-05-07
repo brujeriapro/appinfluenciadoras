@@ -1208,6 +1208,14 @@
         preview: '⏰ Hola [Nombre]! Han pasado [N] días desde que recibiste tu kit. Tu fecha límite es el [Fecha]...',
       },
       {
+        value: 'ideas',
+        label: 'Ideas de Contenido',
+        tag: 'Automático a los 4 días del envío',
+        tagColor: 'var(--blue)',
+        desc: 'Se envía 4 días después de despachar el kit con ideas e inspiración para crear contenido.',
+        preview: '🌙 Hola [Nombre]! Tu kit ya debe estar llegando. Aquí van ideas para tu contenido...',
+      },
+      {
         value: 'feedback_contenido',
         label: 'Feedback de Contenido',
         tag: 'Automático al recibir contenido',
@@ -1247,6 +1255,7 @@
 
       const templateMeta = template === 'bienvenida_kit' ? 'bienvenida_club_brujeria'
         : template === 'recordatorio' ? 'explicacion_contenido_brujeria'
+        : template === 'ideas' ? 'ideas_contenido_brujeria1'
         : template === 'feedback_contenido' ? 'feedback_contenido_brujeria'
         : null;
 
