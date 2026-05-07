@@ -11,6 +11,29 @@ const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
 const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido } = require('./whatsapp');
 
+// Rutas públicas — portal influencer, guía, auth y webhooks
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/'];
+
+function adminAuth(req, res, next) {
+  const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
+  if (esPublica) return next();
+
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Basic ')) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="Creadoras Admin — Brujería Capilar"');
+    return res.status(401).send('Acceso restringido');
+  }
+  const credentials = Buffer.from(auth.slice(6), 'base64').toString();
+  const colonIdx = credentials.indexOf(':');
+  const user = credentials.slice(0, colonIdx);
+  const pass = credentials.slice(colonIdx + 1);
+  if (user === (process.env.ADMIN_USER || 'admin') && pass === process.env.ADMIN_PASS) {
+    return next();
+  }
+  res.setHeader('WWW-Authenticate', 'Basic realm="Creadoras Admin — Brujería Capilar"');
+  return res.status(401).send('Credenciales incorrectas');
+}
+
 function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer ')) {
@@ -30,6 +53,7 @@ const PORT = process.env.PORT || 3030;
 
 app.use(cors());
 app.use(express.json());
+app.use(adminAuth);
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── STATS DASHBOARD ──────────────────────────────────────────────
