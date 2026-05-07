@@ -84,7 +84,7 @@ async function enviarRecordatorioWhatsApp(influencer) {
 // Variables: {{1}} nombre
 async function enviarIdeasContenido(influencer) {
   const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
-  return enviarTemplate(influencer.telefono, 'ideas_contenido_brujeria', [nombre]);
+  return enviarTemplate(influencer.telefono, 'ideas_contenido_brujeria1', [nombre]);
 }
 
 // Bienvenida al club cuando se registra (antes de recibir el kit)
