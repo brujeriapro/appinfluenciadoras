@@ -27,7 +27,10 @@ function adminAuth(req, res, next) {
   const colonIdx = credentials.indexOf(':');
   const user = credentials.slice(0, colonIdx);
   const pass = credentials.slice(colonIdx + 1);
-  if (user === (process.env.ADMIN_USER || 'admin') && pass === process.env.ADMIN_PASS) {
+  const expectedUser = process.env.ADMIN_USER || 'admin';
+  const expectedPass = process.env.ADMIN_PASS;
+  console.log(`[adminAuth] user="${user}" expected="${expectedUser}" passOk=${pass === expectedPass} passSet=${!!expectedPass}`);
+  if (user === expectedUser && pass === expectedPass) {
     return next();
   }
   res.setHeader('WWW-Authenticate', 'Basic realm="Creadoras Admin"');
