@@ -1091,9 +1091,11 @@
             </div>
           </td>
           <td className="td-muted" style={{ fontSize: 12 }}>{fmtDate(c.fecha_submision)}</td>
-          <td>
+          <td style={{ maxWidth: 200 }}>
             {c.url_contenido
-              ? <a href={c.url_contenido} target="_blank" rel="noreferrer" style={{ color: 'var(--purple-light)', fontSize: 12 }}>Ver →</a>
+              ? <a href={c.url_contenido} target="_blank" rel="noreferrer" style={{ color: 'var(--purple-light)', fontSize: 11, wordBreak: 'break-all', display: 'block', lineHeight: 1.4 }}>
+                  {c.url_contenido.replace(/^https?:\/\/(www\.)?/, '')}
+                </a>
               : '—'
             }
           </td>
