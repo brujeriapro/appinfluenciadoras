@@ -1485,6 +1485,104 @@
       );
     }
 
+    // ── SOLICITUDES ───────────────────────────────────────────────
+    const STATUS_SOL = ['Pendiente', 'Aprobada', 'Enviada', 'Rechazada'];
+    const STATUS_SOL_COLOR = { Pendiente: 'var(--yellow)', Aprobada: 'var(--green)', Enviada: 'var(--purple-light)', Rechazada: 'var(--red)' };
+
+    function Solicitudes() {
+      const [solicitudes, setSolicitudes] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [actualizando, setActualizando] = useState(null);
+
+      useEffect(() => {
+        API('/api/solicitudes-reenvio')
+          .then(setSolicitudes)
+          .catch(e => setError(e.message))
+          .finally(() => setLoading(false));
+      }, []);
+
+      async function cambiarStatus(id, status) {
+        setActualizando(id);
+        try {
+          await POSTJSON(`/api/solicitudes-reenvio/${id}`, { status }, 'PATCH');
+          setSolicitudes(prev => prev.map(s => s.id === id ? { ...s, status } : s));
+        } catch (e) {
+          alert('Error: ' + e.message);
+        } finally {
+          setActualizando(null);
+        }
+      }
+
+      if (loading) return <div className="loading">Cargando solicitudes...</div>;
+      if (error) return <div className="error-msg">{error}</div>;
+
+      const pendientes = solicitudes.filter(s => s.status === 'Pendiente').length;
+
+      return (
+        <div>
+          <h1>Solicitudes de Producto</h1>
+          <p className="page-subtitle">
+            {solicitudes.length} solicitudes
+            {pendientes > 0 && <span style={{ marginLeft: 12, color: 'var(--yellow)', fontSize: 12 }}>⚠ {pendientes} pendientes</span>}
+          </p>
+
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Influencer</th>
+                  <th>Tier</th>
+                  <th>Productos solicitados</th>
+                  <th>Mensaje</th>
+                  <th>Fecha</th>
+                  <th>Estado</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {solicitudes.length === 0 ? (
+                  <tr><td colSpan="7" className="empty-state">Sin solicitudes aún</td></tr>
+                ) : solicitudes.map(s => (
+                  <tr key={s.id}>
+                    <td style={{ fontWeight: 500 }}>
+                      <div>{s.influencers?.nombre || '—'}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>@{s.influencers?.instagram_handle || '—'}</div>
+                    </td>
+                    <td><TierBadge tier={s.influencers?.tier} /></td>
+                    <td>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {(s.productos || []).map(p => (
+                          <span key={p} style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 8px', fontSize: 11 }}>{p}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="td-muted" style={{ fontSize: 12, maxWidth: 180 }}>{s.mensaje || '—'}</td>
+                    <td className="td-muted" style={{ fontSize: 12 }}>{fmtDate(s.fecha_solicitud)}</td>
+                    <td>
+                      <span style={{ color: STATUS_SOL_COLOR[s.status] || 'var(--text-muted)', fontWeight: 600, fontSize: 12 }}>
+                        {s.status}
+                      </span>
+                    </td>
+                    <td>
+                      <select
+                        value={s.status}
+                        disabled={actualizando === s.id}
+                        onChange={e => cambiarStatus(s.id, e.target.value)}
+                        style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer' }}
+                      >
+                        {STATUS_SOL.map(st => <option key={st}>{st}</option>)}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
     // ── APP ROOT ──────────────────────────────────────────────────
     function App() {
       const [view, setView] = useState('dashboard');
@@ -1504,6 +1602,7 @@
             <button className={view === 'contenidos' ? 'active' : ''} onClick={() => navigate('contenidos')}>Contenidos</button>
             <button className={view === 'roi' ? 'active' : ''} onClick={() => navigate('roi')}>ROI</button>
             <button className={view === 'notificaciones' ? 'active' : ''} onClick={() => navigate('notificaciones')}>Notificaciones</button>
+            <button className={view === 'solicitudes' ? 'active' : ''} onClick={() => navigate('solicitudes')}>Solicitudes</button>
           </nav>
           <main>
             {view === 'dashboard' && <Dashboard onNavigate={navigate} />}
@@ -1512,6 +1611,7 @@
             {view === 'contenidos' && <Contenidos />}
             {view === 'roi' && <ROI />}
             {view === 'notificaciones' && <Notificaciones />}
+            {view === 'solicitudes' && <Solicitudes />}
           </main>
         </div>
       );

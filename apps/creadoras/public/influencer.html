@@ -194,6 +194,18 @@
     .info-label { color: var(--text-muted); }
     .info-val { font-weight: 600; text-align: right; }
 
+    /* SOLICITUD PRODUCTO */
+    .sol-producto { background: var(--white); border: 1.5px solid var(--border); border-radius: 16px; padding: 20px; }
+    .sol-producto h3 { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+    .productos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    @media (max-width: 420px) { .productos-grid { grid-template-columns: 1fr; } }
+    .producto-check { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; cursor: pointer; transition: all 0.15s; font-size: 13px; }
+    .producto-check.selected { border-color: var(--pink); background: var(--cream3); color: var(--pink); font-weight: 600; }
+    .producto-check input { accent-color: var(--pink); }
+    .sol-textarea { width: 100%; background: var(--cream); border: 1.5px solid var(--border2); color: var(--text); padding: 10px 12px; border-radius: 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; resize: vertical; min-height: 72px; outline: none; margin-bottom: 14px; }
+    .sol-textarea:focus { border-color: var(--pink); background: var(--white); }
+    .sol-success { background: var(--green-bg); border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px 16px; color: var(--green); font-size: 13px; font-weight: 600; text-align: center; }
+
     /* CTA */
     .cta-subir {
       background: linear-gradient(135deg, var(--pink), var(--coral));
@@ -280,6 +292,82 @@
       const rango = next.min - nivel.min;
       const avance = s - nivel.min;
       return { pct: Math.min(100, Math.round((avance / rango) * 100)), falta: next.min - s, next: next.nombre };
+    }
+
+    const PRODUCTOS_DISPONIBLES = [
+      'Termoprotector Capilar',
+      'Mascarilla Hechizo Total',
+      'Crema Para Rizos 3en1',
+      'Shampoo Ultra',
+      'Varita Mágica',
+      'Mantequilla Corporal Vainilla',
+      'Mantequilla Corporal Strawberry',
+      'Mantequilla Corporal Watermelon',
+    ];
+
+    function SolicitarProducto() {
+      const [seleccionados, setSeleccionados] = useState([]);
+      const [mensaje, setMensaje] = useState('');
+      const [loading, setLoading] = useState(false);
+      const [enviado, setEnviado] = useState(false);
+      const [error, setError] = useState('');
+
+      function toggle(p) {
+        setSeleccionados(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
+      }
+
+      async function enviar(e) {
+        e.preventDefault();
+        if (seleccionados.length === 0) { setError('Selecciona al menos un producto'); return; }
+        setLoading(true); setError('');
+        try {
+          await apiFetch('/api/influencer/solicitar-producto', {
+            method: 'POST',
+            body: JSON.stringify({ productos: seleccionados, mensaje }),
+          });
+          setEnviado(true);
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      if (enviado) {
+        return (
+          <div className="sol-producto">
+            <div className="sol-success">
+              ✓ ¡Solicitud enviada! Te avisamos cuando esté en camino 💜
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="sol-producto">
+          <h3>📦 Solicitar más productos</h3>
+          <form onSubmit={enviar}>
+            <div className="productos-grid">
+              {PRODUCTOS_DISPONIBLES.map(p => (
+                <label key={p} className={`producto-check${seleccionados.includes(p) ? ' selected' : ''}`}>
+                  <input type="checkbox" checked={seleccionados.includes(p)} onChange={() => toggle(p)} style={{display:'none'}} />
+                  {seleccionados.includes(p) ? '✓ ' : ''}{p}
+                </label>
+              ))}
+            </div>
+            <textarea
+              className="sol-textarea"
+              placeholder="¿Algo más que quieras decirnos? (opcional)"
+              value={mensaje}
+              onChange={e => setMensaje(e.target.value)}
+            />
+            {error && <div className="alert-error" style={{marginBottom:12}}>{error}</div>}
+            <button className="btn btn-primary" type="submit" disabled={loading}>
+              {loading ? 'Enviando...' : 'Enviar solicitud →'}
+            </button>
+          </form>
+        </div>
+      );
     }
 
     // ── TOKEN UTILS ────────────────────────────────────────────────
@@ -632,15 +720,9 @@
             </div>
 
             {/* SOLICITAR MÁS PRODUCTO */}
-            <div style={{background:'linear-gradient(135deg, #fff0f9, #fff5ea)', border:'1.5px solid var(--border)', borderRadius:16, padding:'18px 20px', marginBottom:16, textAlign:'center'}}>
-              <div style={{fontSize:22, marginBottom:6}}>📦</div>
-              <div style={{fontWeight:700, fontSize:14, color:'var(--text)', marginBottom:4}}>¿Quieres probar más productos?</div>
-              <div style={{fontSize:12, color:'var(--text-muted)', marginBottom:14, lineHeight:1.6}}>Escríbenos por WhatsApp y con gusto te enviamos más productos para reseñar.</div>
-              <a href="https://wa.me/573332785065?text=Hola!%20Soy%20creadora%20del%20Club%20Brujería%20Capilar%20y%20me%20gustaría%20solicitar%20más%20productos%20para%20reseñar%20🌸"
-                target="_blank" rel="noopener noreferrer"
-                style={{display:'inline-block', background:'linear-gradient(135deg, var(--pink), var(--coral))', color:'white', padding:'10px 28px', borderRadius:99, fontWeight:700, textDecoration:'none', fontSize:14}}>
-                Solicitar producto →
-              </a>
+            <div className="section-title">Solicitar más productos</div>
+            <div style={{marginBottom:16}}>
+              <SolicitarProducto />
             </div>
 
             {/* CÓDIGO DE DESCUENTO */}

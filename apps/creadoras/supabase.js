@@ -213,4 +213,21 @@ async function yaEnviadoTemplate(influencer_id, template_name) {
   return results.length > 0;
 }
 
-module.exports = { getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate };
+// Solicitudes de reenvío
+async function insertSolicitudReenvio(influencer_id, productos, mensaje) {
+  const results = await supabasePost('solicitudes_reenvio', { influencer_id, productos, mensaje: mensaje || null });
+  return Array.isArray(results) ? results[0] : results;
+}
+
+async function getSolicitudesReenvio() {
+  return supabaseGet('solicitudes_reenvio', {
+    select: '*,influencers(nombre,instagram_handle,tier)',
+    order: 'fecha_solicitud.desc',
+  });
+}
+
+async function updateSolicitudReenvio(id, data) {
+  return supabasePatch('solicitudes_reenvio', { id }, { ...data, fecha_actualizacion: new Date().toISOString() });
+}
+
+module.exports = { getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate, insertSolicitudReenvio, getSolicitudesReenvio, updateSolicitudReenvio };

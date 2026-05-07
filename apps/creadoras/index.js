@@ -661,6 +661,39 @@ app.get('/api/influencer/ventas', authMiddleware, async (req, res) => {
   }
 });
 
+// Solicitar reenvío de producto (influencer autenticada)
+app.post('/api/influencer/solicitar-producto', authMiddleware, async (req, res) => {
+  const { productos, mensaje } = req.body;
+  if (!productos || !Array.isArray(productos) || productos.length === 0) {
+    return res.status(400).json({ error: 'Debes seleccionar al menos un producto' });
+  }
+  try {
+    const sol = await supabase.insertSolicitudReenvio(req.influencerId, productos, mensaje);
+    res.json({ ok: true, id: sol.id });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Listar solicitudes (admin)
+app.get('/api/solicitudes-reenvio', async (req, res) => {
+  try {
+    res.json(await supabase.getSolicitudesReenvio());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Actualizar estado solicitud (admin)
+app.patch('/api/solicitudes-reenvio/:id', async (req, res) => {
+  try {
+    await supabase.updateSolicitudReenvio(req.params.id, req.body);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // URLs de Tally (público)
 app.get('/api/influencer/tally-urls', (req, res) => {
   res.json({
