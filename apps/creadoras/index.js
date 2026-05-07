@@ -46,8 +46,11 @@ app.get('/api/stats', async (req, res) => {
 // Debe ir antes de /api/influencers/:id para que Express no lo confunda con un ID
 app.get('/api/influencers/con-telefono', async (req, res) => {
   try {
-    const influencers = await supabase.getInfluencersConTelefono();
-    res.json(influencers);
+    const todas = await supabase.getInfluencers();
+    const conTelefono = todas.filter(i => i.telefono && String(i.telefono).trim() !== '');
+    console.log(`[con-telefono] total: ${todas.length}, con telefono: ${conTelefono.length}`);
+    todas.slice(0, 3).forEach(i => console.log(`  ${i.nombre}: telefono="${i.telefono}"`));
+    res.json(conTelefono);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
