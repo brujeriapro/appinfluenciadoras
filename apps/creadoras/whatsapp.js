@@ -74,7 +74,7 @@ async function enviarRecordatorioWhatsApp(influencer) {
 
   return enviarTemplate(
     influencer.telefono,
-    'recordatorio_contenido_brujeria',
+    'explicacion_contenido_brujeria',
     [nombre, String(diasRestantes)]
   );
 }
@@ -84,7 +84,7 @@ async function enviarRecordatorioWhatsApp(influencer) {
 // Variables: {{1}} nombre
 async function enviarIdeasContenido(influencer) {
   const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
-  return enviarTemplate(influencer.telefono, 'explicacion_contenido_brujeria', [nombre]);
+  return enviarTemplate(influencer.telefono, 'ideas_contenido_brujeria', [nombre]);
 }
 
 // Bienvenida al club cuando se registra (antes de recibir el kit)
