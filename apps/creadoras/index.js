@@ -20,7 +20,7 @@ function adminAuth(req, res, next) {
 
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Basic ')) {
-    res.setHeader('WWW-Authenticate', 'Basic realm="Creadoras Admin — Brujería Capilar"');
+    res.setHeader('WWW-Authenticate', 'Basic realm="Creadoras Admin"');
     return res.status(401).send('Acceso restringido');
   }
   const credentials = Buffer.from(auth.slice(6), 'base64').toString();
@@ -30,7 +30,7 @@ function adminAuth(req, res, next) {
   if (user === (process.env.ADMIN_USER || 'admin') && pass === process.env.ADMIN_PASS) {
     return next();
   }
-  res.setHeader('WWW-Authenticate', 'Basic realm="Creadoras Admin — Brujería Capilar"');
+  res.setHeader('WWW-Authenticate', 'Basic realm="Creadoras Admin"');
   return res.status(401).send('Credenciales incorrectas');
 }
 
