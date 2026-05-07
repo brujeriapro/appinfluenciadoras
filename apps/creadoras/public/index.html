@@ -316,9 +316,9 @@
       return res.json();
     };
 
-    const POSTJSON = async (path, body) => {
+    const POSTJSON = async (path, body, method = 'POST') => {
       const res = await fetch(path, {
-        method: 'POST',
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
@@ -1030,6 +1030,77 @@
     }
 
     // ── CONTENIDOS ────────────────────────────────────────────────
+    function Estrellas({ valor, onChange, disabled }) {
+      const [hover, setHover] = useState(0);
+      return (
+        <div style={{ display: 'flex', gap: 2 }}>
+          {[1,2,3,4,5].map(n => (
+            <span
+              key={n}
+              onClick={() => !disabled && onChange(n)}
+              onMouseEnter={() => !disabled && setHover(n)}
+              onMouseLeave={() => !disabled && setHover(0)}
+              style={{
+                fontSize: 18, cursor: disabled ? 'default' : 'pointer',
+                color: n <= (hover || valor || 0) ? 'var(--gold)' : 'var(--border)',
+                transition: 'color 0.1s',
+                userSelect: 'none',
+              }}
+            >★</span>
+          ))}
+        </div>
+      );
+    }
+
+    function FilaContenido({ c, onCalificado }) {
+      const [calificacion, setCalificacion] = useState(c.calificacion_equipo || 0);
+      const [guardando, setGuardando] = useState(false);
+      const [score, setScore] = useState(c.score_contenido);
+
+      async function calificar(val) {
+        if (val === calificacion) return;
+        setCalificacion(val);
+        setGuardando(true);
+        try {
+          const res = await POSTJSON(`/api/contenidos/${c.id}/calificar`, { calificacion: val }, 'PATCH');
+          setScore(res.score_contenido);
+          if (onCalificado) onCalificado(c.id, val, res.score_contenido);
+        } catch (e) {
+          console.error('Error calificando:', e);
+          setCalificacion(c.calificacion_equipo || 0);
+        } finally {
+          setGuardando(false);
+        }
+      }
+
+      return (
+        <tr key={c.id}>
+          <td style={{ fontWeight: 500 }}>{c.influencers?.nombre || '—'}</td>
+          <td>{c.plataforma || '—'}</td>
+          <td className="td-muted">{c.tipo_contenido || '—'}</td>
+          <td>{fmt(c.vistas)}</td>
+          <td>{fmt(c.likes)}</td>
+          <td>{fmt(c.guardados)}</td>
+          <td style={{ minWidth: 120 }}><ScoreBar score={score} /></td>
+          <td>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <Estrellas valor={calificacion} onChange={calificar} disabled={guardando} />
+              {guardando && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Guardando...</span>}
+              {!guardando && !calificacion && <span style={{ fontSize: 10, color: 'var(--yellow)' }}>Sin calificar</span>}
+              {!guardando && calificacion > 0 && <span style={{ fontSize: 10, color: 'var(--green)' }}>{calificacion}/5 ✓</span>}
+            </div>
+          </td>
+          <td className="td-muted" style={{ fontSize: 12 }}>{fmtDate(c.fecha_submision)}</td>
+          <td>
+            {c.url_contenido
+              ? <a href={c.url_contenido} target="_blank" rel="noreferrer" style={{ color: 'var(--purple-light)', fontSize: 12 }}>Ver →</a>
+              : '—'
+            }
+          </td>
+        </tr>
+      );
+    }
+
     function Contenidos() {
       const [contenidos, setContenidos] = useState([]);
       const [loading, setLoading] = useState(true);
@@ -1049,11 +1120,15 @@
       const promedio = conScore.length > 0
         ? (conScore.reduce((s, c) => s + c.score_contenido, 0) / conScore.length).toFixed(1)
         : '—';
+      const sinCalificar = contenidos.filter(c => !c.calificacion_equipo).length;
 
       return (
         <div>
           <h1>Contenidos</h1>
-          <p className="page-subtitle">{contenidos.length} piezas · Score promedio: {promedio}</p>
+          <p className="page-subtitle">
+            {contenidos.length} piezas · Score promedio: {promedio}
+            {sinCalificar > 0 && <span style={{ marginLeft: 12, color: 'var(--yellow)', fontSize: 12 }}>⚠ {sinCalificar} sin calificar</span>}
+          </p>
 
           <div className="table-wrap">
             <table>
@@ -1062,12 +1137,12 @@
                   <th>Influencer</th>
                   <th>Plataforma</th>
                   <th>Tipo</th>
-                  <th>Fecha Pub.</th>
                   <th>Vistas</th>
                   <th>Likes</th>
                   <th>Guardados</th>
                   <th>Score</th>
-                  <th>Submisión</th>
+                  <th>Calificación equipo</th>
+                  <th>Fecha</th>
                   <th>URL</th>
                 </tr>
               </thead>
@@ -1075,23 +1150,7 @@
                 {contenidos.length === 0 ? (
                   <tr><td colSpan="10" className="empty-state">Sin contenidos aún</td></tr>
                 ) : contenidos.map(c => (
-                  <tr key={c.id} style={{ cursor: 'default' }}>
-                    <td style={{ fontWeight: 500 }}>{c.influencers?.nombre || '—'}</td>
-                    <td>{c.plataforma || '—'}</td>
-                    <td className="td-muted">{c.tipo_contenido || '—'}</td>
-                    <td className="td-muted">{fmtDate(c.fecha_publicacion)}</td>
-                    <td>{fmt(c.vistas)}</td>
-                    <td>{fmt(c.likes)}</td>
-                    <td>{fmt(c.guardados)}</td>
-                    <td style={{ minWidth: 120 }}><ScoreBar score={c.score_contenido} /></td>
-                    <td className="td-muted">{fmtDate(c.fecha_submision)}</td>
-                    <td>
-                      {c.url_contenido
-                        ? <a href={c.url_contenido} target="_blank" rel="noreferrer" style={{ color: 'var(--purple-light)', fontSize: 12 }}>Ver →</a>
-                        : '—'
-                      }
-                    </td>
-                  </tr>
+                  <FilaContenido key={c.id} c={c} />
                 ))}
               </tbody>
             </table>

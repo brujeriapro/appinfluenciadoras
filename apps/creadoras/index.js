@@ -226,6 +226,50 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
   }
 });
 
+// ── CALIFICAR CONTENIDO (admin) ───────────────────────────────────
+app.patch('/api/contenidos/:id/calificar', async (req, res) => {
+  const { calificacion } = req.body;
+  if (!calificacion || calificacion < 1 || calificacion > 5) {
+    return res.status(400).json({ error: 'Calificación debe ser 1–5' });
+  }
+  try {
+    const contenido = await supabase.getContenidoById(req.params.id);
+    if (!contenido) return res.status(404).json({ error: 'Contenido no encontrado' });
+
+    const influencer = await supabase.getInfluencerById(contenido.influencer_id);
+    const seguidores = contenido.plataforma?.toLowerCase() === 'tiktok'
+      ? (influencer?.seguidores_tiktok || influencer?.seguidores_instagram || 1)
+      : (influencer?.seguidores_instagram || 1);
+
+    const nuevoScore = calcularScore({
+      vistas: contenido.vistas,
+      likes: contenido.likes,
+      guardados: contenido.guardados,
+      seguidores,
+      plataforma: contenido.plataforma,
+      tipo_contenido: contenido.tipo_contenido,
+      calificacion_equipo: calificacion,
+    });
+
+    await supabase.updateContenido(req.params.id, {
+      calificacion_equipo: calificacion,
+      score_contenido: nuevoScore,
+    });
+
+    // Recalcular score total y nivel de la influencer
+    const todosLosContenidos = await supabase.getContenidos(contenido.influencer_id);
+    const scoreTotal = todosLosContenidos.reduce((s, c) => s + (c.score_contenido || 0), 0);
+    const nivel = calcularNivel(scoreTotal);
+    await supabase.updateInfluencer(contenido.influencer_id, { score_total: scoreTotal, nivel_bruja: nivel });
+
+    console.log(`[calificar] contenido ${req.params.id} → calificacion ${calificacion} → score ${nuevoScore} | influencer score total: ${scoreTotal}`);
+    res.json({ ok: true, score_contenido: nuevoScore, score_total: scoreTotal, nivel });
+  } catch (e) {
+    console.error('[calificar] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── CONTENIDOS ────────────────────────────────────────────────────
 app.get('/api/contenidos', async (req, res) => {
   try {

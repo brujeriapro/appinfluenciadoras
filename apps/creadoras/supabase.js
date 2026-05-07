@@ -138,6 +138,15 @@ async function insertContenido(data) {
   return Array.isArray(results) ? results[0] : results;
 }
 
+async function getContenidoById(id) {
+  const results = await supabaseGet('contenidos', { id: `eq.${id}`, limit: 1, select: '*' });
+  return results[0] || null;
+}
+
+async function updateContenido(id, data) {
+  return supabasePatch('contenidos', { id }, data);
+}
+
 async function getInfluencersPendingSeguimiento() {
   const hace30dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   return supabaseGet('influencers', {
@@ -204,4 +213,4 @@ async function yaEnviadoTemplate(influencer_id, template_name) {
   return results.length > 0;
 }
 
-module.exports = { getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, updatePasswordHash, insertInfluencer, insertContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate };
+module.exports = { getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate };
