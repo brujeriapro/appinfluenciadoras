@@ -9,7 +9,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarCelebracionNivel, enviarIdeasContenido } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido } = require('./whatsapp');
 
 function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
@@ -413,15 +413,6 @@ app.post('/api/webhooks/contenido', async (req, res) => {
         console.error('[webhook/contenido] WhatsApp feedback error (no fatal):', e.message);
       }
 
-      // WhatsApp extra: celebración si subió de nivel
-      if (nivelAnterior && nivelAnterior !== nivel) {
-        try {
-          const waNivel = await enviarCelebracionNivel(influencer, nivel);
-          console.log('[webhook/contenido] WhatsApp nivel:', waNivel);
-        } catch (e) {
-          console.error('[webhook/contenido] WhatsApp nivel error (no fatal):', e.message);
-        }
-      }
     }
 
     res.json({ ok: true, score, nivel, score_acumulado: scoreAcumulado });
