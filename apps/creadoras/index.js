@@ -684,6 +684,36 @@ app.post('/api/influencer/solicitar-producto', authMiddleware, async (req, res) 
   }
 });
 
+// ── CANDIDATAS TIKTOK ────────────────────────────────────────────
+app.get('/api/candidatas', async (req, res) => {
+  try {
+    const { status, min_colombia_score, tier } = req.query;
+    const candidatas = await supabase.getCandidatas({ status, min_colombia_score, tier });
+    res.json(candidatas);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.patch('/api/candidatas/:id', async (req, res) => {
+  try {
+    const { status, notas_equipo } = req.body;
+    await supabase.updateCandidataStatus(req.params.id, status, notas_equipo);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/candidatas/:id/aprobar', async (req, res) => {
+  try {
+    const influencer = await supabase.aprobarCandidataComoInfluencer(req.params.id);
+    res.json({ ok: true, influencer_id: influencer.id });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Listar solicitudes (admin)
 app.get('/api/solicitudes-reenvio', async (req, res) => {
   try {

@@ -1485,6 +1485,171 @@
       );
     }
 
+    // ── CANDIDATAS TIKTOK ─────────────────────────────────────────
+    const STATUS_CANDIDATA = ['candidata', 'revisada', 'contactada', 'descartada', 'registrada'];
+    const COL_SCORE_COLOR = (s) => s >= 50 ? '#16a34a' : s >= 20 ? '#d97706' : '#dc2626';
+    const COL_SCORE_LABEL = (s) => s >= 50 ? '🇨🇴 Alta' : s >= 20 ? '🌎 Media' : '❓ Baja';
+
+    function Candidatas() {
+      const [candidatas, setCandidatas] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [filtroStatus, setFiltroStatus] = useState('candidata');
+      const [filtroColombia, setFiltroColombia] = useState('');
+      const [filtroTier, setFiltroTier] = useState('');
+      const [actualizando, setActualizando] = useState(null);
+
+      function cargar() {
+        setLoading(true);
+        const params = new URLSearchParams();
+        if (filtroStatus) params.set('status', filtroStatus);
+        if (filtroColombia) params.set('min_colombia_score', filtroColombia);
+        if (filtroTier) params.set('tier', filtroTier);
+        API(`/api/candidatas?${params}`)
+          .then(setCandidatas)
+          .catch(e => setError(e.message))
+          .finally(() => setLoading(false));
+      }
+
+      useEffect(() => { cargar(); }, [filtroStatus, filtroColombia, filtroTier]);
+
+      async function cambiarStatus(id, status) {
+        setActualizando(id);
+        try {
+          await POSTJSON(`/api/candidatas/${id}`, { status }, 'PATCH');
+          setCandidatas(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+        } catch (e) { alert('Error: ' + e.message); }
+        finally { setActualizando(null); }
+      }
+
+      async function aprobar(id, handle) {
+        if (!confirm(`¿Aprobar a @${handle} como influencer Prospectada?`)) return;
+        setActualizando(id);
+        try {
+          await POSTJSON(`/api/candidatas/${id}/aprobar`, {});
+          setCandidatas(prev => prev.map(c => c.id === id ? { ...c, status: 'registrada' } : c));
+          alert(`✅ @${handle} agregada como influencer. La puedes ver en la sección Influencers.`);
+        } catch (e) { alert('Error: ' + e.message); }
+        finally { setActualizando(null); }
+      }
+
+      const pendientes = candidatas.filter(c => c.status === 'candidata').length;
+
+      return (
+        <div>
+          <h1>Candidatas TikTok</h1>
+          <p className="page-subtitle">
+            {candidatas.length} perfiles
+            {pendientes > 0 && <span style={{ marginLeft: 12, color: 'var(--yellow)', fontSize: 12 }}>⚠ {pendientes} sin revisar</span>}
+          </p>
+
+          {/* Filtros */}
+          <div className="filter-bar" style={{ marginBottom: 20 }}>
+            <select value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
+              <option value="">Todos los estados</option>
+              {STATUS_CANDIDATA.map(s => <option key={s}>{s}</option>)}
+            </select>
+            <select value={filtroColombia} onChange={e => setFiltroColombia(e.target.value)}>
+              <option value="">Todos los scores Colombia</option>
+              <option value="50">🇨🇴 Alta confianza (50+)</option>
+              <option value="20">🌎 Media o alta (20+)</option>
+            </select>
+            <select value={filtroTier} onChange={e => setFiltroTier(e.target.value)}>
+              <option value="">Todos los tiers</option>
+              <option>Nano</option>
+              <option>Micro</option>
+              <option>Macro</option>
+            </select>
+            {(filtroStatus || filtroColombia || filtroTier) && (
+              <button className="btn btn-secondary btn-sm" onClick={() => { setFiltroStatus('candidata'); setFiltroColombia(''); setFiltroTier(''); }}>Limpiar</button>
+            )}
+          </div>
+
+          {loading && <div className="loading">Cargando candidatas...</div>}
+          {error && <div className="error-msg">{error}</div>}
+
+          {!loading && !error && (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Handle TikTok</th>
+                    <th>Seguidores</th>
+                    <th>Vistas prom.</th>
+                    <th>Colombia</th>
+                    <th>Tier</th>
+                    <th>Nichos</th>
+                    <th>Hashtags origen</th>
+                    <th>Estado</th>
+                    <th>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {candidatas.length === 0 ? (
+                    <tr><td colSpan="9" className="empty-state">Sin candidatas — corre el scraper primero</td></tr>
+                  ) : candidatas.map(c => (
+                    <tr key={c.id}>
+                      <td>
+                        <a href={`https://tiktok.com/@${c.tiktok_handle}`} target="_blank" rel="noreferrer"
+                          style={{ color: 'var(--purple-light)', fontWeight: 600, fontSize: 13 }}>
+                          @{c.tiktok_handle}
+                        </a>
+                        {c.nombre_display && c.nombre_display !== c.tiktok_handle && (
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.nombre_display}</div>
+                        )}
+                      </td>
+                      <td style={{ fontWeight: 600 }}>{fmt(c.seguidores)}</td>
+                      <td>{fmt(c.vistas_promedio)}</td>
+                      <td>
+                        <span style={{ color: COL_SCORE_COLOR(c.colombia_score || 0), fontWeight: 600, fontSize: 12 }}>
+                          {COL_SCORE_LABEL(c.colombia_score || 0)}
+                        </span>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{c.colombia_score || 0}/100</div>
+                      </td>
+                      <td><TierBadge tier={c.tier_estimado} /></td>
+                      <td style={{ fontSize: 11, maxWidth: 140 }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                          {(c.nichos || []).slice(0, 3).map(n => (
+                            <span key={n} style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px', fontSize: 10 }}>{n}</span>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="td-muted" style={{ fontSize: 11 }}>
+                        {(c.hashtags_origen || []).map(h => `#${h}`).join(', ')}
+                      </td>
+                      <td>
+                        <select
+                          value={c.status}
+                          disabled={actualizando === c.id}
+                          onChange={e => cambiarStatus(c.id, e.target.value)}
+                          style={{ fontSize: 11, padding: '3px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer' }}
+                        >
+                          {STATUS_CANDIDATA.map(s => <option key={s}>{s}</option>)}
+                        </select>
+                      </td>
+                      <td>
+                        {c.status !== 'registrada' && c.status !== 'descartada' && (
+                          <button
+                            onClick={() => aprobar(c.id, c.tiktok_handle)}
+                            disabled={actualizando === c.id}
+                            className="btn btn-sm"
+                            style={{ background: 'var(--green)', color: 'white', border: 'none', padding: '4px 10px', borderRadius: 6, fontSize: 11, cursor: 'pointer' }}
+                          >
+                            Aprobar →
+                          </button>
+                        )}
+                        {c.status === 'registrada' && <span style={{ color: 'var(--green)', fontSize: 11 }}>✓ En sistema</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     // ── SOLICITUDES ───────────────────────────────────────────────
     const STATUS_SOL = ['Pendiente', 'Aprobada', 'Enviada', 'Rechazada'];
     const STATUS_SOL_COLOR = { Pendiente: 'var(--yellow)', Aprobada: 'var(--green)', Enviada: 'var(--purple-light)', Rechazada: 'var(--red)' };
@@ -1612,6 +1777,7 @@
             <button className={view === 'roi' ? 'active' : ''} onClick={() => navigate('roi')}>ROI</button>
             <button className={view === 'notificaciones' ? 'active' : ''} onClick={() => navigate('notificaciones')}>Notificaciones</button>
             <button className={view === 'solicitudes' ? 'active' : ''} onClick={() => navigate('solicitudes')}>Solicitudes</button>
+            <button className={view === 'candidatas' ? 'active' : ''} onClick={() => navigate('candidatas')}>Candidatas TikTok</button>
           </nav>
           <main>
             {view === 'dashboard' && <Dashboard onNavigate={navigate} />}
@@ -1621,6 +1787,7 @@
             {view === 'roi' && <ROI />}
             {view === 'notificaciones' && <Notificaciones />}
             {view === 'solicitudes' && <Solicitudes />}
+            {view === 'candidatas' && <Candidatas />}
           </main>
         </div>
       );

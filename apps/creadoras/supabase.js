@@ -213,6 +213,50 @@ async function yaEnviadoTemplate(influencer_id, template_name) {
   return results.length > 0;
 }
 
+// Candidatas TikTok
+async function getCandidatas({ status, min_colombia_score, tier, limit = 200 } = {}) {
+  const params = { select: '*', order: 'fecha_scrape.desc', limit };
+  if (status) params.status = `eq.${status}`;
+  if (min_colombia_score) params.colombia_score = `gte.${min_colombia_score}`;
+  if (tier) params.tier_estimado = `eq.${tier}`;
+  return supabaseGet('candidatas_influencer', params);
+}
+
+async function getCandidataById(id) {
+  const res = await supabaseGet('candidatas_influencer', { id: `eq.${id}`, limit: 1, select: '*' });
+  return res[0] || null;
+}
+
+async function updateCandidataStatus(id, status, notas_equipo) {
+  const data = { status, fecha_actualizacion: new Date().toISOString() };
+  if (notas_equipo !== undefined) data.notas_equipo = notas_equipo;
+  return supabasePatch('candidatas_influencer', { id }, data);
+}
+
+async function aprobarCandidataComoInfluencer(id) {
+  const candidata = await getCandidataById(id);
+  if (!candidata) throw new Error('Candidata no encontrada');
+
+  // Insertar en tabla influencers
+  const nuevaInfluencer = await supabasePost('influencers', {
+    nombre: candidata.nombre_display || candidata.tiktok_handle,
+    tiktok_handle: candidata.tiktok_handle,
+    seguidores_tiktok: candidata.seguidores,
+    tier: candidata.tier_estimado || 'Nano',
+    status: 'Prospectada',
+  });
+  const inf = Array.isArray(nuevaInfluencer) ? nuevaInfluencer[0] : nuevaInfluencer;
+
+  // Vincular candidata con la influencer creada
+  await supabasePatch('candidatas_influencer', { id }, {
+    status: 'registrada',
+    influencer_id: inf.id,
+    fecha_actualizacion: new Date().toISOString(),
+  });
+
+  return inf;
+}
+
 // Solicitudes de reenvío
 async function insertSolicitudReenvio(influencer_id, productos, mensaje, direccion) {
   const results = await supabasePost('solicitudes_reenvio', {
@@ -238,4 +282,4 @@ async function updateSolicitudReenvio(id, data) {
   return supabasePatch('solicitudes_reenvio', { id }, { ...data, fecha_actualizacion: new Date().toISOString() });
 }
 
-module.exports = { getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate, insertSolicitudReenvio, getSolicitudesReenvio, updateSolicitudReenvio };
+module.exports = { getCandidatas, getCandidataById, updateCandidataStatus, aprobarCandidataComoInfluencer, getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate, insertSolicitudReenvio, getSolicitudesReenvio, updateSolicitudReenvio };
