@@ -1237,8 +1237,8 @@
       const [sendError, setSendError] = useState(null);
 
       useEffect(() => {
-        API('/api/influencers')
-          .then(inf => setInfluencers(inf.filter(i => i.telefono)))
+        API('/api/influencers/con-telefono')
+          .then(inf => setInfluencers(inf))
           .catch(e => setError(e.message))
           .finally(() => setLoading(false));
       }, []);

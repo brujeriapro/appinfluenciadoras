@@ -76,6 +76,16 @@ app.patch('/api/influencers/:id', async (req, res) => {
   }
 });
 
+// ── INFLUENCERS CON TELÉFONO ─────────────────────────────────────
+app.get('/api/influencers/con-telefono', async (req, res) => {
+  try {
+    const influencers = await supabase.getInfluencersConTelefono();
+    res.json(influencers);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── PRODUCTOS SHOPIFY (con stock real) ───────────────────────────
 app.get('/api/config/productos', async (req, res) => {
   try {
