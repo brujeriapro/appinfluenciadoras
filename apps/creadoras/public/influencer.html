@@ -539,7 +539,7 @@
       const inf = data;
       const contenidos = data.contenidos || [];
       const scoreAcum = inf.score_total != null
-        ? inf.score_total
+        ? parseFloat(inf.score_total)
         : contenidos.reduce((s, c) => s + (parseFloat(c.score_contenido) || 0), 0);
       const nivel = getNivel(scoreAcum);
       const progreso = getProgreso(scoreAcum);
