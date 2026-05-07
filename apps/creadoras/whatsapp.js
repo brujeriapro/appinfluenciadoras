@@ -63,7 +63,7 @@ async function enviarBienvenidaKit(influencer, codigoDescuento) {
 
   return enviarTemplate(
     influencer.telefono,
-    'bienvenida_kit_brujeria',
+    'bienvenida_club_brujeria',
     [nombre, linkContenido, codigo]
   );
 }
