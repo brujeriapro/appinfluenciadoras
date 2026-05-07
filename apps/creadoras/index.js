@@ -29,7 +29,6 @@ function adminAuth(req, res, next) {
   const pass = credentials.slice(colonIdx + 1);
   const expectedUser = process.env.ADMIN_USER || 'admin';
   const expectedPass = process.env.ADMIN_PASS;
-  console.log(`[adminAuth] user="${user}" expected="${expectedUser}" passOk=${pass === expectedPass} passSet=${!!expectedPass}`);
   if (user === expectedUser && pass === expectedPass) {
     return next();
   }
