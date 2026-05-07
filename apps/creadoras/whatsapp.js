@@ -58,14 +58,7 @@ async function enviarTemplate(telefono, templateName, params = []) {
 // Variables: {{1}} nombre, {{2}} link formulario contenido, {{3}} código descuento
 async function enviarBienvenidaKit(influencer, codigoDescuento) {
   const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
-  const linkContenido = config.tally_contenido_url || 'https://tally.so/r/rjEZdo';
-  const codigo = codigoDescuento || influencer.codigo_descuento || '—';
-
-  return enviarTemplate(
-    influencer.telefono,
-    'bienvenida_club_brujeria',
-    [nombre, linkContenido, codigo]
-  );
+  return enviarTemplate(influencer.telefono, 'bienvenida_club_brujeria', [nombre]);
 }
 
 // Recordatorio semanal para influencers que no han publicado
