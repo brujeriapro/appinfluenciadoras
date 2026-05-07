@@ -31,7 +31,7 @@ async function enviarTemplate(telefono, templateName, params = []) {
     type: 'template',
     template: {
       name: templateName,
-      language: { code: 'es' },
+      language: { code: 'es_CO' },
       components: params.length > 0 ? [{
         type: 'body',
         parameters: params.map(p => ({ type: 'text', text: String(p) })),
