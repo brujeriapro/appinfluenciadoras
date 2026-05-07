@@ -181,4 +181,27 @@ async function updatePasswordHash(id, password_hash) {
   return supabasePatch('influencers', { id }, { password_hash });
 }
 
-module.exports = { getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, updatePasswordHash, insertInfluencer, insertContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono };
+// Notificaciones enviadas
+async function registrarNotificacion(influencer_id, template_name, enviado_por = 'admin') {
+  return supabasePost('notificaciones_enviadas', { influencer_id, template_name, enviado_por });
+}
+
+async function getNotificacionesDeInfluencer(influencer_id) {
+  return supabaseGet('notificaciones_enviadas', {
+    influencer_id: `eq.${influencer_id}`,
+    select: 'template_name,fecha_envio,enviado_por',
+    order: 'fecha_envio.desc',
+  });
+}
+
+async function yaEnviadoTemplate(influencer_id, template_name) {
+  const results = await supabaseGet('notificaciones_enviadas', {
+    influencer_id: `eq.${influencer_id}`,
+    template_name: `eq.${template_name}`,
+    limit: 1,
+    select: 'id',
+  });
+  return results.length > 0;
+}
+
+module.exports = { getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, updatePasswordHash, insertInfluencer, insertContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate };

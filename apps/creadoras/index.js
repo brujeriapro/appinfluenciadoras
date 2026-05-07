@@ -43,6 +43,22 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // ── INFLUENCERS ───────────────────────────────────────────────────
+app.get('/api/influencers/notificaciones-todas', async (req, res) => {
+  try {
+    const { influencer_ids } = req.query;
+    const ids = influencer_ids ? influencer_ids.split(',') : null;
+    const todas = await supabase.getInfluencers();
+    const resultado = {};
+    await Promise.all((ids ? todas.filter(i => ids.includes(i.id)) : todas).map(async inf => {
+      const notifs = await supabase.getNotificacionesDeInfluencer(inf.id);
+      resultado[inf.id] = notifs.map(n => n.template_name);
+    }));
+    res.json(resultado);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Debe ir antes de /api/influencers/:id para que Express no lo confunda con un ID
 app.get('/api/influencers/con-telefono', async (req, res) => {
   try {
@@ -154,6 +170,7 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
     try {
       const waResult = await enviarBienvenidaKit(influencerParaOrden, shopifyResult.codigo_descuento || influencerParaOrden.codigo_descuento);
       console.log('[enviar-kit] WhatsApp bienvenida:', waResult);
+      if (waResult?.sent) await supabase.registrarNotificacion(req.params.id, 'bienvenida_club_brujeria', 'kit');
     } catch (e) {
       console.error('[enviar-kit] WhatsApp error (no fatal):', e.message);
     }
@@ -409,6 +426,7 @@ app.post('/api/webhooks/contenido', async (req, res) => {
       try {
         const waFeedback = await enviarFeedbackContenido(influencer, score, nivel);
         console.log('[webhook/contenido] WhatsApp feedback:', waFeedback);
+        if (waFeedback?.sent) await supabase.registrarNotificacion(influencer.id, 'feedback_contenido_brujeria', 'auto');
       } catch (e) {
         console.error('[webhook/contenido] WhatsApp feedback error (no fatal):', e.message);
       }
@@ -596,9 +614,27 @@ app.post('/api/admin/notificaciones', async (req, res) => {
       return res.status(400).json({ error: 'influencer_ids debe ser "all" o un array de IDs' });
     }
 
+    // Templates de una sola vez — no se reenvían
+    const TEMPLATES_UNICOS = ['bienvenida_club_brujeria', 'bienvenida_kit', 'ideas_contenido_brujeria1'];
+
     const resultados = [];
     for (const inf of influencers) {
       try {
+        // Bloquear si ya fue enviado y es template único
+        const templateMeta = template === 'bienvenida_kit' ? 'bienvenida_club_brujeria'
+          : template === 'bienvenida_club' ? 'bienvenida_club_brujeria'
+          : template === 'recordatorio' ? 'explicacion_contenido_brujeria'
+          : template === 'feedback_contenido' ? 'feedback_contenido_brujeria'
+          : null;
+
+        if (templateMeta && TEMPLATES_UNICOS.includes(templateMeta)) {
+          const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, templateMeta);
+          if (yaEnviado) {
+            resultados.push({ id: inf.id, nombre: inf.nombre, ok: false, skipped: true, razon: 'Ya enviado anteriormente' });
+            continue;
+          }
+        }
+
         let wa;
         if (template === 'bienvenida_club') wa = await enviarBienvenidaClub(inf);
         else if (template === 'recordatorio') wa = await enviarRecordatorioWhatsApp(inf);
@@ -608,15 +644,19 @@ app.post('/api/admin/notificaciones', async (req, res) => {
           const nivel = inf.nivel_bruja || 'Magia Naciente';
           wa = await enviarFeedbackContenido(inf, score, nivel);
         }
-        else throw new Error('Template no reconocido: usa bienvenida_club, bienvenida_kit, recordatorio o feedback_contenido');
+        else throw new Error('Template no reconocido');
+
+        if (wa?.sent && templateMeta) {
+          await supabase.registrarNotificacion(inf.id, templateMeta, 'admin');
+        }
         resultados.push({ id: inf.id, nombre: inf.nombre, ok: true, resultado: wa });
       } catch (e) {
         resultados.push({ id: inf.id, nombre: inf.nombre, ok: false, error: e.message });
       }
     }
 
-    console.log(`[admin/notificaciones] Template "${template}" → ${resultados.length} enviadas`);
-    resultados.forEach(r => console.log(`  ${r.nombre}: ok=${r.ok}`, r.resultado || r.error));
+    console.log(`[admin/notificaciones] Template "${template}" → ${resultados.length} procesadas`);
+    resultados.forEach(r => console.log(`  ${r.nombre}: ok=${r.ok}`, r.skipped ? '(skipped)' : r.resultado || r.error));
     res.json({ ok: true, total: resultados.length, resultados });
   } catch (e) {
     console.error('[admin/notificaciones] Error:', e.message);
@@ -645,8 +685,14 @@ async function runCronIdeas() {
     const pendientes = await supabase.getInfluencersPendingIdeas();
     for (const inf of pendientes) {
       try {
+        const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'ideas_contenido_brujeria1');
+        if (yaEnviado) {
+          console.log(`[cron/ideas] ${inf.nombre}: ya recibió este mensaje, skip`);
+          continue;
+        }
         const wa = await enviarIdeasContenido(inf);
         console.log(`[cron/ideas] ${inf.nombre}:`, wa);
+        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'ideas_contenido_brujeria1', 'cron');
       } catch (e) {
         console.error(`[cron/ideas] ${inf.nombre} error:`, e.message);
       }

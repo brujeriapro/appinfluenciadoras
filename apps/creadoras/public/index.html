@@ -1217,11 +1217,15 @@
       },
     ];
 
+    // Templates únicos que no se pueden reenviar
+    const TEMPLATES_UNICOS = ['bienvenida_kit', 'recordatorio']; // recordatorio es semanal pero lo mostramos
+
     function Notificaciones() {
       const [influencers, setInfluencers] = useState([]);
+      const [notifMap, setNotifMap] = useState({}); // { influencer_id: [template_name, ...] }
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
-      const [template, setTemplate] = useState('bienvenida_club');
+      const [template, setTemplate] = useState('bienvenida_kit');
       const [destinatarios, setDestinatarios] = useState('all');
       const [seleccionados, setSeleccionados] = useState([]);
       const [sending, setSending] = useState(false);
@@ -1229,11 +1233,25 @@
       const [sendError, setSendError] = useState(null);
 
       useEffect(() => {
-        API('/api/influencers/con-telefono')
-          .then(inf => setInfluencers(inf))
+        Promise.all([
+          API('/api/influencers/con-telefono'),
+          API('/api/influencers/notificaciones-todas'),
+        ])
+          .then(([inf, notifs]) => {
+            setInfluencers(inf);
+            setNotifMap(notifs);
+          })
           .catch(e => setError(e.message))
           .finally(() => setLoading(false));
       }, []);
+
+      const templateMeta = template === 'bienvenida_kit' ? 'bienvenida_club_brujeria'
+        : template === 'recordatorio' ? 'explicacion_contenido_brujeria'
+        : template === 'feedback_contenido' ? 'feedback_contenido_brujeria'
+        : null;
+
+      const yaRecibio = (infId) => templateMeta && (notifMap[infId] || []).includes(templateMeta);
+      const pendientesCount = influencers.filter(i => !yaRecibio(i.id)).length;
 
       const toggleSeleccion = (id) => {
         setSeleccionados(prev =>
@@ -1263,7 +1281,8 @@
 
       const tpl = TEMPLATES.find(t => t.value === template);
       const enviadas = resultado?.resultados?.filter(r => r.ok) || [];
-      const fallidas = resultado?.resultados?.filter(r => !r.ok) || [];
+      const skipped = resultado?.resultados?.filter(r => !r.ok && r.skipped) || [];
+      const fallidas = resultado?.resultados?.filter(r => !r.ok && !r.skipped) || [];
 
       return (
         <div>
@@ -1308,8 +1327,8 @@
 
               {sendError && <div className="error-msg" style={{ marginBottom: 12 }}>{sendError}</div>}
 
-              <button className="btn btn-primary" onClick={enviar} disabled={sending || loading} style={{ width: '100%' }}>
-                {sending ? 'Enviando...' : `Enviar WhatsApp — ${tpl?.label}`}
+              <button className="btn btn-primary" onClick={enviar} disabled={sending || loading || pendientesCount === 0} style={{ width: '100%' }}>
+                {sending ? 'Enviando...' : pendientesCount === 0 ? 'Todas ya recibieron este mensaje' : `Enviar a ${destinatarios === 'all' ? pendientesCount : seleccionados.filter(id => !yaRecibio(id)).length} influencers — ${tpl?.label}`}
               </button>
 
               <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
@@ -1328,16 +1347,22 @@
                       ? <div className="empty-state">Sin influencers con teléfono registrado</div>
                       : (
                         <div style={{ maxHeight: 380, overflowY: 'auto' }}>
-                          {influencers.map(inf => (
-                            <label key={inf.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}>
-                              <input type="checkbox" checked={seleccionados.includes(inf.id)} onChange={() => toggleSeleccion(inf.id)} style={{ accentColor: 'var(--purple)' }} />
+                          {influencers.map(inf => {
+                            const recibio = yaRecibio(inf.id);
+                            return (
+                            <label key={inf.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 4px', borderBottom: '1px solid var(--border)', cursor: recibio ? 'default' : 'pointer', opacity: recibio ? 0.5 : 1 }}>
+                              <input type="checkbox" checked={seleccionados.includes(inf.id)} onChange={() => !recibio && toggleSeleccion(inf.id)} disabled={recibio} style={{ accentColor: 'var(--purple)' }} />
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontWeight: 500, fontSize: 13 }}>{inf.nombre}</div>
                                 <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>@{inf.instagram_handle} · {inf.telefono}</div>
                               </div>
-                              <TierBadge tier={inf.tier} />
+                              {recibio
+                                ? <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 99, background: 'rgba(34,197,94,0.15)', color: 'var(--green)', border: '1px solid var(--green)' }}>✓ Ya enviado</span>
+                                : <TierBadge tier={inf.tier} />
+                              }
                             </label>
-                          ))}
+                            );
+                          })}
                         </div>
                       )
                   }
@@ -1347,10 +1372,14 @@
               {resultado && (
                 <div className="detail-card">
                   <h3>Resultado del Envío</h3>
-                  <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
                     <div style={{ background: '#052e16', border: '1px solid #166534', borderRadius: 8, padding: '10px 16px', flex: 1, textAlign: 'center' }}>
                       <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--green)' }}>{enviadas.length}</div>
                       <div style={{ fontSize: 12, color: '#86efac' }}>Enviados</div>
+                    </div>
+                    <div style={{ background: 'rgba(234,179,8,0.1)', border: '1px solid var(--yellow)', borderRadius: 8, padding: '10px 16px', flex: 1, textAlign: 'center' }}>
+                      <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--yellow)' }}>{skipped.length}</div>
+                      <div style={{ fontSize: 12, color: 'var(--yellow)' }}>Ya enviados</div>
                     </div>
                     <div style={{ background: fallidas.length > 0 ? '#450a0a' : 'var(--bg3)', border: `1px solid ${fallidas.length > 0 ? '#7f1d1d' : 'var(--border)'}`, borderRadius: 8, padding: '10px 16px', flex: 1, textAlign: 'center' }}>
                       <div style={{ fontSize: 24, fontWeight: 700, color: fallidas.length > 0 ? 'var(--red)' : 'var(--text-muted)' }}>{fallidas.length}</div>
@@ -1360,11 +1389,11 @@
 
                   <div style={{ maxHeight: 300, overflowY: 'auto' }}>
                     {resultado.resultados.map((r, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
-                        <span style={{ color: r.ok ? 'var(--green)' : 'var(--red)', fontWeight: 700 }}>{r.ok ? '✓' : '✗'}</span>
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 13, opacity: r.skipped ? 0.6 : 1 }}>
+                        <span style={{ color: r.ok ? 'var(--green)' : r.skipped ? 'var(--yellow)' : 'var(--red)', fontWeight: 700 }}>{r.ok ? '✓' : r.skipped ? '—' : '✗'}</span>
                         <span style={{ flex: 1 }}>{r.nombre}</span>
-                        {!r.ok && <span style={{ fontSize: 11, color: 'var(--red)' }}>{r.error}</span>}
-                        {r.resultado?.skipped && <span style={{ fontSize: 11, color: 'var(--yellow)' }}>Sin teléfono</span>}
+                        {r.skipped && <span style={{ fontSize: 11, color: 'var(--yellow)' }}>Ya recibido antes</span>}
+                        {!r.ok && !r.skipped && <span style={{ fontSize: 11, color: 'var(--red)' }}>{r.error}</span>}
                       </div>
                     ))}
                   </div>
