@@ -214,8 +214,16 @@ async function yaEnviadoTemplate(influencer_id, template_name) {
 }
 
 // Solicitudes de reenvío
-async function insertSolicitudReenvio(influencer_id, productos, mensaje) {
-  const results = await supabasePost('solicitudes_reenvio', { influencer_id, productos, mensaje: mensaje || null });
+async function insertSolicitudReenvio(influencer_id, productos, mensaje, direccion) {
+  const results = await supabasePost('solicitudes_reenvio', {
+    influencer_id,
+    productos,
+    mensaje: mensaje || null,
+    direccion_envio: direccion?.direccion_envio || null,
+    ciudad: direccion?.ciudad || null,
+    departamento: direccion?.departamento || null,
+    codigo_postal: direccion?.codigo_postal || null,
+  });
   return Array.isArray(results) ? results[0] : results;
 }
 

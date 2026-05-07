@@ -1534,15 +1534,16 @@
                   <th>Influencer</th>
                   <th>Tier</th>
                   <th>Productos solicitados</th>
-                  <th>Mensaje</th>
+                  <th>Dirección confirmada</th>
                   <th>Fecha</th>
+                  <th>Shopify</th>
                   <th>Estado</th>
                   <th>Acción</th>
                 </tr>
               </thead>
               <tbody>
                 {solicitudes.length === 0 ? (
-                  <tr><td colSpan="7" className="empty-state">Sin solicitudes aún</td></tr>
+                  <tr><td colSpan="8" className="empty-state">Sin solicitudes aún</td></tr>
                 ) : solicitudes.map(s => (
                   <tr key={s.id}>
                     <td style={{ fontWeight: 500 }}>
@@ -1557,8 +1558,16 @@
                         ))}
                       </div>
                     </td>
-                    <td className="td-muted" style={{ fontSize: 12, maxWidth: 180 }}>{s.mensaje || '—'}</td>
+                    <td className="td-muted" style={{ fontSize: 11, maxWidth: 160 }}>
+                      {s.direccion_envio ? (
+                        <div>
+                          <div>{s.direccion_envio}</div>
+                          <div>{s.ciudad}{s.departamento ? `, ${s.departamento}` : ''}</div>
+                        </div>
+                      ) : '—'}
+                    </td>
                     <td className="td-muted" style={{ fontSize: 12 }}>{fmtDate(s.fecha_solicitud)}</td>
+                    <td style={{ fontSize: 11 }}>{s.shopify_order_id ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>#{s.shopify_order_id}</span> : '—'}</td>
                     <td>
                       <span style={{ color: STATUS_SOL_COLOR[s.status] || 'var(--text-muted)', fontWeight: 600, fontSize: 12 }}>
                         {s.status}

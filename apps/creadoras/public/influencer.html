@@ -305,9 +305,16 @@
       'Mantequilla Corporal Watermelon',
     ];
 
-    function SolicitarProducto() {
+    function SolicitarProducto({ infData }) {
+      const [paso, setPaso] = useState(1);
       const [seleccionados, setSeleccionados] = useState([]);
       const [mensaje, setMensaje] = useState('');
+      const [direccion, setDireccion] = useState({
+        direccion_envio: infData?.direccion_envio || '',
+        ciudad: infData?.ciudad || '',
+        departamento: infData?.departamento || '',
+        codigo_postal: infData?.codigo_postal || '',
+      });
       const [loading, setLoading] = useState(false);
       const [enviado, setEnviado] = useState(false);
       const [error, setError] = useState('');
@@ -316,14 +323,21 @@
         setSeleccionados(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
       }
 
-      async function enviar(e) {
+      function siguientePaso(e) {
         e.preventDefault();
         if (seleccionados.length === 0) { setError('Selecciona al menos un producto'); return; }
+        setError('');
+        setPaso(2);
+      }
+
+      async function enviar(e) {
+        e.preventDefault();
+        if (!direccion.direccion_envio || !direccion.ciudad) { setError('La dirección y ciudad son obligatorias'); return; }
         setLoading(true); setError('');
         try {
           await apiFetch('/api/influencer/solicitar-producto', {
             method: 'POST',
-            body: JSON.stringify({ productos: seleccionados, mensaje }),
+            body: JSON.stringify({ productos: seleccionados, mensaje, direccion }),
           });
           setEnviado(true);
         } catch (err) {
@@ -345,27 +359,69 @@
 
       return (
         <div className="sol-producto">
-          <h3>📦 Solicitar más productos</h3>
-          <form onSubmit={enviar}>
-            <div className="productos-grid">
-              {PRODUCTOS_DISPONIBLES.map(p => (
-                <label key={p} className={`producto-check${seleccionados.includes(p) ? ' selected' : ''}`}>
-                  <input type="checkbox" checked={seleccionados.includes(p)} onChange={() => toggle(p)} style={{display:'none'}} />
-                  {seleccionados.includes(p) ? '✓ ' : ''}{p}
-                </label>
-              ))}
+          {/* Indicador de pasos */}
+          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:16}}>
+            <div style={{display:'flex', alignItems:'center', gap:6}}>
+              <div style={{width:22, height:22, borderRadius:'50%', background: paso >= 1 ? 'var(--pink)' : 'var(--border)', color:'white', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700}}>1</div>
+              <span style={{fontSize:12, fontWeight: paso === 1 ? 700 : 400, color: paso === 1 ? 'var(--text)' : 'var(--text-muted)'}}>Productos</span>
             </div>
-            <textarea
-              className="sol-textarea"
-              placeholder="¿Algo más que quieras decirnos? (opcional)"
-              value={mensaje}
-              onChange={e => setMensaje(e.target.value)}
-            />
-            {error && <div className="alert-error" style={{marginBottom:12}}>{error}</div>}
-            <button className="btn btn-primary" type="submit" disabled={loading}>
-              {loading ? 'Enviando...' : 'Enviar solicitud →'}
-            </button>
-          </form>
+            <div style={{flex:1, height:1, background:'var(--border)'}} />
+            <div style={{display:'flex', alignItems:'center', gap:6}}>
+              <div style={{width:22, height:22, borderRadius:'50%', background: paso >= 2 ? 'var(--pink)' : 'var(--border)', color:'white', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700}}>2</div>
+              <span style={{fontSize:12, fontWeight: paso === 2 ? 700 : 400, color: paso === 2 ? 'var(--text)' : 'var(--text-muted)'}}>Dirección</span>
+            </div>
+          </div>
+
+          {paso === 1 && (
+            <form onSubmit={siguientePaso}>
+              <div style={{fontSize:13, color:'var(--text-muted)', marginBottom:12}}>¿Qué productos te gustaría recibir?</div>
+              <div className="productos-grid">
+                {PRODUCTOS_DISPONIBLES.map(p => (
+                  <label key={p} className={`producto-check${seleccionados.includes(p) ? ' selected' : ''}`}>
+                    <input type="checkbox" checked={seleccionados.includes(p)} onChange={() => toggle(p)} style={{display:'none'}} />
+                    {seleccionados.includes(p) ? '✓ ' : ''}{p}
+                  </label>
+                ))}
+              </div>
+              <textarea
+                className="sol-textarea"
+                placeholder="¿Algo más que quieras decirnos? (opcional)"
+                value={mensaje}
+                onChange={e => setMensaje(e.target.value)}
+              />
+              {error && <div className="alert-error" style={{marginBottom:12}}>{error}</div>}
+              <button className="btn btn-primary" type="submit">Continuar →</button>
+            </form>
+          )}
+
+          {paso === 2 && (
+            <form onSubmit={enviar}>
+              <div style={{fontSize:13, color:'var(--text-muted)', marginBottom:14}}>Confirma que tu dirección de envío es correcta o corrígela.</div>
+              <div className="field">
+                <label>Dirección</label>
+                <input value={direccion.direccion_envio} onChange={e => setDireccion(d => ({...d, direccion_envio: e.target.value}))} placeholder="Calle, carrera, número, barrio" required />
+              </div>
+              <div className="field">
+                <label>Ciudad</label>
+                <input value={direccion.ciudad} onChange={e => setDireccion(d => ({...d, ciudad: e.target.value}))} placeholder="Ciudad" required />
+              </div>
+              <div className="field">
+                <label>Departamento</label>
+                <input value={direccion.departamento} onChange={e => setDireccion(d => ({...d, departamento: e.target.value}))} placeholder="Departamento" />
+              </div>
+              <div className="field">
+                <label>Código postal</label>
+                <input value={direccion.codigo_postal} onChange={e => setDireccion(d => ({...d, codigo_postal: e.target.value}))} placeholder="Código postal (opcional)" />
+              </div>
+              {error && <div className="alert-error" style={{marginBottom:12}}>{error}</div>}
+              <div style={{display:'flex', gap:10}}>
+                <button type="button" className="btn btn-secondary" onClick={() => setPaso(1)} style={{width:'auto', padding:'10px 18px'}}>← Volver</button>
+                <button className="btn btn-primary" type="submit" disabled={loading}>
+                  {loading ? 'Enviando...' : 'Enviar solicitud →'}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       );
     }
@@ -722,7 +778,7 @@
             {/* SOLICITAR MÁS PRODUCTO */}
             <div className="section-title">Solicitar más productos</div>
             <div style={{marginBottom:16}}>
-              <SolicitarProducto />
+              <SolicitarProducto infData={inf} />
             </div>
 
             {/* CÓDIGO DE DESCUENTO */}

@@ -663,12 +663,21 @@ app.get('/api/influencer/ventas', authMiddleware, async (req, res) => {
 
 // Solicitar reenvío de producto (influencer autenticada)
 app.post('/api/influencer/solicitar-producto', authMiddleware, async (req, res) => {
-  const { productos, mensaje } = req.body;
+  const { productos, mensaje, direccion } = req.body;
   if (!productos || !Array.isArray(productos) || productos.length === 0) {
     return res.status(400).json({ error: 'Debes seleccionar al menos un producto' });
   }
   try {
-    const sol = await supabase.insertSolicitudReenvio(req.influencerId, productos, mensaje);
+    // Actualizar dirección en perfil si cambió
+    if (direccion) {
+      await supabase.updateInfluencer(req.influencerId, {
+        direccion_envio: direccion.direccion_envio,
+        ciudad: direccion.ciudad,
+        departamento: direccion.departamento,
+        codigo_postal: direccion.codigo_postal,
+      });
+    }
+    const sol = await supabase.insertSolicitudReenvio(req.influencerId, productos, mensaje, direccion);
     res.json({ ok: true, id: sol.id });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -686,10 +695,60 @@ app.get('/api/solicitudes-reenvio', async (req, res) => {
 
 // Actualizar estado solicitud (admin)
 app.patch('/api/solicitudes-reenvio/:id', async (req, res) => {
+  const { status, notas_admin } = req.body;
   try {
-    await supabase.updateSolicitudReenvio(req.params.id, req.body);
+    const solicitudes = await supabase.getSolicitudesReenvio();
+    const sol = solicitudes.find(s => s.id === req.params.id);
+    if (!sol) return res.status(404).json({ error: 'Solicitud no encontrada' });
+
+    await supabase.updateSolicitudReenvio(req.params.id, { status, notas_admin });
+
+    // Al aprobar: crear orden Shopify + WhatsApp + actualizar status influencer
+    if (status === 'Aprobada' && sol.status !== 'Aprobada') {
+      const influencer = await supabase.getInfluencerById(sol.influencer_id);
+      if (influencer) {
+        // Mapear nombres de productos a SKUs
+        const skus = (sol.productos || []).map(p => config.productos_disponibles[p]).filter(Boolean);
+
+        // Crear orden Shopify $0
+        let shopifyOrderId = null;
+        if (skus.length > 0) {
+          try {
+            const direccion = {
+              address1: sol.direccion_envio || influencer.direccion_envio || '',
+              city: sol.ciudad || influencer.ciudad || '',
+              province: sol.departamento || influencer.departamento || '',
+              zip: sol.codigo_postal || influencer.codigo_postal || '',
+              country: 'CO',
+            };
+            const orden = await shopify.crearOrdenGifting(influencer, skus, direccion);
+            shopifyOrderId = orden?.id ? String(orden.id) : null;
+            if (shopifyOrderId) {
+              await supabase.updateSolicitudReenvio(req.params.id, { shopify_order_id: shopifyOrderId });
+            }
+          } catch (shopifyErr) {
+            console.error('[solicitud-aprobar] Error Shopify:', shopifyErr.message);
+          }
+        }
+
+        // WhatsApp
+        if (influencer.telefono) {
+          try {
+            const { enviarReenvioAprobado } = require('./whatsapp');
+            await enviarReenvioAprobado(influencer.telefono, influencer.nombre);
+          } catch (waErr) {
+            console.error('[solicitud-aprobar] Error WhatsApp:', waErr.message);
+          }
+        }
+
+        // Actualizar status influencer
+        await supabase.updateInfluencer(sol.influencer_id, { status: 'Producto Enviado', fecha_envio: new Date().toISOString().split('T')[0] });
+      }
+    }
+
     res.json({ ok: true });
   } catch (e) {
+    console.error('[solicitudes-reenvio PATCH]', e.message);
     res.status(500).json({ error: e.message });
   }
 });

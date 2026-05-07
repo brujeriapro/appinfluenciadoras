@@ -119,6 +119,14 @@ async function enviarCelebracionNivel(influencer, nivelNuevo) {
   );
 }
 
+// Notificación al aprobar solicitud de reenvío
+// Template: reenvio_aprobado (pendiente crear en Meta)
+// Variables: {{1}} nombre
+async function enviarReenvioAprobado(telefono, nombre) {
+  const primerNombre = nombre?.split(' ')[0] || nombre;
+  return enviarTemplate(telefono, 'reenvio_aprobado', [primerNombre]);
+}
+
 module.exports = {
   enviarBienvenidaKit,
   enviarRecordatorioWhatsApp,
@@ -126,4 +134,5 @@ module.exports = {
   enviarFeedbackContenido,
   enviarCelebracionNivel,
   enviarIdeasContenido,
+  enviarReenvioAprobado,
 };
