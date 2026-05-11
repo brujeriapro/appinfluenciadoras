@@ -192,11 +192,16 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
       shopifyResult.codigo_descuento = codigo;
     }
 
-    // 3. WhatsApp de bienvenida (no bloquea si falla)
+    // 3. WhatsApp de bienvenida (solo una vez por influencer)
     try {
-      const waResult = await enviarBienvenidaKit(influencerParaOrden, shopifyResult.codigo_descuento || influencerParaOrden.codigo_descuento);
-      console.log('[enviar-kit] WhatsApp bienvenida:', waResult);
-      if (waResult?.sent) await supabase.registrarNotificacion(req.params.id, 'bienvenida_club_brujeria', 'kit');
+      const yaEnviado = await supabase.yaEnviadoTemplate(req.params.id, 'bienvenida_club_brujeria');
+      if (!yaEnviado) {
+        const waResult = await enviarBienvenidaKit(influencerParaOrden, shopifyResult.codigo_descuento || influencerParaOrden.codigo_descuento);
+        console.log('[enviar-kit] WhatsApp bienvenida:', waResult);
+        if (waResult?.sent) await supabase.registrarNotificacion(req.params.id, 'bienvenida_club_brujeria', 'kit');
+      } else {
+        console.log('[enviar-kit] Bienvenida ya enviada anteriormente, skip');
+      }
     } catch (e) {
       console.error('[enviar-kit] WhatsApp error (no fatal):', e.message);
     }
@@ -524,8 +529,14 @@ app.post('/api/cron/seguimiento', async (req, res) => {
 
     for (const inf of pendientes) {
       try {
+        const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'explicacion_contenido_brujeria');
+        if (yaEnviado) {
+          console.log(`[cron/seguimiento] ${inf.nombre}: ya recibió este mensaje, skip`);
+          continue;
+        }
         const wa = await enviarRecordatorioWhatsApp(inf);
         const email = await enviarRecordatorioContenido(inf);
+        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'explicacion_contenido_brujeria', 'cron');
         resultados.push({ nombre: inf.nombre, whatsapp: wa, email });
       } catch (e) {
         resultados.push({ nombre: inf.nombre, error: e.message });
