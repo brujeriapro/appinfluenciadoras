@@ -148,23 +148,23 @@ async function updateContenido(id, data) {
 }
 
 async function getInfluencersPendingSeguimiento() {
-  const hace30dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const hace6dias = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   return supabaseGet('influencers', {
     select: '*',
     status: 'eq.Producto Enviado',
-    fecha_envio: `lte.${hace30dias}`,
+    fecha_envio: `lte.${hace6dias}`,
   });
 }
 
 async function getInfluencersPendingIdeas() {
-  // Influencers con kit enviado hace exactamente 6 días (±1 día de margen)
+  // Influencers con kit enviado hace exactamente 4 días (±1 día de margen)
+  const hace3dias = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const hace5dias = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  const hace7dias = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   return supabaseGet('influencers', {
     select: '*',
     status: 'eq.Producto Enviado',
-    fecha_envio: `gte.${hace7dias}`,
-    'fecha_envio.lte': hace5dias,
+    fecha_envio: `gte.${hace5dias}`,
+    'fecha_envio.lte': hace3dias,
     telefono: 'not.is.null',
   });
 }
