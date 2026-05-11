@@ -271,4 +271,15 @@ function generateDiscountCode(instagram_handle) {
   return instagram_handle.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() + '10';
 }
 
-module.exports = { getVentas, createGiftingOrder, createDiscountCode, generateDiscountCode, getProductosConStock };
+async function getPreciosPorSku() {
+  const data = await shopifyGet('products.json', { limit: 250, status: 'active', fields: 'id,variants' });
+  const map = {};
+  for (const product of data.products || []) {
+    for (const variant of product.variants || []) {
+      if (variant.sku) map[variant.sku.trim()] = parseFloat(variant.price || 0);
+    }
+  }
+  return map;
+}
+
+module.exports = { getVentas, createGiftingOrder, createDiscountCode, generateDiscountCode, getProductosConStock, getPreciosPorSku };

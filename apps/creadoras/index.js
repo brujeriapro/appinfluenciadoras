@@ -61,7 +61,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ── STATS DASHBOARD ──────────────────────────────────────────────
 app.get('/api/stats', async (req, res) => {
   try {
-    const stats = await supabase.getStats();
+    const preciosPorSku = await shopify.getPreciosPorSku();
+    const stats = await supabase.getStats(preciosPorSku);
     res.json(stats);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -295,10 +296,10 @@ app.get('/api/roi', async (req, res) => {
 
     const ventas = await shopify.getVentas(desde, hasta);
 
-    const influencers = await supabase.getInfluencers();
-    const kits = await supabase.getKits();
-    const kitValor = {};
-    kits.forEach(k => { kitValor[k.nombre] = k.valor_retail_cop || 0; });
+    const [influencers, preciosPorSku] = await Promise.all([
+      supabase.getInfluencers(),
+      shopify.getPreciosPorSku(),
+    ]);
 
     const enviadasEnPeriodo = influencers.filter(inf => {
       if (!inf.fecha_envio) return false;
@@ -306,7 +307,10 @@ app.get('/api/roi', async (req, res) => {
       return fechaEnvio >= desde.split('T')[0] && fechaEnvio <= hasta.split('T')[0];
     });
 
-    const costoKits = enviadasEnPeriodo.reduce((sum, inf) => sum + (kitValor[inf.kit_asignado] || 0), 0);
+    const costoKits = enviadasEnPeriodo.reduce((sum, inf) => {
+      const skus = Array.isArray(inf.skus_pedidos) ? inf.skus_pedidos : [];
+      return sum + skus.reduce((s, sku) => s + (preciosPorSku[sku] || 0), 0);
+    }, 0);
     const roi = costoKits > 0 ? ((ventas.totalVentas / costoKits) * 100).toFixed(1) : null;
 
     res.json({

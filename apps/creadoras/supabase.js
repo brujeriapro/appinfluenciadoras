@@ -65,14 +65,9 @@ async function getKits() {
 }
 
 // Stats agregadas
-async function getStats() {
+async function getStats(preciosPorSku = {}) {
   const influencers = await getInfluencers();
   const contenidos = await getContenidos();
-  const kits = await getKits();
-
-  // Mapa de valor por kit
-  const kitValor = {};
-  kits.forEach(k => { kitValor[k.nombre] = k.valor_retail_cop || 0; });
 
   // Conteo por status
   const porStatus = {};
@@ -80,12 +75,13 @@ async function getStats() {
     porStatus[inf.status] = (porStatus[inf.status] || 0) + 1;
   });
 
-  // Costo total de kits enviados
+  // Costo total: suma de precios Shopify de los SKUs realmente enviados
   const enviadas = influencers.filter(i =>
     ['Producto Enviado', 'Contenido Entregado', 'Calificada'].includes(i.status)
   );
   const costoTotal = enviadas.reduce((sum, inf) => {
-    return sum + (kitValor[inf.kit_asignado] || 0);
+    const skus = Array.isArray(inf.skus_pedidos) ? inf.skus_pedidos : [];
+    return sum + skus.reduce((s, sku) => s + (preciosPorSku[sku] || 0), 0);
   }, 0);
 
   // Score promedio
