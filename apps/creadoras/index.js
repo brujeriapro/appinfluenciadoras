@@ -389,21 +389,30 @@ app.post('/api/webhooks/registro', async (req, res) => {
       return res.status(400).json({ error: 'Faltan campos obligatorios: nombre y email' });
     }
 
-    // Verificar si ya existe — si existe, actualizar campos que estén vacíos
-    const existe = await supabase.getInfluencerByEmail(email.toLowerCase().trim());
+    const tiktokClean = (tiktok || '').replace('@', '').trim() || null;
+    const instaClean  = (instagram || '').replace('@', '').trim() || null;
+
+    // Buscar influencer existente: primero por email, luego por TikTok, luego por Instagram
+    let existe = await supabase.getInfluencerByEmail(email.toLowerCase().trim());
+    if (!existe && tiktokClean) existe = await supabase.getInfluencerByTikTok(tiktokClean);
+    if (!existe && instaClean)  existe = await supabase.getInfluencerByInstagram(instaClean);
+
     if (existe) {
-      const actualizaciones = {};
-      if (!existe.telefono && telefono) actualizaciones.telefono = telefono;
-      if (!existe.instagram_handle && instagram) actualizaciones.instagram_handle = (instagram || '').replace('@', '');
-      if (!existe.tiktok_handle && tiktok) actualizaciones.tiktok_handle = (tiktok || '').replace('@', '') || null;
-      if (!existe.ciudad && ciudad) actualizaciones.ciudad = ciudad;
+      const actualizaciones = { status: 'Registrada' };
+      if (!existe.email && email)             actualizaciones.email = email.toLowerCase().trim();
+      if (!existe.nombre && nombre)           actualizaciones.nombre = nombre;
+      if (!existe.telefono && telefono)       actualizaciones.telefono = telefono;
+      if (!existe.instagram_handle && instaClean)  actualizaciones.instagram_handle = instaClean;
+      if (!existe.tiktok_handle && tiktokClean)    actualizaciones.tiktok_handle = tiktokClean;
+      if (!existe.ciudad && ciudad)           actualizaciones.ciudad = ciudad;
       if (!existe.departamento && departamento) actualizaciones.departamento = departamento;
       if (!existe.direccion_envio && direccion) actualizaciones.direccion_envio = direccion;
       if (tipoCabello) actualizaciones.tipo_cabello = tipoCabello;
-      if (Object.keys(actualizaciones).length > 0) {
-        await supabase.updateInfluencer(existe.id, actualizaciones);
-      }
-      return res.json({ ok: true, mensaje: 'Ya registrada', id: existe.id });
+      if (segInsta && !existe.seguidores_instagram) actualizaciones.seguidores_instagram = segInsta;
+      if (segTiktok && !existe.seguidores_tiktok)   actualizaciones.seguidores_tiktok = segTiktok;
+      await supabase.updateInfluencer(existe.id, actualizaciones);
+      console.log(`[webhook/registro] Vinculada: ${existe.nombre || nombre} → status Registrada`);
+      return res.json({ ok: true, mensaje: 'Vinculada y actualizada', id: existe.id });
     }
 
     // Calcular tier según seguidores
@@ -414,8 +423,8 @@ app.post('/api/webhooks/registro', async (req, res) => {
       nombre,
       email: email.toLowerCase().trim(),
       telefono: telefono || null,
-      instagram_handle: (instagram || '').replace('@', ''),
-      tiktok_handle: (tiktok || '').replace('@', '') || null,
+      instagram_handle: instaClean || null,
+      tiktok_handle: tiktokClean || null,
       seguidores_instagram: segInsta || null,
       seguidores_tiktok: segTiktok || null,
       ciudad: ciudad || null,

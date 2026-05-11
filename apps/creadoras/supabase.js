@@ -186,6 +186,28 @@ async function getInfluencerByEmail(email) {
   return results[0] || null;
 }
 
+async function getInfluencerByTikTok(handle) {
+  if (!handle) return null;
+  const clean = handle.replace('@', '').toLowerCase().trim();
+  const results = await supabaseGet('influencers', {
+    tiktok_handle: `eq.${clean}`,
+    limit: 1,
+    select: '*',
+  });
+  return results[0] || null;
+}
+
+async function getInfluencerByInstagram(handle) {
+  if (!handle) return null;
+  const clean = handle.replace('@', '').toLowerCase().trim();
+  const results = await supabaseGet('influencers', {
+    instagram_handle: `eq.${clean}`,
+    limit: 1,
+    select: '*',
+  });
+  return results[0] || null;
+}
+
 async function updatePasswordHash(id, password_hash) {
   return supabasePatch('influencers', { id }, { password_hash });
 }
@@ -282,4 +304,4 @@ async function updateSolicitudReenvio(id, data) {
   return supabasePatch('solicitudes_reenvio', { id }, { ...data, fecha_actualizacion: new Date().toISOString() });
 }
 
-module.exports = { getCandidatas, getCandidataById, updateCandidataStatus, aprobarCandidataComoInfluencer, getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate, insertSolicitudReenvio, getSolicitudesReenvio, updateSolicitudReenvio };
+module.exports = { getCandidatas, getCandidataById, updateCandidataStatus, aprobarCandidataComoInfluencer, getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, getInfluencerByTikTok, getInfluencerByInstagram, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate, insertSolicitudReenvio, getSolicitudesReenvio, updateSolicitudReenvio };
