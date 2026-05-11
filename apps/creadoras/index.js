@@ -500,17 +500,8 @@ app.post('/api/webhooks/contenido', async (req, res) => {
 
     console.log(`[webhook/contenido] ${influencer.nombre} | score: ${score} | nivel: ${nivel} | acumulado: ${scoreAcumulado.toFixed(1)}`);
 
-    // WhatsApp: feedback de score (no bloquea si falla)
-    if (influencer.telefono) {
-      try {
-        const waFeedback = await enviarFeedbackContenido(influencer, score, nivel);
-        console.log('[webhook/contenido] WhatsApp feedback:', waFeedback);
-        if (waFeedback?.sent) await supabase.registrarNotificacion(influencer.id, 'feedback_contenido_brujeria', 'auto');
-      } catch (e) {
-        console.error('[webhook/contenido] WhatsApp feedback error (no fatal):', e.message);
-      }
-
-    }
+    // El feedback de WhatsApp NO se envía automáticamente aquí.
+    // Se envía manualmente desde el dashboard cuando el admin califica el contenido.
 
     res.json({ ok: true, score, nivel, score_acumulado: scoreAcumulado });
   } catch (e) {
