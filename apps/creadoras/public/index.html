@@ -473,14 +473,17 @@
     }
 
     // ── INFLUENCERS ───────────────────────────────────────────────
+    const STATUSES_INF = ['Prospectada', 'Contactada', 'Registrada', 'Producto Enviado', 'Contenido Entregado', 'Calificada'];
+
     function Influencers({ onNavigate }) {
       const [all, setAll] = useState([]);
       const [filtered, setFiltered] = useState([]);
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
       const [filters, setFilters] = useState({ status: '', tier: '', nivel_bruja: '', search: '' });
+      const [updatingStatus, setUpdatingStatus] = useState(null);
 
-      useEffect(() => {
+      const load = () => {
         API('/api/influencers')
           .then(data => {
             const sorted = data.sort((a, b) => new Date(b.fecha_registro) - new Date(a.fecha_registro));
@@ -488,7 +491,9 @@
           })
           .catch(e => setError(e.message))
           .finally(() => setLoading(false));
-      }, []);
+      };
+
+      useEffect(() => { load(); }, []);
 
       useEffect(() => {
         let res = all;
@@ -500,13 +505,28 @@
           res = res.filter(i =>
             (i.nombre || '').toLowerCase().includes(q) ||
             (i.email || '').toLowerCase().includes(q) ||
-            (i.instagram_handle || '').toLowerCase().includes(q)
+            (i.instagram_handle || '').toLowerCase().includes(q) ||
+            (i.tiktok_handle || '').toLowerCase().includes(q)
           );
         }
         setFiltered(res);
       }, [filters, all]);
 
       const setFilter = (k, v) => setFilters(f => ({ ...f, [k]: v }));
+
+      const cambiarStatus = async (e, inf) => {
+        e.stopPropagation();
+        const nuevoStatus = e.target.value;
+        setUpdatingStatus(inf.id);
+        try {
+          await PATCH(`/api/influencers/${inf.id}`, { status: nuevoStatus });
+          setAll(prev => prev.map(i => i.id === inf.id ? { ...i, status: nuevoStatus } : i));
+        } catch(err) {
+          alert('Error al actualizar: ' + err.message);
+        } finally {
+          setUpdatingStatus(null);
+        }
+      };
 
       if (loading) return <div className="loading">Cargando influencers...</div>;
       if (error) return <div className="error-msg">{error}</div>;
@@ -521,19 +541,14 @@
               <div className="filters">
                 <input
                   type="text"
-                  placeholder="Buscar nombre, email, @..."
+                  placeholder="Buscar nombre, email, @tiktok..."
                   value={filters.search}
                   onChange={e => setFilter('search', e.target.value)}
                   style={{ width: 220 }}
                 />
                 <select value={filters.status} onChange={e => setFilter('status', e.target.value)}>
                   <option value="">Todos los estados</option>
-                  <option>Registrada</option>
-                  <option>Producto Enviado</option>
-                  <option>Contenido Entregado</option>
-                  <option>Calificada</option>
-                  <option>Prospectada</option>
-                  <option>Contactada</option>
+                  {STATUSES_INF.map(s => <option key={s}>{s}</option>)}
                 </select>
                 <select value={filters.tier} onChange={e => setFilter('tier', e.target.value)}>
                   <option value="">Todos los tiers</option>
@@ -561,6 +576,7 @@
                 <tr>
                   <th>Nombre</th>
                   <th>Instagram</th>
+                  <th>TikTok</th>
                   <th>Seguidores</th>
                   <th>Tier</th>
                   <th>Kit</th>
@@ -572,15 +588,35 @@
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan="9" className="empty-state">Sin resultados</td></tr>
+                  <tr><td colSpan="10" className="empty-state">Sin resultados</td></tr>
                 ) : filtered.map(inf => (
-                  <tr key={inf.id} onClick={() => onNavigate('detalle', inf.id)}>
+                  <tr key={inf.id} onClick={() => onNavigate('detalle', inf.id)} style={{ cursor: 'pointer' }}>
                     <td style={{ fontWeight: 500 }}>{inf.nombre || '—'}</td>
                     <td className="td-muted">{inf.instagram_handle || '—'}</td>
-                    <td className="td-muted">{inf.seguidores_instagram ? fmt(inf.seguidores_instagram) : '—'}</td>
+                    <td className="td-muted">
+                      {inf.tiktok_handle
+                        ? <a href={`https://tiktok.com/@${inf.tiktok_handle}`} target="_blank" rel="noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            style={{ color: 'var(--purple-light)' }}>@{inf.tiktok_handle}</a>
+                        : '—'}
+                    </td>
+                    <td className="td-muted">{inf.seguidores_instagram ? fmt(inf.seguidores_instagram) : (inf.seguidores_tiktok ? fmt(inf.seguidores_tiktok) : '—')}</td>
                     <td><TierBadge tier={inf.tier} /></td>
                     <td className="td-muted" style={{ fontSize: 12 }}>{inf.kit_asignado || '—'}</td>
-                    <td><StatusBadge status={inf.status} /></td>
+                    <td onClick={e => e.stopPropagation()}>
+                      <select
+                        value={inf.status || ''}
+                        disabled={updatingStatus === inf.id}
+                        onChange={e => cambiarStatus(e, inf)}
+                        style={{
+                          fontSize: 12, padding: '3px 6px', borderRadius: 6,
+                          border: '1px solid var(--border)', background: 'var(--bg)',
+                          color: 'var(--text)', cursor: 'pointer', opacity: updatingStatus === inf.id ? 0.5 : 1
+                        }}
+                      >
+                        {STATUSES_INF.map(s => <option key={s}>{s}</option>)}
+                      </select>
+                    </td>
                     <td><NivelBadge nivel={inf.nivel_bruja} /></td>
                     <td style={{ minWidth: 120 }}><ScoreBar score={inf.score_total} /></td>
                     <td className="td-muted">{fmtDate(inf.fecha_registro)}</td>
