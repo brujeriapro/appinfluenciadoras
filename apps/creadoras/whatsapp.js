@@ -79,7 +79,7 @@ async function enviarRecordatorioWhatsApp(influencer) {
   );
 }
 
-// Ideas de contenido 4 días después del envío del kit
+// Ideas de contenido 6 días después del envío del kit
 // Template: ideas_contenido_brujeria
 // Variables: {{1}} nombre
 async function enviarIdeasContenido(influencer) {
