@@ -12,7 +12,7 @@ const { enviarRecordatorioContenido } = require('./email');
 const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche } = require('./whatsapp');
 
 // Rutas públicas — portal influencer, guía, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -874,9 +874,13 @@ app.post('/api/admin/notificaciones', async (req, res) => {
   }
 });
 
-// ── IMPORTACIÓN MASIVA DE INFLUENCERS (admin) ───────────────────
+// ── IMPORTACIÓN MASIVA DE INFLUENCERS (token protegido, un solo uso) ──
 app.post('/api/admin/influencers/bulk-import', async (req, res) => {
-  const { influencers } = req.body;
+  const { influencers, token } = req.body;
+  const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
+  if (token !== IMPORT_TOKEN) {
+    return res.status(403).json({ error: 'Token de importación inválido' });
+  }
   if (!Array.isArray(influencers) || influencers.length === 0) {
     return res.status(400).json({ error: 'Se requiere un array de influencers' });
   }
