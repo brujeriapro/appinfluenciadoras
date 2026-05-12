@@ -265,6 +265,10 @@ app.post('/api/admin/enviar-kits-bulk', async (req, res) => {
         candidatas: conDir.map(i => ({
           id: i.id, nombre: i.nombre, tier: i.tier, ciudad: i.ciudad,
           primera_preferencia: i.productos_favoritos[0],
+          seguidores_tiktok: i.seguidores_tiktok || 0,
+          seguidores_instagram: i.seguidores_instagram || 0,
+          tiktok_handle: i.tiktok_handle || null,
+          instagram_handle: i.instagram_handle || null,
         })),
         saltadas: sinDir.map(i => ({ id: i.id, nombre: i.nombre, razon: 'Sin dirección' })),
       });
