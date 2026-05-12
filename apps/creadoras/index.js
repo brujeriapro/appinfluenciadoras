@@ -843,7 +843,7 @@ app.post('/api/admin/notificaciones', async (req, res) => {
           : template === 'feedback_contenido' ? 'feedback_contenido_brujeria'
           : null;
 
-        if (templateMeta && TEMPLATES_UNICOS.includes(templateMeta)) {
+        if (!req.body.force && templateMeta && TEMPLATES_UNICOS.includes(templateMeta)) {
           const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, templateMeta);
           if (yaEnviado) {
             resultados.push({ id: inf.id, nombre: inf.nombre, ok: false, skipped: true, razon: 'Ya enviado anteriormente' });
