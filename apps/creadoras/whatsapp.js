@@ -138,10 +138,9 @@ async function enviarReenvioAprobado(telefono, nombre) {
 // Variables: {{1}} nombre
 // Botón CTA apunta al Tally de preferencias de productos
 async function enviarEncuestaProductos(influencer) {
-  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
-  // Pasa el teléfono como variable del botón URL → Tally lo recibe como ?tel=573...
+  // Sin variable en el cuerpo — solo botón URL dinámico con el teléfono
   const tel = normalizarTelefono(influencer.telefono) || '';
-  return enviarTemplate(influencer.telefono, 'encuesta_productos_brujeria', [nombre], tel);
+  return enviarTemplate(influencer.telefono, 'encuesta_productos_brujeria', [], tel);
 }
 
 // Re-enganche de creadoras antiguas para nuevo envío de producto
