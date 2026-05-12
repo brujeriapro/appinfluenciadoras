@@ -908,10 +908,8 @@ app.post('/api/admin/influencers/bulk-import', async (req, res) => {
         tiktok_handle: inf.tiktok_handle || null,
         instagram_handle: inf.instagram_handle || null,
         seguidores_tiktok: inf.tiktok_handle ? (inf.seguidores || null) : null,
-        seguidores_instagram: inf.instagram_handle && !inf.tiktok_handle ? (inf.seguidores || null) : null,
         tier: inf.tier || 'Nano',
         status: 'Registrada',
-        fuente: 'importacion_historica',
       });
       resultados.creadas.push({ nombre: inf.nombre, id: nueva?.id });
     } catch (e) {
