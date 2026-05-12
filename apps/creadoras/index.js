@@ -905,7 +905,6 @@ app.post('/api/admin/influencers/bulk-import', async (req, res) => {
         telefono: inf.telefono || null,
         email: inf.email || null,
         ciudad: inf.ciudad || null,
-        direccion: inf.direccion || null,
         tiktok_handle: inf.tiktok_handle || null,
         instagram_handle: inf.instagram_handle || null,
         seguidores_tiktok: inf.tiktok_handle ? (inf.seguidores || null) : null,
