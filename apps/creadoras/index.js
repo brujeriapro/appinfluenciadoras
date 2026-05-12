@@ -519,6 +519,49 @@ app.post('/api/webhooks/contenido', async (req, res) => {
   }
 });
 
+// ── WEBHOOK ENCUESTA PRODUCTOS (Tally → preferencias por teléfono) ──
+app.post('/api/webhooks/encuesta-productos', async (req, res) => {
+  try {
+    const fields = parseTallyFields(req.body?.data?.fields || []);
+
+    // El campo oculto 'tel' se pre-llena vía URL: ?tel=573...
+    const tel = tallyVal(fields, 'tel', 'telefono', 'teléfono', 'phone');
+
+    // Productos seleccionados (MULTIPLE_CHOICE, max 5)
+    // El label exacto que pusiste en Tally
+    const productosRaw = tallyVal(fields,
+      'productos favoritos', 'productos', 'products',
+      '¿cuáles son tus 5 productos favoritos de brujería capilar?',
+      '¿cuáles son tus 5 productos favoritos?',
+    );
+
+    if (!tel) {
+      console.warn('[webhook/encuesta] Submission sin campo tel');
+      return res.status(400).json({ error: 'Falta campo tel' });
+    }
+
+    // Buscar influencer por teléfono (normaliza internamente)
+    const inf = await supabase.getInfluencerByTelefono(tel);
+
+    if (!inf) {
+      console.warn(`[webhook/encuesta] Influencer no encontrada para tel=${tel}`);
+      return res.status(404).json({ error: 'Influencer no encontrada' });
+    }
+
+    const productos = productosRaw
+      ? productosRaw.split(',').map(p => p.trim()).filter(Boolean)
+      : [];
+
+    await supabase.updateInfluencer(inf.id, { productos_favoritos: productos });
+
+    console.log(`[webhook/encuesta] ${inf.nombre} → productos: ${productos.join(' | ')}`);
+    res.json({ ok: true, influencer: inf.nombre, productos });
+  } catch (e) {
+    console.error('[webhook/encuesta] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── CRON SEGUIMIENTO (Railway cron → POST cada lunes) ─────────────
 app.post('/api/cron/seguimiento', async (req, res) => {
   // Validar secret para que solo Railway pueda llamarlo

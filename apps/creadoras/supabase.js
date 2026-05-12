@@ -182,6 +182,18 @@ async function getInfluencerByEmail(email) {
   return results[0] || null;
 }
 
+async function getInfluencerByTelefono(telefono) {
+  if (!telefono) return null;
+  const digits = String(telefono).replace(/\D/g, '');
+  const norm = digits.startsWith('57') && digits.length === 12 ? digits : digits.length === 10 ? '57' + digits : digits;
+  // Probar número normalizado primero, luego el raw
+  let results = await supabaseGet('influencers', { telefono: `eq.${norm}`, limit: 1, select: '*' });
+  if (!results.length && norm !== digits) {
+    results = await supabaseGet('influencers', { telefono: `eq.${digits}`, limit: 1, select: '*' });
+  }
+  return results[0] || null;
+}
+
 async function getInfluencerByTikTok(handle) {
   if (!handle) return null;
   const clean = handle.replace('@', '').toLowerCase().trim();
@@ -300,4 +312,4 @@ async function updateSolicitudReenvio(id, data) {
   return supabasePatch('solicitudes_reenvio', { id }, { ...data, fecha_actualizacion: new Date().toISOString() });
 }
 
-module.exports = { getCandidatas, getCandidataById, updateCandidataStatus, aprobarCandidataComoInfluencer, getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, getInfluencerByTikTok, getInfluencerByInstagram, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate, insertSolicitudReenvio, getSolicitudesReenvio, updateSolicitudReenvio };
+module.exports = { getCandidatas, getCandidataById, updateCandidataStatus, aprobarCandidataComoInfluencer, getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, getInfluencerByTelefono, getInfluencerByTikTok, getInfluencerByInstagram, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate, insertSolicitudReenvio, getSolicitudesReenvio, updateSolicitudReenvio };
