@@ -808,13 +808,17 @@ app.get('/api/influencer/tally-urls', (req, res) => {
 
 // ── NOTIFICACIONES MANUALES (admin → WhatsApp) ───────────────────
 app.post('/api/admin/notificaciones', async (req, res) => {
-  const { influencer_ids, template } = req.body;
+  const { influencer_ids, template, status_filter } = req.body;
   if (!template) return res.status(400).json({ error: 'Template requerido' });
 
   try {
     let influencers;
     if (influencer_ids === 'all') {
       influencers = await supabase.getInfluencersConTelefono();
+      // Filtrar por status si se especifica (ej: "Registrada" para reenganche)
+      if (status_filter) {
+        influencers = influencers.filter(i => i.status === status_filter);
+      }
     } else if (Array.isArray(influencer_ids) && influencer_ids.length > 0) {
       influencers = (await Promise.all(influencer_ids.map(id => supabase.getInfluencerById(id)))).filter(Boolean);
     } else {
@@ -822,16 +826,16 @@ app.post('/api/admin/notificaciones', async (req, res) => {
     }
 
     // Templates de una sola vez — no se reenvían
-    const TEMPLATES_UNICOS = ['bienvenida_club_brujeria', 'bienvenida_kit', 'ideas_contenido_brujeria1'];
+    const TEMPLATES_UNICOS = ['bienvenida_club_brujeria', 'bienvenida_kit', 'ideas_contenido_brujeria1', 'reenganche_brujeria'];
 
     const resultados = [];
     for (const inf of influencers) {
       try {
-        // Bloquear si ya fue enviado y es template único
         const templateMeta = template === 'bienvenida_kit' ? 'bienvenida_club_brujeria'
           : template === 'bienvenida_club' ? 'bienvenida_club_brujeria'
           : template === 'recordatorio' ? 'explicacion_contenido_brujeria'
           : template === 'ideas' ? 'ideas_contenido_brujeria1'
+          : template === 'reenganche' ? 'reenganche_brujeria'
           : template === 'feedback_contenido' ? 'feedback_contenido_brujeria'
           : null;
 
