@@ -9,7 +9,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos } = require('./whatsapp');
 
 // Rutas públicas — portal influencer, guía, auth y webhooks
 const RUTAS_PUBLICAS = ['/influencer', '/guia', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones'];
@@ -840,6 +840,7 @@ app.post('/api/admin/notificaciones', async (req, res) => {
           : template === 'recordatorio' ? 'explicacion_contenido_brujeria'
           : template === 'ideas' ? 'ideas_contenido_brujeria1'
           : template === 'reenganche' ? 'reenganche_brujeria'
+          : template === 'encuesta' ? 'encuesta_productos_brujeria'
           : template === 'feedback_contenido' ? 'feedback_contenido_brujeria'
           : null;
 
@@ -857,6 +858,7 @@ app.post('/api/admin/notificaciones', async (req, res) => {
         else if (template === 'bienvenida_kit') wa = await enviarBienvenidaKit(inf, inf.codigo_descuento);
         else if (template === 'ideas') wa = await enviarIdeasContenido(inf);
         else if (template === 'reenganche') wa = await enviarReenganche(inf);
+        else if (template === 'encuesta') wa = await enviarEncuestaProductos(inf);
         else if (template === 'feedback_contenido') {
           const score = inf.score_total || 0;
           const nivel = inf.nivel_bruja || 'Magia Naciente';

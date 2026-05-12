@@ -127,6 +127,15 @@ async function enviarReenvioAprobado(telefono, nombre) {
   return enviarTemplate(telefono, 'reenvio_aprobado', [primerNombre]);
 }
 
+// Encuesta de productos favoritos (antes de preparar el kit)
+// Template: encuesta_productos_brujeria (pendiente aprobación Meta)
+// Variables: {{1}} nombre
+// Botón CTA apunta al Tally de preferencias de productos
+async function enviarEncuestaProductos(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
+  return enviarTemplate(influencer.telefono, 'encuesta_productos_brujeria', [nombre]);
+}
+
 // Re-enganche de creadoras antiguas para nuevo envío de producto
 // Template: reenganche_brujeria (pendiente aprobación Meta)
 // Variables: {{1}} nombre
@@ -144,4 +153,5 @@ module.exports = {
   enviarIdeasContenido,
   enviarReenvioAprobado,
   enviarReenganche,
+  enviarEncuestaProductos,
 };
