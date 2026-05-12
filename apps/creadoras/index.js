@@ -12,7 +12,7 @@ const { enviarRecordatorioContenido } = require('./email');
 const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche } = require('./whatsapp');
 
 // Rutas públicas — portal influencer, guía, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -808,7 +808,11 @@ app.get('/api/influencer/tally-urls', (req, res) => {
 
 // ── NOTIFICACIONES MANUALES (admin → WhatsApp) ───────────────────
 app.post('/api/admin/notificaciones', async (req, res) => {
-  const { influencer_ids, template, status_filter } = req.body;
+  const { influencer_ids, template, status_filter, token } = req.body;
+  const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
+  if (token !== IMPORT_TOKEN) {
+    return res.status(403).json({ error: 'Token inválido' });
+  }
   if (!template) return res.status(400).json({ error: 'Template requerido' });
 
   try {
