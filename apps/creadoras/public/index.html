@@ -685,9 +685,27 @@
 
       const abrirModal = async () => {
         const cfg = await API('/api/config/productos');
-        setProductos(cfg.productos || []);
-        setSkusSeleccionados([]);
+        const allProds = cfg.productos || [];
+        setProductos(allProds);
         setEnvioResult(null);
+
+        // Auto-preseleccionar top N según preferencias y tier
+        const prefs = data.productos_favoritos || [];
+        const n = tierSugerencia[data.tier] || 1;
+        if (prefs.length > 0) {
+          const autoSel = [];
+          for (const pref of prefs) {
+            if (autoSel.length >= n) break;
+            const match = allProds.find(p =>
+              p.nombre.toLowerCase().includes(pref.toLowerCase().split(' ')[0]) ||
+              pref.toLowerCase().includes(p.nombre.toLowerCase().split(' ')[0])
+            );
+            if (match && (match.stock === null || match.stock > 0)) autoSel.push(match.sku);
+          }
+          setSkusSeleccionados(autoSel);
+        } else {
+          setSkusSeleccionados([]);
+        }
         setModalDireccion(data.direccion_envio || '');
         setModalCiudad(data.ciudad || '');
         setModalDepartamento(data.departamento || '');
@@ -839,12 +857,32 @@
                       </div>
                     </div>
 
+                    {data.productos_favoritos && data.productos_favoritos.length > 0 && (
+                      <div style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--purple)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          💜 Sus preferencias (de mayor a menor)
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {data.productos_favoritos.map((p, i) => (
+                            <span key={i} style={{ fontSize: 12, padding: '2px 8px', borderRadius: 99, background: i === 0 ? 'rgba(139,92,246,0.3)' : 'var(--bg3)', color: i === 0 ? '#c084fc' : 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                              {i + 1}. {p}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div>
                       {productos.map((p) => {
                         const sel = skusSeleccionados.includes(p.sku);
                         const sinStock = p.stock !== null && p.stock <= 0;
                         const stockClass = p.stock === null ? '' : p.stock <= 0 ? 'stock-cero' : p.stock <= 5 ? 'stock-bajo' : 'stock-ok';
                         const stockLabel = p.stock === null ? '' : p.stock <= 0 ? 'Sin stock' : `${p.stock} uds`;
+                        const prefs = data.productos_favoritos || [];
+                        const prefIdx = prefs.findIndex(pref =>
+                          p.nombre.toLowerCase().includes(pref.toLowerCase().split(' ')[0]) ||
+                          pref.toLowerCase().includes(p.nombre.toLowerCase().split(' ')[0])
+                        );
                         return (
                           <div
                             key={p.sku}
@@ -853,6 +891,11 @@
                           >
                             <input type="checkbox" checked={sel} disabled={sinStock} onChange={() => !sinStock && toggleSku(p.sku)} />
                             <span className="producto-nombre">{p.nombre}</span>
+                            {prefIdx >= 0 && (
+                              <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 99, background: 'rgba(139,92,246,0.2)', color: '#c084fc', border: '1px solid rgba(139,92,246,0.4)', flexShrink: 0 }}>
+                                #{prefIdx + 1}
+                              </span>
+                            )}
                             <span className="producto-sku">{p.sku}</span>
                             {stockLabel && <span className={`producto-stock ${stockClass}`}>{stockLabel}</span>}
                           </div>
@@ -973,6 +1016,22 @@
                 </div>
               </div>
             </div>
+
+            {/* Preferencias de productos */}
+            {data.productos_favoritos && data.productos_favoritos.length > 0 && (
+              <div className="detail-card">
+                <h3>Preferencias de Productos</h3>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                  Ordenadas de mayor a menor según su encuesta
+                </p>
+                {data.productos_favoritos.map((p, i) => (
+                  <div key={i} className="detail-row">
+                    <span className="detail-label" style={{ minWidth: 24, color: i === 0 ? '#c084fc' : 'var(--text-muted)' }}>#{i + 1}</span>
+                    <span className="detail-value" style={{ color: i === 0 ? 'var(--text)' : 'var(--text-muted)', fontWeight: i === 0 ? 600 : 400 }}>{p}</span>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Código de descuento */}
             <div className="detail-card">
