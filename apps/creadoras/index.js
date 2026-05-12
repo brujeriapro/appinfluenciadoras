@@ -12,7 +12,7 @@ const { enviarRecordatorioContenido } = require('./email');
 const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos } = require('./whatsapp');
 
 // Rutas públicas — portal influencer, guía, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/preferencias', '/api/preferencias'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -558,6 +558,128 @@ app.post('/api/webhooks/encuesta-productos', async (req, res) => {
     res.json({ ok: true, influencer: inf.nombre, productos });
   } catch (e) {
     console.error('[webhook/encuesta] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── PREFERENCIAS DE PRODUCTOS ─────────────────────────────────────
+const PRODUCTOS_CATALOGO = [
+  'Termoprotector Capilar',
+  'Mascarilla Hechizo Total',
+  'Crema Para Rizos 3en1',
+  'Shampoo Ultra',
+  'Varita Mágica',
+  'Mist - Fragancias Corporales',
+];
+
+app.get('/preferencias', (req, res) => {
+  const items = PRODUCTOS_CATALOGO.map((p, i) => `
+    <li data-name="${p}">
+      <span class="num">${i + 1}</span>
+      <span class="product-name">${p}</span>
+      <span class="drag-icon">&#8942;</span>
+    </li>`).join('');
+
+  res.send(`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Tus preferencias — Brujería Capilar</title>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0a1e;color:#f0e6ff;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px 48px}
+.card{background:#1a1030;border:1px solid #3d2a6e;border-radius:20px;padding:32px 24px;max-width:480px;width:100%}
+.logo{text-align:center;font-size:26px;font-weight:700;letter-spacing:-0.5px;margin-bottom:6px;color:#c084fc}
+.logo span{color:#f0e6ff}
+.sub{text-align:center;font-size:13px;color:#9970d4;margin-bottom:28px}
+h1{font-size:18px;font-weight:600;text-align:center;line-height:1.4;margin-bottom:8px}
+.hint{text-align:center;font-size:13px;color:#9970d4;margin-bottom:24px}
+#ranking{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
+#ranking li{background:#2a1a4e;border:1px solid #4c3080;border-radius:12px;padding:16px 18px;cursor:grab;display:flex;align-items:center;gap:14px;user-select:none;touch-action:none;transition:background .15s,border-color .15s}
+#ranking li:active{cursor:grabbing}
+#ranking li.sortable-ghost{background:#3d1f6e;border-color:#8b5cf6;opacity:.6}
+.num{width:26px;height:26px;border-radius:50%;background:#6d28d9;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.drag-icon{color:#6b4fa0;font-size:22px;flex-shrink:0;margin-left:auto}
+.product-name{font-size:15px;font-weight:500;flex:1}
+button{width:100%;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;border-radius:12px;padding:16px;font-size:16px;font-weight:600;cursor:pointer;transition:opacity .2s}
+button:hover{opacity:.9}
+button:disabled{opacity:.5;cursor:default}
+.success{display:none;text-align:center;padding:20px 0}
+.success .emoji{font-size:52px;margin-bottom:16px}
+.success h2{font-size:22px;font-weight:700;margin-bottom:10px;color:#c084fc}
+.success p{font-size:15px;color:#9970d4;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">Brujería <span>Capilar</span></div>
+  <div class="sub">Programa Creadoras ✨</div>
+  <h1>¿Qué productos quieres recibir?</h1>
+  <p class="hint">Arrastra para ordenar del que más al que menos quieres 👇</p>
+  <ul id="ranking">${items}</ul>
+  <button id="btn" onclick="enviar()">Enviar mis preferencias 💜</button>
+  <div class="success" id="ok">
+    <div class="emoji">🔮</div>
+    <h2>¡Gracias!</h2>
+    <p>Recibimos tus preferencias.<br>Pronto te avisamos qué productos incluiremos en tu kit.</p>
+  </div>
+</div>
+<script>
+const tel = new URLSearchParams(location.search).get('tel') || '';
+const list = document.getElementById('ranking');
+Sortable.create(list, {
+  animation: 150,
+  ghostClass: 'sortable-ghost',
+  onEnd() {
+    list.querySelectorAll('li').forEach((li, i) => {
+      li.querySelector('.num').textContent = i + 1;
+    });
+  },
+});
+async function enviar() {
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+  const productos = [...list.querySelectorAll('li')].map(li => li.dataset.name);
+  try {
+    const r = await fetch('/api/preferencias', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ tel, productos }),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    list.style.display = 'none';
+    btn.style.display = 'none';
+    document.getElementById('ok').style.display = 'block';
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Enviar mis preferencias 💜';
+    alert('Error al enviar. Intenta de nuevo.');
+  }
+}
+</script>
+</body>
+</html>`);
+});
+
+app.post('/api/preferencias', async (req, res) => {
+  try {
+    const { tel, productos } = req.body;
+    if (!tel || !Array.isArray(productos) || productos.length === 0) {
+      return res.status(400).json({ error: 'Faltan tel o productos' });
+    }
+    const inf = await supabase.getInfluencerByTelefono(tel);
+    if (!inf) {
+      console.warn(`[preferencias] Influencer no encontrada: ${tel}`);
+      return res.status(404).json({ error: 'Influencer no encontrada' });
+    }
+    await supabase.updateInfluencer(inf.id, { productos_favoritos: productos });
+    console.log(`[preferencias] ${inf.nombre} → ${productos.join(' > ')}`);
+    res.json({ ok: true, nombre: inf.nombre });
+  } catch (e) {
+    console.error('[preferencias] Error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
