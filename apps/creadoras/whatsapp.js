@@ -127,6 +127,14 @@ async function enviarReenvioAprobado(telefono, nombre) {
   return enviarTemplate(telefono, 'reenvio_aprobado', [primerNombre]);
 }
 
+// Re-enganche de creadoras antiguas para nuevo envío de producto
+// Template: reenganche_brujeria (pendiente aprobación Meta)
+// Variables: {{1}} nombre
+async function enviarReenganche(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
+  return enviarTemplate(influencer.telefono, 'reenganche_brujeria', [nombre]);
+}
+
 module.exports = {
   enviarBienvenidaKit,
   enviarRecordatorioWhatsApp,
@@ -135,4 +143,5 @@ module.exports = {
   enviarCelebracionNivel,
   enviarIdeasContenido,
   enviarReenvioAprobado,
+  enviarReenganche,
 };

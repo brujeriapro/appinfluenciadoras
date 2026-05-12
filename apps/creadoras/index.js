@@ -9,7 +9,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche } = require('./whatsapp');
 
 // Rutas públicas — portal influencer, guía, auth y webhooks
 const RUTAS_PUBLICAS = ['/influencer', '/guia', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/'];
@@ -848,6 +848,7 @@ app.post('/api/admin/notificaciones', async (req, res) => {
         else if (template === 'recordatorio') wa = await enviarRecordatorioWhatsApp(inf);
         else if (template === 'bienvenida_kit') wa = await enviarBienvenidaKit(inf, inf.codigo_descuento);
         else if (template === 'ideas') wa = await enviarIdeasContenido(inf);
+        else if (template === 'reenganche') wa = await enviarReenganche(inf);
         else if (template === 'feedback_contenido') {
           const score = inf.score_total || 0;
           const nivel = inf.nivel_bruja || 'Magia Naciente';
@@ -871,6 +872,52 @@ app.post('/api/admin/notificaciones', async (req, res) => {
     console.error('[admin/notificaciones] Error:', e.message);
     res.status(500).json({ error: e.message });
   }
+});
+
+// ── IMPORTACIÓN MASIVA DE INFLUENCERS (admin) ───────────────────
+app.post('/api/admin/influencers/bulk-import', async (req, res) => {
+  const { influencers } = req.body;
+  if (!Array.isArray(influencers) || influencers.length === 0) {
+    return res.status(400).json({ error: 'Se requiere un array de influencers' });
+  }
+
+  const resultados = { creadas: [], omitidas: [], errores: [] };
+
+  for (const inf of influencers) {
+    try {
+      // Dedup por email, teléfono o handle
+      let existe = null;
+      if (inf.email) existe = await supabase.getInfluencerByEmail(inf.email.toLowerCase().trim());
+      if (!existe && inf.tiktok_handle) existe = await supabase.getInfluencerByTikTok(inf.tiktok_handle);
+      if (!existe && inf.instagram_handle) existe = await supabase.getInfluencerByInstagram(inf.instagram_handle);
+
+      if (existe) {
+        resultados.omitidas.push({ nombre: inf.nombre, razon: `ya existe (id=${existe.id})` });
+        continue;
+      }
+
+      const nueva = await supabase.insertInfluencer({
+        nombre: inf.nombre,
+        telefono: inf.telefono || null,
+        email: inf.email || null,
+        ciudad: inf.ciudad || null,
+        direccion: inf.direccion || null,
+        tiktok_handle: inf.tiktok_handle || null,
+        instagram_handle: inf.instagram_handle || null,
+        seguidores_tiktok: inf.tiktok_handle ? (inf.seguidores || null) : null,
+        seguidores_instagram: inf.instagram_handle && !inf.tiktok_handle ? (inf.seguidores || null) : null,
+        tier: inf.tier || 'Nano',
+        status: 'Registrada',
+        fuente: 'importacion_historica',
+      });
+      resultados.creadas.push({ nombre: inf.nombre, id: nueva?.id });
+    } catch (e) {
+      resultados.errores.push({ nombre: inf.nombre, error: e.message });
+    }
+  }
+
+  console.log(`[bulk-import] ${resultados.creadas.length} creadas | ${resultados.omitidas.length} omitidas | ${resultados.errores.length} errores`);
+  res.json({ ok: true, ...resultados });
 });
 
 // Servir frontend para cualquier ruta no-API
