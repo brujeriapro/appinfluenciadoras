@@ -12,7 +12,7 @@ function normalizarTelefono(tel) {
   return digits;
 }
 
-async function enviarTemplate(telefono, templateName, params = []) {
+async function enviarTemplate(telefono, templateName, params = [], buttonUrlVar = null) {
   const { token, phone_id } = config.whatsapp;
   if (!token || !phone_id) {
     console.warn('[whatsapp] No configurado — omitiendo mensaje');
@@ -26,6 +26,15 @@ async function enviarTemplate(telefono, templateName, params = []) {
     return { skipped: true };
   }
 
+  const components = [];
+  if (params.length > 0) {
+    components.push({ type: 'body', parameters: params.map(p => ({ type: 'text', text: String(p) })) });
+  }
+  // Variable dinámica del botón URL (ej: teléfono para pre-llenar Tally)
+  if (buttonUrlVar) {
+    components.push({ type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: String(buttonUrlVar) }] });
+  }
+
   const body = {
     messaging_product: 'whatsapp',
     to: numero,
@@ -33,10 +42,7 @@ async function enviarTemplate(telefono, templateName, params = []) {
     template: {
       name: templateName,
       language: { code: 'es_CO' },
-      components: params.length > 0 ? [{
-        type: 'body',
-        parameters: params.map(p => ({ type: 'text', text: String(p) })),
-      }] : [],
+      components,
     },
   };
 
@@ -133,7 +139,9 @@ async function enviarReenvioAprobado(telefono, nombre) {
 // Botón CTA apunta al Tally de preferencias de productos
 async function enviarEncuestaProductos(influencer) {
   const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
-  return enviarTemplate(influencer.telefono, 'encuesta_productos_brujeria', [nombre]);
+  // Pasa el teléfono como variable del botón URL → Tally lo recibe como ?tel=573...
+  const tel = normalizarTelefono(influencer.telefono) || '';
+  return enviarTemplate(influencer.telefono, 'encuesta_productos_brujeria', [nombre], tel);
 }
 
 // Re-enganche de creadoras antiguas para nuevo envío de producto
