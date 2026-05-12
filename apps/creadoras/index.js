@@ -540,6 +540,60 @@ app.post('/api/webhooks/registro', async (req, res) => {
   }
 });
 
+// ── SUBIR CONTENIDO desde portal (JWT auth) ───────────────────────
+app.post('/api/influencer/contenido', authMiddleware, async (req, res) => {
+  try {
+    const { url_contenido, plataforma, tipo_contenido, vistas, likes, guardados } = req.body;
+    if (!url_contenido) return res.status(400).json({ error: 'Se requiere url_contenido' });
+
+    const influencer = await supabase.getInfluencerById(req.influencerId);
+    if (!influencer) return res.status(404).json({ error: 'Influencer no encontrada' });
+
+    const plat = plataforma || 'Instagram';
+    const seguidores = plat.toLowerCase() === 'tiktok'
+      ? (influencer.seguidores_tiktok || influencer.seguidores_instagram || 1)
+      : (influencer.seguidores_instagram || influencer.seguidores_tiktok || 1);
+
+    const score = calcularScore({
+      vistas: parseInt(vistas) || 0,
+      likes: parseInt(likes) || 0,
+      guardados: parseInt(guardados) || null,
+      seguidores,
+      plataforma: plat,
+      tipo_contenido: tipo_contenido || 'Reel',
+      calificacion_equipo: null,
+    });
+
+    await supabase.insertContenido({
+      influencer_id: influencer.id,
+      fecha_submision: new Date().toISOString(),
+      tipo_contenido: tipo_contenido || 'Reel',
+      plataforma: plat,
+      url_contenido,
+      vistas: parseInt(vistas) || 0,
+      likes: parseInt(likes) || 0,
+      guardados: parseInt(guardados) || null,
+      score_contenido: score,
+    });
+
+    const todos = await supabase.getContenidos(influencer.id);
+    const scoreAcumulado = todos.reduce((s, c) => s + (c.score_contenido || 0), 0);
+    const nivel = calcularNivel(scoreAcumulado);
+
+    await supabase.updateInfluencer(influencer.id, {
+      status: 'Contenido Entregado',
+      nivel_bruja: nivel,
+      score_total: scoreAcumulado,
+    });
+
+    console.log(`[influencer/contenido] ${influencer.nombre} | score: ${score} | nivel: ${nivel}`);
+    res.json({ ok: true, score, nivel, score_acumulado: scoreAcumulado });
+  } catch (e) {
+    console.error('[influencer/contenido] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── WEBHOOK CONTENIDO (Tally → auto-score) ───────────────────────
 app.post('/api/webhooks/contenido', async (req, res) => {
   try {
