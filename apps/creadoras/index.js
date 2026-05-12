@@ -236,7 +236,7 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
 
 // ── ENVÍO MASIVO DE KITS (token protegido) ────────────────────────
 app.post('/api/admin/enviar-kits-bulk', async (req, res) => {
-  const { token, skus, primera_preferencia, dry_run } = req.body;
+  const { token, skus, primera_preferencia, dry_run, exclude_ids = [] } = req.body;
   const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
   if (token !== IMPORT_TOKEN) return res.status(403).json({ error: 'Token inválido' });
   if (!skus || !Array.isArray(skus) || skus.length === 0) return res.status(400).json({ error: 'Se requieren SKUs' });
@@ -250,7 +250,8 @@ app.post('/api/admin/enviar-kits-bulk', async (req, res) => {
       Array.isArray(i.productos_favoritos) &&
       i.productos_favoritos.length > 0 &&
       i.productos_favoritos[0].toLowerCase().includes(filtro) &&
-      !['Producto Enviado', 'Contenido Entregado', 'Calificada'].includes(i.status)
+      !['Producto Enviado', 'Contenido Entregado', 'Calificada'].includes(i.status) &&
+      !exclude_ids.includes(i.id)
     );
 
     const conDir = candidatas.filter(i => i.direccion_envio && i.ciudad);
