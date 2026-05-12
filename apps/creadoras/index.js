@@ -419,6 +419,7 @@ app.post('/api/webhooks/registro', async (req, res) => {
       if (tipoCabello) actualizaciones.tipo_cabello = tipoCabello;
       if (segInsta && !existe.seguidores_instagram) actualizaciones.seguidores_instagram = segInsta;
       if (segTiktok && !existe.seguidores_tiktok)   actualizaciones.seguidores_tiktok = segTiktok;
+      actualizaciones.fuente = 'tally';
       await supabase.updateInfluencer(existe.id, actualizaciones);
       console.log(`[webhook/registro] Vinculada: ${existe.nombre || nombre} → status Registrada`);
       return res.json({ ok: true, mensaje: 'Vinculada y actualizada', id: existe.id });
@@ -442,6 +443,7 @@ app.post('/api/webhooks/registro', async (req, res) => {
       tipo_cabello: tipoCabello || null,
       tier,
       status: 'Registrada',
+      fuente: 'tally',
     });
 
     console.log(`[webhook/registro] Nueva influencer: ${nombre} | ${tier} | pendiente de envío por admin`);
@@ -973,7 +975,7 @@ app.get('/api/influencer/tally-urls', (req, res) => {
 
 // ── NOTIFICACIONES MANUALES (admin → WhatsApp) ───────────────────
 app.post('/api/admin/notificaciones', async (req, res) => {
-  const { influencer_ids, template, status_filter, token } = req.body;
+  const { influencer_ids, template, status_filter, fuente_filter, token } = req.body;
   const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
   if (token !== IMPORT_TOKEN) {
     return res.status(403).json({ error: 'Token inválido' });
@@ -988,6 +990,9 @@ app.post('/api/admin/notificaciones', async (req, res) => {
       if (status_filter) {
         influencers = influencers.filter(i => i.status === status_filter);
       }
+      if (fuente_filter) {
+        influencers = influencers.filter(i => i.fuente === fuente_filter);
+      }
     } else if (Array.isArray(influencer_ids) && influencer_ids.length > 0) {
       influencers = (await Promise.all(influencer_ids.map(id => supabase.getInfluencerById(id)))).filter(Boolean);
     } else {
@@ -995,7 +1000,7 @@ app.post('/api/admin/notificaciones', async (req, res) => {
     }
 
     // Templates de una sola vez — no se reenvían
-    const TEMPLATES_UNICOS = ['bienvenida_club_brujeria', 'bienvenida_kit', 'ideas_contenido_brujeria1', 'reenganche_brujeria'];
+    const TEMPLATES_UNICOS = ['bienvenida_club_brujeria', 'bienvenida_kit', 'ideas_contenido_brujeria1', 'reenganche_brujeria', 'encuesta_productos_brujeria'];
 
     const resultados = [];
     for (const inf of influencers) {
