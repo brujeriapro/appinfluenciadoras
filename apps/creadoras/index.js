@@ -12,7 +12,7 @@ const { enviarRecordatorioContenido } = require('./email');
 const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos } = require('./whatsapp');
 
 // Rutas públicas — portal influencer, guía, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/preferencias', '/api/preferencias'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -230,6 +230,87 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
     });
   } catch (e) {
     console.error('Error en enviar kit:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── ENVÍO MASIVO DE KITS (token protegido) ────────────────────────
+app.post('/api/admin/enviar-kits-bulk', async (req, res) => {
+  const { token, skus, primera_preferencia, dry_run } = req.body;
+  const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
+  if (token !== IMPORT_TOKEN) return res.status(403).json({ error: 'Token inválido' });
+  if (!skus || !Array.isArray(skus) || skus.length === 0) return res.status(400).json({ error: 'Se requieren SKUs' });
+  if (!primera_preferencia) return res.status(400).json({ error: 'Se requiere primera_preferencia' });
+
+  try {
+    const todas = await supabase.getInfluencers();
+    const filtro = primera_preferencia.toLowerCase();
+
+    const candidatas = todas.filter(i =>
+      Array.isArray(i.productos_favoritos) &&
+      i.productos_favoritos.length > 0 &&
+      i.productos_favoritos[0].toLowerCase().includes(filtro) &&
+      !['Producto Enviado', 'Contenido Entregado', 'Calificada'].includes(i.status)
+    );
+
+    const conDir = candidatas.filter(i => i.direccion_envio && i.ciudad);
+    const sinDir = candidatas.filter(i => !i.direccion_envio || !i.ciudad);
+
+    if (dry_run) {
+      return res.json({
+        dry_run: true,
+        total_candidatas: candidatas.length,
+        con_direccion: conDir.length,
+        sin_direccion: sinDir.length,
+        candidatas: conDir.map(i => ({
+          id: i.id, nombre: i.nombre, tier: i.tier, ciudad: i.ciudad,
+          primera_preferencia: i.productos_favoritos[0],
+        })),
+        saltadas: sinDir.map(i => ({ id: i.id, nombre: i.nombre, razon: 'Sin dirección' })),
+      });
+    }
+
+    const resultados = { enviados: [], saltados: sinDir.map(i => ({ nombre: i.nombre, razon: 'Sin dirección' })), errores: [] };
+
+    for (const inf of conDir) {
+      try {
+        const kitLabel = 'Kit Mascarilla';
+        const shopifyResult = await shopify.createGiftingOrder(inf, skus, kitLabel);
+        await supabase.updateEnvio(inf.id, { skus, shopify_order_id: shopifyResult.shopify_order_id, kit_asignado: kitLabel });
+
+        if (!inf.codigo_descuento) {
+          const handle = (inf.instagram_handle || inf.nombre || 'CREADORA').replace(/[^a-zA-Z0-9]/g, '');
+          try {
+            const codigo = await shopify.createDiscountCode(handle);
+            await supabase.updateInfluencer(inf.id, { codigo_descuento: codigo });
+          } catch (e) { /* no fatal */ }
+        }
+
+        try {
+          const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'bienvenida_club_brujeria');
+          if (!yaEnviado) {
+            const wa = await enviarBienvenidaKit(inf, inf.codigo_descuento);
+            if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'bienvenida_club_brujeria', 'kit');
+          }
+        } catch (e) { /* WhatsApp no bloquea */ }
+
+        try {
+          await siigo.registrarSalidaGifting(skus, inf.nombre, inf.instagram_handle || '', shopifyResult.shopify_order_id);
+        } catch (e) { /* Siigo no bloquea */ }
+
+        resultados.enviados.push({ nombre: inf.nombre, orden: shopifyResult.shopify_order_id });
+        console.log(`[bulk-kits] ✓ ${inf.nombre} → orden ${shopifyResult.shopify_order_id}`);
+        await new Promise(r => setTimeout(r, 500));
+      } catch (e) {
+        resultados.errores.push({ nombre: inf.nombre, error: e.message });
+        console.error(`[bulk-kits] ✗ ${inf.nombre}: ${e.message}`);
+      }
+    }
+
+    console.log(`[bulk-kits] Enviados: ${resultados.enviados.length} | Errores: ${resultados.errores.length} | Saltados: ${resultados.saltados.length}`);
+    res.json({ ok: true, ...resultados });
+  } catch (e) {
+    console.error('[bulk-kits] Error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
