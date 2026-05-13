@@ -175,7 +175,7 @@ async function getInfluencersConTelefono() {
 
 async function getInfluencerByEmail(email) {
   const results = await supabaseGet('influencers', {
-    email: `eq.${email}`,
+    email: `ilike.${email}`,
     limit: 1,
     select: '*',
   });
