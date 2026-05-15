@@ -263,6 +263,26 @@
   </style>
 </head>
 <body>
+  <!-- Pantalla de carga visible mientras Babel transpila el JSX -->
+  <div id="babel-loading" style="
+    min-height:100vh; display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    background:linear-gradient(160deg,#fff0f9 0%,#fffbea 100%);
+    font-family:'Inter',sans-serif; gap:20px;
+  ">
+    <img src="https://brujeriacapilar.com/cdn/shop/files/Asset_57brujeria_2_b689e4cc-5724-4fae-962a-211a53578613.png?v=1751472378"
+      style="height:48px;object-fit:contain;" alt="Brujería Capilar" />
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+      <div style="
+        width:36px;height:36px;border-radius:50%;
+        border:3px solid #f0d0e8;border-top-color:#c0298b;
+        animation:spin 0.8s linear infinite;
+      "></div>
+      <p style="color:#9b6ea0;font-size:14px;margin:0;">Cargando tu portal...</p>
+    </div>
+  </div>
+  <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
   <div id="root"></div>
   <script type="text/babel">
     const { useState, useEffect } = React;
@@ -1035,6 +1055,10 @@
       }
       return <Dashboard nombre={nombre} onLogout={onLogout} />;
     }
+
+    // Ocultar pantalla de carga una vez que React monta
+    const loadingEl = document.getElementById('babel-loading');
+    if (loadingEl) loadingEl.style.display = 'none';
 
     ReactDOM.createRoot(document.getElementById('root')).render(<App />);
   </script>
