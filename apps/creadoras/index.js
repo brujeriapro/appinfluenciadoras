@@ -975,7 +975,7 @@ app.post('/api/cron/confirmacion-llegada', async (req, res) => {
       if (!i.fecha_envio) return false;
       if (i.fecha_confirmacion_recibo) return false; // ya confirmÃ³
       const dias = Math.floor((hoy - new Date(i.fecha_envio)) / (1000 * 60 * 60 * 24));
-      return dias === 5;
+      return dias >= 5;
     });
 
     const resultados = [];
