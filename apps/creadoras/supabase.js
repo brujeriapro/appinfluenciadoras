@@ -182,19 +182,19 @@ async function getInfluencerByEmail(email) {
   return results[0] || null;
 }
 
+function _normTel(t) {
+  if (!t) return '';
+  return String(t).replace(/\D/g, '').slice(-10);
+}
+
 async function getInfluencerByTelefono(telefono) {
   if (!telefono) return null;
-  const digits = String(telefono).replace(/\D/g, '');
-  const norm = digits.startsWith('57') && digits.length === 12 ? digits : digits.length === 10 ? '57' + digits : digits;
-  const local = norm.length >= 10 ? norm.slice(-10) : norm;
-
-  // 1. Normalizado exacto (573XXXXXXXXXX)
-  let results = await supabaseGet('influencers', { telefono: `eq.${norm}`, limit: 1, select: '*' });
-  // 2. Sin código de país (3XXXXXXXXXX)
-  if (!results.length) results = await supabaseGet('influencers', { telefono: `eq.${local}`, limit: 1, select: '*' });
-  // 3. Terminado en los últimos 10 dígitos (captura +57..., con espacios, etc.)
-  if (!results.length) results = await supabaseGet('influencers', { telefono: `ilike.%${local}`, limit: 1, select: '*' });
-  return results[0] || null;
+  const buscar = _normTel(telefono);
+  if (!buscar) return null;
+  // Cargar todas con teléfono y comparar últimos 10 dígitos en Node
+  // (evita problemas de formato: +57, espacios, con/sin código país)
+  const todas = await supabaseGet('influencers', { select: 'id,nombre,telefono,status,tier,nivel_bruja,fecha_envio,fecha_confirmacion_recibo,instagram_handle,score_total', telefono: 'not.is.null' });
+  return todas.find(i => _normTel(i.telefono) === buscar) || null;
 }
 
 async function getInfluencerByTikTok(handle) {
