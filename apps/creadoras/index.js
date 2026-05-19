@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const config = require('./config');
@@ -11,7 +11,7 @@ const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
 const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos } = require('./whatsapp');
 
-// Rutas públicas — portal influencer, guía, auth y webhooks
+// Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
 const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa'];
 
 function adminAuth(req, res, next) {
@@ -46,7 +46,7 @@ function authMiddleware(req, res, next) {
     req.influencerId = payload.id;
     next();
   } catch (e) {
-    res.status(401).json({ error: 'Token inválido o expirado' });
+    res.status(401).json({ error: 'Token invÃ¡lido o expirado' });
   }
 }
 
@@ -58,7 +58,7 @@ app.use(express.json());
 app.use(adminAuth);
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── STATS DASHBOARD ──────────────────────────────────────────────
+// â”€â”€ STATS DASHBOARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/api/stats', async (req, res) => {
   try {
     const preciosPorSku = await shopify.getPreciosPorSku();
@@ -69,7 +69,7 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
-// ── INFLUENCERS ───────────────────────────────────────────────────
+// â”€â”€ INFLUENCERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/api/influencers/notificaciones-todas', async (req, res) => {
   try {
     const { influencer_ids } = req.query;
@@ -132,7 +132,7 @@ app.patch('/api/influencers/:id', async (req, res) => {
   }
 });
 
-// ── PRODUCTOS SHOPIFY (con stock real) ───────────────────────────
+// â”€â”€ PRODUCTOS SHOPIFY (con stock real) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/api/config/productos', async (req, res) => {
   try {
     const productos = await shopify.getProductosConStock();
@@ -143,7 +143,7 @@ app.get('/api/config/productos', async (req, res) => {
   }
 });
 
-// ── ENVIAR KIT ────────────────────────────────────────────────────
+// â”€â”€ ENVIAR KIT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.post('/api/influencers/:id/enviar', async (req, res) => {
   const { skus, kit_nombre, direccion_envio, ciudad, departamento, telefono, codigo_postal } = req.body;
   if (!skus || !Array.isArray(skus) || skus.length === 0) {
@@ -154,7 +154,7 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
     const influencer = await supabase.getInfluencerById(req.params.id);
     if (!influencer) return res.status(404).json({ error: 'Influencer no encontrada' });
 
-    // Aplicar dirección del modal (puede estar corregida por el admin)
+    // Aplicar direcciÃ³n del modal (puede estar corregida por el admin)
     const camposDir = {};
     if (direccion_envio !== undefined) camposDir.direccion_envio = direccion_envio;
     if (ciudad !== undefined) camposDir.ciudad = ciudad;
@@ -164,7 +164,7 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
 
     const influencerParaOrden = { ...influencer, ...camposDir };
 
-    // Persistir correcciones de dirección en Supabase si cambiaron
+    // Persistir correcciones de direcciÃ³n en Supabase si cambiaron
     const huboCambio = Object.entries(camposDir).some(([k, v]) => v && v !== influencer[k]);
     if (huboCambio) await supabase.updateInfluencer(req.params.id, camposDir);
 
@@ -179,14 +179,14 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
       kit_asignado: kit_nombre || null,
     });
 
-    // 2b. Auto-crear código de descuento si no tiene uno
+    // 2b. Auto-crear cÃ³digo de descuento si no tiene uno
     if (!influencer.codigo_descuento) {
       const handle = (influencer.instagram_handle || influencer.nombre || 'CREADORA').replace(/[^a-zA-Z0-9]/g, '');
       let codigo;
       try {
         codigo = await shopify.createDiscountCode(handle);
       } catch (e) {
-        console.warn('createDiscountCode falló, usando código local:', e.message);
+        console.warn('createDiscountCode fallÃ³, usando cÃ³digo local:', e.message);
         codigo = shopify.generateDiscountCode(handle);
       }
       await supabase.updateInfluencer(req.params.id, { codigo_descuento: codigo });
@@ -234,11 +234,11 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
   }
 });
 
-// ── ENVÍO MASIVO DE KITS (token protegido) ────────────────────────
+// â”€â”€ ENVÃO MASIVO DE KITS (token protegido) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.post('/api/admin/enviar-kits-bulk', async (req, res) => {
   const { token, skus, primera_preferencia, dry_run, exclude_ids = [] } = req.body;
   const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
-  if (token !== IMPORT_TOKEN) return res.status(403).json({ error: 'Token inválido' });
+  if (token !== IMPORT_TOKEN) return res.status(403).json({ error: 'Token invÃ¡lido' });
   if (!skus || !Array.isArray(skus) || skus.length === 0) return res.status(400).json({ error: 'Se requieren SKUs' });
   if (!primera_preferencia) return res.status(400).json({ error: 'Se requiere primera_preferencia' });
 
@@ -271,11 +271,11 @@ app.post('/api/admin/enviar-kits-bulk', async (req, res) => {
           tiktok_handle: i.tiktok_handle || null,
           instagram_handle: i.instagram_handle || null,
         })),
-        saltadas: sinDir.map(i => ({ id: i.id, nombre: i.nombre, razon: 'Sin dirección' })),
+        saltadas: sinDir.map(i => ({ id: i.id, nombre: i.nombre, razon: 'Sin direcciÃ³n' })),
       });
     }
 
-    const resultados = { enviados: [], saltados: sinDir.map(i => ({ nombre: i.nombre, razon: 'Sin dirección' })), errores: [] };
+    const resultados = { enviados: [], saltados: sinDir.map(i => ({ nombre: i.nombre, razon: 'Sin direcciÃ³n' })), errores: [] };
 
     for (const inf of conDir) {
       try {
@@ -304,11 +304,11 @@ app.post('/api/admin/enviar-kits-bulk', async (req, res) => {
         } catch (e) { /* Siigo no bloquea */ }
 
         resultados.enviados.push({ nombre: inf.nombre, orden: shopifyResult.shopify_order_id });
-        console.log(`[bulk-kits] ✓ ${inf.nombre} → orden ${shopifyResult.shopify_order_id}`);
+        console.log(`[bulk-kits] âœ“ ${inf.nombre} â†’ orden ${shopifyResult.shopify_order_id}`);
         await new Promise(r => setTimeout(r, 500));
       } catch (e) {
         resultados.errores.push({ nombre: inf.nombre, error: e.message });
-        console.error(`[bulk-kits] ✗ ${inf.nombre}: ${e.message}`);
+        console.error(`[bulk-kits] âœ— ${inf.nombre}: ${e.message}`);
       }
     }
 
@@ -320,11 +320,11 @@ app.post('/api/admin/enviar-kits-bulk', async (req, res) => {
   }
 });
 
-// ── CALIFICAR CONTENIDO (admin) ───────────────────────────────────
+// â”€â”€ CALIFICAR CONTENIDO (admin) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.patch('/api/contenidos/:id/calificar', async (req, res) => {
   const { calificacion } = req.body;
   if (!calificacion || calificacion < 1 || calificacion > 5) {
-    return res.status(400).json({ error: 'Calificación debe ser 1–5' });
+    return res.status(400).json({ error: 'CalificaciÃ³n debe ser 1â€“5' });
   }
   try {
     const contenido = await supabase.getContenidoById(req.params.id);
@@ -356,7 +356,7 @@ app.patch('/api/contenidos/:id/calificar', async (req, res) => {
     const nivel = calcularNivel(scoreTotal);
     await supabase.updateInfluencer(contenido.influencer_id, { score_total: scoreTotal, nivel_bruja: nivel });
 
-    console.log(`[calificar] contenido ${req.params.id} → calificacion ${calificacion} → score ${nuevoScore} | influencer score total: ${scoreTotal}`);
+    console.log(`[calificar] contenido ${req.params.id} â†’ calificacion ${calificacion} â†’ score ${nuevoScore} | influencer score total: ${scoreTotal}`);
     res.json({ ok: true, score_contenido: nuevoScore, score_total: scoreTotal, nivel });
   } catch (e) {
     console.error('[calificar] Error:', e.message);
@@ -364,7 +364,7 @@ app.patch('/api/contenidos/:id/calificar', async (req, res) => {
   }
 });
 
-// ── CONTENIDOS ────────────────────────────────────────────────────
+// â”€â”€ CONTENIDOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/api/contenidos', async (req, res) => {
   try {
     const contenidos = await supabase.getContenidos();
@@ -374,11 +374,11 @@ app.get('/api/contenidos', async (req, res) => {
   }
 });
 
-// ── ROI / VENTAS SHOPIFY ──────────────────────────────────────────
+// â”€â”€ ROI / VENTAS SHOPIFY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/api/roi', async (req, res) => {
   try {
     const { desde, hasta } = req.query;
-    if (!desde || !hasta) return res.status(400).json({ error: 'Parámetros desde y hasta requeridos' });
+    if (!desde || !hasta) return res.status(400).json({ error: 'ParÃ¡metros desde y hasta requeridos' });
 
     const ventas = await shopify.getVentas(desde, hasta);
 
@@ -412,14 +412,14 @@ app.get('/api/roi', async (req, res) => {
   }
 });
 
-// Ventas atribuidas a una influencer por código de descuento
+// Ventas atribuidas a una influencer por cÃ³digo de descuento
 app.get('/api/roi/influencer/:id', async (req, res) => {
   try {
     const { desde, hasta } = req.query;
     const influencer = await supabase.getInfluencerById(req.params.id);
     if (!influencer) return res.status(404).json({ error: 'No encontrada' });
     if (!influencer.codigo_descuento) {
-      return res.json({ atribuido: 0, mensaje: 'Sin código de descuento asignado' });
+      return res.json({ atribuido: 0, mensaje: 'Sin cÃ³digo de descuento asignado' });
     }
     const ventas = await shopify.getVentas(desde, hasta, influencer.codigo_descuento);
     res.json({
@@ -433,13 +433,13 @@ app.get('/api/roi/influencer/:id', async (req, res) => {
   }
 });
 
-// ── HELPERS TALLY ─────────────────────────────────────────────────
+// â”€â”€ HELPERS TALLY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function parseTallyFields(fields = []) {
   const map = {};
   fields.forEach(f => {
     const key = (f.label || '').toLowerCase().trim();
     let value = f.value;
-    // Resolver UUIDs de MULTIPLE_CHOICE / CHECKBOXES al texto de la opción
+    // Resolver UUIDs de MULTIPLE_CHOICE / CHECKBOXES al texto de la opciÃ³n
     if (Array.isArray(value)) {
       if (Array.isArray(f.options) && f.options.length > 0) {
         const optMap = {};
@@ -447,7 +447,7 @@ function parseTallyFields(fields = []) {
         const resueltos = value.map(uuid => optMap[uuid]).filter(Boolean);
         value = resueltos.length === 1 ? resueltos[0] : resueltos.join(', ') || null;
       } else {
-        value = null; // Array de UUIDs sin opciones para resolver — ignorar
+        value = null; // Array de UUIDs sin opciones para resolver â€” ignorar
       }
     }
     map[key] = value;
@@ -463,21 +463,21 @@ function tallyVal(map, ...keys) {
   return null;
 }
 
-// ── WEBHOOK REGISTRO (Tally → Supabase, sin auto-envío) ──────────
+// â”€â”€ WEBHOOK REGISTRO (Tally â†’ Supabase, sin auto-envÃ­o) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.post('/api/webhooks/registro', async (req, res) => {
   try {
     const fields = parseTallyFields(req.body?.data?.fields || []);
 
     const nombre    = tallyVal(fields, 'nombre completo', 'nombre', 'name');
     const email     = tallyVal(fields, 'email', 'correo', 'e-mail');
-    const telefono  = tallyVal(fields, 'teléfono', 'telefono', 'celular', 'whatsapp', 'teléfono / whatsapp', 'telefono / whatsapp');
+    const telefono  = tallyVal(fields, 'telÃ©fono', 'telefono', 'celular', 'whatsapp', 'telÃ©fono / whatsapp', 'telefono / whatsapp');
     const instagram = tallyVal(fields, 'instagram', 'usuario instagram', 'handle instagram', '@instagram', 'cuenta de instagram', 'cuenta de instagram (sin @)');
     const tiktok    = tallyVal(fields, 'tiktok', 'usuario tiktok', 'handle tiktok', '@tiktok', 'cuenta de tiktok', 'cuenta de tiktok (sin @)');
-    const segInsta  = parseInt(tallyVal(fields, 'seguidores instagram', 'seguidores en instagram', 'número de seguidores en instagram', 'followers instagram') || '0');
-    const segTiktok = parseInt(tallyVal(fields, 'seguidores tiktok', 'seguidores en tiktok', 'número de seguidores en tiktok', 'followers tiktok') || '0');
+    const segInsta  = parseInt(tallyVal(fields, 'seguidores instagram', 'seguidores en instagram', 'nÃºmero de seguidores en instagram', 'followers instagram') || '0');
+    const segTiktok = parseInt(tallyVal(fields, 'seguidores tiktok', 'seguidores en tiktok', 'nÃºmero de seguidores en tiktok', 'followers tiktok') || '0');
     const ciudad       = tallyVal(fields, 'ciudad', 'city');
     const departamento = tallyVal(fields, 'departamento', 'department', 'depto');
-    const direccion    = tallyVal(fields, 'dirección de envío', 'direccion de envio', 'dirección', 'direccion', 'address');
+    const direccion    = tallyVal(fields, 'direcciÃ³n de envÃ­o', 'direccion de envio', 'direcciÃ³n', 'direccion', 'address');
     const tipoCabello  = tallyVal(fields, 'tipo de cabello', 'tipo cabello', 'hair type', 'cabello');
 
     if (!nombre || !email) {
@@ -507,14 +507,14 @@ app.post('/api/webhooks/registro', async (req, res) => {
       if (segTiktok && !existe.seguidores_tiktok)   actualizaciones.seguidores_tiktok = segTiktok;
       actualizaciones.fuente = 'tally';
       await supabase.updateInfluencer(existe.id, actualizaciones);
-      console.log(`[webhook/registro] Vinculada: ${existe.nombre || nombre} → status Registrada`);
+      console.log(`[webhook/registro] Vinculada: ${existe.nombre || nombre} â†’ status Registrada`);
       return res.json({ ok: true, mensaje: 'Vinculada y actualizada', id: existe.id });
     }
 
-    // Calcular tier según seguidores
+    // Calcular tier segÃºn seguidores
     const { tier } = calcularTier(segInsta || segTiktok);
 
-    // Insertar en Supabase — el admin elige y envía el kit desde el dashboard
+    // Insertar en Supabase â€” el admin elige y envÃ­a el kit desde el dashboard
     const influencer = await supabase.insertInfluencer({
       nombre,
       email: email.toLowerCase().trim(),
@@ -532,7 +532,7 @@ app.post('/api/webhooks/registro', async (req, res) => {
       fuente: 'tally',
     });
 
-    console.log(`[webhook/registro] Nueva influencer: ${nombre} | ${tier} | pendiente de envío por admin`);
+    console.log(`[webhook/registro] Nueva influencer: ${nombre} | ${tier} | pendiente de envÃ­o por admin`);
     res.json({ ok: true, influencer_id: influencer?.id, tier });
   } catch (e) {
     console.error('[webhook/registro] Error:', e.message);
@@ -540,7 +540,7 @@ app.post('/api/webhooks/registro', async (req, res) => {
   }
 });
 
-// ── CONFIRMAR RECIBO DEL PAQUETE desde portal (JWT auth) ─────────
+// â”€â”€ CONFIRMAR RECIBO DEL PAQUETE desde portal (JWT auth) â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.post('/api/influencer/confirmar-recibo', authMiddleware, async (req, res) => {
   try {
     const influencer = await supabase.getInfluencerById(req.influencerId);
@@ -552,15 +552,15 @@ app.post('/api/influencer/confirmar-recibo', authMiddleware, async (req, res) =>
       fecha_confirmacion_recibo: new Date().toISOString().split('T')[0],
       paquete_no_llego: false,
     });
-    await supabase.registrarNotificacion(influencer.id, 'confirmacion_kit_influencers', 'influencer');
-    console.log(`[confirmar-recibo] ${influencer.nombre} confirmó recibo desde el portal`);
+    await supabase.registrarNotificacion(influencer.id, 'confirmacion_llegada_influencers', 'influencer');
+    console.log(`[confirmar-recibo] ${influencer.nombre} confirmÃ³ recibo desde el portal`);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// ── SUBIR CONTENIDO desde portal (JWT auth) ───────────────────────
+// â”€â”€ SUBIR CONTENIDO desde portal (JWT auth) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.post('/api/influencer/contenido', authMiddleware, async (req, res) => {
   try {
     const { url_contenido, plataforma, tipo_contenido, vistas, likes, guardados } = req.body;
@@ -614,7 +614,7 @@ app.post('/api/influencer/contenido', authMiddleware, async (req, res) => {
   }
 });
 
-// ── WEBHOOK CONTENIDO (Tally → auto-score) ───────────────────────
+// â”€â”€ WEBHOOK CONTENIDO (Tally â†’ auto-score) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.post('/api/webhooks/contenido', async (req, res) => {
   try {
     const fields = parseTallyFields(req.body?.data?.fields || []);
@@ -671,8 +671,8 @@ app.post('/api/webhooks/contenido', async (req, res) => {
 
     console.log(`[webhook/contenido] ${influencer.nombre} | score: ${score} | nivel: ${nivel} | acumulado: ${scoreAcumulado.toFixed(1)}`);
 
-    // El feedback de WhatsApp NO se envía automáticamente aquí.
-    // Se envía manualmente desde el dashboard cuando el admin califica el contenido.
+    // El feedback de WhatsApp NO se envÃ­a automÃ¡ticamente aquÃ­.
+    // Se envÃ­a manualmente desde el dashboard cuando el admin califica el contenido.
 
     res.json({ ok: true, score, nivel, score_acumulado: scoreAcumulado });
   } catch (e) {
@@ -681,20 +681,20 @@ app.post('/api/webhooks/contenido', async (req, res) => {
   }
 });
 
-// ── WEBHOOK ENCUESTA PRODUCTOS (Tally → preferencias por teléfono) ──
+// â”€â”€ WEBHOOK ENCUESTA PRODUCTOS (Tally â†’ preferencias por telÃ©fono) â”€â”€
 app.post('/api/webhooks/encuesta-productos', async (req, res) => {
   try {
     const fields = parseTallyFields(req.body?.data?.fields || []);
 
-    // El campo oculto 'tel' se pre-llena vía URL: ?tel=573...
-    const tel = tallyVal(fields, 'tel', 'telefono', 'teléfono', 'phone');
+    // El campo oculto 'tel' se pre-llena vÃ­a URL: ?tel=573...
+    const tel = tallyVal(fields, 'tel', 'telefono', 'telÃ©fono', 'phone');
 
     // Productos seleccionados (MULTIPLE_CHOICE, max 5)
     // El label exacto que pusiste en Tally
     const productosRaw = tallyVal(fields,
       'productos favoritos', 'productos', 'products',
-      '¿cuáles son tus 5 productos favoritos de brujería capilar?',
-      '¿cuáles son tus 5 productos favoritos?',
+      'Â¿cuÃ¡les son tus 5 productos favoritos de brujerÃ­a capilar?',
+      'Â¿cuÃ¡les son tus 5 productos favoritos?',
     );
 
     if (!tel) {
@@ -702,7 +702,7 @@ app.post('/api/webhooks/encuesta-productos', async (req, res) => {
       return res.status(400).json({ error: 'Falta campo tel' });
     }
 
-    // Buscar influencer por teléfono (normaliza internamente)
+    // Buscar influencer por telÃ©fono (normaliza internamente)
     const inf = await supabase.getInfluencerByTelefono(tel);
 
     if (!inf) {
@@ -716,7 +716,7 @@ app.post('/api/webhooks/encuesta-productos', async (req, res) => {
 
     await supabase.updateInfluencer(inf.id, { productos_favoritos: productos });
 
-    console.log(`[webhook/encuesta] ${inf.nombre} → productos: ${productos.join(' | ')}`);
+    console.log(`[webhook/encuesta] ${inf.nombre} â†’ productos: ${productos.join(' | ')}`);
     res.json({ ok: true, influencer: inf.nombre, productos });
   } catch (e) {
     console.error('[webhook/encuesta] Error:', e.message);
@@ -724,13 +724,13 @@ app.post('/api/webhooks/encuesta-productos', async (req, res) => {
   }
 });
 
-// ── PREFERENCIAS DE PRODUCTOS ─────────────────────────────────────
+// â”€â”€ PREFERENCIAS DE PRODUCTOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const PRODUCTOS_CATALOGO = [
   'Termoprotector Capilar',
   'Mascarilla Hechizo Total',
   'Crema Para Rizos 3en1',
   'Shampoo Ultra',
-  'Varita Mágica',
+  'Varita MÃ¡gica',
   'Mist - Fragancias Corporales',
 ];
 
@@ -747,7 +747,7 @@ app.get('/preferencias', (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Tus preferencias — Brujería Capilar</title>
+<title>Tus preferencias â€” BrujerÃ­a Capilar</title>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -776,16 +776,16 @@ button:disabled{opacity:.5;cursor:default}
 </head>
 <body>
 <div class="card">
-  <div class="logo">Brujería <span>Capilar</span></div>
-  <div class="sub">Programa Creadoras ✨</div>
-  <h1>¿Qué productos quieres recibir?</h1>
-  <p class="hint">Arrastra para ordenar del que más al que menos quieres 👇</p>
+  <div class="logo">BrujerÃ­a <span>Capilar</span></div>
+  <div class="sub">Programa Creadoras âœ¨</div>
+  <h1>Â¿QuÃ© productos quieres recibir?</h1>
+  <p class="hint">Arrastra para ordenar del que mÃ¡s al que menos quieres ðŸ‘‡</p>
   <ul id="ranking">${items}</ul>
-  <button id="btn" onclick="enviar()">Enviar mis preferencias 💜</button>
+  <button id="btn" onclick="enviar()">Enviar mis preferencias ðŸ’œ</button>
   <div class="success" id="ok">
-    <div class="emoji">🔮</div>
-    <h2>¡Gracias!</h2>
-    <p>Recibimos tus preferencias.<br>Pronto te avisamos qué productos incluiremos en tu kit.</p>
+    <div class="emoji">ðŸ”®</div>
+    <h2>Â¡Gracias!</h2>
+    <p>Recibimos tus preferencias.<br>Pronto te avisamos quÃ© productos incluiremos en tu kit.</p>
   </div>
 </div>
 <script>
@@ -817,7 +817,7 @@ async function enviar() {
     document.getElementById('ok').style.display = 'block';
   } catch(e) {
     btn.disabled = false;
-    btn.textContent = 'Enviar mis preferencias 💜';
+    btn.textContent = 'Enviar mis preferencias ðŸ’œ';
     alert('Error al enviar. Intenta de nuevo.');
   }
 }
@@ -838,7 +838,7 @@ app.post('/api/preferencias', async (req, res) => {
       return res.status(404).json({ error: 'Influencer no encontrada' });
     }
     await supabase.updateInfluencer(inf.id, { productos_favoritos: productos });
-    console.log(`[preferencias] ${inf.nombre} → ${productos.join(' > ')}`);
+    console.log(`[preferencias] ${inf.nombre} â†’ ${productos.join(' > ')}`);
     res.json({ ok: true, nombre: inf.nombre });
   } catch (e) {
     console.error('[preferencias] Error:', e.message);
@@ -846,7 +846,7 @@ app.post('/api/preferencias', async (req, res) => {
   }
 });
 
-// ── CRON SEGUIMIENTO (Railway cron → POST cada lunes) ─────────────
+// â”€â”€ CRON SEGUIMIENTO (Railway cron â†’ POST cada lunes) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.post('/api/cron/seguimiento', async (req, res) => {
   // Validar secret para que solo Railway pueda llamarlo
   const secret = req.headers['x-cron-secret'] || req.query.secret;
@@ -862,7 +862,7 @@ app.post('/api/cron/seguimiento', async (req, res) => {
       try {
         const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'explicacion_contenido_brujeria');
         if (yaEnviado) {
-          console.log(`[cron/seguimiento] ${inf.nombre}: ya recibió este mensaje, skip`);
+          console.log(`[cron/seguimiento] ${inf.nombre}: ya recibiÃ³ este mensaje, skip`);
           continue;
         }
         const wa = await enviarRecordatorioWhatsApp(inf);
@@ -882,7 +882,7 @@ app.post('/api/cron/seguimiento', async (req, res) => {
   }
 });
 
-// ── CRON IDEAS DE CONTENIDO (Railway cron diario → 4 días post-envío) ───
+// â”€â”€ CRON IDEAS DE CONTENIDO (Railway cron diario â†’ 4 dÃ­as post-envÃ­o) â”€â”€â”€
 app.post('/api/cron/ideas', async (req, res) => {
   const secret = req.headers['x-cron-secret'] || req.query.secret;
   if (config.tally_webhook_secret && secret !== config.tally_webhook_secret) {
@@ -910,8 +910,8 @@ app.post('/api/cron/ideas', async (req, res) => {
   }
 });
 
-// ── WEBHOOK WHATSAPP ENTRANTE (botones de respuesta rápida) ──────
-// GET: verificación de Meta
+// â”€â”€ WEBHOOK WHATSAPP ENTRANTE (botones de respuesta rÃ¡pida) â”€â”€â”€â”€â”€â”€
+// GET: verificaciÃ³n de Meta
 app.get('/webhook/wa', (req, res) => {
   const mode      = req.query['hub.mode'];
   const token     = req.query['hub.verify_token'];
@@ -931,14 +931,14 @@ app.post('/webhook/wa', async (req, res) => {
     if (!messages?.length) return;
 
     for (const msg of messages) {
-      const from = msg.from; // teléfono en formato 57XXXXXXXXXX
-      // Texto del botón pulsado (quick_reply o interactive)
+      const from = msg.from; // telÃ©fono en formato 57XXXXXXXXXX
+      // Texto del botÃ³n pulsado (quick_reply o interactive)
       const boton = msg.button?.text || msg.interactive?.button_reply?.title;
       if (!boton) continue;
 
       const influencer = await supabase.getInfluencerByTelefono(from);
       if (!influencer) {
-        console.warn(`[webhook/wa] Teléfono no encontrado: ${from}`);
+        console.warn(`[webhook/wa] TelÃ©fono no encontrado: ${from}`);
         continue;
       }
 
@@ -947,12 +947,12 @@ app.post('/webhook/wa', async (req, res) => {
           fecha_confirmacion_recibo: new Date().toISOString().split('T')[0],
           paquete_no_llego: false,
         });
-        await supabase.registrarNotificacion(influencer.id, 'confirmacion_kit_influencers', 'influencer');
-        console.log(`[webhook/wa] ${influencer.nombre} confirmó recibo del paquete`);
+        await supabase.registrarNotificacion(influencer.id, 'confirmacion_llegada_influencers', 'influencer');
+        console.log(`[webhook/wa] ${influencer.nombre} confirmÃ³ recibo del paquete`);
 
       } else if (boton === 'No me ha llegado') {
         await supabase.updateInfluencer(influencer.id, { paquete_no_llego: true });
-        console.log(`[webhook/wa] ${influencer.nombre} reportó que no le llegó el paquete — requiere atención`);
+        console.log(`[webhook/wa] ${influencer.nombre} reportÃ³ que no le llegÃ³ el paquete â€” requiere atenciÃ³n`);
       }
     }
   } catch (e) {
@@ -960,8 +960,8 @@ app.post('/webhook/wa', async (req, res) => {
   }
 });
 
-// ── CRON CONFIRMACIÓN LLEGADA (diario — 5 días post-envío) ───────
-// Envía template con botones para confirmar si llegó el paquete
+// â”€â”€ CRON CONFIRMACIÃ“N LLEGADA (diario â€” 5 dÃ­as post-envÃ­o) â”€â”€â”€â”€â”€â”€â”€
+// EnvÃ­a template con botones para confirmar si llegÃ³ el paquete
 app.post('/api/cron/confirmacion-llegada', async (req, res) => {
   const secret = req.headers['x-cron-secret'] || req.query.secret;
   const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
@@ -969,11 +969,11 @@ app.post('/api/cron/confirmacion-llegada', async (req, res) => {
   if (!validSecret) return res.status(401).json({ error: 'No autorizado' });
   try {
     const hoy = new Date();
-    // Influencers con kit enviado hace 5 días, sin confirmación aún, con teléfono
+    // Influencers con kit enviado hace 5 dÃ­as, sin confirmaciÃ³n aÃºn, con telÃ©fono
     const todas = await supabase.getInfluencersConTelefono();
     const candidatas = todas.filter(i => {
       if (!i.fecha_envio) return false;
-      if (i.fecha_confirmacion_recibo) return false; // ya confirmó
+      if (i.fecha_confirmacion_recibo) return false; // ya confirmÃ³
       const dias = Math.floor((hoy - new Date(i.fecha_envio)) / (1000 * 60 * 60 * 24));
       return dias === 5;
     });
@@ -981,10 +981,10 @@ app.post('/api/cron/confirmacion-llegada', async (req, res) => {
     const resultados = [];
     for (const inf of candidatas) {
       try {
-        const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'confirmacion_kit_influencers');
+        const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'confirmacion_llegada_influencers');
         if (yaEnviado) continue;
         const wa = await enviarConfirmacionLlegada(inf);
-        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'confirmacion_kit_influencers', 'cron');
+        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'confirmacion_llegada_influencers', 'cron');
         resultados.push({ nombre: inf.nombre, ok: true });
       } catch (e) {
         resultados.push({ nombre: inf.nombre, error: e.message });
@@ -996,8 +996,8 @@ app.post('/api/cron/confirmacion-llegada', async (req, res) => {
   }
 });
 
-// ── CRON SEGUIMIENTO PRODUCTOS (diario — 2 días post-confirmación) ─
-// Envía pregunta sobre productos y contenido después de confirmar llegada
+// â”€â”€ CRON SEGUIMIENTO PRODUCTOS (diario â€” 2 dÃ­as post-confirmaciÃ³n) â”€
+// EnvÃ­a pregunta sobre productos y contenido despuÃ©s de confirmar llegada
 app.post('/api/cron/seguimiento-productos', async (req, res) => {
   const secret = req.headers['x-cron-secret'] || req.query.secret;
   const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
@@ -1031,12 +1031,12 @@ app.post('/api/cron/seguimiento-productos', async (req, res) => {
   }
 });
 
-// ── LANDING BIENVENIDA KIT (pública — sin login) ─────────────────
+// â”€â”€ LANDING BIENVENIDA KIT (pÃºblica â€” sin login) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/bienvenida-kit', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'bienvenida-kit.html'));
 });
 
-// Info de influencer por teléfono (para mostrar nombre en landing)
+// Info de influencer por telÃ©fono (para mostrar nombre en landing)
 app.get('/api/bienvenida-kit/info', async (req, res) => {
   try {
     const { tel } = req.query;
@@ -1048,11 +1048,11 @@ app.get('/api/bienvenida-kit/info', async (req, res) => {
   }
 });
 
-// Confirmar recibo + fecha planeada de publicación (sin login)
+// Confirmar recibo + fecha planeada de publicaciÃ³n (sin login)
 app.post('/api/bienvenida-kit', async (req, res) => {
   try {
     const { tel, fecha_planeada } = req.body;
-    if (!tel) return res.status(400).json({ error: 'Teléfono requerido' });
+    if (!tel) return res.status(400).json({ error: 'TelÃ©fono requerido' });
     const inf = await supabase.getInfluencerByTelefono(tel);
     if (!inf) return res.status(404).json({ error: 'No encontrada en el programa' });
     await supabase.updateInfluencer(inf.id, {
@@ -1060,8 +1060,8 @@ app.post('/api/bienvenida-kit', async (req, res) => {
       fecha_planeada_publicacion: fecha_planeada || null,
       paquete_no_llego: false,
     });
-    await supabase.registrarNotificacion(inf.id, 'confirmacion_kit_influencers', 'influencer');
-    console.log(`[bienvenida-kit] ${inf.nombre} confirmó recibo | planea publicar: ${fecha_planeada}`);
+    await supabase.registrarNotificacion(inf.id, 'confirmacion_llegada_influencers', 'influencer');
+    console.log(`[bienvenida-kit] ${inf.nombre} confirmÃ³ recibo | planea publicar: ${fecha_planeada}`);
     res.json({ ok: true });
   } catch (e) {
     console.error('[bienvenida-kit]', e.message);
@@ -1069,12 +1069,12 @@ app.post('/api/bienvenida-kit', async (req, res) => {
   }
 });
 
-// ── GUÍA DEL PROGRAMA ────────────────────────────────────────────
+// â”€â”€ GUÃA DEL PROGRAMA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/guia', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'guia.html'));
 });
 
-// ── PORTAL INFLUENCERS ────────────────────────────────────────────
+// â”€â”€ PORTAL INFLUENCERS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/influencer', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'influencer.html'));
 });
@@ -1095,15 +1095,15 @@ app.post('/api/auth/check-email', async (req, res) => {
   }
 });
 
-// Auth: crear contraseña (primera vez)
+// Auth: crear contraseÃ±a (primera vez)
 app.post('/api/auth/set-password', async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
-  if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+  if (!email || !password) return res.status(400).json({ error: 'Email y contraseÃ±a requeridos' });
+  if (password.length < 6) return res.status(400).json({ error: 'La contraseÃ±a debe tener al menos 6 caracteres' });
   try {
     const influencer = await supabase.getInfluencerByEmail(email.toLowerCase().trim());
     if (!influencer) return res.status(404).json({ error: 'Email no registrado' });
-    if (influencer.password_hash) return res.status(400).json({ error: 'Ya tienes una contraseña. Usa iniciar sesión.' });
+    if (influencer.password_hash) return res.status(400).json({ error: 'Ya tienes una contraseÃ±a. Usa iniciar sesiÃ³n.' });
     const hash = await bcrypt.hash(password, 10);
     await supabase.updatePasswordHash(influencer.id, hash);
     const token = jwt.sign({ id: influencer.id, email: influencer.email }, config.jwt_secret, { expiresIn: '30d' });
@@ -1113,16 +1113,16 @@ app.post('/api/auth/set-password', async (req, res) => {
   }
 });
 
-// Auth: login con contraseña
+// Auth: login con contraseÃ±a
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' });
+  if (!email || !password) return res.status(400).json({ error: 'Email y contraseÃ±a requeridos' });
   try {
     const influencer = await supabase.getInfluencerByEmail(email.toLowerCase().trim());
     if (!influencer) return res.status(404).json({ error: 'Email no registrado' });
-    if (!influencer.password_hash) return res.status(400).json({ error: 'Aún no tienes contraseña. Usa "primera vez".' });
+    if (!influencer.password_hash) return res.status(400).json({ error: 'AÃºn no tienes contraseÃ±a. Usa "primera vez".' });
     const ok = await bcrypt.compare(password, influencer.password_hash);
-    if (!ok) return res.status(401).json({ error: 'Contraseña incorrecta' });
+    if (!ok) return res.status(401).json({ error: 'ContraseÃ±a incorrecta' });
     const token = jwt.sign({ id: influencer.id, email: influencer.email }, config.jwt_secret, { expiresIn: '30d' });
     res.json({ token, nombre: influencer.nombre });
   } catch (e) {
@@ -1149,7 +1149,7 @@ app.get('/api/influencer/ventas', authMiddleware, async (req, res) => {
     const influencer = await supabase.getInfluencerById(req.influencerId);
     if (!influencer) return res.status(404).json({ error: 'No encontrada' });
     if (!influencer.codigo_descuento) {
-      return res.json({ atribuido: 0, mensaje: 'Sin código de descuento asignado aún' });
+      return res.json({ atribuido: 0, mensaje: 'Sin cÃ³digo de descuento asignado aÃºn' });
     }
     const ventas = await shopify.getVentas(null, null, influencer.codigo_descuento);
     res.json({
@@ -1162,14 +1162,14 @@ app.get('/api/influencer/ventas', authMiddleware, async (req, res) => {
   }
 });
 
-// Solicitar reenvío de producto (influencer autenticada)
+// Solicitar reenvÃ­o de producto (influencer autenticada)
 app.post('/api/influencer/solicitar-producto', authMiddleware, async (req, res) => {
   const { productos, mensaje, direccion } = req.body;
   if (!productos || !Array.isArray(productos) || productos.length === 0) {
     return res.status(400).json({ error: 'Debes seleccionar al menos un producto' });
   }
   try {
-    // Actualizar dirección en perfil si cambió
+    // Actualizar direcciÃ³n en perfil si cambiÃ³
     if (direccion) {
       await supabase.updateInfluencer(req.influencerId, {
         direccion_envio: direccion.direccion_envio,
@@ -1185,7 +1185,7 @@ app.post('/api/influencer/solicitar-producto', authMiddleware, async (req, res) 
   }
 });
 
-// ── CANDIDATAS TIKTOK ────────────────────────────────────────────
+// â”€â”€ CANDIDATAS TIKTOK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/api/candidatas', async (req, res) => {
   try {
     const { status, min_colombia_score, tier } = req.query;
@@ -1284,7 +1284,7 @@ app.patch('/api/solicitudes-reenvio/:id', async (req, res) => {
   }
 });
 
-// URLs de Tally (público)
+// URLs de Tally (pÃºblico)
 app.get('/api/influencer/tally-urls', (req, res) => {
   res.json({
     contenido: config.tally_contenido_url,
@@ -1292,12 +1292,12 @@ app.get('/api/influencer/tally-urls', (req, res) => {
   });
 });
 
-// ── NOTIFICACIONES MANUALES (admin → WhatsApp) ───────────────────
+// â”€â”€ NOTIFICACIONES MANUALES (admin â†’ WhatsApp) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.post('/api/admin/notificaciones', async (req, res) => {
   const { influencer_ids, template, status_filter, fuente_filter, token } = req.body;
   const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
   if (token !== IMPORT_TOKEN) {
-    return res.status(403).json({ error: 'Token inválido' });
+    return res.status(403).json({ error: 'Token invÃ¡lido' });
   }
   if (!template) return res.status(400).json({ error: 'Template requerido' });
 
@@ -1318,7 +1318,7 @@ app.post('/api/admin/notificaciones', async (req, res) => {
       return res.status(400).json({ error: 'influencer_ids debe ser "all" o un array de IDs' });
     }
 
-    // Templates de una sola vez — no se reenvían
+    // Templates de una sola vez â€” no se reenvÃ­an
     const TEMPLATES_UNICOS = ['bienvenida_club_brujeria', 'bienvenida_kit', 'ideas_contenido_brujeria1', 'reenganche_brujeria', 'encuesta_productos_brujeria'];
 
     const resultados = [];
@@ -1364,7 +1364,7 @@ app.post('/api/admin/notificaciones', async (req, res) => {
       }
     }
 
-    console.log(`[admin/notificaciones] Template "${template}" → ${resultados.length} procesadas`);
+    console.log(`[admin/notificaciones] Template "${template}" â†’ ${resultados.length} procesadas`);
     resultados.forEach(r => console.log(`  ${r.nombre}: ok=${r.ok}`, r.skipped ? '(skipped)' : r.resultado || r.error));
     res.json({ ok: true, total: resultados.length, resultados });
   } catch (e) {
@@ -1373,12 +1373,12 @@ app.post('/api/admin/notificaciones', async (req, res) => {
   }
 });
 
-// ── IMPORTACIÓN MASIVA DE INFLUENCERS (token protegido, un solo uso) ──
+// â”€â”€ IMPORTACIÃ“N MASIVA DE INFLUENCERS (token protegido, un solo uso) â”€â”€
 app.post('/api/admin/influencers/bulk-import', async (req, res) => {
   const { influencers, token } = req.body;
   const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
   if (token !== IMPORT_TOKEN) {
-    return res.status(403).json({ error: 'Token de importación inválido' });
+    return res.status(403).json({ error: 'Token de importaciÃ³n invÃ¡lido' });
   }
   if (!Array.isArray(influencers) || influencers.length === 0) {
     return res.status(400).json({ error: 'Se requiere un array de influencers' });
@@ -1388,7 +1388,7 @@ app.post('/api/admin/influencers/bulk-import', async (req, res) => {
 
   for (const inf of influencers) {
     try {
-      // Dedup por email, teléfono o handle
+      // Dedup por email, telÃ©fono o handle
       let existe = null;
       if (inf.email) existe = await supabase.getInfluencerByEmail(inf.email.toLowerCase().trim());
       if (!existe && inf.tiktok_handle) existe = await supabase.getInfluencerByTikTok(inf.tiktok_handle);
@@ -1430,8 +1430,8 @@ app.listen(PORT, () => {
   console.log('Ctrl+C para detener\n');
 });
 
-// ── CRONS INTERNOS (sin dependencias externas) ───────────────────
-// Revisa cada hora si hay crons que correr según hora UTC
+// â”€â”€ CRONS INTERNOS (sin dependencias externas) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Revisa cada hora si hay crons que correr segÃºn hora UTC
 let ultimoIdeas = null;
 let ultimoSeguimiento = null;
 
@@ -1443,7 +1443,7 @@ async function runCronIdeas() {
       try {
         const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'ideas_contenido_brujeria1');
         if (yaEnviado) {
-          console.log(`[cron/ideas] ${inf.nombre}: ya recibió este mensaje, skip`);
+          console.log(`[cron/ideas] ${inf.nombre}: ya recibiÃ³ este mensaje, skip`);
           continue;
         }
         const wa = await enviarIdeasContenido(inf);
@@ -1484,13 +1484,13 @@ setInterval(() => {
   const horaUTC = now.getUTCHours();
   const diaUTC = now.getUTCDay(); // 1 = lunes
 
-  // Diario a las 15:00 UTC (10am Bogotá) — ideas post-envío
+  // Diario a las 15:00 UTC (10am BogotÃ¡) â€” ideas post-envÃ­o
   if (horaUTC === 15 && ultimoIdeas !== hoy) {
     ultimoIdeas = hoy;
     runCronIdeas();
   }
 
-  // Lunes a las 14:00 UTC (9am Bogotá) — seguimiento semanal
+  // Lunes a las 14:00 UTC (9am BogotÃ¡) â€” seguimiento semanal
   if (diaUTC === 1 && horaUTC === 14 && ultimoSeguimiento !== hoy) {
     ultimoSeguimiento = hoy;
     runCronSeguimiento();

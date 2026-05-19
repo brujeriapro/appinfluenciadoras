@@ -157,7 +157,7 @@ async function enviarReenganche(influencer) {
 async function enviarConfirmacionLlegada(influencer) {
   const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
   const tel = normalizarTelefono(influencer.telefono) || '';
-  return enviarTemplate(influencer.telefono, 'confirmacion_kit_influencers', [nombre], tel);
+  return enviarTemplate(influencer.telefono, 'confirmacion_llegada_influencers', [nombre], tel);
 }
 
 // Seguimiento 2 días después de confirmar llegada
