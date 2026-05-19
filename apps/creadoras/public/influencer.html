@@ -650,6 +650,55 @@
     }
 
     // ── TOP BAR ────────────────────────────────────────────────────
+
+    // ── CONFIRMAR RECIBO DEL PAQUETE ───────────────────────────────
+    function ConfirmarRecibo({ onConfirmado }) {
+      const [loading, setLoading] = useState(false);
+      const [confirmado, setConfirmado] = useState(false);
+
+      // Auto-abrir si viene con ?confirmar=1 en la URL
+      const autoConfirmar = new URLSearchParams(window.location.search).get('confirmar') === '1';
+
+      async function confirmar() {
+        setLoading(true);
+        try {
+          await apiFetch('/api/influencer/confirmar-recibo', { method: 'POST' });
+          setConfirmado(true);
+          setTimeout(() => onConfirmado(), 1500);
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      if (confirmado) return (
+        <div style={{background:'#f0fdf4',border:'1.5px solid #86efac',borderRadius:12,padding:'16px 20px',marginBottom:20,textAlign:'center'}}>
+          <div style={{fontSize:28}}>📦✅</div>
+          <p style={{color:'#16a34a',fontWeight:600,margin:'8px 0 0'}}>¡Confirmado! Gracias por avisarnos 💜</p>
+        </div>
+      );
+
+      return (
+        <div style={{background:'#fff7ed',border:'1.5px solid #fed7aa',borderRadius:12,padding:'16px 20px',marginBottom:20}}>
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <span style={{fontSize:28}}>📦</span>
+            <div style={{flex:1}}>
+              <p style={{fontWeight:600,margin:'0 0 4px',color:'#92400e'}}>¿Ya te llegó tu paquete?</p>
+              <p style={{fontSize:13,color:'#b45309',margin:0}}>Confírmanos para que podamos hacer seguimiento</p>
+            </div>
+            <button
+              onClick={confirmar}
+              disabled={loading}
+              style={{background:'#c0298b',color:'#fff',border:'none',borderRadius:8,padding:'10px 18px',fontWeight:600,fontSize:13,cursor:'pointer',whiteSpace:'nowrap'}}
+            >
+              {loading ? '...' : '✅ Sí, ya llegó'}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     // ── FORM SUBIR CONTENIDO ───────────────────────────────────────
     function SubirContenido({ onSuccess }) {
       const [abierto, setAbierto] = useState(false);
@@ -827,6 +876,11 @@
               <h1>Hola, {(inf.nombre || '').split(' ')[0]} ✨</h1>
               <p>Bienvenida a tu portal del Club Creadoras</p>
             </div>
+
+            {/* Confirmación de recibo del paquete */}
+            {inf.status === 'Producto Enviado' && !inf.fecha_confirmacion_recibo && (
+              <ConfirmarRecibo onConfirmado={load} />
+            )}
 
             {/* CTA subir contenido */}
             {['Producto Enviado', 'Contenido Entregado'].includes(inf.status) && (

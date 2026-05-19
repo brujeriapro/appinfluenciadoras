@@ -540,6 +540,26 @@ app.post('/api/webhooks/registro', async (req, res) => {
   }
 });
 
+// ── CONFIRMAR RECIBO DEL PAQUETE desde portal (JWT auth) ─────────
+app.post('/api/influencer/confirmar-recibo', authMiddleware, async (req, res) => {
+  try {
+    const influencer = await supabase.getInfluencerById(req.influencerId);
+    if (!influencer) return res.status(404).json({ error: 'No encontrada' });
+    if (influencer.fecha_confirmacion_recibo) {
+      return res.json({ ok: true, ya_confirmado: true });
+    }
+    await supabase.updateInfluencer(influencer.id, {
+      fecha_confirmacion_recibo: new Date().toISOString().split('T')[0],
+      paquete_no_llego: false,
+    });
+    await supabase.registrarNotificacion(influencer.id, 'confirmacion_kit_influencers', 'influencer');
+    console.log(`[confirmar-recibo] ${influencer.nombre} confirmó recibo desde el portal`);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── SUBIR CONTENIDO desde portal (JWT auth) ───────────────────────
 app.post('/api/influencer/contenido', authMiddleware, async (req, res) => {
   try {
@@ -927,7 +947,7 @@ app.post('/webhook/wa', async (req, res) => {
           fecha_confirmacion_recibo: new Date().toISOString().split('T')[0],
           paquete_no_llego: false,
         });
-        await supabase.registrarNotificacion(influencer.id, 'confirmacion_llegada_influencers', 'influencer');
+        await supabase.registrarNotificacion(influencer.id, 'confirmacion_kit_influencers', 'influencer');
         console.log(`[webhook/wa] ${influencer.nombre} confirmó recibo del paquete`);
 
       } else if (boton === 'No me ha llegado') {
@@ -961,10 +981,10 @@ app.post('/api/cron/confirmacion-llegada', async (req, res) => {
     const resultados = [];
     for (const inf of candidatas) {
       try {
-        const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'confirmacion_llegada_influencers');
+        const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'confirmacion_kit_influencers');
         if (yaEnviado) continue;
         const wa = await enviarConfirmacionLlegada(inf);
-        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'confirmacion_llegada_influencers', 'cron');
+        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'confirmacion_kit_influencers', 'cron');
         resultados.push({ nombre: inf.nombre, ok: true });
       } catch (e) {
         resultados.push({ nombre: inf.nombre, error: e.message });

@@ -151,12 +151,12 @@ async function enviarReenganche(influencer) {
   return enviarTemplate(influencer.telefono, 'reenganche_brujeria', [nombre]);
 }
 
-// Confirmación de llegada del paquete (con botones quick_reply)
-// Template: confirmacion_llegada_influencers
+// Confirmación de llegada del paquete (botón URL → portal)
+// Template: confirmacion_kit_influencers
 // Variables: {{1}} nombre
 async function enviarConfirmacionLlegada(influencer) {
   const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
-  return enviarTemplate(influencer.telefono, 'confirmacion_llegada_influencers', [nombre]);
+  return enviarTemplate(influencer.telefono, 'confirmacion_kit_influencers', [nombre]);
 }
 
 // Seguimiento 2 días después de confirmar llegada
