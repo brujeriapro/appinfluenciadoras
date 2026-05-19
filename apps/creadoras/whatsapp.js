@@ -160,9 +160,9 @@ async function enviarConfirmacionLlegada(influencer) {
   return enviarTemplate(influencer.telefono, 'confirmacion_llegada_influencers', [nombre], tel);
 }
 
-// Seguimiento 2 días después de confirmar llegada
+// Seguimiento 7 días después de confirmar llegada
 // Template: seguimiento_productos_brujeria (pendiente crear en Meta)
-// Variables: {{1}} nombre
+// Variables: {{1}} nombre | botón URL estático → form de reporte de contenido
 async function enviarSeguimientoProductos(influencer) {
   const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
   return enviarTemplate(influencer.telefono, 'seguimiento_productos_brujeria', [nombre]);

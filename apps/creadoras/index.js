@@ -1010,7 +1010,7 @@ app.post('/api/cron/seguimiento-productos', async (req, res) => {
       if (!i.fecha_confirmacion_recibo) return false;
       if (['Contenido Entregado', 'Calificada'].includes(i.status)) return false;
       const dias = Math.floor((hoy - new Date(i.fecha_confirmacion_recibo)) / (1000 * 60 * 60 * 24));
-      return dias === 2;
+      return dias >= 7;
     });
 
     const resultados = [];
