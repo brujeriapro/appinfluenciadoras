@@ -58,8 +58,9 @@ const config = {
     pass: process.env.GMAIL_APP_PASSWORD || localConfig?.email?.gmail_app_password || '',
   },
   whatsapp: {
-    token:    process.env.WHATSAPP_TOKEN    || localConfig?.whatsapp?.token    || '',
-    phone_id: process.env.WHATSAPP_PHONE_ID || localConfig?.whatsapp?.phone_id || '',
+    token:        process.env.WHATSAPP_TOKEN        || localConfig?.whatsapp?.token        || '',
+    phone_id:     process.env.WHATSAPP_PHONE_ID     || localConfig?.whatsapp?.phone_id     || '',
+    verify_token: process.env.WHATSAPP_VERIFY_TOKEN || localConfig?.whatsapp?.verify_token || 'brujeria-wa-verify-2026',
   },
 };
 

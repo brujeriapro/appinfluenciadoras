@@ -9,10 +9,10 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos } = require('./whatsapp');
 
 // Rutas públicas — portal influencer, guía, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -886,6 +886,127 @@ app.post('/api/cron/ideas', async (req, res) => {
     res.json({ ok: true, total: resultados.length, resultados });
   } catch (e) {
     console.error('[cron/ideas] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── WEBHOOK WHATSAPP ENTRANTE (botones de respuesta rápida) ──────
+// GET: verificación de Meta
+app.get('/webhook/wa', (req, res) => {
+  const mode      = req.query['hub.mode'];
+  const token     = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+  if (mode === 'subscribe' && token === config.whatsapp.verify_token) {
+    console.log('[webhook/wa] Webhook verificado');
+    return res.status(200).send(challenge);
+  }
+  res.status(403).send('Forbidden');
+});
+
+// POST: mensajes y clics de botones entrantes
+app.post('/webhook/wa', async (req, res) => {
+  res.status(200).send('OK'); // responder inmediatamente a Meta
+  try {
+    const messages = req.body?.entry?.[0]?.changes?.[0]?.value?.messages;
+    if (!messages?.length) return;
+
+    for (const msg of messages) {
+      const from = msg.from; // teléfono en formato 57XXXXXXXXXX
+      // Texto del botón pulsado (quick_reply o interactive)
+      const boton = msg.button?.text || msg.interactive?.button_reply?.title;
+      if (!boton) continue;
+
+      const influencer = await supabase.getInfluencerByTelefono(from);
+      if (!influencer) {
+        console.warn(`[webhook/wa] Teléfono no encontrado: ${from}`);
+        continue;
+      }
+
+      if (boton === 'Si, me llego') {
+        await supabase.updateInfluencer(influencer.id, {
+          fecha_confirmacion_recibo: new Date().toISOString().split('T')[0],
+          paquete_no_llego: false,
+        });
+        await supabase.registrarNotificacion(influencer.id, 'confirmacion_llegada_influencers', 'influencer');
+        console.log(`[webhook/wa] ${influencer.nombre} confirmó recibo del paquete`);
+
+      } else if (boton === 'No me ha llegado') {
+        await supabase.updateInfluencer(influencer.id, { paquete_no_llego: true });
+        console.log(`[webhook/wa] ${influencer.nombre} reportó que no le llegó el paquete — requiere atención`);
+      }
+    }
+  } catch (e) {
+    console.error('[webhook/wa] Error:', e.message);
+  }
+});
+
+// ── CRON CONFIRMACIÓN LLEGADA (diario — 5 días post-envío) ───────
+// Envía template con botones para confirmar si llegó el paquete
+app.post('/api/cron/confirmacion-llegada', async (req, res) => {
+  const secret = req.headers['x-cron-secret'] || req.query.secret;
+  if (config.tally_webhook_secret && secret !== config.tally_webhook_secret) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+  try {
+    const hoy = new Date();
+    // Influencers con kit enviado hace 5 días, sin confirmación aún, con teléfono
+    const todas = await supabase.getInfluencersConTelefono();
+    const candidatas = todas.filter(i => {
+      if (!i.fecha_envio) return false;
+      if (i.fecha_confirmacion_recibo) return false; // ya confirmó
+      const dias = Math.floor((hoy - new Date(i.fecha_envio)) / (1000 * 60 * 60 * 24));
+      return dias === 5;
+    });
+
+    const resultados = [];
+    for (const inf of candidatas) {
+      try {
+        const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'confirmacion_llegada_influencers');
+        if (yaEnviado) continue;
+        const wa = await enviarConfirmacionLlegada(inf);
+        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'confirmacion_llegada_influencers', 'cron');
+        resultados.push({ nombre: inf.nombre, ok: true });
+      } catch (e) {
+        resultados.push({ nombre: inf.nombre, error: e.message });
+      }
+    }
+    res.json({ ok: true, total: resultados.length, resultados });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── CRON SEGUIMIENTO PRODUCTOS (diario — 2 días post-confirmación) ─
+// Envía pregunta sobre productos y contenido después de confirmar llegada
+app.post('/api/cron/seguimiento-productos', async (req, res) => {
+  const secret = req.headers['x-cron-secret'] || req.query.secret;
+  if (config.tally_webhook_secret && secret !== config.tally_webhook_secret) {
+    return res.status(401).json({ error: 'No autorizado' });
+  }
+  try {
+    const hoy = new Date();
+    const todas = await supabase.getInfluencersConTelefono();
+    const candidatas = todas.filter(i => {
+      if (!i.fecha_confirmacion_recibo) return false;
+      if (['Contenido Entregado', 'Calificada'].includes(i.status)) return false;
+      const dias = Math.floor((hoy - new Date(i.fecha_confirmacion_recibo)) / (1000 * 60 * 60 * 24));
+      return dias === 2;
+    });
+
+    const resultados = [];
+    for (const inf of candidatas) {
+      try {
+        const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'seguimiento_productos_brujeria');
+        if (yaEnviado) continue;
+        const wa = await enviarSeguimientoProductos(inf);
+        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'seguimiento_productos_brujeria', 'cron');
+        resultados.push({ nombre: inf.nombre, ok: true });
+      } catch (e) {
+        resultados.push({ nombre: inf.nombre, error: e.message });
+      }
+    }
+    res.json({ ok: true, total: resultados.length, resultados });
+  } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });

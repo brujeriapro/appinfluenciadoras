@@ -151,6 +151,22 @@ async function enviarReenganche(influencer) {
   return enviarTemplate(influencer.telefono, 'reenganche_brujeria', [nombre]);
 }
 
+// Confirmación de llegada del paquete (con botones quick_reply)
+// Template: confirmacion_llegada_influencers
+// Variables: {{1}} nombre
+async function enviarConfirmacionLlegada(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
+  return enviarTemplate(influencer.telefono, 'confirmacion_llegada_influencers', [nombre]);
+}
+
+// Seguimiento 2 días después de confirmar llegada
+// Template: seguimiento_productos_brujeria (pendiente crear en Meta)
+// Variables: {{1}} nombre
+async function enviarSeguimientoProductos(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre;
+  return enviarTemplate(influencer.telefono, 'seguimiento_productos_brujeria', [nombre]);
+}
+
 module.exports = {
   enviarBienvenidaKit,
   enviarRecordatorioWhatsApp,
@@ -161,4 +177,6 @@ module.exports = {
   enviarReenvioAprobado,
   enviarReenganche,
   enviarEncuestaProductos,
+  enviarConfirmacionLlegada,
+  enviarSeguimientoProductos,
 };
