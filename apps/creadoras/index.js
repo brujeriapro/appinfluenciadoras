@@ -988,22 +988,25 @@ app.post('/api/cron/confirmacion-llegada', async (req, res) => {
     if (debug) return res.json({ total_con_telefono: todas.length, candidatas: candidatas.length, diagnostico });
 
     const force = req.query.force === '1';
-    const resultados = [];
-    let skippedYaEnviado = 0;
-    for (const inf of candidatas) {
-      try {
-        if (!force) {
-          const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'confirmacion_llegada_influencers');
-          if (yaEnviado) { skippedYaEnviado++; continue; }
+    // Responder inmediato — procesar en background para no exceder timeout de Railway
+    res.json({ ok: true, candidatas: candidatas.length, mensaje: 'Procesando en background' });
+    setImmediate(async () => {
+      let enviados = 0, skippedYaEnviado = 0, errores = 0;
+      for (const inf of candidatas) {
+        try {
+          if (!force) {
+            const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'confirmacion_llegada_influencers');
+            if (yaEnviado) { skippedYaEnviado++; continue; }
+          }
+          const wa = await enviarConfirmacionLlegada(inf);
+          if (wa?.sent) { await supabase.registrarNotificacion(inf.id, 'confirmacion_llegada_influencers', 'cron'); enviados++; }
+        } catch (e) {
+          errores++;
+          console.error(`[cron confirmacion-llegada] error ${inf.nombre}:`, e.message);
         }
-        const wa = await enviarConfirmacionLlegada(inf);
-        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'confirmacion_llegada_influencers', 'cron');
-        resultados.push({ nombre: inf.nombre, enviado: !!wa?.sent, skipped: !!wa?.skipped });
-      } catch (e) {
-        resultados.push({ nombre: inf.nombre, error: e.message });
       }
-    }
-    res.json({ ok: true, candidatas: candidatas.length, skippedYaEnviado, total: resultados.length, resultados });
+      console.log(`[cron confirmacion-llegada] done — enviados:${enviados} skipped:${skippedYaEnviado} errores:${errores}`);
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
