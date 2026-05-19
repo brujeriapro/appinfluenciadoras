@@ -964,9 +964,9 @@ app.post('/webhook/wa', async (req, res) => {
 // Envía template con botones para confirmar si llegó el paquete
 app.post('/api/cron/confirmacion-llegada', async (req, res) => {
   const secret = req.headers['x-cron-secret'] || req.query.secret;
-  if (config.tally_webhook_secret && secret !== config.tally_webhook_secret) {
-    return res.status(401).json({ error: 'No autorizado' });
-  }
+  const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
+  const validSecret = secret === IMPORT_TOKEN || (config.tally_webhook_secret && secret === config.tally_webhook_secret);
+  if (!validSecret) return res.status(401).json({ error: 'No autorizado' });
   try {
     const hoy = new Date();
     // Influencers con kit enviado hace 5 días, sin confirmación aún, con teléfono
@@ -1000,9 +1000,9 @@ app.post('/api/cron/confirmacion-llegada', async (req, res) => {
 // Envía pregunta sobre productos y contenido después de confirmar llegada
 app.post('/api/cron/seguimiento-productos', async (req, res) => {
   const secret = req.headers['x-cron-secret'] || req.query.secret;
-  if (config.tally_webhook_secret && secret !== config.tally_webhook_secret) {
-    return res.status(401).json({ error: 'No autorizado' });
-  }
+  const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
+  const validSecret = secret === IMPORT_TOKEN || (config.tally_webhook_secret && secret === config.tally_webhook_secret);
+  if (!validSecret) return res.status(401).json({ error: 'No autorizado' });
   try {
     const hoy = new Date();
     const todas = await supabase.getInfluencersConTelefono();
