@@ -988,18 +988,19 @@ app.post('/api/cron/confirmacion-llegada', async (req, res) => {
     if (debug) return res.json({ total_con_telefono: todas.length, candidatas: candidatas.length, diagnostico });
 
     const resultados = [];
+    let skippedYaEnviado = 0;
     for (const inf of candidatas) {
       try {
         const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'confirmacion_llegada_influencers');
-        if (yaEnviado) continue;
+        if (yaEnviado) { skippedYaEnviado++; continue; }
         const wa = await enviarConfirmacionLlegada(inf);
         if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'confirmacion_llegada_influencers', 'cron');
-        resultados.push({ nombre: inf.nombre, ok: true });
+        resultados.push({ nombre: inf.nombre, enviado: !!wa?.sent, skipped: !!wa?.skipped });
       } catch (e) {
         resultados.push({ nombre: inf.nombre, error: e.message });
       }
     }
-    res.json({ ok: true, total: resultados.length, resultados });
+    res.json({ ok: true, candidatas: candidatas.length, skippedYaEnviado, total: resultados.length, resultados });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
