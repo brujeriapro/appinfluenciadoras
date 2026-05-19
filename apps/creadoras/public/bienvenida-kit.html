@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>¡Tu kit llegó! — Brujería Capilar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(160deg, #fff0f9 0%, #fffbea 100%);
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+      color: #2d1b33;
+    }
+    .wrap { max-width: 480px; margin: 0 auto; }
+
+    .logo { display: block; height: 44px; object-fit: contain; margin: 0 auto 28px; }
+
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      border: 1.5px solid #f0d0e8;
+      box-shadow: 0 8px 40px rgba(192,41,139,0.08);
+      padding: 28px 24px;
+      margin-bottom: 16px;
+    }
+
+    .hero-emoji { font-size: 48px; text-align: center; display: block; margin-bottom: 12px; }
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      color: #c0298b;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .subtitle { color: #9b6ea0; font-size: 14px; text-align: center; line-height: 1.5; margin-bottom: 0; }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #c0298b;
+      margin-bottom: 14px;
+    }
+
+    /* Tips */
+    .tip {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 12px 0;
+      border-bottom: 1px solid #fce7f3;
+    }
+    .tip:last-child { border-bottom: none; padding-bottom: 0; }
+    .tip-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+    .tip-text { font-size: 14px; line-height: 1.5; color: #4a2d5a; }
+    .tip-text strong { color: #c0298b; }
+
+    /* Pregunta fecha */
+    .pregunta-label {
+      font-size: 15px;
+      font-weight: 600;
+      color: #2d1b33;
+      margin-bottom: 16px;
+      line-height: 1.4;
+    }
+    .opciones { display: flex; flex-direction: column; gap: 10px; }
+    .opcion {
+      border: 1.5px solid #e9d5f0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: #4a2d5a;
+      background: #fff;
+      text-align: left;
+      transition: all 0.15s;
+    }
+    .opcion:hover { border-color: #c0298b; background: #fdf4fb; }
+    .opcion.selected { border-color: #c0298b; background: #fdf4fb; color: #c0298b; font-weight: 600; }
+    .opcion.selected::before { content: '✓  '; }
+
+    .btn-confirmar {
+      width: 100%;
+      background: #c0298b;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: background 0.15s;
+    }
+    .btn-confirmar:hover { background: #a0237a; }
+    .btn-confirmar:disabled { background: #d8a0c4; cursor: not-allowed; }
+
+    /* Éxito */
+    .success {
+      text-align: center;
+      padding: 16px 0;
+    }
+    .success .big-emoji { font-size: 60px; display: block; margin-bottom: 16px; }
+    .success h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      color: #c0298b;
+      margin-bottom: 10px;
+    }
+    .success p { font-size: 14px; color: #9b6ea0; line-height: 1.6; }
+
+    .error-msg { color: #dc2626; font-size: 13px; text-align: center; margin-top: 8px; }
+
+    /* Skeleton / loading */
+    .loading-name {
+      display: inline-block;
+      width: 80px; height: 16px;
+      background: linear-gradient(90deg, #f3e8fb 25%, #e9d5f0 50%, #f3e8fb 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+      border-radius: 4px;
+      vertical-align: middle;
+    }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <img class="logo"
+      src="https://brujeriacapilar.com/cdn/shop/files/Asset_57brujeria_2_b689e4cc-5724-4fae-962a-211a53578613.png?v=1751472378"
+      alt="Brujería Capilar" />
+
+    <div id="app"></div>
+  </div>
+
+  <script>
+    const tel = new URLSearchParams(window.location.search).get('tel') || '';
+    let influencerNombre = '';
+    let opcionSeleccionada = '';
+
+    async function init() {
+      // Cargar nombre por teléfono
+      try {
+        const res = await fetch('/api/bienvenida-kit/info?tel=' + encodeURIComponent(tel));
+        const data = await res.json();
+        influencerNombre = data.nombre?.split(' ')[0] || '';
+      } catch (e) {}
+      renderForm();
+    }
+
+    function renderForm() {
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <span class="hero-emoji">📦✨</span>
+          <h1>¡Llegó tu kit${influencerNombre ? ', ' + influencerNombre : ''}!</h1>
+          <p class="subtitle">Nos alegra que ya estés lista para la magia. Antes de publicar, te compartimos unos tips.</p>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Tips para tu contenido</div>
+
+          <div class="tip">
+            <span class="tip-icon">🎬</span>
+            <p class="tip-text"><strong>Que suene a ti, no a publicidad.</strong> El contenido que más conecta no dice "me lo regalaron" sino "llevaba meses queriéndolo probar" o "lo vi tanto en TikTok que tuve que intentarlo".</p>
+          </div>
+
+          <div class="tip">
+            <span class="tip-icon">✨</span>
+            <p class="tip-text"><strong>Cuenta tu experiencia real.</strong> ¿Cómo huele? ¿Cómo deja el cabello? ¿Qué te sorprendió? Eso es lo que engancha a tu audiencia.</p>
+          </div>
+
+          <div class="tip">
+            <span class="tip-icon">📱</span>
+            <p class="tip-text"><strong>La autenticidad vende.</strong> No necesitas iluminación perfecta ni guión. Un video en el baño aplicándote el producto genera más confianza que uno producido.</p>
+          </div>
+
+          <div class="tip">
+            <span class="tip-icon">🔖</span>
+            <p class="tip-text"><strong>Menciona @brujeriacapilar</strong> y usa el hashtag <strong>#BrujeríaCapilar</strong> para que podamos compartir tu contenido.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <p class="pregunta-label">¿Cuándo planeas publicar tu contenido? 📅</p>
+          <div class="opciones" id="opciones">
+            <button class="opcion" onclick="seleccionar(this, 'Esta semana')">Esta semana</button>
+            <button class="opcion" onclick="seleccionar(this, 'La próxima semana')">La próxima semana</button>
+            <button class="opcion" onclick="seleccionar(this, 'En 2 semanas')">En 2 semanas</button>
+            <button class="opcion" onclick="seleccionar(this, 'En el mes')">En el mes</button>
+          </div>
+          <button class="btn-confirmar" id="btn-confirmar" onclick="confirmar()" disabled>
+            ✅ Confirmar que llegó mi kit
+          </button>
+          <p class="error-msg" id="error-msg"></p>
+        </div>
+      `;
+    }
+
+    function seleccionar(el, valor) {
+      document.querySelectorAll('.opcion').forEach(b => b.classList.remove('selected'));
+      el.classList.add('selected');
+      opcionSeleccionada = valor;
+      document.getElementById('btn-confirmar').disabled = false;
+    }
+
+    async function confirmar() {
+      const btn = document.getElementById('btn-confirmar');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+      document.getElementById('error-msg').textContent = '';
+
+      try {
+        const res = await fetch('/api/bienvenida-kit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tel, fecha_planeada: opcionSeleccionada }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al guardar');
+        renderSuccess();
+      } catch (e) {
+        document.getElementById('error-msg').textContent = e.message;
+        btn.disabled = false;
+        btn.textContent = '✅ Confirmar que llegó mi kit';
+      }
+    }
+
+    function renderSuccess() {
+      document.getElementById('app').innerHTML = `
+        <div class="card">
+          <div class="success">
+            <span class="big-emoji">💜🎉</span>
+            <h2>¡Gracias${influencerNombre ? ', ' + influencerNombre : ''}!</h2>
+            <p>
+              Registramos que tu kit llegó. Estamos emocionadas de ver tu contenido.<br/><br/>
+              Recuerda que puedes ver tu nivel de Magia y registrar tu contenido en tu portal personal cuando publiques.
+            </p>
+          </div>
+        </div>
+      `;
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -12,7 +12,7 @@ const { enviarRecordatorioContenido } = require('./email');
 const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos } = require('./whatsapp');
 
 // Rutas públicas — portal influencer, guía, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -1027,6 +1027,44 @@ app.post('/api/cron/seguimiento-productos', async (req, res) => {
     }
     res.json({ ok: true, total: resultados.length, resultados });
   } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── LANDING BIENVENIDA KIT (pública — sin login) ─────────────────
+app.get('/bienvenida-kit', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'bienvenida-kit.html'));
+});
+
+// Info de influencer por teléfono (para mostrar nombre en landing)
+app.get('/api/bienvenida-kit/info', async (req, res) => {
+  try {
+    const { tel } = req.query;
+    if (!tel) return res.json({ nombre: '' });
+    const inf = await supabase.getInfluencerByTelefono(tel);
+    res.json({ nombre: inf?.nombre || '' });
+  } catch (e) {
+    res.json({ nombre: '' });
+  }
+});
+
+// Confirmar recibo + fecha planeada de publicación (sin login)
+app.post('/api/bienvenida-kit', async (req, res) => {
+  try {
+    const { tel, fecha_planeada } = req.body;
+    if (!tel) return res.status(400).json({ error: 'Teléfono requerido' });
+    const inf = await supabase.getInfluencerByTelefono(tel);
+    if (!inf) return res.status(404).json({ error: 'No encontrada en el programa' });
+    await supabase.updateInfluencer(inf.id, {
+      fecha_confirmacion_recibo: new Date().toISOString().split('T')[0],
+      fecha_planeada_publicacion: fecha_planeada || null,
+      paquete_no_llego: false,
+    });
+    await supabase.registrarNotificacion(inf.id, 'confirmacion_kit_influencers', 'influencer');
+    console.log(`[bienvenida-kit] ${inf.nombre} confirmó recibo | planea publicar: ${fecha_planeada}`);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[bienvenida-kit]', e.message);
     res.status(500).json({ error: e.message });
   }
 });
