@@ -967,16 +967,25 @@ app.post('/api/cron/confirmacion-llegada', async (req, res) => {
   const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
   const validSecret = secret === IMPORT_TOKEN || (config.tally_webhook_secret && secret === config.tally_webhook_secret);
   if (!validSecret) return res.status(401).json({ error: 'No autorizado' });
+  const debug = req.query.debug === '1';
   try {
     const hoy = new Date();
-    // Influencers con kit enviado hace 5 dÃ­as, sin confirmaciÃ³n aÃºn, con telÃ©fono
     const todas = await supabase.getInfluencersConTelefono();
+    const diagnostico = todas.map(i => {
+      const tieneFechaEnvio = !!i.fecha_envio;
+      const yaConfirmo = !!i.fecha_confirmacion_recibo;
+      const dias = tieneFechaEnvio ? Math.floor((hoy - new Date(i.fecha_envio)) / (1000 * 60 * 60 * 24)) : null;
+      const pasa = tieneFechaEnvio && !yaConfirmo && dias >= 5;
+      return { nombre: i.nombre, status: i.status, fecha_envio: i.fecha_envio, dias, yaConfirmo, pasa };
+    });
     const candidatas = todas.filter(i => {
       if (!i.fecha_envio) return false;
-      if (i.fecha_confirmacion_recibo) return false; // ya confirmÃ³
+      if (i.fecha_confirmacion_recibo) return false;
       const dias = Math.floor((hoy - new Date(i.fecha_envio)) / (1000 * 60 * 60 * 24));
       return dias >= 5;
     });
+
+    if (debug) return res.json({ total_con_telefono: todas.length, candidatas: candidatas.length, diagnostico });
 
     const resultados = [];
     for (const inf of candidatas) {
