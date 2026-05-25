@@ -8,8 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <style>
+    <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --pink: #c0298b;
@@ -284,837 +283,1310 @@
   <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
   <div id="root"></div>
-  <script type="text/babel">
-    const { useState, useEffect } = React;
+  <script>const {
+  useState,
+  useEffect
+} = React;
+const LOGO = "https://brujeriacapilar.com/cdn/shop/files/Asset_57brujeria_2_b689e4cc-5724-4fae-962a-211a53578613.png?v=1751472378";
 
-    const LOGO = "https://brujeriacapilar.com/cdn/shop/files/Asset_57brujeria_2_b689e4cc-5724-4fae-962a-211a53578613.png?v=1751472378";
-
-    // ── NIVELES ────────────────────────────────────────────────────
-    const NIVELES = [
-      { nombre: 'Magia Naciente',  emoji: '🌱', min: 0,    max: 100,  color: '#16a34a', desc: 'Primeros pasos en el club' },
-      { nombre: 'Magia Viva',      emoji: '🌸', min: 101,  max: 300,  color: '#7c3aed', desc: 'Tu magia empieza a florecer' },
-      { nombre: 'Magia Profunda',  emoji: '✨', min: 301,  max: 600,  color: '#c0298b', desc: 'Contenido que enamora' },
-      { nombre: 'Magia Pura',      emoji: '💜', min: 601,  max: 1000, color: '#c0298b', desc: 'Creadora de alto impacto' },
-      { nombre: 'Gran Magia',      emoji: '🔮', min: 1001, max: null,  color: '#ff7b78', desc: 'Nivel máximo — beneficios exclusivos' },
-    ];
-
-    function getNivel(score) {
-      const s = score || 0;
-      return NIVELES.find(n => s >= n.min && (n.max === null || s <= n.max)) || NIVELES[0];
+// ── NIVELES ────────────────────────────────────────────────────
+const NIVELES = [{
+  nombre: 'Magia Naciente',
+  emoji: '🌱',
+  min: 0,
+  max: 100,
+  color: '#16a34a',
+  desc: 'Primeros pasos en el club'
+}, {
+  nombre: 'Magia Viva',
+  emoji: '🌸',
+  min: 101,
+  max: 300,
+  color: '#7c3aed',
+  desc: 'Tu magia empieza a florecer'
+}, {
+  nombre: 'Magia Profunda',
+  emoji: '✨',
+  min: 301,
+  max: 600,
+  color: '#c0298b',
+  desc: 'Contenido que enamora'
+}, {
+  nombre: 'Magia Pura',
+  emoji: '💜',
+  min: 601,
+  max: 1000,
+  color: '#c0298b',
+  desc: 'Creadora de alto impacto'
+}, {
+  nombre: 'Gran Magia',
+  emoji: '🔮',
+  min: 1001,
+  max: null,
+  color: '#ff7b78',
+  desc: 'Nivel máximo — beneficios exclusivos'
+}];
+function getNivel(score) {
+  const s = score || 0;
+  return NIVELES.find(n => s >= n.min && (n.max === null || s <= n.max)) || NIVELES[0];
+}
+function getProgreso(score) {
+  const s = score || 0;
+  const idx = NIVELES.findIndex(n => s >= n.min && (n.max === null || s <= n.max));
+  const nivel = NIVELES[idx];
+  const next = NIVELES[idx + 1];
+  if (!next) return {
+    pct: 100,
+    falta: 0,
+    next: null
+  };
+  const rango = next.min - nivel.min;
+  const avance = s - nivel.min;
+  return {
+    pct: Math.min(100, Math.round(avance / rango * 100)),
+    falta: next.min - s,
+    next: next.nombre
+  };
+}
+const PRODUCTOS_DISPONIBLES = ['Termoprotector Capilar', 'Mascarilla Hechizo Total', 'Crema Para Rizos 3en1', 'Shampoo Ultra', 'Varita Mágica', 'Mantequilla Corporal Vainilla', 'Mantequilla Corporal Strawberry', 'Mantequilla Corporal Watermelon'];
+function SolicitarProducto({
+  infData
+}) {
+  const [paso, setPaso] = useState(1);
+  const [seleccionados, setSeleccionados] = useState([]);
+  const [mensaje, setMensaje] = useState('');
+  const [direccion, setDireccion] = useState({
+    direccion_envio: infData?.direccion_envio || '',
+    ciudad: infData?.ciudad || '',
+    departamento: infData?.departamento || '',
+    codigo_postal: infData?.codigo_postal || ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [enviado, setEnviado] = useState(false);
+  const [error, setError] = useState('');
+  function toggle(p) {
+    setSeleccionados(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
+  }
+  function siguientePaso(e) {
+    e.preventDefault();
+    if (seleccionados.length === 0) {
+      setError('Selecciona al menos un producto');
+      return;
     }
-
-    function getProgreso(score) {
-      const s = score || 0;
-      const idx = NIVELES.findIndex(n => s >= n.min && (n.max === null || s <= n.max));
-      const nivel = NIVELES[idx];
-      const next = NIVELES[idx + 1];
-      if (!next) return { pct: 100, falta: 0, next: null };
-      const rango = next.min - nivel.min;
-      const avance = s - nivel.min;
-      return { pct: Math.min(100, Math.round((avance / rango) * 100)), falta: next.min - s, next: next.nombre };
+    setError('');
+    setPaso(2);
+  }
+  async function enviar(e) {
+    e.preventDefault();
+    if (!direccion.direccion_envio || !direccion.ciudad) {
+      setError('La dirección y ciudad son obligatorias');
+      return;
     }
-
-    const PRODUCTOS_DISPONIBLES = [
-      'Termoprotector Capilar',
-      'Mascarilla Hechizo Total',
-      'Crema Para Rizos 3en1',
-      'Shampoo Ultra',
-      'Varita Mágica',
-      'Mantequilla Corporal Vainilla',
-      'Mantequilla Corporal Strawberry',
-      'Mantequilla Corporal Watermelon',
-    ];
-
-    function SolicitarProducto({ infData }) {
-      const [paso, setPaso] = useState(1);
-      const [seleccionados, setSeleccionados] = useState([]);
-      const [mensaje, setMensaje] = useState('');
-      const [direccion, setDireccion] = useState({
-        direccion_envio: infData?.direccion_envio || '',
-        ciudad: infData?.ciudad || '',
-        departamento: infData?.departamento || '',
-        codigo_postal: infData?.codigo_postal || '',
+    setLoading(true);
+    setError('');
+    try {
+      await apiFetch('/api/influencer/solicitar-producto', {
+        method: 'POST',
+        body: JSON.stringify({
+          productos: seleccionados,
+          mensaje,
+          direccion
+        })
       });
-      const [loading, setLoading] = useState(false);
-      const [enviado, setEnviado] = useState(false);
-      const [error, setError] = useState('');
-
-      function toggle(p) {
-        setSeleccionados(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]);
-      }
-
-      function siguientePaso(e) {
-        e.preventDefault();
-        if (seleccionados.length === 0) { setError('Selecciona al menos un producto'); return; }
-        setError('');
-        setPaso(2);
-      }
-
-      async function enviar(e) {
-        e.preventDefault();
-        if (!direccion.direccion_envio || !direccion.ciudad) { setError('La dirección y ciudad son obligatorias'); return; }
-        setLoading(true); setError('');
-        try {
-          await apiFetch('/api/influencer/solicitar-producto', {
-            method: 'POST',
-            body: JSON.stringify({ productos: seleccionados, mensaje, direccion }),
-          });
-          setEnviado(true);
-        } catch (err) {
-          setError(err.message);
-        } finally {
-          setLoading(false);
-        }
-      }
-
-      if (enviado) {
-        return (
-          <div className="sol-producto">
-            <div className="sol-success">
-              ✓ ¡Solicitud enviada! Te avisamos cuando esté en camino 💜
-            </div>
-          </div>
-        );
-      }
-
-      return (
-        <div className="sol-producto">
-          {/* Indicador de pasos */}
-          <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:16}}>
-            <div style={{display:'flex', alignItems:'center', gap:6}}>
-              <div style={{width:22, height:22, borderRadius:'50%', background: paso >= 1 ? 'var(--pink)' : 'var(--border)', color:'white', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700}}>1</div>
-              <span style={{fontSize:12, fontWeight: paso === 1 ? 700 : 400, color: paso === 1 ? 'var(--text)' : 'var(--text-muted)'}}>Productos</span>
-            </div>
-            <div style={{flex:1, height:1, background:'var(--border)'}} />
-            <div style={{display:'flex', alignItems:'center', gap:6}}>
-              <div style={{width:22, height:22, borderRadius:'50%', background: paso >= 2 ? 'var(--pink)' : 'var(--border)', color:'white', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700}}>2</div>
-              <span style={{fontSize:12, fontWeight: paso === 2 ? 700 : 400, color: paso === 2 ? 'var(--text)' : 'var(--text-muted)'}}>Dirección</span>
-            </div>
-          </div>
-
-          {paso === 1 && (
-            <form onSubmit={siguientePaso}>
-              <div style={{fontSize:13, color:'var(--text-muted)', marginBottom:12}}>¿Qué productos te gustaría recibir?</div>
-              <div className="productos-grid">
-                {PRODUCTOS_DISPONIBLES.map(p => (
-                  <label key={p} className={`producto-check${seleccionados.includes(p) ? ' selected' : ''}`}>
-                    <input type="checkbox" checked={seleccionados.includes(p)} onChange={() => toggle(p)} style={{display:'none'}} />
-                    {seleccionados.includes(p) ? '✓ ' : ''}{p}
-                  </label>
-                ))}
-              </div>
-              <textarea
-                className="sol-textarea"
-                placeholder="¿Algo más que quieras decirnos? (opcional)"
-                value={mensaje}
-                onChange={e => setMensaje(e.target.value)}
-              />
-              {error && <div className="alert-error" style={{marginBottom:12}}>{error}</div>}
-              <button className="btn btn-primary" type="submit">Continuar →</button>
-            </form>
-          )}
-
-          {paso === 2 && (
-            <form onSubmit={enviar}>
-              <div style={{fontSize:13, color:'var(--text-muted)', marginBottom:14}}>Confirma que tu dirección de envío es correcta o corrígela.</div>
-              <div className="field">
-                <label>Dirección</label>
-                <input value={direccion.direccion_envio} onChange={e => setDireccion(d => ({...d, direccion_envio: e.target.value}))} placeholder="Calle, carrera, número, barrio" required />
-              </div>
-              <div className="field">
-                <label>Ciudad</label>
-                <input value={direccion.ciudad} onChange={e => setDireccion(d => ({...d, ciudad: e.target.value}))} placeholder="Ciudad" required />
-              </div>
-              <div className="field">
-                <label>Departamento</label>
-                <input value={direccion.departamento} onChange={e => setDireccion(d => ({...d, departamento: e.target.value}))} placeholder="Departamento" />
-              </div>
-              <div className="field">
-                <label>Código postal</label>
-                <input value={direccion.codigo_postal} onChange={e => setDireccion(d => ({...d, codigo_postal: e.target.value}))} placeholder="Código postal (opcional)" />
-              </div>
-              {error && <div className="alert-error" style={{marginBottom:12}}>{error}</div>}
-              <div style={{display:'flex', gap:10}}>
-                <button type="button" className="btn btn-secondary" onClick={() => setPaso(1)} style={{width:'auto', padding:'10px 18px'}}>← Volver</button>
-                <button className="btn btn-primary" type="submit" disabled={loading}>
-                  {loading ? 'Enviando...' : 'Enviar solicitud →'}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      );
+      setEnviado(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-
-    // ── TOKEN UTILS ────────────────────────────────────────────────
-    const getToken = () => localStorage.getItem('inf_token');
-    const setToken = (t) => localStorage.setItem('inf_token', t);
-    const clearToken = () => localStorage.removeItem('inf_token');
-
-    async function apiFetch(path, opts = {}) {
-      const token = getToken();
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      };
-      const res = await fetch(path, { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
-      return data;
+  }
+  if (enviado) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "sol-producto"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "sol-success"
+    }, "\u2713 \xA1Solicitud enviada! Te avisamos cuando est\xE9 en camino \uD83D\uDC9C"));
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: "sol-producto"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 16
     }
-
-    const fmt = (n) => n != null ? Number(n).toLocaleString('es-CO') : '—';
-    const fmtCOP = (n) => n != null ? `$${Number(n).toLocaleString('es-CO')}` : '—';
-    const fmtDate = (s) => s ? new Date(s).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-
-    // ── LANDING ────────────────────────────────────────────────────
-    function LandingPage({ onLogin, tallyRegistro }) {
-      return (
-        <div className="landing">
-          <img className="logo" src={LOGO} alt="Brujería Capilar" />
-          <h1>Club Creadoras</h1>
-          <p>Tu espacio para ver tu nivel de Magia, tus contenidos y las ventas que generas.</p>
-
-          <div style={{display:'flex', flexDirection:'column', gap:12, width:'100%', maxWidth:340}}>
-            <button
-              className="btn btn-primary"
-              style={{padding:'14px 36px', fontSize:'15px', borderRadius:'99px'}}
-              onClick={onLogin}
-            >
-              Ya soy creadora — Entrar →
-            </button>
-
-            {tallyRegistro ? (
-              <a href={tallyRegistro} target="_blank" rel="noopener noreferrer"
-                style={{display:'block', textAlign:'center', background:'var(--white)', border:'2px solid var(--pink)', color:'var(--pink)', padding:'13px 36px', borderRadius:'99px', fontWeight:700, fontSize:15, textDecoration:'none'}}>
-                Quiero unirme al club
-              </a>
-            ) : (
-              <a href="https://wa.me/573332785065" target="_blank" rel="noopener noreferrer"
-                style={{display:'block', textAlign:'center', background:'var(--white)', border:'2px solid var(--pink)', color:'var(--pink)', padding:'13px 36px', borderRadius:'99px', fontWeight:700, fontSize:15, textDecoration:'none'}}>
-                Quiero unirme al club
-              </a>
-            )}
-          </div>
-
-          <p style={{fontSize:12, color:'var(--text-muted)', marginTop:20, maxWidth:300}}>
-            ¿Primera vez? Usa "Entrar" con tu email — el sistema te guía para crear tu contraseña.
-          </p>
-        </div>
-      );
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6
     }
-
-    // ── LOGIN ──────────────────────────────────────────────────────
-    function LoginPage({ onSuccess, onBack }) {
-      const [step, setStep] = useState('email');
-      const [email, setEmail] = useState('');
-      const [password, setPassword] = useState('');
-      const [password2, setPassword2] = useState('');
-      const [loading, setLoading] = useState(false);
-      const [error, setError] = useState('');
-
-      async function handleEmail(e) {
-        e.preventDefault();
-        if (!email.trim()) return;
-        setLoading(true); setError('');
-        try {
-          const data = await apiFetch('/api/auth/check-email', {
-            method: 'POST',
-            body: JSON.stringify({ email: email.trim() }),
-          });
-          setStep(data.hasPassword ? 'login' : 'set-password');
-        } catch (err) {
-          setError(err.message);
-        } finally {
-          setLoading(false);
-        }
-      }
-
-      async function handleSetPassword(e) {
-        e.preventDefault();
-        if (password !== password2) { setError('Las contraseñas no coinciden'); return; }
-        if (password.length < 6) { setError('Mínimo 6 caracteres'); return; }
-        setLoading(true); setError('');
-        try {
-          const data = await apiFetch('/api/auth/set-password', {
-            method: 'POST',
-            body: JSON.stringify({ email: email.trim(), password }),
-          });
-          setToken(data.token);
-          onSuccess(data.nombre);
-        } catch (err) {
-          setError(err.message);
-        } finally {
-          setLoading(false);
-        }
-      }
-
-      async function handleLogin(e) {
-        e.preventDefault();
-        setLoading(true); setError('');
-        try {
-          const data = await apiFetch('/api/auth/login', {
-            method: 'POST',
-            body: JSON.stringify({ email: email.trim(), password }),
-          });
-          setToken(data.token);
-          onSuccess(data.nombre);
-        } catch (err) {
-          setError(err.message);
-        } finally {
-          setLoading(false);
-        }
-      }
-
-      const subtitles = {
-        email: 'Ingresa el email con el que te registraste en el programa',
-        'set-password': 'Primera vez — crea una contraseña para tu cuenta',
-        login: 'Bienvenida de vuelta 💜',
-      };
-
-      return (
-        <div className="login-wrap">
-          <div className="login-card">
-            <img className="logo" src={LOGO} alt="Brujería Capilar" />
-            <h2>{step === 'email' ? 'Entrar al portal' : step === 'set-password' ? 'Crear contraseña' : 'Iniciar sesión'}</h2>
-            <p className="subtitle">{subtitles[step]}</p>
-            {error && <div className="alert-error">{error}</div>}
-
-            {step === 'email' && (
-              <form onSubmit={handleEmail}>
-                <div className="field">
-                  <label>Tu email</label>
-                  <input
-                    type="email" value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="tu@email.com" required autoFocus
-                  />
-                </div>
-                <button className="btn btn-primary" type="submit" disabled={loading}>
-                  {loading ? 'Verificando...' : 'Continuar →'}
-                </button>
-                <div className="divider">
-                  <button type="button" className="link-btn" onClick={onBack}>← Volver</button>
-                </div>
-              </form>
-            )}
-
-            {step === 'set-password' && (
-              <form onSubmit={handleSetPassword}>
-                <div className="field">
-                  <label>Crear Contraseña</label>
-                  <input
-                    type="password" value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="Mínimo 6 caracteres" required autoFocus
-                  />
-                </div>
-                <div className="field">
-                  <label>Confirmar Contraseña</label>
-                  <input
-                    type="password" value={password2}
-                    onChange={e => setPassword2(e.target.value)}
-                    placeholder="Repite la contraseña" required
-                  />
-                </div>
-                <button className="btn btn-primary" type="submit" disabled={loading}>
-                  {loading ? 'Guardando...' : 'Crear cuenta y entrar →'}
-                </button>
-                <div className="divider">
-                  <button type="button" className="link-btn" onClick={() => { setStep('email'); setError(''); }}>← Cambiar email</button>
-                </div>
-              </form>
-            )}
-
-            {step === 'login' && (
-              <form onSubmit={handleLogin}>
-                <div className="field">
-                  <label>Contraseña</label>
-                  <input
-                    type="password" value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="Tu contraseña" required autoFocus
-                  />
-                </div>
-                <button className="btn btn-primary" type="submit" disabled={loading}>
-                  {loading ? 'Entrando...' : 'Entrar →'}
-                </button>
-                <div className="divider">
-                  <button type="button" className="link-btn" onClick={() => { setStep('email'); setPassword(''); setError(''); }}>← Cambiar email</button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      );
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 22,
+      height: 22,
+      borderRadius: '50%',
+      background: paso >= 1 ? 'var(--pink)' : 'var(--border)',
+      color: 'white',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 11,
+      fontWeight: 700
     }
-
-    // ── TOP BAR ────────────────────────────────────────────────────
-
-    // ── CONFIRMAR RECIBO DEL PAQUETE ───────────────────────────────
-    function ConfirmarRecibo({ onConfirmado }) {
-      const [loading, setLoading] = useState(false);
-      const [confirmado, setConfirmado] = useState(false);
-
-      // Auto-abrir si viene con ?confirmar=1 en la URL
-      const autoConfirmar = new URLSearchParams(window.location.search).get('confirmar') === '1';
-
-      async function confirmar() {
-        setLoading(true);
-        try {
-          await apiFetch('/api/influencer/confirmar-recibo', { method: 'POST' });
-          setConfirmado(true);
-          setTimeout(() => onConfirmado(), 1500);
-        } catch (e) {
-          console.error(e);
-        } finally {
-          setLoading(false);
-        }
-      }
-
-      if (confirmado) return (
-        <div style={{background:'#f0fdf4',border:'1.5px solid #86efac',borderRadius:12,padding:'16px 20px',marginBottom:20,textAlign:'center'}}>
-          <div style={{fontSize:28}}>📦✅</div>
-          <p style={{color:'#16a34a',fontWeight:600,margin:'8px 0 0'}}>¡Confirmado! Gracias por avisarnos 💜</p>
-        </div>
-      );
-
-      return (
-        <div style={{background:'#fff7ed',border:'1.5px solid #fed7aa',borderRadius:12,padding:'16px 20px',marginBottom:20}}>
-          <div style={{display:'flex',alignItems:'center',gap:12}}>
-            <span style={{fontSize:28}}>📦</span>
-            <div style={{flex:1}}>
-              <p style={{fontWeight:600,margin:'0 0 4px',color:'#92400e'}}>¿Ya te llegó tu paquete?</p>
-              <p style={{fontSize:13,color:'#b45309',margin:0}}>Confírmanos para que podamos hacer seguimiento</p>
-            </div>
-            <button
-              onClick={confirmar}
-              disabled={loading}
-              style={{background:'#c0298b',color:'#fff',border:'none',borderRadius:8,padding:'10px 18px',fontWeight:600,fontSize:13,cursor:'pointer',whiteSpace:'nowrap'}}
-            >
-              {loading ? '...' : '✅ Sí, ya llegó'}
-            </button>
-          </div>
-        </div>
-      );
+  }, "1"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      fontWeight: paso === 1 ? 700 : 400,
+      color: paso === 1 ? 'var(--text)' : 'var(--text-muted)'
     }
-
-    // ── FORM SUBIR CONTENIDO ───────────────────────────────────────
-    function SubirContenido({ onSuccess }) {
-      const [abierto, setAbierto] = useState(false);
-      const [form, setForm] = useState({ url: '', plataforma: 'TikTok', tipo: 'Reel', vistas: '', likes: '', guardados: '' });
-      const [loading, setLoading] = useState(false);
-      const [exito, setExito] = useState(null);
-      const [error, setError] = useState('');
-
-      const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-      async function enviar(e) {
-        e.preventDefault();
-        if (!form.url) { setError('La URL del contenido es obligatoria'); return; }
-        setLoading(true); setError('');
-        try {
-          const r = await apiFetch('/api/influencer/contenido', {
-            method: 'POST',
-            body: JSON.stringify({
-              url_contenido: form.url,
-              plataforma: form.plataforma,
-              tipo_contenido: form.tipo,
-              vistas: parseInt(form.vistas) || 0,
-              likes: parseInt(form.likes) || 0,
-              guardados: parseInt(form.guardados) || 0,
-            }),
-          });
-          setExito(r);
-          onSuccess && onSuccess();
-        } catch(e) {
-          setError(e.message);
-        } finally {
-          setLoading(false);
-        }
-      }
-
-      if (exito) return (
-        <div style={{background:'var(--green-bg)', border:'1.5px solid #bbf7d0', borderRadius:16, padding:'20px 24px', textAlign:'center'}}>
-          <div style={{fontSize:36, marginBottom:8}}>🌟</div>
-          <div style={{fontWeight:700, fontSize:16, color:'var(--green)', marginBottom:4}}>¡Contenido registrado!</div>
-          <div style={{fontSize:13, color:'var(--text-muted)', marginBottom:16}}>Obtuviste <strong style={{color:'var(--text)'}}>{parseFloat(exito.score).toFixed(1)} puntos</strong> · Nivel: <strong style={{color:'var(--text)'}}>{exito.nivel}</strong></div>
-          <button onClick={() => { setExito(null); setAbierto(false); setForm({ url:'', plataforma:'TikTok', tipo:'Reel', vistas:'', likes:'', guardados:'' }); }}
-            style={{background:'var(--green)', color:'white', border:'none', borderRadius:99, padding:'8px 20px', fontWeight:600, cursor:'pointer', fontSize:13}}>
-            Subir otro
-          </button>
-        </div>
-      );
-
-      if (!abierto) return (
-        <button onClick={() => setAbierto(true)}
-          style={{width:'100%', background:'linear-gradient(135deg, var(--pink), var(--coral))', color:'white', border:'none', borderRadius:99, padding:'14px 32px', fontWeight:700, cursor:'pointer', fontSize:15}}>
-          ✨ Reportar contenido publicado
-        </button>
-      );
-
-      return (
-        <form onSubmit={enviar} style={{background:'var(--white)', border:'1.5px solid var(--border)', borderRadius:16, padding:'20px 20px 16px'}}>
-          <div style={{fontWeight:700, fontSize:15, marginBottom:16, color:'var(--text)'}}>Reportar contenido</div>
-
-          <div className="field">
-            <label>URL del contenido *</label>
-            <input type="url" placeholder="https://www.tiktok.com/..." value={form.url} onChange={e => set('url', e.target.value)} required />
-          </div>
-
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:12}}>
-            <div className="field" style={{margin:0}}>
-              <label>Plataforma</label>
-              <select value={form.plataforma} onChange={e => set('plataforma', e.target.value)} style={{width:'100%', padding:'10px 12px', borderRadius:10, border:'1.5px solid var(--border2)', background:'var(--cream)', fontSize:14, color:'var(--text)'}}>
-                <option>TikTok</option>
-                <option>Instagram</option>
-                <option>YouTube</option>
-              </select>
-            </div>
-            <div className="field" style={{margin:0}}>
-              <label>Tipo</label>
-              <select value={form.tipo} onChange={e => set('tipo', e.target.value)} style={{width:'100%', padding:'10px 12px', borderRadius:10, border:'1.5px solid var(--border2)', background:'var(--cream)', fontSize:14, color:'var(--text)'}}>
-                <option>Reel</option>
-                <option>Video</option>
-                <option>TikTok</option>
-                <option>Post</option>
-                <option>Historia</option>
-              </select>
-            </div>
-          </div>
-
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:16}}>
-            {[['vistas','Vistas / Reproducciones'],['likes','Likes'],['guardados','Guardados']].map(([k,l]) => (
-              <div className="field" key={k} style={{margin:0}}>
-                <label>{l}</label>
-                <input type="number" min="0" placeholder="0" value={form[k]} onChange={e => set(k, e.target.value)} />
-              </div>
-            ))}
-          </div>
-
-          {error && <div style={{color:'var(--red)', fontSize:13, marginBottom:10}}>{error}</div>}
-
-          <div style={{display:'flex', gap:10}}>
-            <button type="button" onClick={() => setAbierto(false)}
-              style={{flex:1, padding:'11px', borderRadius:99, border:'1.5px solid var(--border)', background:'transparent', color:'var(--text-muted)', cursor:'pointer', fontWeight:600, fontSize:14}}>
-              Cancelar
-            </button>
-            <button type="submit" disabled={loading}
-              style={{flex:2, padding:'11px', borderRadius:99, border:'none', background:'linear-gradient(135deg, var(--pink), var(--coral))', color:'white', fontWeight:700, cursor:'pointer', fontSize:14, opacity: loading ? 0.7 : 1}}>
-              {loading ? 'Guardando...' : 'Guardar contenido'}
-            </button>
-          </div>
-        </form>
-      );
+  }, "Productos")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      height: 1,
+      background: 'var(--border)'
     }
-
-    function TopBar({ nombre, onLogout }) {
-      return (
-        <nav className="top-bar">
-          <img className="logo" src={LOGO} alt="Brujería Capilar" />
-          <div style={{display:'flex', alignItems:'center', gap:12}}>
-            <span className="user-name">{nombre}</span>
-            <button className="logout-btn" onClick={onLogout}>Salir</button>
-          </div>
-        </nav>
-      );
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6
     }
-
-    // ── DASHBOARD ──────────────────────────────────────────────────
-    function Dashboard({ nombre, onLogout }) {
-      const [data, setData] = useState(null);
-      const [ventas, setVentas] = useState(null);
-      const [loading, setLoading] = useState(true);
-      const [error, setError] = useState('');
-
-      useEffect(() => {
-        Promise.all([
-          apiFetch('/api/influencer/me'),
-          apiFetch('/api/influencer/ventas').catch(() => null),
-        ]).then(([me, v]) => {
-          setData(me);
-          setVentas(v);
-        }).catch(err => {
-          if (err.message.includes('401') || err.message.toLowerCase().includes('autorizado') || err.message.toLowerCase().includes('token')) {
-            clearToken();
-            onLogout();
-          } else {
-            setError(err.message);
-          }
-        }).finally(() => setLoading(false));
-      }, []);
-
-      if (loading) return (
-        <>
-          <TopBar nombre={nombre} onLogout={onLogout} />
-          <div className="loading">Cargando tu perfil...</div>
-        </>
-      );
-
-      if (error) return (
-        <>
-          <TopBar nombre={nombre} onLogout={onLogout} />
-          <div className="dash"><div className="alert-error">{error}</div></div>
-        </>
-      );
-
-      const inf = data;
-      const contenidos = data.contenidos || [];
-      const scoreAcum = inf.score_total != null
-        ? parseFloat(inf.score_total)
-        : contenidos.reduce((s, c) => s + (parseFloat(c.score_contenido) || 0), 0);
-      const nivel = getNivel(scoreAcum);
-      const progreso = getProgreso(scoreAcum);
-      const tierMap = { 'Nano': 'nano', 'Micro': 'micro', 'Macro': 'macro' };
-
-      return (
-        <>
-          <TopBar nombre={inf.nombre} onLogout={onLogout} />
-          <div className="dash">
-
-            <div className="dash-greeting">
-              <h1>Hola, {(inf.nombre || '').split(' ')[0]} ✨</h1>
-              <p>Bienvenida a tu portal del Club Creadoras</p>
-            </div>
-
-            {/* Confirmación de recibo del paquete */}
-            {inf.status === 'Producto Enviado' && !inf.fecha_confirmacion_recibo && (
-              <ConfirmarRecibo onConfirmado={load} />
-            )}
-
-            {/* CTA subir contenido */}
-            {['Producto Enviado', 'Contenido Entregado'].includes(inf.status) && (
-              <div className="cta-subir" style={{marginBottom:24}}>
-                <h3>¡Ya tienes tu kit! Es hora de brillar</h3>
-                <p>Reporta tu contenido aquí, gana puntos y sube de nivel de Magia.</p>
-                <SubirContenido onSuccess={load} />
-              </div>
-            )}
-
-            {/* STATS */}
-            <div className="section-title">Tu progreso</div>
-            <div className="stats-grid" style={{marginBottom:16}}>
-              <div className="stat-card">
-                <div className="stat-label">Score</div>
-                <div className="stat-val pink">{scoreAcum.toFixed(1)}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Contenidos</div>
-                <div className="stat-val">{contenidos.length}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Ventas</div>
-                <div className="stat-val green" style={{fontSize: ventas?.ventasAtribuidas != null ? 16 : 22}}>
-                  {ventas && ventas.ventasAtribuidas != null ? fmtCOP(ventas.ventasAtribuidas) : '—'}
-                </div>
-              </div>
-            </div>
-
-            {/* NIVEL */}
-            <div className="nivel-card" style={{marginBottom:16}}>
-              <div className="nivel-top">
-                <div className="nivel-emoji">{nivel.emoji}</div>
-                <div className="nivel-info">
-                  <div className="nivel-name">{nivel.nombre}</div>
-                  <div className="nivel-pts">{scoreAcum.toFixed(1)} puntos acumulados</div>
-                </div>
-              </div>
-              <div className="progress-bg">
-                <div className="progress-fill" style={{width:`${progreso.pct}%`}} />
-              </div>
-              {progreso.next ? (
-                <div className="progress-label">
-                  Te faltan <strong>{parseFloat(progreso.falta).toFixed(2)} pts</strong> para llegar a <strong>{progreso.next}</strong>
-                </div>
-              ) : (
-                <div className="progress-label"><strong>Gran Magia</strong> — nivel máximo alcanzado 🌟</div>
-              )}
-            </div>
-
-            {/* MAPA DE NIVELES */}
-            <div className="section-title">Camino de Magia</div>
-            <div style={{background:'var(--white)', border:'1.5px solid var(--border)', borderRadius:16, padding:'16px 20px', marginBottom:16}}>
-              {NIVELES.map((n, i) => {
-                const actual = scoreAcum >= n.min && (n.max === null || scoreAcum <= n.max);
-                const superado = n.max !== null && scoreAcum > n.max;
-                return (
-                  <div key={n.nombre} style={{display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom: i < NIVELES.length-1 ? '1px solid var(--border)' : 'none', opacity: superado ? 0.5 : 1}}>
-                    <div style={{fontSize:22, width:32, textAlign:'center'}}>{n.emoji}</div>
-                    <div style={{flex:1}}>
-                      <div style={{fontWeight:700, fontSize:13, color: actual ? n.color : 'var(--text)', display:'flex', alignItems:'center', gap:6}}>
-                        {n.nombre}
-                        {actual && <span style={{background:'var(--pink)', color:'white', fontSize:10, padding:'1px 7px', borderRadius:99, fontWeight:700}}>TÚ ESTÁS AQUÍ</span>}
-                        {superado && <span style={{color:'var(--green)', fontSize:11}}>✓ Superado</span>}
-                      </div>
-                      <div style={{fontSize:12, color:'var(--text-muted)', marginTop:2}}>{n.desc}</div>
-                    </div>
-                    <div style={{fontSize:11, color:'var(--text-muted)', textAlign:'right', whiteSpace:'nowrap'}}>
-                      {n.max ? `${n.min} – ${n.max} pts` : `${n.min}+ pts`}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* SOLICITAR MÁS PRODUCTO */}
-            <div className="section-title">Solicitar más productos</div>
-            <div style={{marginBottom:16}}>
-              <SolicitarProducto infData={inf} />
-            </div>
-
-            {/* CÓDIGO DE DESCUENTO */}
-            {inf.codigo_descuento && (
-              <>
-                <div className="section-title">Tu código de descuento</div>
-                <div className="codigo-card" style={{marginBottom:16}}>
-                  <div className="codigo-val">{inf.codigo_descuento}</div>
-                  <div className="codigo-row">
-                    <span className="cr-label">Ventas generadas</span>
-                    <span className="cr-val">{ventas ? fmtCOP(ventas.ventasAtribuidas) : '—'}</span>
-                  </div>
-                  <div className="codigo-row">
-                    <span className="cr-label">Órdenes</span>
-                    <span className="cr-val" style={{color:'var(--text)'}}>{ventas ? fmt(ventas.ordenesAtribuidas) : '—'}</span>
-                  </div>
-                  <div style={{marginTop:14, background:'var(--cream)', borderRadius:10, padding:'12px 14px'}}>
-                    <div style={{fontSize:12, fontWeight:700, color:'var(--text)', marginBottom:6}}>¿Cómo usarlo?</div>
-                    <ol style={{paddingLeft:16, fontSize:12, color:'var(--text-muted)', lineHeight:2}}>
-                      <li>Comparte el código en tus historias, videos o bio</li>
-                      <li>Tu audiencia lo usa al comprar en <strong style={{color:'var(--text)'}}>brujeriacapilar.com</strong></li>
-                      <li>Ellos obtienen descuento y tú acumulas comisiones</li>
-                    </ol>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* PERFIL */}
-            <div className="section-title">Tu perfil</div>
-            <div className="perfil-card" style={{marginBottom:16}}>
-              <div className="info-row">
-                <span className="info-label">Instagram</span>
-                <span className="info-val">@{inf.instagram_handle || '—'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Tier</span>
-                <span className="info-val">
-                  <span className={`badge badge-${tierMap[inf.tier] || 'nano'}`}>{inf.tier || '—'}</span>
-                </span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Kit recibido</span>
-                <span className="info-val">{inf.kit_asignado || '—'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">Fecha de envío</span>
-                <span className="info-val">{fmtDate(inf.fecha_envio)}</span>
-              </div>
-            </div>
-
-            {/* CONTENIDOS */}
-            <div className="section-title">Mis contenidos</div>
-            <div className="contenidos-card" style={{marginBottom:32}}>
-              <div className="contenidos-header">
-                <h3>Historial</h3>
-                <span>{contenidos.length} piezas</span>
-              </div>
-              {contenidos.length === 0 ? (
-                <div className="empty-state">
-                  Aún no has reportado contenido.<br/>
-                  <span style={{color:'var(--text-muted)', fontSize:13}}>Usa el botón de arriba para reportar tu publicación.</span>
-                </div>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Fecha</th>
-                      <th>Tipo</th>
-                      <th>Score</th>
-                      <th>Link</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {contenidos.map(c => (
-                      <tr key={c.id}>
-                        <td className="td-muted">{fmtDate(c.fecha_submision)}</td>
-                        <td>{c.tipo_contenido || '—'}</td>
-                        <td>
-                          {c.score_contenido != null ? (
-                            <div className="score-bar">
-                              <div className="score-bar-bg">
-                                <div className="score-bar-fill" style={{width:`${Math.min(parseFloat(c.score_contenido), 100)}%`}} />
-                              </div>
-                              <span className="score-num">{parseFloat(c.score_contenido).toFixed(1)}</span>
-                            </div>
-                          ) : <span className="td-muted">Pendiente</span>}
-                        </td>
-                        <td>
-                          {c.url_contenido
-                            ? <a href={c.url_contenido} target="_blank" rel="noopener noreferrer" style={{color:'var(--pink)', fontWeight:600}}>Ver</a>
-                            : <span className="td-muted">—</span>
-                          }
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* SUBIR CONTENIDO BOTTOM */}
-            {contenidos.length > 0 && (
-              <div style={{marginBottom:40}}>
-                <SubirContenido onSuccess={load} />
-              </div>
-            )}
-
-          </div>
-        </>
-      );
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 22,
+      height: 22,
+      borderRadius: '50%',
+      background: paso >= 2 ? 'var(--pink)' : 'var(--border)',
+      color: 'white',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 11,
+      fontWeight: 700
     }
+  }, "2"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      fontWeight: paso === 2 ? 700 : 400,
+      color: paso === 2 ? 'var(--text)' : 'var(--text-muted)'
+    }
+  }, "Direcci\xF3n"))), paso === 1 && /*#__PURE__*/React.createElement("form", {
+    onSubmit: siguientePaso
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: 'var(--text-muted)',
+      marginBottom: 12
+    }
+  }, "\xBFQu\xE9 productos te gustar\xEDa recibir?"), /*#__PURE__*/React.createElement("div", {
+    className: "productos-grid"
+  }, PRODUCTOS_DISPONIBLES.map(p => /*#__PURE__*/React.createElement("label", {
+    key: p,
+    className: `producto-check${seleccionados.includes(p) ? ' selected' : ''}`
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: seleccionados.includes(p),
+    onChange: () => toggle(p),
+    style: {
+      display: 'none'
+    }
+  }), seleccionados.includes(p) ? '✓ ' : '', p))), /*#__PURE__*/React.createElement("textarea", {
+    className: "sol-textarea",
+    placeholder: "\xBFAlgo m\xE1s que quieras decirnos? (opcional)",
+    value: mensaje,
+    onChange: e => setMensaje(e.target.value)
+  }), error && /*#__PURE__*/React.createElement("div", {
+    className: "alert-error",
+    style: {
+      marginBottom: 12
+    }
+  }, error), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    type: "submit"
+  }, "Continuar \u2192")), paso === 2 && /*#__PURE__*/React.createElement("form", {
+    onSubmit: enviar
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: 'var(--text-muted)',
+      marginBottom: 14
+    }
+  }, "Confirma que tu direcci\xF3n de env\xEDo es correcta o corr\xEDgela."), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Direcci\xF3n"), /*#__PURE__*/React.createElement("input", {
+    value: direccion.direccion_envio,
+    onChange: e => setDireccion(d => ({
+      ...d,
+      direccion_envio: e.target.value
+    })),
+    placeholder: "Calle, carrera, n\xFAmero, barrio",
+    required: true
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Ciudad"), /*#__PURE__*/React.createElement("input", {
+    value: direccion.ciudad,
+    onChange: e => setDireccion(d => ({
+      ...d,
+      ciudad: e.target.value
+    })),
+    placeholder: "Ciudad",
+    required: true
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Departamento"), /*#__PURE__*/React.createElement("input", {
+    value: direccion.departamento,
+    onChange: e => setDireccion(d => ({
+      ...d,
+      departamento: e.target.value
+    })),
+    placeholder: "Departamento"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "C\xF3digo postal"), /*#__PURE__*/React.createElement("input", {
+    value: direccion.codigo_postal,
+    onChange: e => setDireccion(d => ({
+      ...d,
+      codigo_postal: e.target.value
+    })),
+    placeholder: "C\xF3digo postal (opcional)"
+  })), error && /*#__PURE__*/React.createElement("div", {
+    className: "alert-error",
+    style: {
+      marginBottom: 12
+    }
+  }, error), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "btn btn-secondary",
+    onClick: () => setPaso(1),
+    style: {
+      width: 'auto',
+      padding: '10px 18px'
+    }
+  }, "\u2190 Volver"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    type: "submit",
+    disabled: loading
+  }, loading ? 'Enviando...' : 'Enviar solicitud →'))));
+}
 
-    // ── APP ────────────────────────────────────────────────────────
-    function App() {
-      const [view, setView] = useState(getToken() ? 'dashboard' : 'landing');
-      const [nombre, setNombre] = useState('');
-      const [tallyContenido, setTallyContenido] = useState('https://tally.so/r/rjEZdo');
-      const [tallyRegistro, setTallyRegistro] = useState('');
+// ── TOKEN UTILS ────────────────────────────────────────────────
+const getToken = () => localStorage.getItem('inf_token');
+const setToken = t => localStorage.setItem('inf_token', t);
+const clearToken = () => localStorage.removeItem('inf_token');
+async function apiFetch(path, opts = {}) {
+  const token = getToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? {
+      Authorization: `Bearer ${token}`
+    } : {})
+  };
+  const res = await fetch(path, {
+    ...opts,
+    headers: {
+      ...headers,
+      ...(opts.headers || {})
+    }
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+  return data;
+}
+const fmt = n => n != null ? Number(n).toLocaleString('es-CO') : '—';
+const fmtCOP = n => n != null ? `${Number(n).toLocaleString('es-CO')}` : '—';
+const fmtDate = s => s ? new Date(s).toLocaleDateString('es-CO', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric'
+}) : '—';
 
-      useEffect(() => {
-        fetch('/api/influencer/tally-urls')
-          .then(r => r.json())
-          .then(d => {
-            if (d.contenido) setTallyContenido(d.contenido);
-            if (d.registro) setTallyRegistro(d.registro);
-          })
-          .catch(() => {});
-      }, []);
+// ── LANDING ────────────────────────────────────────────────────
+function LandingPage({
+  onLogin,
+  tallyRegistro
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "landing"
+  }, /*#__PURE__*/React.createElement("img", {
+    className: "logo",
+    src: LOGO,
+    alt: "Brujer\xEDa Capilar"
+  }), /*#__PURE__*/React.createElement("h1", null, "Club Creadoras"), /*#__PURE__*/React.createElement("p", null, "Tu espacio para ver tu nivel de Magia, tus contenidos y las ventas que generas."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 12,
+      width: '100%',
+      maxWidth: 340
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    style: {
+      padding: '14px 36px',
+      fontSize: '15px',
+      borderRadius: '99px'
+    },
+    onClick: onLogin
+  }, "Ya soy creadora \u2014 Entrar \u2192"), tallyRegistro ? /*#__PURE__*/React.createElement("a", {
+    href: tallyRegistro,
+    target: "_blank",
+    rel: "noopener noreferrer",
+    style: {
+      display: 'block',
+      textAlign: 'center',
+      background: 'var(--white)',
+      border: '2px solid var(--pink)',
+      color: 'var(--pink)',
+      padding: '13px 36px',
+      borderRadius: '99px',
+      fontWeight: 700,
+      fontSize: 15,
+      textDecoration: 'none'
+    }
+  }, "Quiero unirme al club") : /*#__PURE__*/React.createElement("a", {
+    href: "https://wa.me/573332785065",
+    target: "_blank",
+    rel: "noopener noreferrer",
+    style: {
+      display: 'block',
+      textAlign: 'center',
+      background: 'var(--white)',
+      border: '2px solid var(--pink)',
+      color: 'var(--pink)',
+      padding: '13px 36px',
+      borderRadius: '99px',
+      fontWeight: 700,
+      fontSize: 15,
+      textDecoration: 'none'
+    }
+  }, "Quiero unirme al club")), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 12,
+      color: 'var(--text-muted)',
+      marginTop: 20,
+      maxWidth: 300
+    }
+  }, "\xBFPrimera vez? Usa \"Entrar\" con tu email \u2014 el sistema te gu\xEDa para crear tu contrase\xF1a."));
+}
 
-      function onLoginSuccess(n) {
-        setNombre(n);
-        setView('dashboard');
-      }
+// ── LOGIN ──────────────────────────────────────────────────────
+function LoginPage({
+  onSuccess,
+  onBack
+}) {
+  const [step, setStep] = useState('email');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  async function handleEmail(e) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setLoading(true);
+    setError('');
+    try {
+      const data = await apiFetch('/api/auth/check-email', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: email.trim()
+        })
+      });
+      setStep(data.hasPassword ? 'login' : 'set-password');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+  async function handleSetPassword(e) {
+    e.preventDefault();
+    if (password !== password2) {
+      setError('Las contraseñas no coinciden');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Mínimo 6 caracteres');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const data = await apiFetch('/api/auth/set-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: email.trim(),
+          password
+        })
+      });
+      setToken(data.token);
+      onSuccess(data.nombre);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+  async function handleLogin(e) {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const data = await apiFetch('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: email.trim(),
+          password
+        })
+      });
+      setToken(data.token);
+      onSuccess(data.nombre);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+  const subtitles = {
+    email: 'Ingresa el email con el que te registraste en el programa',
+    'set-password': 'Primera vez — crea una contraseña para tu cuenta',
+    login: 'Bienvenida de vuelta 💜'
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "login-wrap"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "login-card"
+  }, /*#__PURE__*/React.createElement("img", {
+    className: "logo",
+    src: LOGO,
+    alt: "Brujer\xEDa Capilar"
+  }), /*#__PURE__*/React.createElement("h2", null, step === 'email' ? 'Entrar al portal' : step === 'set-password' ? 'Crear contraseña' : 'Iniciar sesión'), /*#__PURE__*/React.createElement("p", {
+    className: "subtitle"
+  }, subtitles[step]), error && /*#__PURE__*/React.createElement("div", {
+    className: "alert-error"
+  }, error), step === 'email' && /*#__PURE__*/React.createElement("form", {
+    onSubmit: handleEmail
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Tu email"), /*#__PURE__*/React.createElement("input", {
+    type: "email",
+    value: email,
+    onChange: e => setEmail(e.target.value),
+    placeholder: "tu@email.com",
+    required: true,
+    autoFocus: true
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    type: "submit",
+    disabled: loading
+  }, loading ? 'Verificando...' : 'Continuar →'), /*#__PURE__*/React.createElement("div", {
+    className: "divider"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "link-btn",
+    onClick: onBack
+  }, "\u2190 Volver"))), step === 'set-password' && /*#__PURE__*/React.createElement("form", {
+    onSubmit: handleSetPassword
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Crear Contrase\xF1a"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    value: password,
+    onChange: e => setPassword(e.target.value),
+    placeholder: "M\xEDnimo 6 caracteres",
+    required: true,
+    autoFocus: true
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Confirmar Contrase\xF1a"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    value: password2,
+    onChange: e => setPassword2(e.target.value),
+    placeholder: "Repite la contrase\xF1a",
+    required: true
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    type: "submit",
+    disabled: loading
+  }, loading ? 'Guardando...' : 'Crear cuenta y entrar →'), /*#__PURE__*/React.createElement("div", {
+    className: "divider"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "link-btn",
+    onClick: () => {
+      setStep('email');
+      setError('');
+    }
+  }, "\u2190 Cambiar email"))), step === 'login' && /*#__PURE__*/React.createElement("form", {
+    onSubmit: handleLogin
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Contrase\xF1a"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    value: password,
+    onChange: e => setPassword(e.target.value),
+    placeholder: "Tu contrase\xF1a",
+    required: true,
+    autoFocus: true
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    type: "submit",
+    disabled: loading
+  }, loading ? 'Entrando...' : 'Entrar →'), /*#__PURE__*/React.createElement("div", {
+    className: "divider"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "link-btn",
+    onClick: () => {
+      setStep('email');
+      setPassword('');
+      setError('');
+    }
+  }, "\u2190 Cambiar email")))));
+}
 
-      function onLogout() {
+// ── TOP BAR ────────────────────────────────────────────────────
+
+// ── CONFIRMAR RECIBO DEL PAQUETE ───────────────────────────────
+function ConfirmarRecibo({
+  onConfirmado
+}) {
+  const [loading, setLoading] = useState(false);
+  const [confirmado, setConfirmado] = useState(false);
+
+  // Auto-abrir si viene con ?confirmar=1 en la URL
+  const autoConfirmar = new URLSearchParams(window.location.search).get('confirmar') === '1';
+  async function confirmar() {
+    setLoading(true);
+    try {
+      await apiFetch('/api/influencer/confirmar-recibo', {
+        method: 'POST'
+      });
+      setConfirmado(true);
+      setTimeout(() => onConfirmado(), 1500);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+  if (confirmado) return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#f0fdf4',
+      border: '1.5px solid #86efac',
+      borderRadius: 12,
+      padding: '16px 20px',
+      marginBottom: 20,
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 28
+    }
+  }, "\uD83D\uDCE6\u2705"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      color: '#16a34a',
+      fontWeight: 600,
+      margin: '8px 0 0'
+    }
+  }, "\xA1Confirmado! Gracias por avisarnos \uD83D\uDC9C"));
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#fff7ed',
+      border: '1.5px solid #fed7aa',
+      borderRadius: 12,
+      padding: '16px 20px',
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 28
+    }
+  }, "\uD83D\uDCE6"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontWeight: 600,
+      margin: '0 0 4px',
+      color: '#92400e'
+    }
+  }, "\xBFYa te lleg\xF3 tu paquete?"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 13,
+      color: '#b45309',
+      margin: 0
+    }
+  }, "Conf\xEDrmanos para que podamos hacer seguimiento")), /*#__PURE__*/React.createElement("button", {
+    onClick: confirmar,
+    disabled: loading,
+    style: {
+      background: '#c0298b',
+      color: '#fff',
+      border: 'none',
+      borderRadius: 8,
+      padding: '10px 18px',
+      fontWeight: 600,
+      fontSize: 13,
+      cursor: 'pointer',
+      whiteSpace: 'nowrap'
+    }
+  }, loading ? '...' : '✅ Sí, ya llegó')));
+}
+
+// ── FORM SUBIR CONTENIDO ───────────────────────────────────────
+function SubirContenido({
+  onSuccess
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [form, setForm] = useState({
+    url: '',
+    plataforma: 'TikTok',
+    tipo: 'Reel',
+    vistas: '',
+    likes: '',
+    guardados: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [exito, setExito] = useState(null);
+  const [error, setError] = useState('');
+  const set = (k, v) => setForm(f => ({
+    ...f,
+    [k]: v
+  }));
+  async function enviar(e) {
+    e.preventDefault();
+    if (!form.url) {
+      setError('La URL del contenido es obligatoria');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const r = await apiFetch('/api/influencer/contenido', {
+        method: 'POST',
+        body: JSON.stringify({
+          url_contenido: form.url,
+          plataforma: form.plataforma,
+          tipo_contenido: form.tipo,
+          vistas: parseInt(form.vistas) || 0,
+          likes: parseInt(form.likes) || 0,
+          guardados: parseInt(form.guardados) || 0
+        })
+      });
+      setExito(r);
+      onSuccess && onSuccess();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+  if (exito) return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: 'var(--green-bg)',
+      border: '1.5px solid #bbf7d0',
+      borderRadius: 16,
+      padding: '20px 24px',
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 36,
+      marginBottom: 8
+    }
+  }, "\uD83C\uDF1F"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 16,
+      color: 'var(--green)',
+      marginBottom: 4
+    }
+  }, "\xA1Contenido registrado!"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: 'var(--text-muted)',
+      marginBottom: 16
+    }
+  }, "Obtuviste ", /*#__PURE__*/React.createElement("strong", {
+    style: {
+      color: 'var(--text)'
+    }
+  }, parseFloat(exito.score).toFixed(1), " puntos"), " \xB7 Nivel: ", /*#__PURE__*/React.createElement("strong", {
+    style: {
+      color: 'var(--text)'
+    }
+  }, exito.nivel)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setExito(null);
+      setAbierto(false);
+      setForm({
+        url: '',
+        plataforma: 'TikTok',
+        tipo: 'Reel',
+        vistas: '',
+        likes: '',
+        guardados: ''
+      });
+    },
+    style: {
+      background: 'var(--green)',
+      color: 'white',
+      border: 'none',
+      borderRadius: 99,
+      padding: '8px 20px',
+      fontWeight: 600,
+      cursor: 'pointer',
+      fontSize: 13
+    }
+  }, "Subir otro"));
+  if (!abierto) return /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAbierto(true),
+    style: {
+      width: '100%',
+      background: 'linear-gradient(135deg, var(--pink), var(--coral))',
+      color: 'white',
+      border: 'none',
+      borderRadius: 99,
+      padding: '14px 32px',
+      fontWeight: 700,
+      cursor: 'pointer',
+      fontSize: 15
+    }
+  }, "\u2728 Reportar contenido publicado");
+  return /*#__PURE__*/React.createElement("form", {
+    onSubmit: enviar,
+    style: {
+      background: 'var(--white)',
+      border: '1.5px solid var(--border)',
+      borderRadius: 16,
+      padding: '20px 20px 16px'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 15,
+      marginBottom: 16,
+      color: 'var(--text)'
+    }
+  }, "Reportar contenido"), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "URL del contenido *"), /*#__PURE__*/React.createElement("input", {
+    type: "url",
+    placeholder: "https://www.tiktok.com/...",
+    value: form.url,
+    onChange: e => set('url', e.target.value),
+    required: true
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: 10,
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "field",
+    style: {
+      margin: 0
+    }
+  }, /*#__PURE__*/React.createElement("label", null, "Plataforma"), /*#__PURE__*/React.createElement("select", {
+    value: form.plataforma,
+    onChange: e => set('plataforma', e.target.value),
+    style: {
+      width: '100%',
+      padding: '10px 12px',
+      borderRadius: 10,
+      border: '1.5px solid var(--border2)',
+      background: 'var(--cream)',
+      fontSize: 14,
+      color: 'var(--text)'
+    }
+  }, /*#__PURE__*/React.createElement("option", null, "TikTok"), /*#__PURE__*/React.createElement("option", null, "Instagram"), /*#__PURE__*/React.createElement("option", null, "YouTube"))), /*#__PURE__*/React.createElement("div", {
+    className: "field",
+    style: {
+      margin: 0
+    }
+  }, /*#__PURE__*/React.createElement("label", null, "Tipo"), /*#__PURE__*/React.createElement("select", {
+    value: form.tipo,
+    onChange: e => set('tipo', e.target.value),
+    style: {
+      width: '100%',
+      padding: '10px 12px',
+      borderRadius: 10,
+      border: '1.5px solid var(--border2)',
+      background: 'var(--cream)',
+      fontSize: 14,
+      color: 'var(--text)'
+    }
+  }, /*#__PURE__*/React.createElement("option", null, "Reel"), /*#__PURE__*/React.createElement("option", null, "Video"), /*#__PURE__*/React.createElement("option", null, "TikTok"), /*#__PURE__*/React.createElement("option", null, "Post"), /*#__PURE__*/React.createElement("option", null, "Historia")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr 1fr',
+      gap: 10,
+      marginBottom: 16
+    }
+  }, [['vistas', 'Vistas / Reproducciones'], ['likes', 'Likes'], ['guardados', 'Guardados']].map(([k, l]) => /*#__PURE__*/React.createElement("div", {
+    className: "field",
+    key: k,
+    style: {
+      margin: 0
+    }
+  }, /*#__PURE__*/React.createElement("label", null, l), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: "0",
+    placeholder: "0",
+    value: form[k],
+    onChange: e => set(k, e.target.value)
+  })))), error && /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: 'var(--red)',
+      fontSize: 13,
+      marginBottom: 10
+    }
+  }, error), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => setAbierto(false),
+    style: {
+      flex: 1,
+      padding: '11px',
+      borderRadius: 99,
+      border: '1.5px solid var(--border)',
+      background: 'transparent',
+      color: 'var(--text-muted)',
+      cursor: 'pointer',
+      fontWeight: 600,
+      fontSize: 14
+    }
+  }, "Cancelar"), /*#__PURE__*/React.createElement("button", {
+    type: "submit",
+    disabled: loading,
+    style: {
+      flex: 2,
+      padding: '11px',
+      borderRadius: 99,
+      border: 'none',
+      background: 'linear-gradient(135deg, var(--pink), var(--coral))',
+      color: 'white',
+      fontWeight: 700,
+      cursor: 'pointer',
+      fontSize: 14,
+      opacity: loading ? 0.7 : 1
+    }
+  }, loading ? 'Guardando...' : 'Guardar contenido')));
+}
+function TopBar({
+  nombre,
+  onLogout
+}) {
+  return /*#__PURE__*/React.createElement("nav", {
+    className: "top-bar"
+  }, /*#__PURE__*/React.createElement("img", {
+    className: "logo",
+    src: LOGO,
+    alt: "Brujer\xEDa Capilar"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "user-name"
+  }, nombre), /*#__PURE__*/React.createElement("button", {
+    className: "logout-btn",
+    onClick: onLogout
+  }, "Salir")));
+}
+
+// ── DASHBOARD ──────────────────────────────────────────────────
+function Dashboard({
+  nombre,
+  onLogout
+}) {
+  const [data, setData] = useState(null);
+  const [ventas, setVentas] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    Promise.all([apiFetch('/api/influencer/me'), apiFetch('/api/influencer/ventas').catch(() => null)]).then(([me, v]) => {
+      setData(me);
+      setVentas(v);
+    }).catch(err => {
+      if (err.message.includes('401') || err.message.toLowerCase().includes('autorizado') || err.message.toLowerCase().includes('token')) {
         clearToken();
-        setView('landing');
-        setNombre('');
+        onLogout();
+      } else {
+        setError(err.message);
       }
-
-      if (view === 'landing') {
-        return <LandingPage onLogin={() => setView('login')} tallyRegistro={tallyRegistro} />;
-      }
-      if (view === 'login') {
-        return <LoginPage onSuccess={onLoginSuccess} onBack={() => setView('landing')} />;
-      }
-      return <Dashboard nombre={nombre} onLogout={onLogout} />;
+    }).finally(() => setLoading(false));
+  }, []);
+  if (loading) return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(TopBar, {
+    nombre: nombre,
+    onLogout: onLogout
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "loading"
+  }, "Cargando tu perfil..."));
+  if (error) return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(TopBar, {
+    nombre: nombre,
+    onLogout: onLogout
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "dash"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "alert-error"
+  }, error)));
+  const inf = data;
+  const contenidos = data.contenidos || [];
+  const scoreAcum = inf.score_total != null ? parseFloat(inf.score_total) : contenidos.reduce((s, c) => s + (parseFloat(c.score_contenido) || 0), 0);
+  const nivel = getNivel(scoreAcum);
+  const progreso = getProgreso(scoreAcum);
+  const tierMap = {
+    'Nano': 'nano',
+    'Micro': 'micro',
+    'Macro': 'macro'
+  };
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(TopBar, {
+    nombre: inf.nombre,
+    onLogout: onLogout
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "dash"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "dash-greeting"
+  }, /*#__PURE__*/React.createElement("h1", null, "Hola, ", (inf.nombre || '').split(' ')[0], " \u2728"), /*#__PURE__*/React.createElement("p", null, "Bienvenida a tu portal del Club Creadoras")), inf.status === 'Producto Enviado' && !inf.fecha_confirmacion_recibo && /*#__PURE__*/React.createElement(ConfirmarRecibo, {
+    onConfirmado: load
+  }), ['Producto Enviado', 'Contenido Entregado'].includes(inf.status) && /*#__PURE__*/React.createElement("div", {
+    className: "cta-subir",
+    style: {
+      marginBottom: 24
     }
+  }, /*#__PURE__*/React.createElement("h3", null, "\xA1Ya tienes tu kit! Es hora de brillar"), /*#__PURE__*/React.createElement("p", null, "Reporta tu contenido aqu\xED, gana puntos y sube de nivel de Magia."), /*#__PURE__*/React.createElement(SubirContenido, {
+    onSuccess: load
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "section-title"
+  }, "Tu progreso"), /*#__PURE__*/React.createElement("div", {
+    className: "stats-grid",
+    style: {
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "stat-card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "stat-label"
+  }, "Score"), /*#__PURE__*/React.createElement("div", {
+    className: "stat-val pink"
+  }, scoreAcum.toFixed(1))), /*#__PURE__*/React.createElement("div", {
+    className: "stat-card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "stat-label"
+  }, "Contenidos"), /*#__PURE__*/React.createElement("div", {
+    className: "stat-val"
+  }, contenidos.length)), /*#__PURE__*/React.createElement("div", {
+    className: "stat-card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "stat-label"
+  }, "Ventas"), /*#__PURE__*/React.createElement("div", {
+    className: "stat-val green",
+    style: {
+      fontSize: ventas?.ventasAtribuidas != null ? 16 : 22
+    }
+  }, ventas && ventas.ventasAtribuidas != null ? fmtCOP(ventas.ventasAtribuidas) : '—'))), /*#__PURE__*/React.createElement("div", {
+    className: "nivel-card",
+    style: {
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "nivel-top"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "nivel-emoji"
+  }, nivel.emoji), /*#__PURE__*/React.createElement("div", {
+    className: "nivel-info"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "nivel-name"
+  }, nivel.nombre), /*#__PURE__*/React.createElement("div", {
+    className: "nivel-pts"
+  }, scoreAcum.toFixed(1), " puntos acumulados"))), /*#__PURE__*/React.createElement("div", {
+    className: "progress-bg"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "progress-fill",
+    style: {
+      width: `${progreso.pct}%`
+    }
+  })), progreso.next ? /*#__PURE__*/React.createElement("div", {
+    className: "progress-label"
+  }, "Te faltan ", /*#__PURE__*/React.createElement("strong", null, parseFloat(progreso.falta).toFixed(2), " pts"), " para llegar a ", /*#__PURE__*/React.createElement("strong", null, progreso.next)) : /*#__PURE__*/React.createElement("div", {
+    className: "progress-label"
+  }, /*#__PURE__*/React.createElement("strong", null, "Gran Magia"), " \u2014 nivel m\xE1ximo alcanzado \uD83C\uDF1F")), /*#__PURE__*/React.createElement("div", {
+    className: "section-title"
+  }, "Camino de Magia"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: 'var(--white)',
+      border: '1.5px solid var(--border)',
+      borderRadius: 16,
+      padding: '16px 20px',
+      marginBottom: 16
+    }
+  }, NIVELES.map((n, i) => {
+    const actual = scoreAcum >= n.min && (n.max === null || scoreAcum <= n.max);
+    const superado = n.max !== null && scoreAcum > n.max;
+    return /*#__PURE__*/React.createElement("div", {
+      key: n.nombre,
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '10px 0',
+        borderBottom: i < NIVELES.length - 1 ? '1px solid var(--border)' : 'none',
+        opacity: superado ? 0.5 : 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        width: 32,
+        textAlign: 'center'
+      }
+    }, n.emoji), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        fontSize: 13,
+        color: actual ? n.color : 'var(--text)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6
+      }
+    }, n.nombre, actual && /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: 'var(--pink)',
+        color: 'white',
+        fontSize: 10,
+        padding: '1px 7px',
+        borderRadius: 99,
+        fontWeight: 700
+      }
+    }, "T\xDA EST\xC1S AQU\xCD"), superado && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: 'var(--green)',
+        fontSize: 11
+      }
+    }, "\u2713 Superado")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: 'var(--text-muted)',
+        marginTop: 2
+      }
+    }, n.desc)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: 'var(--text-muted)',
+        textAlign: 'right',
+        whiteSpace: 'nowrap'
+      }
+    }, n.max ? `${n.min} – ${n.max} pts` : `${n.min}+ pts`));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "section-title"
+  }, "Solicitar m\xE1s productos"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement(SolicitarProducto, {
+    infData: inf
+  })), inf.codigo_descuento && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "section-title"
+  }, "Tu c\xF3digo de descuento"), /*#__PURE__*/React.createElement("div", {
+    className: "codigo-card",
+    style: {
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "codigo-val"
+  }, inf.codigo_descuento), /*#__PURE__*/React.createElement("div", {
+    className: "codigo-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "cr-label"
+  }, "Ventas generadas"), /*#__PURE__*/React.createElement("span", {
+    className: "cr-val"
+  }, ventas ? fmtCOP(ventas.ventasAtribuidas) : '—')), /*#__PURE__*/React.createElement("div", {
+    className: "codigo-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "cr-label"
+  }, "\xD3rdenes"), /*#__PURE__*/React.createElement("span", {
+    className: "cr-val",
+    style: {
+      color: 'var(--text)'
+    }
+  }, ventas ? fmt(ventas.ordenesAtribuidas) : '—')), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 14,
+      background: 'var(--cream)',
+      borderRadius: 10,
+      padding: '12px 14px'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: 'var(--text)',
+      marginBottom: 6
+    }
+  }, "\xBFC\xF3mo usarlo?"), /*#__PURE__*/React.createElement("ol", {
+    style: {
+      paddingLeft: 16,
+      fontSize: 12,
+      color: 'var(--text-muted)',
+      lineHeight: 2
+    }
+  }, /*#__PURE__*/React.createElement("li", null, "Comparte el c\xF3digo en tus historias, videos o bio"), /*#__PURE__*/React.createElement("li", null, "Tu audiencia lo usa al comprar en ", /*#__PURE__*/React.createElement("strong", {
+    style: {
+      color: 'var(--text)'
+    }
+  }, "brujeriacapilar.com")), /*#__PURE__*/React.createElement("li", null, "Ellos obtienen descuento y t\xFA acumulas comisiones"))))), /*#__PURE__*/React.createElement("div", {
+    className: "section-title"
+  }, "Tu perfil"), /*#__PURE__*/React.createElement("div", {
+    className: "perfil-card",
+    style: {
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "info-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "info-label"
+  }, "Instagram"), /*#__PURE__*/React.createElement("span", {
+    className: "info-val"
+  }, "@", inf.instagram_handle || '—')), /*#__PURE__*/React.createElement("div", {
+    className: "info-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "info-label"
+  }, "Tier"), /*#__PURE__*/React.createElement("span", {
+    className: "info-val"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: `badge badge-${tierMap[inf.tier] || 'nano'}`
+  }, inf.tier || '—'))), /*#__PURE__*/React.createElement("div", {
+    className: "info-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "info-label"
+  }, "Kit recibido"), /*#__PURE__*/React.createElement("span", {
+    className: "info-val"
+  }, inf.kit_asignado || '—')), /*#__PURE__*/React.createElement("div", {
+    className: "info-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "info-label"
+  }, "Fecha de env\xEDo"), /*#__PURE__*/React.createElement("span", {
+    className: "info-val"
+  }, fmtDate(inf.fecha_envio)))), /*#__PURE__*/React.createElement("div", {
+    className: "section-title"
+  }, "Mis contenidos"), /*#__PURE__*/React.createElement("div", {
+    className: "contenidos-card",
+    style: {
+      marginBottom: 32
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "contenidos-header"
+  }, /*#__PURE__*/React.createElement("h3", null, "Historial"), /*#__PURE__*/React.createElement("span", null, contenidos.length, " piezas")), contenidos.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "empty-state"
+  }, "A\xFAn no has reportado contenido.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'var(--text-muted)',
+      fontSize: 13
+    }
+  }, "Usa el bot\xF3n de arriba para reportar tu publicaci\xF3n.")) : /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Fecha"), /*#__PURE__*/React.createElement("th", null, "Tipo"), /*#__PURE__*/React.createElement("th", null, "Score"), /*#__PURE__*/React.createElement("th", null, "Link"))), /*#__PURE__*/React.createElement("tbody", null, contenidos.map(c => /*#__PURE__*/React.createElement("tr", {
+    key: c.id
+  }, /*#__PURE__*/React.createElement("td", {
+    className: "td-muted"
+  }, fmtDate(c.fecha_submision)), /*#__PURE__*/React.createElement("td", null, c.tipo_contenido || '—'), /*#__PURE__*/React.createElement("td", null, c.score_contenido != null ? /*#__PURE__*/React.createElement("div", {
+    className: "score-bar"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "score-bar-bg"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "score-bar-fill",
+    style: {
+      width: `${Math.min(parseFloat(c.score_contenido), 100)}%`
+    }
+  })), /*#__PURE__*/React.createElement("span", {
+    className: "score-num"
+  }, parseFloat(c.score_contenido).toFixed(1))) : /*#__PURE__*/React.createElement("span", {
+    className: "td-muted"
+  }, "Pendiente")), /*#__PURE__*/React.createElement("td", null, c.url_contenido ? /*#__PURE__*/React.createElement("a", {
+    href: c.url_contenido,
+    target: "_blank",
+    rel: "noopener noreferrer",
+    style: {
+      color: 'var(--pink)',
+      fontWeight: 600
+    }
+  }, "Ver") : /*#__PURE__*/React.createElement("span", {
+    className: "td-muted"
+  }, "\u2014"))))))), contenidos.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 40
+    }
+  }, /*#__PURE__*/React.createElement(SubirContenido, {
+    onSuccess: load
+  }))));
+}
 
-    // Ocultar pantalla de carga una vez que React monta
-    const loadingEl = document.getElementById('babel-loading');
-    if (loadingEl) loadingEl.style.display = 'none';
+// ── APP ────────────────────────────────────────────────────────
+function App() {
+  const [view, setView] = useState(getToken() ? 'dashboard' : 'landing');
+  const [nombre, setNombre] = useState('');
+  const [tallyContenido, setTallyContenido] = useState('https://tally.so/r/rjEZdo');
+  const [tallyRegistro, setTallyRegistro] = useState('');
+  useEffect(() => {
+    fetch('/api/influencer/tally-urls').then(r => r.json()).then(d => {
+      if (d.contenido) setTallyContenido(d.contenido);
+      if (d.registro) setTallyRegistro(d.registro);
+    }).catch(() => {});
+  }, []);
+  function onLoginSuccess(n) {
+    setNombre(n);
+    setView('dashboard');
+  }
+  function onLogout() {
+    clearToken();
+    setView('landing');
+    setNombre('');
+  }
+  if (view === 'landing') {
+    return /*#__PURE__*/React.createElement(LandingPage, {
+      onLogin: () => setView('login'),
+      tallyRegistro: tallyRegistro
+    });
+  }
+  if (view === 'login') {
+    return /*#__PURE__*/React.createElement(LoginPage, {
+      onSuccess: onLoginSuccess,
+      onBack: () => setView('landing')
+    });
+  }
+  return /*#__PURE__*/React.createElement(Dashboard, {
+    nombre: nombre,
+    onLogout: onLogout
+  });
+}
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
+// Ocultar pantalla de carga una vez que React monta
+const loadingEl = document.getElementById('babel-loading');
+if (loadingEl) loadingEl.style.display = 'none';
+ReactDOM.createRoot(document.getElementById('root')).render(/*#__PURE__*/React.createElement(App, null));</script>
 </body>
 </html>
