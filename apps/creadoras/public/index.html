@@ -330,6 +330,7 @@
     const fmt = (n) => n != null ? Number(n).toLocaleString('es-CO') : '—';
     const fmtCOP = (n) => n != null ? `$${Number(n).toLocaleString('es-CO')}` : '—';
     const fmtDate = (s) => s ? new Date(s).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+    const normPlataforma = (p) => { if (!p) return '—'; try { const v = JSON.parse(p); if (Array.isArray(v)) return v[0] || '—'; } catch {} return p; };
 
     // ── BADGES ────────────────────────────────────────────────────
     function StatusBadge({ status }) {
@@ -1109,7 +1110,7 @@
                   <tbody>
                     {data.contenidos.map(c => (
                       <tr key={c.id} style={{ cursor: 'default' }}>
-                        <td>{c.plataforma || '—'}</td>
+                        <td>{normPlataforma(c.plataforma)}</td>
                         <td className="td-muted">{c.tipo_contenido || '—'}</td>
                         <td className="td-muted">{fmtDate(c.fecha_publicacion)}</td>
                         <td>{fmt(c.vistas)}</td>
@@ -1184,7 +1185,7 @@
       return (
         <tr key={c.id}>
           <td style={{ fontWeight: 500 }}>{c.influencers?.nombre || '—'}</td>
-          <td>{c.plataforma || '—'}</td>
+          <td>{normPlataforma(c.plataforma)}</td>
           <td className="td-muted">{c.tipo_contenido || '—'}</td>
           <td>{fmt(c.vistas)}</td>
           <td>{fmt(c.likes)}</td>
