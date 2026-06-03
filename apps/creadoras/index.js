@@ -434,10 +434,14 @@ app.get('/api/roi/influencer/:id', async (req, res) => {
 });
 
 // â”€â”€ HELPERS TALLY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function sinTildes(str) {
+  return (str || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
 function parseTallyFields(fields = []) {
   const map = {};
   fields.forEach(f => {
-    const key = (f.label || '').toLowerCase().trim();
+    const key = sinTildes((f.label || '').toLowerCase().trim());
     let value = f.value;
     // Resolver UUIDs de MULTIPLE_CHOICE / CHECKBOXES al texto de la opciÃ³n
     if (Array.isArray(value)) {
@@ -457,7 +461,7 @@ function parseTallyFields(fields = []) {
 
 function tallyVal(map, ...keys) {
   for (const k of keys) {
-    const v = map[k.toLowerCase()];
+    const v = map[sinTildes(k.toLowerCase())];
     if (v != null && v !== '') return v;
   }
   return null;
