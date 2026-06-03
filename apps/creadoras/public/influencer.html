@@ -1226,7 +1226,9 @@ function Dashboard({
   const [ventas, setVentas] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  useEffect(() => {
+  function load() {
+    setLoading(true);
+    setError('');
     Promise.all([apiFetch('/api/influencer/me'), apiFetch('/api/influencer/ventas').catch(() => null)]).then(([me, v]) => {
       setData(me);
       setVentas(v);
@@ -1238,7 +1240,8 @@ function Dashboard({
         setError(err.message);
       }
     }).finally(() => setLoading(false));
-  }, []);
+  }
+  useEffect(() => { load(); }, []);
   if (loading) return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(TopBar, {
     nombre: nombre,
     onLogout: onLogout
