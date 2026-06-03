@@ -498,11 +498,11 @@ app.post('/api/webhooks/registro', async (req, res) => {
     if (!existe && telefono)    existe = await supabase.getInfluencerByTelefono(telefono);
 
     if (existe) {
-      const yaRecibiKit = [‘Producto Enviado’, ‘Contenido Entregado’, ‘Calificada’].includes(existe.status);
+      const KIT_STATUSES = ["Producto Enviado", "Contenido Entregado", "Calificada"];
+      const yaRecibiKit = KIT_STATUSES.includes(existe.status);
 
-      const actualizaciones = { fuente: ‘tally’ };
-      // Solo avanzar a "Registrada" si aún no recibió kit — bloquea doble registro
-      if (!yaRecibiKit) actualizaciones.status = ‘Registrada’;
+      const actualizaciones = { fuente: "tally" };
+      if (!yaRecibiKit) actualizaciones.status = "Registrada";
 
       if (!existe.email && email)                   actualizaciones.email = email.toLowerCase().trim();
       if (!existe.nombre && nombre)                 actualizaciones.nombre = nombre;
@@ -519,12 +519,12 @@ app.post('/api/webhooks/registro', async (req, res) => {
       await supabase.updateInfluencer(existe.id, actualizaciones);
 
       if (yaRecibiKit) {
-        console.warn(`[webhook/registro] DUPLICADO BLOQUEADO: "${nombre}" (${email}) ya vinculada a "${existe.nombre}" con status ${existe.status}`);
-        return res.json({ ok: true, mensaje: ‘Perfil existente — ya recibio kit, no se cambia status’, id: existe.id, duplicado: true });
+        console.warn("[webhook/registro] DUPLICADO: " + nombre + " (" + email + ") ya tiene kit — status conservado: " + existe.status);
+        return res.json({ ok: true, mensaje: "Perfil existente, ya recibio kit", id: existe.id, duplicado: true });
       }
 
-      console.log(`[webhook/registro] Vinculada: ${existe.nombre || nombre} — status Registrada`);
-      return res.json({ ok: true, mensaje: ‘Vinculada y actualizada’, id: existe.id });
+      console.log("[webhook/registro] Vinculada: " + (existe.nombre || nombre) + " -> status Registrada");
+      return res.json({ ok: true, mensaje: "Vinculada y actualizada", id: existe.id });
     }
 
     // Calcular tier segÃºn seguidores
