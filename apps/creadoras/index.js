@@ -491,28 +491,40 @@ app.post('/api/webhooks/registro', async (req, res) => {
     const tiktokClean = (tiktok || '').replace('@', '').trim() || null;
     const instaClean  = (instagram || '').replace('@', '').trim() || null;
 
-    // Buscar influencer existente: primero por email, luego por TikTok, luego por Instagram
+    // Buscar influencer existente: email → TikTok → Instagram → teléfono
     let existe = await supabase.getInfluencerByEmail(email.toLowerCase().trim());
     if (!existe && tiktokClean) existe = await supabase.getInfluencerByTikTok(tiktokClean);
     if (!existe && instaClean)  existe = await supabase.getInfluencerByInstagram(instaClean);
+    if (!existe && telefono)    existe = await supabase.getInfluencerByTelefono(telefono);
 
     if (existe) {
-      const actualizaciones = { status: 'Registrada' };
-      if (!existe.email && email)             actualizaciones.email = email.toLowerCase().trim();
-      if (!existe.nombre && nombre)           actualizaciones.nombre = nombre;
-      if (!existe.telefono && telefono)       actualizaciones.telefono = telefono;
-      if (!existe.instagram_handle && instaClean)  actualizaciones.instagram_handle = instaClean;
-      if (!existe.tiktok_handle && tiktokClean)    actualizaciones.tiktok_handle = tiktokClean;
-      if (!existe.ciudad && ciudad)           actualizaciones.ciudad = ciudad;
-      if (!existe.departamento && departamento) actualizaciones.departamento = departamento;
-      if (!existe.direccion_envio && direccion) actualizaciones.direccion_envio = direccion;
-      if (tipoCabello) actualizaciones.tipo_cabello = tipoCabello;
+      const yaRecibiKit = [‘Producto Enviado’, ‘Contenido Entregado’, ‘Calificada’].includes(existe.status);
+
+      const actualizaciones = { fuente: ‘tally’ };
+      // Solo avanzar a "Registrada" si aún no recibió kit — bloquea doble registro
+      if (!yaRecibiKit) actualizaciones.status = ‘Registrada’;
+
+      if (!existe.email && email)                   actualizaciones.email = email.toLowerCase().trim();
+      if (!existe.nombre && nombre)                 actualizaciones.nombre = nombre;
+      if (!existe.telefono && telefono)             actualizaciones.telefono = telefono;
+      if (!existe.instagram_handle && instaClean)   actualizaciones.instagram_handle = instaClean;
+      if (!existe.tiktok_handle && tiktokClean)     actualizaciones.tiktok_handle = tiktokClean;
+      if (!existe.ciudad && ciudad)                 actualizaciones.ciudad = ciudad;
+      if (!existe.departamento && departamento)     actualizaciones.departamento = departamento;
+      if (!existe.direccion_envio && direccion)     actualizaciones.direccion_envio = direccion;
+      if (tipoCabello)                              actualizaciones.tipo_cabello = tipoCabello;
       if (segInsta && !existe.seguidores_instagram) actualizaciones.seguidores_instagram = segInsta;
       if (segTiktok && !existe.seguidores_tiktok)   actualizaciones.seguidores_tiktok = segTiktok;
-      actualizaciones.fuente = 'tally';
+
       await supabase.updateInfluencer(existe.id, actualizaciones);
-      console.log(`[webhook/registro] Vinculada: ${existe.nombre || nombre} â†’ status Registrada`);
-      return res.json({ ok: true, mensaje: 'Vinculada y actualizada', id: existe.id });
+
+      if (yaRecibiKit) {
+        console.warn(`[webhook/registro] DUPLICADO BLOQUEADO: "${nombre}" (${email}) ya vinculada a "${existe.nombre}" con status ${existe.status}`);
+        return res.json({ ok: true, mensaje: ‘Perfil existente — ya recibio kit, no se cambia status’, id: existe.id, duplicado: true });
+      }
+
+      console.log(`[webhook/registro] Vinculada: ${existe.nombre || nombre} — status Registrada`);
+      return res.json({ ok: true, mensaje: ‘Vinculada y actualizada’, id: existe.id });
     }
 
     // Calcular tier segÃºn seguidores
