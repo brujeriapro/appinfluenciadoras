@@ -39,7 +39,10 @@ async function getProductPrice(sku) {
   const res = await fetch(`${SIIGO_BASE_URL}/v1/products?code=${sku}&page_size=25`, {
     headers: siigoHeaders(token),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    console.warn(`[Siigo] getProductPrice ${sku}: HTTP ${res.status} — ${await res.text()}`);
+    return null;
+  }
   const data = await res.json();
   const items = Array.isArray(data) ? data : (data.results || []);
   for (const p of items) {
