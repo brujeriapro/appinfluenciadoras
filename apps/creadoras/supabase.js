@@ -315,4 +315,92 @@ async function updateSolicitudReenvio(id, data) {
   return supabasePatch('solicitudes_reenvio', { id }, { ...data, fecha_actualizacion: new Date().toISOString() });
 }
 
-module.exports = { getCandidatas, getCandidataById, updateCandidataStatus, aprobarCandidataComoInfluencer, getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, getInfluencerByTelefono, getInfluencerByTikTok, getInfluencerByInstagram, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate, insertSolicitudReenvio, getSolicitudesReenvio, updateSolicitudReenvio };
+// ── UGC ──────────────────────────────────────────────────────────────────────
+
+async function enrollUGC(influencer_id, codigo_ugc) {
+  return supabasePatch('influencers', { id: influencer_id }, {
+    codigo_ugc,
+    ugc_activa: true,
+    ugc_fecha_inicio: new Date().toISOString(),
+  });
+}
+
+async function getUGCCreadoras() {
+  return supabaseGet('influencers', {
+    select: '*',
+    ugc_activa: 'eq.true',
+    order: 'ugc_fecha_inicio.desc',
+  });
+}
+
+async function insertUGCVenta(data) {
+  const url = new URL(`${BASE_URL}/ugc_ventas`);
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { ...HEADERS, 'Prefer': 'return=representation,resolution=ignore-duplicates' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    if (text.includes('duplicate') || text.includes('23505')) return null;
+    throw new Error(`Supabase POST ugc_ventas: ${res.status} ${text}`);
+  }
+  const result = await res.json();
+  return Array.isArray(result) ? result[0] : result;
+}
+
+async function getUGCVentas(influencer_id, mes = null) {
+  const params = { influencer_id: `eq.${influencer_id}`, order: 'fecha.desc' };
+  if (mes) params.mes = `eq.${mes}`;
+  return supabaseGet('ugc_ventas', params);
+}
+
+async function getUGCVentasTotales(influencer_id) {
+  const ventas = await supabaseGet('ugc_ventas', {
+    influencer_id: `eq.${influencer_id}`,
+    select: 'total_orden',
+  });
+  return ventas.reduce((s, v) => s + parseFloat(v.total_orden || 0), 0);
+}
+
+async function insertUGCPago(data) {
+  return supabasePost('ugc_pagos', data);
+}
+
+async function getUGCPagos(influencer_id) {
+  return supabaseGet('ugc_pagos', { influencer_id: `eq.${influencer_id}`, order: 'mes.desc' });
+}
+
+async function insertUGCRegalo(data) {
+  const url = new URL(`${BASE_URL}/ugc_regalos`);
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { ...HEADERS, 'Prefer': 'return=representation,resolution=ignore-duplicates' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    if (text.includes('duplicate') || text.includes('23505')) return null;
+    throw new Error(`Supabase POST ugc_regalos: ${res.status} ${text}`);
+  }
+  const result = await res.json();
+  return Array.isArray(result) ? result[0] : result;
+}
+
+async function getUGCRegalos(influencer_id) {
+  return supabaseGet('ugc_regalos', { influencer_id: `eq.${influencer_id}`, order: 'numero_regalo.asc' });
+}
+
+async function updateUGCRegalo(id, data) {
+  return supabasePatch('ugc_regalos', { id }, data);
+}
+
+async function getUGCRegalosAllPendientes() {
+  return supabaseGet('ugc_regalos', {
+    select: '*,influencers(nombre,instagram_handle,telefono,ciudad,direccion_envio)',
+    estado: 'eq.pendiente',
+    order: 'created_at.asc',
+  });
+}
+
+module.exports = { getCandidatas, getCandidataById, updateCandidataStatus, aprobarCandidataComoInfluencer, getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, getInfluencerByTelefono, getInfluencerByTikTok, getInfluencerByInstagram, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate, insertSolicitudReenvio, getSolicitudesReenvio, updateSolicitudReenvio, enrollUGC, getUGCCreadoras, insertUGCVenta, getUGCVentas, getUGCVentasTotales, insertUGCPago, getUGCPagos, insertUGCRegalo, getUGCRegalos, updateUGCRegalo, getUGCRegalosAllPendientes };

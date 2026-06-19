@@ -12,7 +12,7 @@ const { enviarRecordatorioContenido } = require('./email');
 const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos } = require('./whatsapp');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -1453,6 +1453,204 @@ app.post('/api/admin/influencers/bulk-import', async (req, res) => {
 });
 
 // Servir frontend para cualquier ruta no-API
+// ── UGC — Programa de comisiones ─────────────────────────────────────────────
+
+const UGC_TIERS = [
+  { hasta: 300000,  pct: 10, nombre: 'Bruja Iniciada' },
+  { hasta: 1000000, pct: 15, nombre: 'Bruja Activa'   },
+  { hasta: Infinity, pct: 20, nombre: 'Gran Bruja'    },
+];
+
+function calcularTierUGC(ventasMes) {
+  return UGC_TIERS.find(t => ventasMes <= t.hasta) || UGC_TIERS[UGC_TIERS.length - 1];
+}
+
+// Regalo 1 = bienvenida, luego +1 por cada $300K acumulados
+function calcularRegalosGanados(ventasTotales) {
+  return 1 + Math.floor(ventasTotales / 300000);
+}
+
+// Listar todas las creadoras UGC con stats del mes
+app.get('/api/ugc/creadoras', async (req, res) => {
+  try {
+    const mesActual = new Date().toISOString().substring(0, 7);
+    const creadoras = await supabase.getUGCCreadoras();
+    const result = await Promise.all(creadoras.map(async c => {
+      const [ventas, regalos] = await Promise.all([
+        supabase.getUGCVentas(c.id),
+        supabase.getUGCRegalos(c.id),
+      ]);
+      const ventasMes   = ventas.filter(v => v.mes === mesActual);
+      const totalMes    = ventasMes.reduce((s, v) => s + parseFloat(v.total_orden || 0), 0);
+      const totalAll    = ventas.reduce((s, v) => s + parseFloat(v.total_orden || 0), 0);
+      const tier        = calcularTierUGC(totalMes);
+      const comisionMes = ventasMes.reduce((s, v) => s + parseFloat(v.comision_valor || 0), 0);
+      const ganados     = calcularRegalosGanados(totalAll);
+      const enviados    = regalos.filter(r => r.estado === 'enviado').length;
+      return {
+        ...c,
+        ventas_mes:              Math.round(totalMes),
+        ventas_totales:          Math.round(totalAll),
+        nivel_ugc:               tier.nombre,
+        comision_pct:            tier.pct,
+        comision_mes_pendiente:  Math.round(comisionMes),
+        regalos_ganados:         ganados,
+        regalos_enviados:        enviados,
+        regalos_pendientes:      Math.max(0, ganados - enviados),
+      };
+    }));
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Enrollar influencer en UGC y crearle código
+app.post('/api/ugc/enroll/:id', async (req, res) => {
+  try {
+    const inf = await supabase.getInfluencerById(req.params.id);
+    if (!inf) return res.status(404).json({ error: 'Creadora no encontrada' });
+    if (inf.ugc_activa) return res.status(400).json({ error: 'Ya está en el programa UGC' });
+
+    const handle = inf.instagram_handle || inf.tiktok_handle || inf.nombre.split(' ')[0];
+
+    // Reusar codigo_descuento existente si ya tiene, si no crear uno nuevo
+    let codigo = inf.codigo_descuento || null;
+    if (!codigo) {
+      try   { codigo = await shopify.createUGCDiscountCode(handle); }
+      catch { codigo = shopify.generateUGCDiscountCode(handle); }
+    }
+
+    await supabase.enrollUGC(inf.id, codigo);
+
+    // Regalo de bienvenida
+    await supabase.insertUGCRegalo({ influencer_id: inf.id, numero_regalo: 1, hito_ventas: 0, estado: 'pendiente' });
+
+    res.json({ ok: true, codigo });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Sync ventas Shopify para todas las creadoras UGC
+app.post('/api/ugc/sync', async (req, res) => {
+  try {
+    const creadoras  = await supabase.getUGCCreadoras();
+    const fechaDesde = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    let totalNuevas  = 0;
+
+    for (const c of creadoras) {
+      if (!c.codigo_ugc) continue;
+
+      const ordenes = await shopify.getOrdenesParaCodigo(c.codigo_ugc, fechaDesde);
+
+      // Calcular comisión basada en ventas del mes actual
+      const mesActual    = new Date().toISOString().substring(0, 7);
+      const ventasMes    = ordenes.filter(o => o.fecha.startsWith(mesActual));
+      const totalMes     = ventasMes.reduce((s, o) => s + o.total, 0);
+      const pctMes       = calcularTierUGC(totalMes).pct;
+
+      for (const o of ordenes) {
+        const mes = o.fecha.substring(0, 7);
+        const pct = mes === mesActual ? pctMes : calcularTierUGC(
+          ordenes.filter(x => x.fecha.startsWith(mes)).reduce((s, x) => s + x.total, 0)
+        ).pct;
+        const nueva = await supabase.insertUGCVenta({
+          influencer_id:    c.id,
+          shopify_order_id: o.shopify_order_id,
+          order_number:     o.order_number,
+          fecha:            o.fecha,
+          total_orden:      o.total,
+          comision_pct:     pct,
+          comision_valor:   Math.round(o.total * pct / 100),
+          mes,
+        });
+        if (nueva) totalNuevas++;
+      }
+
+      // Verificar hitos de regalos
+      const ventasTotales = await supabase.getUGCVentasTotales(c.id);
+      const ganados       = calcularRegalosGanados(ventasTotales);
+      const existentes    = await supabase.getUGCRegalos(c.id);
+      for (let n = 1; n <= ganados; n++) {
+        if (!existentes.find(r => r.numero_regalo === n)) {
+          await supabase.insertUGCRegalo({
+            influencer_id: c.id,
+            numero_regalo: n,
+            hito_ventas:   n === 1 ? 0 : (n - 1) * 300000,
+            estado:        'pendiente',
+          });
+        }
+      }
+    }
+    res.json({ ok: true, nuevas_ventas: totalNuevas });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Stats detalladas de una creadora UGC (para el portal)
+app.get('/api/ugc/stats/:id', async (req, res) => {
+  try {
+    const inf = await supabase.getInfluencerById(req.params.id);
+    if (!inf || !inf.ugc_activa) return res.status(404).json({ error: 'No está en UGC' });
+
+    const mesActual  = new Date().toISOString().substring(0, 7);
+    const [ventas, regalos, pagos] = await Promise.all([
+      supabase.getUGCVentas(req.params.id),
+      supabase.getUGCRegalos(req.params.id),
+      supabase.getUGCPagos(req.params.id),
+    ]);
+    const ventasMes   = ventas.filter(v => v.mes === mesActual);
+    const totalMes    = ventasMes.reduce((s, v) => s + parseFloat(v.total_orden), 0);
+    const totalAll    = ventas.reduce((s, v) => s + parseFloat(v.total_orden), 0);
+    const tier        = calcularTierUGC(totalMes);
+    const comisionMes = ventasMes.reduce((s, v) => s + parseFloat(v.comision_valor), 0);
+
+    res.json({
+      codigo_ugc:      inf.codigo_ugc,
+      ventas_totales:  Math.round(totalAll),
+      ventas_mes:      Math.round(totalMes),
+      nivel_ugc:       tier.nombre,
+      comision_pct:    tier.pct,
+      comision_mes:    Math.round(comisionMes),
+      siguiente_nivel: tier.hasta === Infinity ? null : tier.hasta - totalMes,
+      regalos_ganados: calcularRegalosGanados(totalAll),
+      regalos_enviados: regalos.filter(r => r.estado === 'enviado').length,
+      regalos,
+      pagos,
+      ventas_recientes: ventas.slice(0, 10),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Registrar pago de comisión
+app.post('/api/ugc/pagos', async (req, res) => {
+  try {
+    const { influencer_id, mes, total_ventas, total_comision, metodo_pago, notas } = req.body;
+    const pago = await supabase.insertUGCPago({
+      influencer_id, mes, total_ventas, total_comision,
+      estado: 'pagado', fecha_pago: new Date().toISOString(),
+      metodo_pago, notas,
+    });
+    res.json(pago);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Listar todos los regalos pendientes de enviar
+app.get('/api/ugc/regalos-pendientes', async (req, res) => {
+  try {
+    const regalos = await supabase.getUGCRegalosAllPendientes();
+    res.json(regalos);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Marcar regalo como enviado
+app.post('/api/ugc/regalos/:id/enviar', async (req, res) => {
+  try {
+    await supabase.updateUGCRegalo(req.params.id, {
+      estado: 'enviado',
+      fecha_envio: new Date().toISOString(),
+      notas: req.body.notas || null,
+    });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

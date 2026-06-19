@@ -282,4 +282,56 @@ async function getPreciosPorSku() {
   return map;
 }
 
-module.exports = { getVentas, createGiftingOrder, createDiscountCode, generateDiscountCode, getProductosConStock, getPreciosPorSku };
+// Obtener todas las órdenes pagadas para un código UGC específico
+async function getOrdenesParaCodigo(codigo, fechaDesde) {
+  const params = {
+    status: 'any',
+    financial_status: 'paid',
+    limit: 250,
+    fields: 'id,created_at,total_price,discount_codes,name,order_number',
+  };
+  if (fechaDesde) params.created_at_min = fechaDesde;
+  const data = await shopifyGet('orders.json', params);
+  return (data.orders || [])
+    .filter(o => (o.discount_codes || []).some(d => d.code.toLowerCase() === codigo.toLowerCase()))
+    .map(o => ({
+      shopify_order_id: String(o.id),
+      order_number: o.name || String(o.order_number),
+      fecha: o.created_at,
+      total: Math.round(parseFloat(o.total_price || 0) * 100) / 100,
+    }));
+}
+
+// Crear código UGC en Shopify (10% descuento para el cliente, distinto prefijo que gifting)
+async function createUGCDiscountCode(handle) {
+  const base = handle.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 12);
+  const code = base + 'UGC10';
+
+  const mutation = `
+    mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
+      discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
+        codeDiscountNode { id }
+        userErrors { field message }
+      }
+    }
+  `;
+  const result = await shopifyGraphQL(mutation, {
+    basicCodeDiscount: {
+      title: `UGC ${handle}`,
+      code,
+      startsAt: new Date().toISOString(),
+      customerSelection: { all: true },
+      customerGets: { value: { percentage: 0.1 }, items: { all: true } },
+      appliesOncePerCustomer: false,
+    },
+  });
+  const errors = result.data?.discountCodeBasicCreate?.userErrors;
+  if (errors?.length > 0) throw new Error(errors.map(e => e.message).join(', '));
+  return code;
+}
+
+function generateUGCDiscountCode(handle) {
+  return handle.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 12) + 'UGC10';
+}
+
+module.exports = { getVentas, createGiftingOrder, createDiscountCode, generateDiscountCode, getProductosConStock, getPreciosPorSku, getOrdenesParaCodigo, createUGCDiscountCode, generateUGCDiscountCode };

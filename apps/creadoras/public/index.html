@@ -1881,6 +1881,7 @@
             <button className={view === 'notificaciones' ? 'active' : ''} onClick={() => navigate('notificaciones')}>Notificaciones</button>
             <button className={view === 'solicitudes' ? 'active' : ''} onClick={() => navigate('solicitudes')}>Solicitudes</button>
             <button className={view === 'candidatas' ? 'active' : ''} onClick={() => navigate('candidatas')}>Candidatas TikTok</button>
+            <button className={view === 'ugc' ? 'active' : ''} onClick={() => navigate('ugc')} style={{color:'var(--gold)'}}>💰 UGC</button>
           </nav>
           <main>
             {view === 'dashboard' && <Dashboard onNavigate={navigate} />}
@@ -1891,7 +1892,328 @@
             {view === 'notificaciones' && <Notificaciones />}
             {view === 'solicitudes' && <Solicitudes />}
             {view === 'candidatas' && <Candidatas />}
+            {view === 'ugc' && <UGC />}
           </main>
+        </div>
+      );
+    }
+
+    // ── COMPONENTE UGC ────────────────────────────────────────────────────────
+    function UGC() {
+      const [tab, setTab]               = useState('creadoras');
+      const [creadoras, setCreadoras]   = useState([]);
+      const [regalos, setRegalos]       = useState([]);
+      const [loading, setLoading]       = useState(true);
+      const [syncing, setSyncing]       = useState(false);
+      const [modalEnroll, setModalEnroll] = useState(false);
+      const [modalPago, setModalPago]   = useState(null);
+      const [modalRegalo, setModalRegalo] = useState(null);
+      const [allInf, setAllInf]         = useState([]);
+      const [searchEnroll, setSearchEnroll] = useState('');
+      const [pagoForm, setPagoForm]     = useState({ metodo_pago: 'Nequi', notas: '' });
+
+      useEffect(() => { loadAll(); }, []);
+
+      async function loadAll() {
+        setLoading(true);
+        try {
+          const [c, r] = await Promise.all([
+            fetch('/api/ugc/creadoras').then(r => r.json()),
+            fetch('/api/ugc/regalos-pendientes').then(r => r.json()),
+          ]);
+          setCreadoras(Array.isArray(c) ? c : []);
+          setRegalos(Array.isArray(r) ? r : []);
+        } catch(e) { console.error(e); }
+        setLoading(false);
+      }
+
+      async function handleSync() {
+        setSyncing(true);
+        try {
+          const r = await fetch('/api/ugc/sync', { method: 'POST' }).then(r => r.json());
+          if (r.error) throw new Error(r.error);
+          alert(`✅ Sync completo — ${r.nuevas_ventas} ventas nuevas registradas`);
+          await loadAll();
+        } catch(e) { alert('Error: ' + e.message); }
+        setSyncing(false);
+      }
+
+      async function cargarInfluencers() {
+        if (allInf.length > 0) return;
+        const data = await fetch('/api/influencers').then(r => r.json());
+        setAllInf(Array.isArray(data) ? data.filter(i => !i.ugc_activa) : []);
+      }
+
+      async function handleEnroll(inf) {
+        if (!confirm(`¿Enrollar a ${inf.nombre} en el programa UGC?`)) return;
+        try {
+          const r = await fetch(`/api/ugc/enroll/${inf.id}`, { method: 'POST' }).then(r => r.json());
+          if (r.error) throw new Error(r.error);
+          alert(`✅ ¡Listo! Código: ${r.codigo}`);
+          setModalEnroll(false);
+          await loadAll();
+        } catch(e) { alert('Error: ' + e.message); }
+      }
+
+      async function handleRegalo(id) {
+        const notas = prompt('Notas del envío (opcional):') || '';
+        try {
+          await fetch(`/api/ugc/regalos/${id}/enviar`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ notas }) });
+          await loadAll();
+          setModalRegalo(null);
+        } catch(e) { alert('Error: ' + e.message); }
+      }
+
+      async function handlePago() {
+        const c = modalPago;
+        try {
+          await fetch('/api/ugc/pagos', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+              influencer_id: c.id,
+              mes: new Date().toISOString().substring(0,7),
+              total_ventas: c.ventas_mes,
+              total_comision: c.comision_mes_pendiente,
+              metodo_pago: pagoForm.metodo_pago,
+              notas: pagoForm.notas,
+            }),
+          });
+          alert('✅ Pago registrado');
+          setModalPago(null);
+          await loadAll();
+        } catch(e) { alert('Error: ' + e.message); }
+      }
+
+      const fmtCOP = n => '$' + (n||0).toLocaleString('es-CO');
+      const mesActual = new Date().toLocaleString('es-CO', { month: 'long', year: 'numeric' });
+
+      const totalVentasMes    = creadoras.reduce((s,c) => s + (c.ventas_mes||0), 0);
+      const totalComisionMes  = creadoras.reduce((s,c) => s + (c.comision_mes_pendiente||0), 0);
+      const totalRegalos      = regalos.length;
+
+      const infFiltradas = allInf.filter(i =>
+        !searchEnroll || i.nombre.toLowerCase().includes(searchEnroll.toLowerCase()) ||
+        (i.instagram_handle||'').toLowerCase().includes(searchEnroll.toLowerCase())
+      );
+
+      const NIVEL_COLOR = { 'Bruja Iniciada': 'var(--text-muted)', 'Bruja Activa': 'var(--purple-light)', 'Gran Bruja': 'var(--gold)' };
+
+      return (
+        <div>
+          <div style={{marginBottom:24}}>
+            <h1>💰 Programa UGC</h1>
+            <p className="page-subtitle">Comisiones por ventas · {mesActual}</p>
+          </div>
+
+          {/* Stats */}
+          <div className="stat-grid" style={{marginBottom:24}}>
+            <div className="stat-card">
+              <div className="label">Creadoras UGC</div>
+              <div className="value purple">{creadoras.length}</div>
+            </div>
+            <div className="stat-card">
+              <div className="label">Ventas del mes</div>
+              <div className="value green">{fmtCOP(totalVentasMes)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="label">Comisiones pendientes</div>
+              <div className="value" style={{color:'var(--gold)'}}>{fmtCOP(totalComisionMes)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="label">Regalos por enviar</div>
+              <div className="value" style={{color:'var(--orange)'}}>{totalRegalos}</div>
+            </div>
+          </div>
+
+          {/* Tabs + acciones */}
+          <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20,flexWrap:'wrap'}}>
+            <div style={{display:'flex',gap:4,background:'var(--bg2)',borderRadius:8,padding:4}}>
+              <button onClick={()=>setTab('creadoras')} className={tab==='creadoras'?'active':''}>Creadoras</button>
+              <button onClick={()=>setTab('regalos')} className={tab==='regalos'?'active':''} style={totalRegalos>0?{color:'var(--orange)'}:{}}>
+                Regalos {totalRegalos>0 && <span className="badge" style={{background:'var(--orange)',color:'#fff',marginLeft:4}}>{totalRegalos}</span>}
+              </button>
+            </div>
+            <div style={{marginLeft:'auto',display:'flex',gap:8}}>
+              <button className="btn btn-secondary btn-sm" onClick={()=>{ setModalEnroll(true); cargarInfluencers(); }}>+ Enrollar creadora</button>
+              <button className="btn btn-sm" style={{background:'var(--purple)'}} onClick={handleSync} disabled={syncing}>
+                {syncing ? 'Sincronizando...' : '🔄 Sync Shopify'}
+              </button>
+            </div>
+          </div>
+
+          {loading ? <div style={{color:'var(--text-muted)',textAlign:'center',padding:40}}>Cargando...</div> : tab === 'creadoras' ? (
+            /* Tabla creadoras */
+            <div style={{overflowX:'auto'}}>
+              {creadoras.length === 0 ? (
+                <div style={{textAlign:'center',padding:60,color:'var(--text-muted)'}}>
+                  <div style={{fontSize:48,marginBottom:12}}>💰</div>
+                  <div>Aún no hay creadoras en el programa UGC</div>
+                  <button className="btn btn-sm" style={{marginTop:16,background:'var(--purple)'}} onClick={()=>{ setModalEnroll(true); cargarInfluencers(); }}>Enrollar primera creadora</button>
+                </div>
+              ) : (
+                <table style={{width:'100%',borderCollapse:'collapse'}}>
+                  <thead>
+                    <tr style={{borderBottom:'1px solid var(--border)',color:'var(--text-muted)',fontSize:11,textTransform:'uppercase',letterSpacing:'0.5px'}}>
+                      <th style={{padding:'10px 12px',textAlign:'left'}}>Creadora</th>
+                      <th style={{padding:'10px 12px',textAlign:'left'}}>Código</th>
+                      <th style={{padding:'10px 12px',textAlign:'right'}}>Ventas mes</th>
+                      <th style={{padding:'10px 12px',textAlign:'left'}}>Nivel</th>
+                      <th style={{padding:'10px 12px',textAlign:'right'}}>Comisión mes</th>
+                      <th style={{padding:'10px 12px',textAlign:'right'}}>Ventas totales</th>
+                      <th style={{padding:'10px 12px',textAlign:'center'}}>Regalos</th>
+                      <th style={{padding:'10px 12px',textAlign:'center'}}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {creadoras.map(c => (
+                      <tr key={c.id} style={{borderBottom:'1px solid var(--border)'}}>
+                        <td style={{padding:'12px'}}>
+                          <div style={{fontWeight:600}}>{c.nombre}</div>
+                          <div style={{fontSize:11,color:'var(--text-muted)'}}>@{c.instagram_handle||c.tiktok_handle||'-'}</div>
+                        </td>
+                        <td style={{padding:'12px'}}>
+                          <span className="mono" style={{background:'var(--bg3)',padding:'3px 8px',borderRadius:4,fontSize:12,color:'var(--purple-light)'}}>{c.codigo_ugc||'—'}</span>
+                        </td>
+                        <td style={{padding:'12px',textAlign:'right',fontWeight:600,color:'var(--green)'}}>{fmtCOP(c.ventas_mes)}</td>
+                        <td style={{padding:'12px'}}>
+                          <span style={{color: NIVEL_COLOR[c.nivel_ugc]||'var(--text)', fontWeight:500, fontSize:12}}>{c.nivel_ugc}</span>
+                          <span style={{color:'var(--text-muted)',fontSize:11,display:'block'}}>{c.comision_pct}% comisión</span>
+                        </td>
+                        <td style={{padding:'12px',textAlign:'right',color:'var(--gold)',fontWeight:600}}>{fmtCOP(c.comision_mes_pendiente)}</td>
+                        <td style={{padding:'12px',textAlign:'right',color:'var(--text-muted)'}}>{fmtCOP(c.ventas_totales)}</td>
+                        <td style={{padding:'12px',textAlign:'center'}}>
+                          <span title={`${c.regalos_enviados} enviados / ${c.regalos_ganados} ganados`}>
+                            {'🎁'.repeat(Math.min(c.regalos_pendientes,5))}
+                            {c.regalos_pendientes===0 && <span style={{color:'var(--text-muted)',fontSize:11}}>al día</span>}
+                            {c.regalos_pendientes>5 && <span style={{color:'var(--orange)',fontSize:11}}> +{c.regalos_pendientes-5}</span>}
+                          </span>
+                        </td>
+                        <td style={{padding:'12px',textAlign:'center'}}>
+                          {c.comision_mes_pendiente > 0 && (
+                            <button className="btn btn-sm" style={{background:'var(--gold)',color:'#000',fontSize:11,padding:'4px 10px'}}
+                              onClick={() => { setModalPago(c); setPagoForm({ metodo_pago:'Nequi', notas:'' }); }}>
+                              Pagar
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          ) : (
+            /* Tabla regalos pendientes */
+            <div>
+              {regalos.length === 0 ? (
+                <div style={{textAlign:'center',padding:60,color:'var(--text-muted)'}}>
+                  <div style={{fontSize:48,marginBottom:12}}>🎁</div>
+                  <div>No hay regalos pendientes por enviar</div>
+                </div>
+              ) : (
+                <table style={{width:'100%',borderCollapse:'collapse'}}>
+                  <thead>
+                    <tr style={{borderBottom:'1px solid var(--border)',color:'var(--text-muted)',fontSize:11,textTransform:'uppercase',letterSpacing:'0.5px'}}>
+                      <th style={{padding:'10px 12px',textAlign:'left'}}>Creadora</th>
+                      <th style={{padding:'10px 12px',textAlign:'left'}}>Dirección</th>
+                      <th style={{padding:'10px 12px',textAlign:'center'}}>Regalo #</th>
+                      <th style={{padding:'10px 12px',textAlign:'left'}}>Hito</th>
+                      <th style={{padding:'10px 12px',textAlign:'center'}}>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {regalos.map(r => {
+                      const inf = r.influencers || {};
+                      return (
+                        <tr key={r.id} style={{borderBottom:'1px solid var(--border)'}}>
+                          <td style={{padding:'12px'}}>
+                            <div style={{fontWeight:600}}>{inf.nombre||'—'}</div>
+                            <div style={{fontSize:11,color:'var(--text-muted)'}}>@{inf.instagram_handle||'-'} · {inf.telefono||''}</div>
+                          </td>
+                          <td style={{padding:'12px',fontSize:12,color:'var(--text-muted)',maxWidth:220}}>{inf.direccion_envio||'Sin dirección'}, {inf.ciudad||''}</td>
+                          <td style={{padding:'12px',textAlign:'center'}}>
+                            <span style={{fontSize:20}}>{'🎁'}</span>
+                            <span style={{display:'block',fontSize:11,color:'var(--text-muted)'}}>#{r.numero_regalo}</span>
+                          </td>
+                          <td style={{padding:'12px',fontSize:12}}>
+                            {r.numero_regalo === 1 ? 'Bienvenida al programa' : `Al llegar a $${((r.numero_regalo-1)*300000).toLocaleString('es-CO')} en ventas`}
+                          </td>
+                          <td style={{padding:'12px',textAlign:'center'}}>
+                            <button className="btn btn-sm" style={{background:'var(--green)',color:'#000',fontSize:11,padding:'4px 10px'}} onClick={() => handleRegalo(r.id)}>
+                              Marcar enviado
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+
+          {/* Modal enrollar */}
+          {modalEnroll && (
+            <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000}} onClick={()=>setModalEnroll(false)}>
+              <div style={{background:'var(--bg2)',borderRadius:12,padding:28,width:480,maxHeight:'80vh',overflow:'auto'}} onClick={e=>e.stopPropagation()}>
+                <h2 style={{marginBottom:16,fontSize:16}}>Enrollar creadora en UGC</h2>
+                <input className="input" placeholder="Buscar por nombre o @instagram..." value={searchEnroll}
+                  onChange={e=>setSearchEnroll(e.target.value)} style={{width:'100%',marginBottom:16}} autoFocus />
+                <div style={{maxHeight:320,overflowY:'auto'}}>
+                  {infFiltradas.slice(0,30).map(i => (
+                    <div key={i.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid var(--border)'}}>
+                      <div>
+                        <div style={{fontWeight:500}}>{i.nombre}</div>
+                        <div style={{fontSize:11,color:'var(--text-muted)'}}>@{i.instagram_handle||i.tiktok_handle||'-'} · {i.ciudad||''}</div>
+                      </div>
+                      <button className="btn btn-sm" style={{background:'var(--purple)',fontSize:11}} onClick={()=>handleEnroll(i)}>Enrollar</button>
+                    </div>
+                  ))}
+                  {infFiltradas.length === 0 && <div style={{color:'var(--text-muted)',textAlign:'center',padding:20}}>Sin resultados</div>}
+                </div>
+                <button className="btn btn-secondary btn-sm" style={{marginTop:16,width:'100%'}} onClick={()=>setModalEnroll(false)}>Cerrar</button>
+              </div>
+            </div>
+          )}
+
+          {/* Modal registrar pago */}
+          {modalPago && (
+            <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000}} onClick={()=>setModalPago(null)}>
+              <div style={{background:'var(--bg2)',borderRadius:12,padding:28,width:400}} onClick={e=>e.stopPropagation()}>
+                <h2 style={{marginBottom:4,fontSize:16}}>Registrar pago</h2>
+                <p style={{color:'var(--text-muted)',fontSize:12,marginBottom:20}}>{modalPago.nombre} · {mesActual}</p>
+                <div style={{background:'var(--bg3)',borderRadius:8,padding:16,marginBottom:20}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+                    <span style={{color:'var(--text-muted)'}}>Ventas del mes</span>
+                    <span style={{color:'var(--green)',fontWeight:600}}>{fmtCOP(modalPago.ventas_mes)}</span>
+                  </div>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+                    <span style={{color:'var(--text-muted)'}}>Nivel · % comisión</span>
+                    <span>{modalPago.nivel_ugc} · {modalPago.comision_pct}%</span>
+                  </div>
+                  <div style={{display:'flex',justifyContent:'space-between',borderTop:'1px solid var(--border)',paddingTop:8}}>
+                    <span style={{fontWeight:600}}>Total a pagar</span>
+                    <span style={{color:'var(--gold)',fontWeight:700,fontSize:18}}>{fmtCOP(modalPago.comision_mes_pendiente)}</span>
+                  </div>
+                </div>
+                <div style={{marginBottom:12}}>
+                  <label style={{fontSize:12,color:'var(--text-muted)',display:'block',marginBottom:4}}>Método de pago</label>
+                  <select className="input" value={pagoForm.metodo_pago} onChange={e=>setPagoForm({...pagoForm,metodo_pago:e.target.value})} style={{width:'100%'}}>
+                    <option>Nequi</option><option>Bancolombia</option><option>Daviplata</option><option>Transferencia</option><option>Efectivo</option>
+                  </select>
+                </div>
+                <div style={{marginBottom:20}}>
+                  <label style={{fontSize:12,color:'var(--text-muted)',display:'block',marginBottom:4}}>Notas (opcional)</label>
+                  <input className="input" value={pagoForm.notas} onChange={e=>setPagoForm({...pagoForm,notas:e.target.value})} style={{width:'100%'}} placeholder="Comprobante, número de transacción..." />
+                </div>
+                <div style={{display:'flex',gap:8}}>
+                  <button className="btn btn-secondary btn-sm" style={{flex:1}} onClick={()=>setModalPago(null)}>Cancelar</button>
+                  <button className="btn btn-sm" style={{flex:1,background:'var(--gold)',color:'#000'}} onClick={handlePago}>Confirmar pago</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       );
     }

@@ -1224,6 +1224,7 @@ function Dashboard({
 }) {
   const [data, setData] = useState(null);
   const [ventas, setVentas] = useState(null);
+  const [ugcStats, setUgcStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   function load() {
@@ -1232,6 +1233,9 @@ function Dashboard({
     Promise.all([apiFetch('/api/influencer/me'), apiFetch('/api/influencer/ventas').catch(() => null)]).then(([me, v]) => {
       setData(me);
       setVentas(v);
+      if (me?.ugc_activa && me?.id) {
+        apiFetch('/api/ugc/stats/' + me.id).then(s => setUgcStats(s)).catch(() => null);
+      }
     }).catch(err => {
       if (err.message.includes('401') || err.message.toLowerCase().includes('autorizado') || err.message.toLowerCase().includes('token')) {
         clearToken();
@@ -1463,7 +1467,17 @@ function Dashboard({
     style: {
       color: 'var(--text)'
     }
-  }, "brujeriacapilar.com")), /*#__PURE__*/React.createElement("li", null, "Ellos obtienen descuento y t\xFA acumulas comisiones"))))), /*#__PURE__*/React.createElement("div", {
+  }, "brujeriacapilar.com")), /*#__PURE__*/React.createElement("li", null, "Ellos obtienen descuento y t\xFA acumulas comisiones"))))), ugcStats && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "section-title", style: { marginTop: 24 }
+  }, "💰 Programa UGC — Tus ganancias"), /*#__PURE__*/React.createElement("div", {
+    className: "codigo-card", style: { marginBottom: 8 }
+  }, /*#__PURE__*/React.createElement("div", { className: "codigo-val" }, ugcStats.codigo_ugc), /*#__PURE__*/React.createElement("div", { className: "codigo-row" }, /*#__PURE__*/React.createElement("span", { className: "cr-label" }, "Nivel"), /*#__PURE__*/React.createElement("span", { className: "cr-val" }, ugcStats.nivel_ugc, " \xB7 ", ugcStats.comision_pct, "% comisi\xF3n")), /*#__PURE__*/React.createElement("div", { className: "codigo-row" }, /*#__PURE__*/React.createElement("span", { className: "cr-label" }, "Ventas este mes"), /*#__PURE__*/React.createElement("span", { className: "cr-val", style: { color: "var(--purple)" } }, fmtCOP(ugcStats.ventas_mes))), /*#__PURE__*/React.createElement("div", { className: "codigo-row" }, /*#__PURE__*/React.createElement("span", { className: "cr-label" }, "Comisi\xF3n ganada"), /*#__PURE__*/React.createElement("span", { className: "cr-val", style: { color: "#b8860b", fontWeight: 700 } }, fmtCOP(ugcStats.comision_mes))), /*#__PURE__*/React.createElement("div", { className: "codigo-row" }, /*#__PURE__*/React.createElement("span", { className: "cr-label" }, "Regalos ganados"), /*#__PURE__*/React.createElement("span", { className: "cr-val" }, "🎁 \xD7", ugcStats.regalos_ganados, " (", ugcStats.regalos_enviados, " recibidos)")), ugcStats.siguiente_nivel > 0 && /*#__PURE__*/React.createElement("div", {
+    style: { marginTop: 12, fontSize: 11, color: "var(--text-muted)", textAlign: "center", padding: "8px 0", borderTop: "1px solid #e8e0f0" }
+  }, "Faltan ", fmtCOP(ugcStats.siguiente_nivel), " en ventas para subir de nivel")), /*#__PURE__*/React.createElement("div", {
+    style: { background: "var(--cream)", borderRadius: 10, padding: "12px 14px", marginBottom: 16 }
+  }, /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, fontWeight: 700, marginBottom: 6 } }, "\xBFC\xF3mo ganar m\xE1s?"), /*#__PURE__*/React.createElement("ol", {
+    style: { paddingLeft: 16, fontSize: 12, color: "var(--text-muted)", lineHeight: 2 }
+  }, /*#__PURE__*/React.createElement("li", null, "Comparte tu c\xF3digo en historias, videos y bio"), /*#__PURE__*/React.createElement("li", null, "Cada venta que generes suma a tus ventas del mes"), /*#__PURE__*/React.createElement("li", null, "Llega a $300K → sube de nivel y ganas m\xE1s % + un regalo"), /*#__PURE__*/React.createElement("li", null, "Cobras tu comisi\xF3n los primeros 5 d\xEDas del mes siguiente")))), /*#__PURE__*/React.createElement("div", {
     className: "section-title"
   }, "Tu perfil"), /*#__PURE__*/React.createElement("div", {
     className: "perfil-card",
