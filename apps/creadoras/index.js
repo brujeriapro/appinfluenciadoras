@@ -9,7 +9,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida } = require('./whatsapp');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
 const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/'];
@@ -1649,6 +1649,32 @@ app.post('/api/ugc/regalos/:id/enviar', async (req, res) => {
     });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Envío masivo WhatsApp — leads de Meta Lead Ads al programa UGC
+// Body: { leads: [{nombre, telefono, ciudad}] }
+app.post('/api/ugc/envio-masivo', async (req, res) => {
+  const { leads = [] } = req.body;
+  if (!Array.isArray(leads) || leads.length === 0)
+    return res.status(400).json({ error: 'Se requiere un array de leads' });
+
+  const resultados = [];
+  for (const lead of leads) {
+    const nombre   = (lead.nombre || '').split('|')[0].trim().split(' ')[0] || 'creadora';
+    const telefono = lead.telefono || '';
+    try {
+      const r = await enviarUGCBienvenida(telefono, nombre);
+      resultados.push({ nombre, telefono, ciudad: lead.ciudad, ok: true, ...r });
+    } catch (e) {
+      resultados.push({ nombre, telefono, ciudad: lead.ciudad, ok: false, error: e.message });
+    }
+    // Pausa 1s entre envíos
+    await new Promise(r => setTimeout(r, 1000));
+  }
+
+  const ok     = resultados.filter(r => r.ok).length;
+  const errors = resultados.filter(r => !r.ok).length;
+  res.json({ total: leads.length, ok, errors, resultados });
 });
 
 app.get('*', (req, res) => {

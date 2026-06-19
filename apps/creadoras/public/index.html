@@ -1911,8 +1911,53 @@
       const [allInf, setAllInf]         = useState([]);
       const [searchEnroll, setSearchEnroll] = useState('');
       const [pagoForm, setPagoForm]     = useState({ metodo_pago: 'Nequi', notas: '' });
+      const [leads, setLeads]           = useState([]);
+      const [enviando, setEnviando]     = useState(false);
+      const [resultadoEnvio, setResultadoEnvio] = useState(null);
 
       useEffect(() => { loadAll(); }, []);
+
+      function parsearCSVLeads(text) {
+        const lines = text.replace(/\r/g, '').split('\n').filter(l => l.trim());
+        if (lines.length < 2) return [];
+        const headers = lines[0].split('\t').map(h => h.trim());
+        const nameIdx  = headers.indexOf('full_name');
+        const phoneIdx = headers.indexOf('phone_number');
+        const cityIdx  = headers.indexOf('city');
+        return lines.slice(1).map(line => {
+          const cols = line.split('\t');
+          const telefono = (cols[phoneIdx] || '').replace(/^p:/, '').trim();
+          return { nombre: (cols[nameIdx] || '').trim(), telefono, ciudad: (cols[cityIdx] || '').trim() };
+        }).filter(l => l.telefono && l.telefono.length > 6);
+      }
+
+      function handleCSV(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const parsed = parsearCSVLeads(ev.target.result);
+          setLeads(parsed);
+          setResultadoEnvio(null);
+        };
+        reader.readAsText(file, 'UTF-16');
+      }
+
+      async function handleEnvioMasivo() {
+        if (!leads.length) return;
+        if (!confirm(`¿Enviar el mensaje de bienvenida UGC a ${leads.length} contactos por WhatsApp?`)) return;
+        setEnviando(true);
+        setResultadoEnvio(null);
+        try {
+          const r = await fetch('/api/ugc/envio-masivo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ leads }),
+          }).then(r => r.json());
+          setResultadoEnvio(r);
+        } catch(e) { alert('Error: ' + e.message); }
+        setEnviando(false);
+      }
 
       async function loadAll() {
         setLoading(true);
@@ -2033,6 +2078,7 @@
               <button onClick={()=>setTab('regalos')} className={tab==='regalos'?'active':''} style={totalRegalos>0?{color:'var(--orange)'}:{}}>
                 Regalos {totalRegalos>0 && <span className="badge" style={{background:'var(--orange)',color:'#fff',marginLeft:4}}>{totalRegalos}</span>}
               </button>
+              <button onClick={()=>setTab('leads')} className={tab==='leads'?'active':''} style={{color:'var(--gold)'}}>📤 Leads</button>
             </div>
             <div style={{marginLeft:'auto',display:'flex',gap:8}}>
               <button className="btn btn-secondary btn-sm" onClick={()=>{ setModalEnroll(true); cargarInfluencers(); }}>+ Enrollar creadora</button>
@@ -2149,6 +2195,73 @@
                     })}
                   </tbody>
                 </table>
+              )}
+            </div>
+          )}
+
+          {/* Tab Leads — envío masivo WhatsApp */}
+          {tab === 'leads' && (
+            <div style={{maxWidth:640}}>
+              <h3 style={{marginBottom:8,fontSize:15}}>Envío masivo — Leads Meta</h3>
+              <p style={{color:'var(--text-muted)',fontSize:13,marginBottom:20}}>
+                Sube el CSV de leads descargado de Meta Business Suite y envía el mensaje de bienvenida UGC a todos por WhatsApp.
+              </p>
+
+              <div style={{background:'var(--bg2)',borderRadius:10,padding:20,marginBottom:20}}>
+                <label style={{display:'block',marginBottom:8,fontSize:13,color:'var(--text-muted)'}}>Archivo CSV (Meta Lead Ads)</label>
+                <input type="file" accept=".csv" onChange={handleCSV}
+                  style={{fontSize:13,color:'var(--text)',background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:6,padding:'8px 12px',width:'100%',boxSizing:'border-box'}} />
+                {leads.length > 0 && (
+                  <p style={{marginTop:10,fontSize:13,color:'var(--green)'}}>✅ {leads.length} contactos listos para enviar</p>
+                )}
+              </div>
+
+              {leads.length > 0 && (
+                <>
+                  <div style={{overflowX:'auto',marginBottom:16,maxHeight:260,overflowY:'auto',background:'var(--bg2)',borderRadius:8}}>
+                    <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+                      <thead>
+                        <tr style={{background:'var(--bg3)'}}>
+                          <th style={{padding:'8px 12px',textAlign:'left'}}>Nombre</th>
+                          <th style={{padding:'8px 12px',textAlign:'left'}}>Teléfono</th>
+                          <th style={{padding:'8px 12px',textAlign:'left'}}>Ciudad</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {leads.map((l,i) => (
+                          <tr key={i} style={{borderTop:'1px solid var(--border)'}}>
+                            <td style={{padding:'7px 12px'}}>{l.nombre}</td>
+                            <td style={{padding:'7px 12px',color:'var(--text-muted)'}}>{l.telefono}</td>
+                            <td style={{padding:'7px 12px',color:'var(--text-muted)'}}>{l.ciudad}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <button className="btn" onClick={handleEnvioMasivo} disabled={enviando}
+                    style={{background:'var(--green)',fontSize:14,padding:'12px 28px'}}>
+                    {enviando ? `Enviando...` : `📤 Enviar a ${leads.length} contactos`}
+                  </button>
+                </>
+              )}
+
+              {resultadoEnvio && (
+                <div style={{marginTop:20,background:'var(--bg2)',borderRadius:10,padding:20}}>
+                  <p style={{marginBottom:12,fontSize:14}}>
+                    <strong>Resultado:</strong>&nbsp;
+                    ✅ {resultadoEnvio.ok} enviados &nbsp;|&nbsp; ❌ {resultadoEnvio.errors} errores &nbsp;|&nbsp; Total: {resultadoEnvio.total}
+                  </p>
+                  {resultadoEnvio.errors > 0 && (
+                    <div style={{fontSize:12,color:'var(--text-muted)'}}>
+                      {resultadoEnvio.resultados.filter(r=>!r.ok).map((r,i)=>(
+                        <div key={i} style={{padding:'4px 0',borderTop:'1px solid var(--border)'}}>
+                          ❌ {r.nombre} ({r.telefono}) — {r.error}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}

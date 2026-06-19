@@ -168,6 +168,14 @@ async function enviarSeguimientoProductos(influencer) {
   return enviarTemplate(influencer.telefono, 'seguimiento_productos_brujeria', [nombre]);
 }
 
+// Bienvenida programa UGC para leads externos (Meta Lead Ads)
+// Template: ugc_bienvenida_creadoras
+// Variables: {{1}} nombre
+async function enviarUGCBienvenida(telefono, nombre) {
+  const primerNombre = nombre?.split(' ')[0] || nombre || 'creadora';
+  return enviarTemplate(telefono, 'ugc_bienvenida_creadoras', [primerNombre]);
+}
+
 module.exports = {
   enviarBienvenidaKit,
   enviarRecordatorioWhatsApp,
@@ -180,4 +188,5 @@ module.exports = {
   enviarEncuestaProductos,
   enviarConfirmacionLlegada,
   enviarSeguimientoProductos,
+  enviarUGCBienvenida,
 };
