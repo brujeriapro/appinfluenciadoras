@@ -1659,10 +1659,10 @@ app.get('/guia-ugc',      (req, res) => res.sendFile(path.join(__dirname, 'publi
 // Registro de nueva creadora UGC — crea perfil, código Shopify y regalo de bienvenida
 app.post('/api/ugc/registro', async (req, res) => {
   try {
-    const { nombre, email, telefono, instagram_handle, ciudad, departamento, tipo_cabello, direccion_envio } = req.body;
+    const { nombre, email, telefono, instagram_handle, ciudad, departamento, tipo_cabello, direccion_envio, password } = req.body;
 
-    if (!nombre || !email || !telefono || !direccion_envio)
-      return res.status(400).json({ error: 'Nombre, email, teléfono y dirección son obligatorios' });
+    if (!nombre || !email || !telefono || !direccion_envio || !password)
+      return res.status(400).json({ error: 'Todos los campos obligatorios deben completarse' });
 
     const emailClean  = email.toLowerCase().trim();
     const instaClean  = (instagram_handle || '').replace('@', '').trim() || null;
@@ -1694,11 +1694,9 @@ app.post('/api/ugc/registro', async (req, res) => {
       });
     }
 
-    // Contraseña temporal: 3 letras del nombre + 4 últimos dígitos del teléfono
+    // Contraseña definida por la creadora en el formulario
     const primerNombre = nombre.split(' ')[0].toLowerCase().replace(/[^a-z]/g, '');
-    const tel4         = (telefono || '').replace(/\D/g, '').slice(-4);
-    const rawPassword  = primerNombre.substring(0, 3) + tel4;
-    const hash         = await bcrypt.hash(rawPassword, 10);
+    const hash         = await bcrypt.hash(password, 10);
     await supabase.updatePasswordHash(inf.id, hash);
 
     // Crear código UGC en Shopify
@@ -1716,7 +1714,7 @@ app.post('/api/ugc/registro', async (req, res) => {
       try { await enviarUGCBienvenida(telefono, nombre); } catch (e) { console.warn('[ugc/registro] WA:', e.message); }
     }
 
-    res.json({ ok: true, codigo, email: emailClean, password: rawPassword });
+    res.json({ ok: true, codigo, email: emailClean });
   } catch (e) {
     console.error('[ugc/registro]', e);
     res.status(500).json({ error: e.message });

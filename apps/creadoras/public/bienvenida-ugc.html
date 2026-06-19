@@ -98,12 +98,9 @@
     <!-- CREDENCIALES PORTAL -->
     <div class="section">
       <h3>Acceso a tu portal</h3>
-      <div class="credentials" id="credsBox">
-        Email: —<br>
-        Contraseña temporal: —
-      </div>
+      <div class="credentials" id="credsBox">Email: —</div>
       <p style="font-family:Arial,sans-serif;font-size:11px;color:#999;margin-top:8px;">
-        Guarda estos datos. Puedes cambiar tu contraseña después de entrar.
+        Entra con tu email y la contraseña que acabas de crear.
       </p>
     </div>
 
@@ -142,14 +139,11 @@
 </div>
 
 <script>
-  const nombre   = sessionStorage.getItem('ugc_nombre')   || '';
-  const codigo   = sessionStorage.getItem('ugc_codigo')   || '';
-  const email    = sessionStorage.getItem('ugc_email')    || '';
-  const password = sessionStorage.getItem('ugc_password') || '';
+  const codigo = sessionStorage.getItem('ugc_codigo') || '';
+  const email  = sessionStorage.getItem('ugc_email')  || '';
 
   if (codigo) document.getElementById('codigoVal').textContent = codigo;
-  if (email)  document.getElementById('credsBox').innerHTML =
-    `Email: <strong>${email}</strong><br>Contraseña temporal: <strong>${password}</strong>`;
+  if (email)  document.getElementById('credsBox').innerHTML = `Email: <strong>${email}</strong>`;
 
   function copiar() {
     if (!codigo) return;

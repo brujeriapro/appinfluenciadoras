@@ -154,6 +154,20 @@
         </select>
       </div>
 
+      <div class="section-label">Crea tu acceso al portal</div>
+
+      <div class="row">
+        <div class="field">
+          <label>Contraseña *</label>
+          <input type="password" name="password" placeholder="Mínimo 6 caracteres" minlength="6" required>
+          <div class="hint">Para entrar a ver tus ventas</div>
+        </div>
+        <div class="field">
+          <label>Confirmar contraseña *</label>
+          <input type="password" name="password2" placeholder="Repite tu contraseña" minlength="6" required>
+        </div>
+      </div>
+
       <div class="section-label">Dirección para tu producto de bienvenida</div>
 
       <div class="field">
@@ -200,6 +214,16 @@ document.getElementById('regForm').addEventListener('submit', async function(e) 
 
   const data = Object.fromEntries(new FormData(this).entries());
 
+  if (data.password !== data.password2) {
+    errMsg.textContent   = 'Las contraseñas no coinciden.';
+    errMsg.style.display = 'block';
+    btn.disabled         = false;
+    btn.textContent      = 'QUIERO UNIRME →';
+    loading.style.display = 'none';
+    return;
+  }
+  delete data.password2;
+
   try {
     const res  = await fetch('/api/ugc/registro', {
       method:  'POST',
@@ -211,10 +235,9 @@ document.getElementById('regForm').addEventListener('submit', async function(e) 
     if (!res.ok || json.error) throw new Error(json.error || 'Error inesperado');
 
     // Guardar datos en sessionStorage para la página de bienvenida
-    sessionStorage.setItem('ugc_nombre',   data.nombre.split(' ')[0]);
-    sessionStorage.setItem('ugc_codigo',   json.codigo);
-    sessionStorage.setItem('ugc_email',    json.email);
-    sessionStorage.setItem('ugc_password', json.password);
+    sessionStorage.setItem('ugc_nombre', data.nombre.split(' ')[0]);
+    sessionStorage.setItem('ugc_codigo', json.codigo);
+    sessionStorage.setItem('ugc_email',  json.email);
 
     window.location.href = '/bienvenida-ugc';
   } catch (err) {
