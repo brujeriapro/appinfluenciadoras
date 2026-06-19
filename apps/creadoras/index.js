@@ -9,7 +9,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida, enviarUGCConfirmacionRegistro } = require('./whatsapp');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
 const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro'];
@@ -1709,9 +1709,9 @@ app.post('/api/ugc/registro', async (req, res) => {
     await supabase.enrollUGC(inf.id, codigo);
     try { await supabase.insertUGCRegalo({ influencer_id: inf.id, numero_regalo: 1, hito_ventas: 0, estado: 'pendiente' }); } catch {}
 
-    // WA de confirmación (no bloquea si falla)
+    // WA Paso 3 — confirmación con código y link al portal (no bloquea si falla)
     if (telefono) {
-      try { await enviarUGCBienvenida(telefono, nombre); } catch (e) { console.warn('[ugc/registro] WA:', e.message); }
+      try { await enviarUGCConfirmacionRegistro(telefono, nombre, codigo); } catch (e) { console.warn('[ugc/registro] WA:', e.message); }
     }
 
     res.json({ ok: true, codigo, email: emailClean });
