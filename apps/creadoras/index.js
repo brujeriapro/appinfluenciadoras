@@ -12,7 +12,7 @@ const { enviarRecordatorioContenido } = require('./email');
 const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida } = require('./whatsapp');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -1649,6 +1649,78 @@ app.post('/api/ugc/regalos/:id/enviar', async (req, res) => {
     });
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── RUTAS PÚBLICAS UGC ────────────────────────────────────────────────────────
+app.get('/registro-ugc',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'registro-ugc.html')));
+app.get('/bienvenida-ugc',(req, res) => res.sendFile(path.join(__dirname, 'public', 'bienvenida-ugc.html')));
+app.get('/guia-ugc',      (req, res) => res.sendFile(path.join(__dirname, 'public', 'guia-ugc.html')));
+
+// Registro de nueva creadora UGC — crea perfil, código Shopify y regalo de bienvenida
+app.post('/api/ugc/registro', async (req, res) => {
+  try {
+    const { nombre, email, telefono, instagram_handle, ciudad, departamento, tipo_cabello, direccion_envio } = req.body;
+
+    if (!nombre || !email || !telefono || !direccion_envio)
+      return res.status(400).json({ error: 'Nombre, email, teléfono y dirección son obligatorios' });
+
+    const emailClean  = email.toLowerCase().trim();
+    const instaClean  = (instagram_handle || '').replace('@', '').trim() || null;
+
+    // Buscar si ya existe
+    let inf = await supabase.getInfluencerByEmail(emailClean);
+    if (!inf && telefono)    inf = await supabase.getInfluencerByTelefono(telefono);
+    if (!inf && instaClean)  inf = await supabase.getInfluencerByInstagram(instaClean);
+
+    if (inf && inf.ugc_activa) {
+      return res.json({ ok: true, codigo: inf.codigo_ugc, email: emailClean, ya_registrada: true, password: '' });
+    }
+
+    if (!inf) {
+      inf = await supabase.insertInfluencer({
+        nombre, email: emailClean, telefono: telefono || null,
+        instagram_handle: instaClean || null,
+        ciudad: ciudad || null, departamento: departamento || null,
+        direccion_envio: direccion_envio || null,
+        tipo_cabello: tipo_cabello || null,
+        tier: 'nano', status: 'Registrada', fuente: 'ugc_registro',
+      });
+    } else {
+      await supabase.updateInfluencer(inf.id, {
+        ...(direccion_envio && { direccion_envio }),
+        ...(ciudad && { ciudad }),
+        ...(tipo_cabello && { tipo_cabello }),
+        fuente: 'ugc_registro',
+      });
+    }
+
+    // Contraseña temporal: 3 letras del nombre + 4 últimos dígitos del teléfono
+    const primerNombre = nombre.split(' ')[0].toLowerCase().replace(/[^a-z]/g, '');
+    const tel4         = (telefono || '').replace(/\D/g, '').slice(-4);
+    const rawPassword  = primerNombre.substring(0, 3) + tel4;
+    const hash         = await bcrypt.hash(rawPassword, 10);
+    await supabase.updatePasswordHash(inf.id, hash);
+
+    // Crear código UGC en Shopify
+    const handle = instaClean || primerNombre;
+    let codigo;
+    try   { codigo = await shopify.createUGCDiscountCode(handle); }
+    catch { codigo = shopify.generateUGCDiscountCode(handle); }
+
+    // Enrollar en UGC + regalo de bienvenida
+    await supabase.enrollUGC(inf.id, codigo);
+    try { await supabase.insertUGCRegalo({ influencer_id: inf.id, numero_regalo: 1, hito_ventas: 0, estado: 'pendiente' }); } catch {}
+
+    // WA de confirmación (no bloquea si falla)
+    if (telefono) {
+      try { await enviarUGCBienvenida(telefono, nombre); } catch (e) { console.warn('[ugc/registro] WA:', e.message); }
+    }
+
+    res.json({ ok: true, codigo, email: emailClean, password: rawPassword });
+  } catch (e) {
+    console.error('[ugc/registro]', e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Envío masivo WhatsApp — leads de Meta Lead Ads al programa UGC

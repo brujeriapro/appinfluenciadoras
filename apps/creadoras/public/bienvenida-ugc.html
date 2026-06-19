@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>¡Bienvenida! — Brujería Capilar</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Georgia', serif; background: #fce4f0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 40px 20px 60px; }
+
+  .logo { width: 130px; margin-bottom: 32px; }
+
+  .card {
+    background: #fff; border-radius: 16px; max-width: 500px; width: 100%;
+    overflow: hidden; box-shadow: 0 8px 40px rgba(201,35,127,.15);
+  }
+
+  .card-top {
+    background: linear-gradient(135deg, #C9237F, #8B1557);
+    padding: 36px 32px; text-align: center; color: #fff;
+  }
+  .emoji { font-size: 48px; margin-bottom: 12px; }
+  .card-top h1 { font-size: 26px; font-style: italic; margin-bottom: 8px; }
+  .card-top p  { font-size: 14px; opacity: .88; line-height: 1.6; }
+
+  .card-body { padding: 28px 32px; }
+
+  .code-box {
+    background: #0a0a0a; border-radius: 10px; padding: 20px; text-align: center; margin-bottom: 24px;
+  }
+  .code-label { font-family: Arial, sans-serif; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #D4E840; margin-bottom: 8px; }
+  .code-val { font-family: 'Courier New', monospace; font-size: 28px; font-weight: bold; color: #fff; letter-spacing: 3px; margin-bottom: 10px; }
+  .copy-btn {
+    background: #D4E840; color: #0a0a0a; border: none; border-radius: 6px; padding: 8px 20px;
+    font-family: Arial, sans-serif; font-size: 11px; font-weight: bold; letter-spacing: 2px;
+    text-transform: uppercase; cursor: pointer;
+  }
+  .copy-btn:hover { background: #c2d630; }
+
+  .section { margin-bottom: 20px; }
+  .section h3 { font-family: Arial, sans-serif; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #C9237F; font-weight: bold; margin-bottom: 10px; }
+
+  .credentials {
+    background: #fdf8fc; border: 1.5px dashed #e0c0d8; border-radius: 8px; padding: 14px 16px;
+    font-family: 'Courier New', monospace; font-size: 13px; color: #444; line-height: 1.8;
+  }
+
+  .steps { list-style: none; }
+  .steps li {
+    display: flex; align-items: flex-start; gap: 12px;
+    font-family: Arial, sans-serif; font-size: 13px; color: #555; line-height: 1.5;
+    padding: 8px 0; border-bottom: 1px solid #f5eaf0;
+  }
+  .steps li:last-child { border-bottom: none; }
+  .step-num {
+    background: #C9237F; color: #fff; border-radius: 50%; width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; flex-shrink: 0;
+  }
+
+  .cta-wrap { display: flex; flex-direction: column; gap: 10px; }
+  .btn {
+    display: block; text-align: center; text-decoration: none; border-radius: 8px;
+    font-family: Arial, sans-serif; font-size: 13px; font-weight: bold; letter-spacing: 2px;
+    text-transform: uppercase; padding: 15px; transition: opacity .2s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: #C9237F; color: #fff; }
+  .btn-secondary { background: #0a0a0a; color: #D4E840; }
+  .btn-outline { background: transparent; border: 1.5px solid #C9237F; color: #C9237F; }
+</style>
+</head>
+<body>
+
+<img class="logo" src="https://brujeriacapilar.com/cdn/shop/files/Asset_57brujeria_2_b689e4cc-5724-4fae-962a-211a53578613.png?v=1751472378&width=280" alt="Brujería Capilar">
+
+<div class="card">
+  <div class="card-top">
+    <div class="emoji">🌙</div>
+    <h1>¡Ya eres parte de la magia!</h1>
+    <p>Bienvenida al Programa de Creadoras Brujería Capilar.<br>Este es tu código exclusivo para empezar a ganar:</p>
+  </div>
+
+  <div class="card-body">
+
+    <!-- CÓDIGO -->
+    <div class="section">
+      <h3>Tu código exclusivo</h3>
+      <div class="code-box">
+        <div class="code-label">Comparte este código con tu comunidad</div>
+        <div class="code-val" id="codigoVal">—</div>
+        <button class="copy-btn" onclick="copiar()">COPIAR CÓDIGO</button>
+      </div>
+      <p style="font-family:Arial,sans-serif;font-size:12px;color:#777;line-height:1.6;">
+        Tus seguidoras obtienen un <strong>10% de descuento</strong> al comprar con tu código. Tú ganas comisión por cada venta.
+      </p>
+    </div>
+
+    <!-- CREDENCIALES PORTAL -->
+    <div class="section">
+      <h3>Acceso a tu portal</h3>
+      <div class="credentials" id="credsBox">
+        Email: —<br>
+        Contraseña temporal: —
+      </div>
+      <p style="font-family:Arial,sans-serif;font-size:11px;color:#999;margin-top:8px;">
+        Guarda estos datos. Puedes cambiar tu contraseña después de entrar.
+      </p>
+    </div>
+
+    <!-- PRÓXIMOS PASOS -->
+    <div class="section">
+      <h3>Próximos pasos</h3>
+      <ul class="steps">
+        <li>
+          <span class="step-num">1</span>
+          <span>Te enviaremos tu <strong>producto de bienvenida</strong> por WhatsApp para coordinar el envío 🎁</span>
+        </li>
+        <li>
+          <span class="step-num">2</span>
+          <span>Lee la <strong>guía de contenido</strong> — te explicamos qué crear para generar más ventas</span>
+        </li>
+        <li>
+          <span class="step-num">3</span>
+          <span>Comparte tu código en tus publicaciones, historias y Reels</span>
+        </li>
+        <li>
+          <span class="step-num">4</span>
+          <span>Entra a tu portal para ver tus ventas y comisiones en tiempo real</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- CTAs -->
+    <div class="section">
+      <div class="cta-wrap">
+        <a href="/influencer" class="btn btn-primary">ENTRAR A MI PORTAL →</a>
+        <a href="/guia-ugc" class="btn btn-secondary">VER GUÍA DE CONTENIDO →</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const nombre   = sessionStorage.getItem('ugc_nombre')   || '';
+  const codigo   = sessionStorage.getItem('ugc_codigo')   || '';
+  const email    = sessionStorage.getItem('ugc_email')    || '';
+  const password = sessionStorage.getItem('ugc_password') || '';
+
+  if (codigo) document.getElementById('codigoVal').textContent = codigo;
+  if (email)  document.getElementById('credsBox').innerHTML =
+    `Email: <strong>${email}</strong><br>Contraseña temporal: <strong>${password}</strong>`;
+
+  function copiar() {
+    if (!codigo) return;
+    navigator.clipboard.writeText(codigo).then(() => {
+      const btn = document.querySelector('.copy-btn');
+      btn.textContent = '¡COPIADO!';
+      setTimeout(() => btn.textContent = 'COPIAR CÓDIGO', 2000);
+    });
+  }
+
+  // Limpiar sessionStorage después de mostrar
+  window.addEventListener('beforeunload', () => sessionStorage.removeItem('ugc_password'));
+</script>
+</body>
+</html>
