@@ -331,7 +331,9 @@ async function createUGCDiscountCode(handle) {
 }
 
 function generateUGCDiscountCode(handle) {
-  return handle.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 12) + 'UGC10';
+  const base = handle.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().substring(0, 8);
+  const rand = Math.random().toString(36).substring(2, 5).toUpperCase();
+  return base + 'UGC' + rand;
 }
 
 module.exports = { getVentas, createGiftingOrder, createDiscountCode, generateDiscountCode, getProductosConStock, getPreciosPorSku, getOrdenesParaCodigo, createUGCDiscountCode, generateUGCDiscountCode };

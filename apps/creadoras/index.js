@@ -1664,9 +1664,15 @@ app.post('/api/ugc/registro', async (req, res) => {
     if (!nombre || !email || !telefono || !direccion_envio || !password)
       return res.status(400).json({ error: 'Todos los campos obligatorios deben completarse' });
 
-    const emailClean  = email.toLowerCase().trim();
-    const handleClean = (red_social_handle || '').replace('@', '').trim() || null;
-    const plataforma  = red_social || 'instagram';
+    const emailClean = email.toLowerCase().trim();
+    const plataforma = red_social || 'instagram';
+    // Limpiar handle: remover @ y URLs completas (ej: https://www.instagram.com/usuario → usuario)
+    let handleRaw = (red_social_handle || '').replace('@', '').trim();
+    if (handleRaw.startsWith('http')) {
+      const parts = handleRaw.replace(/\/$/, '').split('/');
+      handleRaw = parts[parts.length - 1] || handleRaw;
+    }
+    const handleClean = handleRaw || null;
 
     // Buscar si ya existe
     let inf = await supabase.getInfluencerByEmail(emailClean);
@@ -1702,11 +1708,13 @@ app.post('/api/ugc/registro', async (req, res) => {
     const hash         = await bcrypt.hash(password, 10);
     await supabase.updatePasswordHash(inf.id, hash);
 
-    // Crear código UGC en Shopify
+    // Crear código UGC en Shopify — reusar si ya tiene uno asignado
     const handle = handleClean || primerNombre;
-    let codigo;
-    try   { codigo = await shopify.createUGCDiscountCode(handle); }
-    catch { codigo = shopify.generateUGCDiscountCode(handle); }
+    let codigo = inf.codigo_ugc || null;
+    if (!codigo) {
+      try   { codigo = await shopify.createUGCDiscountCode(handle); }
+      catch { codigo = shopify.generateUGCDiscountCode(handle); }
+    }
 
     // Enrollar en UGC + regalo de bienvenida
     await supabase.enrollUGC(inf.id, codigo);
