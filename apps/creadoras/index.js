@@ -1659,18 +1659,20 @@ app.get('/guia-ugc',      (req, res) => res.sendFile(path.join(__dirname, 'publi
 // Registro de nueva creadora UGC — crea perfil, código Shopify y regalo de bienvenida
 app.post('/api/ugc/registro', async (req, res) => {
   try {
-    const { nombre, email, telefono, instagram_handle, ciudad, departamento, tipo_cabello, direccion_envio, password } = req.body;
+    const { nombre, email, telefono, red_social, red_social_handle, ciudad, departamento, tipo_cabello, direccion_envio, password } = req.body;
 
     if (!nombre || !email || !telefono || !direccion_envio || !password)
       return res.status(400).json({ error: 'Todos los campos obligatorios deben completarse' });
 
     const emailClean  = email.toLowerCase().trim();
-    const instaClean  = (instagram_handle || '').replace('@', '').trim() || null;
+    const handleClean = (red_social_handle || '').replace('@', '').trim() || null;
+    const plataforma  = red_social || 'instagram';
 
     // Buscar si ya existe
     let inf = await supabase.getInfluencerByEmail(emailClean);
     if (!inf && telefono)    inf = await supabase.getInfluencerByTelefono(telefono);
-    if (!inf && instaClean)  inf = await supabase.getInfluencerByInstagram(instaClean);
+    if (!inf && handleClean && plataforma === 'tiktok')     inf = await supabase.getInfluencerByTikTok(handleClean);
+    if (!inf && handleClean && plataforma !== 'tiktok')     inf = await supabase.getInfluencerByInstagram(handleClean);
 
     if (inf && inf.ugc_activa) {
       return res.json({ ok: true, codigo: inf.codigo_ugc, email: emailClean, ya_registrada: true, password: '' });
@@ -1679,7 +1681,8 @@ app.post('/api/ugc/registro', async (req, res) => {
     if (!inf) {
       inf = await supabase.insertInfluencer({
         nombre, email: emailClean, telefono: telefono || null,
-        instagram_handle: instaClean || null,
+        instagram_handle: plataforma !== 'tiktok' ? (handleClean || null) : null,
+        tiktok_handle:    plataforma === 'tiktok'  ? (handleClean || null) : null,
         ciudad: ciudad || null, departamento: departamento || null,
         direccion_envio: direccion_envio || null,
         tipo_cabello: tipo_cabello || null,
@@ -1700,7 +1703,7 @@ app.post('/api/ugc/registro', async (req, res) => {
     await supabase.updatePasswordHash(inf.id, hash);
 
     // Crear código UGC en Shopify
-    const handle = instaClean || primerNombre;
+    const handle = handleClean || primerNombre;
     let codigo;
     try   { codigo = await shopify.createUGCDiscountCode(handle); }
     catch { codigo = shopify.generateUGCDiscountCode(handle); }
