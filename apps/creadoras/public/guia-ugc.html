@@ -64,6 +64,21 @@
   .gift .info strong { display: block; font-size: 14px; color: #0a0a0a; margin-bottom: 2px; }
   .gift .info span { font-family: Arial, sans-serif; font-size: 12px; color: #888; }
 
+  .products { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 20px 0; }
+  @media(max-width:480px) { .products { grid-template-columns: 1fr; } }
+  .product-card {
+    background: #fff; border-radius: 12px; overflow: hidden;
+    border: 1.5px solid #f0e0ea;
+  }
+  .product-card img { width: 100%; height: 160px; object-fit: cover; display: block; }
+  .product-card .prod-body { padding: 16px; }
+  .product-card .prod-tag { font-family: Arial, sans-serif; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #C9237F; font-weight: bold; margin-bottom: 4px; }
+  .product-card h4 { font-size: 15px; font-style: italic; color: #0a0a0a; margin-bottom: 6px; }
+  .product-card p { font-family: Arial, sans-serif; font-size: 12px; color: #666; line-height: 1.6; margin-bottom: 10px; }
+  .product-card .prod-tip { background: #fdf0f8; border-left: 3px solid #C9237F; padding: 8px 10px; font-family: Arial, sans-serif; font-size: 11px; color: #C9237F; line-height: 1.5; }
+  .product-card a { display: inline-block; margin-top: 10px; font-family: Arial, sans-serif; font-size: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #C9237F; text-decoration: none; }
+  .product-card a:hover { text-decoration: underline; }
+
   .content-types { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
   @media(max-width:480px) { .content-types { grid-template-columns: 1fr; } }
   .content-type {
@@ -130,6 +145,7 @@
 <div class="nav">
   <a href="#comisiones">Comisiones</a>
   <a href="#regalos">Regalos</a>
+  <a href="#productos">Productos</a>
   <a href="#contenido">Qué crear</a>
   <a href="#tips">Tips</a>
   <a href="#codigo">Tu código</a>
@@ -190,6 +206,83 @@
           <span>Tercer producto — y así cada $300.000</span>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- PRODUCTOS -->
+  <div class="section" id="productos">
+    <p class="section-tag">Lo que vendes</p>
+    <h2>Conoce los productos Brujería Capilar</h2>
+    <p>Entre mejor conozcas los productos, más fácil es hablar de ellos con autenticidad. Aquí están los que más se venden y los que más convierten en contenido:</p>
+
+    <div class="products">
+
+      <div class="product-card">
+        <img src="https://cdn.shopify.com/s/files/1/0695/2550/4294/files/unnamed_2.jpg" alt="Crema Rizos 3en1">
+        <div class="prod-body">
+          <div class="prod-tag">⭐ Más vendido</div>
+          <h4>Crema para Rizos 3en1</h4>
+          <p>Define, hidrata y controla el frizz en un solo producto. Funciona como crema de peinar, sellador y activador. Para rizos, ondas y cabello afro.</p>
+          <div class="prod-tip">💡 Ideal para: tutoriales de rutina, antes y después, comparativas. El producto que más conversiones genera.</div>
+          <a href="https://brujeriacapilar.com/products/crema-para-rizos-3-en-1-x-1000ml-brujeria-capilar" target="_blank">Ver en tienda →</a>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <img src="https://cdn.shopify.com/s/files/1/0695/2550/4294/files/termofrontal.jpg" alt="Termoprotector">
+        <div class="prod-body">
+          <div class="prod-tag">⭐ Más vendido</div>
+          <h4>Termoprotector en Spray</h4>
+          <p>Protege el cabello del calor del secador, plancha y rizador. El primer producto que lanzó la marca y el favorito de quienes usan calor en su rutina.</p>
+          <div class="prod-tip">💡 Ideal para: contenido de "antes de usar calor", rutinas de alisado o definición con difusor.</div>
+          <a href="https://brujeriacapilar.com/products/termoprotector" target="_blank">Ver en tienda →</a>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <img src="https://cdn.shopify.com/s/files/1/0695/2550/4294/files/WhatsAppImage2025-11-12at12.06.38PM.jpg?v=1763131075" alt="Shampoo">
+        <div class="prod-body">
+          <div class="prod-tag">Sin sulfatos</div>
+          <h4>Shampoo Ultra Hidratación</h4>
+          <p>Limpia sin resecar. Sin sulfatos, sin parabenos. Formulado para cabellos rizados y ondulados que necesitan hidratación desde el lavado.</p>
+          <div class="prod-tip">💡 Ideal para: rutinas completas, hablar del método curly, contenido de "así lavo mi pelo rizado".</div>
+          <a href="https://brujeriacapilar.com/products/shampoo-ultra-hidratacion-y-fuerza-brujeria-capilar" target="_blank">Ver en tienda →</a>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <img src="https://cdn.shopify.com/s/files/1/0695/2550/4294/files/4_6c69ed37-3b2e-43da-a5a6-f29db20712c4.png?v=1744041089" alt="Varita Mágica Baby Hairs">
+        <div class="prod-body">
+          <div class="prod-tag">Tendencia</div>
+          <h4>Varita Mágica Baby Hairs</h4>
+          <p>Controla y define los baby hairs con precisión. El producto más viral de la marca — genera contenido de alto engagement porque el resultado se ve al instante.</p>
+          <div class="prod-tip">💡 Ideal para: Reels cortos de transformación, "¿cómo se usan los baby hairs?", contenido de tendencia.</div>
+          <a href="https://brujeriacapilar.com/products/varita-magica-baby-hairs-brujeria" target="_blank">Ver en tienda →</a>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <img src="https://cdn.shopify.com/s/files/1/0695/2550/4294/files/4_59857e0b-2719-4162-ba44-813ba38f5ce8.png" alt="Body Mists">
+        <div class="prod-body">
+          <div class="prod-tag">Colección</div>
+          <h4>Body Mists</h4>
+          <p>Colección de brumas corporales perfumadas: Mercurio, Saturno, Venus y Neptuno. Cada una con una personalidad y aroma únicos. Perfectas para regalo.</p>
+          <div class="prod-tip">💡 Ideal para: contenido de "mis favoritos del mes", rutina de cuerpo, aesthetic lifestyle.</div>
+          <a href="https://brujeriacapilar.com/collections/mist" target="_blank">Ver en tienda →</a>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <img src="https://cdn.shopify.com/s/files/1/0695/2550/4294/files/Disenosintitulo_0ce8abf0-cf21-496a-8c0e-5ee997845077.png?v=1743177045" alt="Mantequilla Corporal">
+        <div class="prod-body">
+          <div class="prod-tag">Para la piel</div>
+          <h4>Mantequilla Corporal</h4>
+          <p>Hidratación intensa para el cuerpo en 4 sabores deliciosos. Textura cremosa que se absorbe rápido sin dejar sensación grasosa.</p>
+          <div class="prod-tip">💡 Ideal para: contenido de skincare, rutina de cuerpo post-ducha, "mis productos de belleza favoritos".</div>
+          <a href="https://brujeriacapilar.com/collections/mantequillas-corporales" target="_blank">Ver en tienda →</a>
+        </div>
+      </div>
+
     </div>
   </div>
 
