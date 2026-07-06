@@ -2089,6 +2089,21 @@ app.post('/api/cron/onboarding-ventas', async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Registrar 'acuerdo_creadoras_brujeria' para todas las creadoras que ya firmaron
+app.post('/api/admin/marcar-acuerdo-firmados', async (req, res) => {
+  try {
+    const TEMPLATE = 'acuerdo_creadoras_brujeria';
+    const firmados = await supabase.getAcuerdosFirmados();
+    const ids = [...new Set(firmados.map(a => a.influencer_id))];
+    let marcados = 0;
+    for (const id of ids) {
+      if (await supabase.yaEnviadoTemplate(id, TEMPLATE)) continue;
+      try { await supabase.registrarNotificacion(id, TEMPLATE, 'admin'); marcados++; } catch {}
+    }
+    res.json({ ok: true, total: ids.length, marcados });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Builders de las páginas del acuerdo ────────────────────────────────────
 function paginaAcuerdo() {
   return `<!DOCTYPE html><html lang="es"><head>

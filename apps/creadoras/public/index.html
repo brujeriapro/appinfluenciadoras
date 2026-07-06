@@ -1931,6 +1931,17 @@
 
       useEffect(() => { loadAll(); }, []);
 
+      async function marcarAcuerdoFirmadas() {
+        if (!confirm('¿Marcar como "acuerdo ya enviado" a todas las creadoras que YA firmaron? Así el masivo no les vuelve a mandar el link.')) return;
+        setMarcando(true);
+        try {
+          const r = await fetch('/api/admin/marcar-acuerdo-firmados', { method: 'POST' }).then(r => r.json());
+          if (r.error) throw new Error(r.error);
+          alert(`✅ Marcadas: ${r.marcados} nuevas (de ${r.total} firmadas en total)`);
+        } catch(e) { alert('Error: ' + e.message); }
+        setMarcando(false);
+      }
+
       async function marcarEnviados() {
         const nums = textoMarcar.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
         if (!nums.length) { alert('Pega al menos un número.'); return; }
@@ -2382,6 +2393,11 @@
             /* Tabla regalos pendientes */
             <div>
               <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginBottom:12}}>
+                <button className="btn btn-sm"
+                  style={{background:'var(--bg3)',color:'var(--purple-light)',border:'1px solid var(--border)',fontSize:12,padding:'6px 14px'}}
+                  onClick={marcarAcuerdoFirmadas} disabled={marcando}>
+                  ✅ Marcar acuerdo a firmadas
+                </button>
                 <button className="btn btn-sm"
                   style={{background:'var(--bg3)',color:'var(--purple-light)',border:'1px solid var(--border)',fontSize:12,padding:'6px 14px'}}
                   onClick={() => setModalMarcar(true)}>
