@@ -1927,6 +1927,7 @@
       const [masivoReporte, setMasivoReporte] = useState(null);
       const [masivoPaso, setMasivoPaso]     = useState('producto');
       const [masivoEnviando, setMasivoEnviando] = useState(false);
+      const [seleccionadas, setSeleccionadas] = useState(new Set());
 
       useEffect(() => { loadAll(); }, []);
 
@@ -1993,8 +1994,8 @@
       }
 
       function abrirMasivo() {
-        const listas = creadoras.filter(estaLista);
-        if (!listas.length) { alert('No hay creadoras listas (con datos + firma). Actívalas con el filtro.'); return; }
+        const ids = idsObjetivoMasivo();
+        if (!ids.length) { alert('Selecciona creadoras con las casillas, o activa el filtro "listas para regalo".'); return; }
         setMasivoSkus([]); setMasivoReporte(null); setMasivoPaso('producto'); setModalMasivo(true);
         cargarProductos();
       }
@@ -2003,7 +2004,7 @@
       }
       async function revisarMasivo() {
         if (!masivoSkus.length) { alert('Elige al menos un producto.'); return; }
-        const ids = creadoras.filter(estaLista).map(c => c.id);
+        const ids = idsObjetivoMasivo();
         setMasivoEnviando(true);
         try {
           const r = await fetch('/api/ugc/regalos/preparar-masivo', {
@@ -2037,9 +2038,11 @@
       async function pedirFirma(ids, label, target) {
         const msg = ids && ids.length === 1
           ? `¿Enviar por WhatsApp el link del acuerdo a ${label}?`
-          : target === 'todas'
-            ? `¿Enviar el link del acuerdo por WhatsApp a TODAS las creadoras que aún no han firmado?`
-            : `¿Enviar el link del acuerdo por WhatsApp a las creadoras con regalo pendiente?`;
+          : ids && ids.length > 1
+            ? `¿Enviar el link del acuerdo por WhatsApp a las ${ids.length} creadoras seleccionadas?`
+            : target === 'todas'
+              ? `¿Enviar el link del acuerdo por WhatsApp a TODAS las creadoras que aún no han firmado?`
+              : `¿Enviar el link del acuerdo por WhatsApp a las creadoras con regalo pendiente?`;
         if (!confirm(msg)) return;
         setPidiendo(true);
         try {
@@ -2202,6 +2205,14 @@
       const tienePendiente = c => regalos.some(r => r.influencer_id === c.id);
       const estaLista = c => !!acuerdos[c.id] && datosCompletos(c) && tienePendiente(c);
       const creadorasMostradas = soloListas ? creadoras.filter(estaLista) : creadoras;
+
+      // Selección manual para envíos masivos
+      const idsVisibles = creadorasMostradas.map(c => c.id);
+      const todasSel = idsVisibles.length > 0 && idsVisibles.every(id => seleccionadas.has(id));
+      const toggleUna = id => setSeleccionadas(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+      const toggleTodas = () => setSeleccionadas(prev => { const n = new Set(prev); if (todasSel) idsVisibles.forEach(id => n.delete(id)); else idsVisibles.forEach(id => n.add(id)); return n; });
+      // A quiénes va el masivo: si hay selección, esas; si no, todas las listas
+      const idsObjetivoMasivo = () => (seleccionadas.size ? creadoras.filter(c => seleccionadas.has(c.id)) : creadoras.filter(estaLista)).map(c => c.id);
       function enviarRegaloDeCreadora(c) {
         const rg = regalos.find(r => r.influencer_id === c.id);
         if (!rg) { alert('Esta creadora no tiene un regalo pendiente por enviar (ya se le enviaron todos).'); return; }
@@ -2262,12 +2273,27 @@
                     🎁 Solo listas para regalo (datos + firma)
                   </label>
                   <span style={{fontSize:12,color:'var(--text-muted)'}}>{creadorasMostradas.length} de {creadoras.length}</span>
-                  {creadoras.filter(estaLista).length > 0 && (
-                    <button className="btn btn-sm" style={{marginLeft:'auto',background:'var(--green)',color:'#000',fontSize:12,padding:'6px 14px',fontWeight:600}}
-                      onClick={abrirMasivo}>
-                      🎁 Enviar mismo regalo a las listas ({creadoras.filter(estaLista).length})
-                    </button>
+                  {seleccionadas.size > 0 && (
+                    <span style={{fontSize:12,color:'var(--purple-light)',fontWeight:600}}>· {seleccionadas.size} seleccionada{seleccionadas.size>1?'s':''}</span>
                   )}
+                  {seleccionadas.size > 0 && (
+                    <button className="btn btn-sm" style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:11,textDecoration:'underline',cursor:'pointer'}}
+                      onClick={()=>setSeleccionadas(new Set())}>limpiar</button>
+                  )}
+                  <div style={{marginLeft:'auto',display:'flex',gap:8}}>
+                    {seleccionadas.size > 0 && (
+                      <button className="btn btn-sm" disabled={pidiendo} style={{background:'var(--bg3)',color:'var(--purple-light)',border:'1px solid var(--border)',fontSize:12,padding:'6px 14px'}}
+                        onClick={()=>pedirFirma([...seleccionadas])}>
+                        📝 Pedir firma a {seleccionadas.size}
+                      </button>
+                    )}
+                    {(seleccionadas.size > 0 || creadoras.filter(estaLista).length > 0) && (
+                      <button className="btn btn-sm" style={{background:'var(--green)',color:'#000',fontSize:12,padding:'6px 14px',fontWeight:600}}
+                        onClick={abrirMasivo}>
+                        🎁 Enviar regalo a {seleccionadas.size > 0 ? `${seleccionadas.size} seleccionadas` : `las listas (${creadoras.filter(estaLista).length})`}
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
               {creadoras.length === 0 ? (
@@ -2280,6 +2306,7 @@
                 <table style={{width:'100%',borderCollapse:'collapse'}}>
                   <thead>
                     <tr style={{borderBottom:'1px solid var(--border)',color:'var(--text-muted)',fontSize:11,textTransform:'uppercase',letterSpacing:'0.5px'}}>
+                      <th style={{padding:'10px 12px',textAlign:'center'}}><input type="checkbox" checked={todasSel} onChange={toggleTodas} style={{width:16,height:16,cursor:'pointer'}} title="Seleccionar todas" /></th>
                       <th style={{padding:'10px 12px',textAlign:'left'}}>Creadora</th>
                       <th style={{padding:'10px 12px',textAlign:'left'}}>Código</th>
                       <th style={{padding:'10px 12px',textAlign:'right'}}>Ventas mes</th>
@@ -2294,7 +2321,10 @@
                   </thead>
                   <tbody>
                     {creadorasMostradas.map(c => (
-                      <tr key={c.id} style={{borderBottom:'1px solid var(--border)'}}>
+                      <tr key={c.id} style={{borderBottom:'1px solid var(--border)',background:seleccionadas.has(c.id)?'rgba(124,58,237,0.08)':''}}>
+                        <td style={{padding:'12px',textAlign:'center'}}>
+                          <input type="checkbox" checked={seleccionadas.has(c.id)} onChange={()=>toggleUna(c.id)} style={{width:16,height:16,cursor:'pointer'}} />
+                        </td>
                         <td style={{padding:'12px'}}>
                           <div style={{fontWeight:600}}>{c.nombre}</div>
                           <div style={{fontSize:11,color:'var(--text-muted)'}}>@{c.instagram_handle||c.tiktok_handle||'-'}</div>
