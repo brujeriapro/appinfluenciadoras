@@ -1910,16 +1910,31 @@ app.post('/api/admin/pedir-acuerdo', async (req, res) => {
       } catch {}
     }
     ids = [...new Set(ids)];
-    const resultados = [];
-    for (const id of ids) {
-      try {
-        const inf = await supabase.getInfluencerById(id);
-        if (!inf || !inf.telefono) { resultados.push({ id, ok: false, error: 'sin teléfono' }); continue; }
-        const r = await enviarAcuerdo(inf);
-        resultados.push({ id, nombre: inf.nombre, ok: !!(r?.sent || r?.skipped), ...r });
-      } catch (e) { resultados.push({ id, ok: false, error: e.message }); }
-      await new Promise(r => setTimeout(r, 800));
+
+    // Envía el lote en secuencia con pausa entre cada uno
+    async function enviarLote(lista) {
+      const resultados = [];
+      for (const id of lista) {
+        try {
+          const inf = await supabase.getInfluencerById(id);
+          if (!inf || !inf.telefono) { resultados.push({ id, ok: false, error: 'sin teléfono' }); continue; }
+          const r = await enviarAcuerdo(inf);
+          resultados.push({ id, nombre: inf.nombre, ok: !!(r?.sent || r?.skipped) });
+        } catch (e) { resultados.push({ id, ok: false, error: e.message }); }
+        await new Promise(r => setTimeout(r, 800));
+      }
+      return resultados;
     }
+
+    // Lotes grandes → procesar en segundo plano y responder ya (evita el timeout del gateway)
+    if (ids.length > 5) {
+      enviarLote(ids)
+        .then(r => console.log(`[pedir-acuerdo] lote terminado: ${r.filter(x => x.ok).length}/${ids.length} enviados`))
+        .catch(e => console.error('[pedir-acuerdo] lote:', e.message));
+      return res.json({ ok: true, queued: ids.length, background: true });
+    }
+
+    const resultados = await enviarLote(ids);
     res.json({ total: ids.length, ok: resultados.filter(r => r.ok).length, resultados });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

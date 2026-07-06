@@ -1974,12 +1974,20 @@
         setPidiendo(true);
         try {
           const payload = ids && ids.length ? { ids } : (target ? { target } : {});
-          const r = await fetch('/api/admin/pedir-acuerdo', {
+          const resp = await fetch('/api/admin/pedir-acuerdo', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
-          }).then(r => r.json());
-          const errs = [...new Set((r.resultados || []).filter(x => !x.ok).map(x => x.error).filter(Boolean))];
-          alert(`Enviados: ${r.ok}/${r.total}` + (errs.length ? `\n\nErrores:\n${errs.join('\n')}` : ''));
+          });
+          const txt = await resp.text();
+          let r; try { r = JSON.parse(txt); } catch(_) { r = { error: txt || 'Error de red' }; }
+          if (r.background) {
+            alert(`📤 Enviando el acuerdo a ${r.queued} creadoras en segundo plano.\nPuede tardar un par de minutos. Refresca más tarde para ver quién ya firmó.`);
+          } else if (r.error) {
+            alert('Error: ' + r.error);
+          } else {
+            const errs = [...new Set((r.resultados || []).filter(x => !x.ok).map(x => x.error).filter(Boolean))];
+            alert(`Enviados: ${r.ok}/${r.total}` + (errs.length ? `\n\nErrores:\n${errs.join('\n')}` : ''));
+          }
         } catch(e) { alert('Error: ' + e.message); }
         setPidiendo(false);
       }
