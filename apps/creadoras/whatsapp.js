@@ -190,6 +190,13 @@ async function enviarAcuerdo(influencer) {
   return enviarTemplate(influencer.telefono, 'acuerdo_creadoras_brujeria', [nombre], influencer.id);
 }
 
+// Onboarding Día 0 — el regalo va en camino (se envía al crear el pedido)
+// Template: regalo_en_camino_brujeria · Variables: {{1}} nombre · Botón URL estático → /guia-ugc
+async function enviarRegaloEnCamino(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre || 'creadora';
+  return enviarTemplate(influencer.telefono, 'regalo_en_camino_brujeria', [nombre]);
+}
+
 module.exports = {
   enviarBienvenidaKit,
   enviarRecordatorioWhatsApp,
@@ -205,4 +212,5 @@ module.exports = {
   enviarUGCBienvenida,
   enviarUGCConfirmacionRegistro,
   enviarAcuerdo,
+  enviarRegaloEnCamino,
 };

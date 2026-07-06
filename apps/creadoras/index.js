@@ -9,7 +9,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida, enviarUGCConfirmacionRegistro, enviarAcuerdo } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida, enviarUGCConfirmacionRegistro, enviarAcuerdo, enviarRegaloEnCamino } = require('./whatsapp');
 const acuerdo = require('./acuerdo');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
@@ -1675,24 +1675,14 @@ app.post('/api/ugc/regalos/:id/enviar', async (req, res) => {
     if (!infParaOrden.direccion_envio)
       return res.status(400).json({ error: 'La creadora no tiene dirección de envío' });
 
-    // Crear orden gifting $0 en Shopify
-    const label = producto_nombre || `Regalo #${regalo.numero_regalo}`;
-    const shopifyResult = await shopify.createGiftingOrder(infParaOrden, skus, label);
-
-    await supabase.updateUGCRegalo(req.params.id, {
-      estado: 'enviado',
-      fecha_envio: new Date().toISOString(),
-      producto_nombre: producto_nombre || skus.join(', '),
-      sku: skus.join(','),
-      shopify_order_id: shopifyResult.shopify_order_id || null,
-      notas: notas || null,
-    });
+    // Crear orden gifting $0 en Shopify + marcar enviado + Día 0 del onboarding
+    const shopifyResult = await despacharRegaloDeInfluencer(regalo, infParaOrden, skus, producto_nombre, notas);
     res.json({ ok: true, shopify: shopifyResult });
   } catch (e) { console.error('[regalo/enviar]', e.message); res.status(500).json({ error: e.message }); }
 });
 
 // Crea la orden de gifting de un regalo y lo marca enviado (usado por single y masivo)
-async function despacharRegaloDeInfluencer(regalo, inf, skus, producto_nombre) {
+async function despacharRegaloDeInfluencer(regalo, inf, skus, producto_nombre, notas) {
   // Re-verificar que siga pendiente para no enviar doble regalo (corridas simultáneas)
   const actual = await supabase.getUGCRegaloById(regalo.id);
   if (!actual || actual.estado !== 'pendiente') {
@@ -1706,7 +1696,13 @@ async function despacharRegaloDeInfluencer(regalo, inf, skus, producto_nombre) {
     producto_nombre: producto_nombre || skus.join(', '),
     sku: skus.join(','),
     shopify_order_id: shopifyResult.shopify_order_id || null,
+    ...(notas ? { notas } : {}),
   });
+  // Onboarding Día 0 — "tu regalo va en camino" (no bloquea si falla)
+  try {
+    const r = await enviarRegaloEnCamino(inf);
+    if (r?.sent) await supabase.registrarNotificacion(inf.id, 'regalo_en_camino_brujeria', 'auto');
+  } catch (e) { console.warn('[regalo-en-camino]', e.message); }
   return shopifyResult;
 }
 
