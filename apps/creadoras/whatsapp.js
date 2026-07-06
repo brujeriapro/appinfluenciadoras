@@ -223,6 +223,11 @@ async function enviarCierreQuincena(influencer) {
   const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre || 'creadora';
   return enviarTemplate(influencer.telefono, 'cierre_quincena_brujeria', [nombre]);
 }
+// Cupón aún sin usar (0 ventas) · Template: cupon_sin_usar_brujeria · {{1}} nombre · {{2}} código
+async function enviarCuponSinUsar(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre || 'creadora';
+  return enviarTemplate(influencer.telefono, 'cupon_sin_usar_brujeria', [nombre, influencer.codigo_ugc || 'tu código']);
+}
 
 module.exports = {
   enviarBienvenidaKit,
@@ -245,4 +250,5 @@ module.exports = {
   enviarChecklistPublicar,
   enviarVenderMas,
   enviarCierreQuincena,
+  enviarCuponSinUsar,
 };

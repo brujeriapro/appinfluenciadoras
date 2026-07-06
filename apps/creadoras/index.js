@@ -9,7 +9,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida, enviarUGCConfirmacionRegistro, enviarAcuerdo, enviarRegaloEnCamino, enviarRegaloLlego, enviarIdeasVideo, enviarChecklistPublicar, enviarVenderMas, enviarCierreQuincena } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida, enviarUGCConfirmacionRegistro, enviarAcuerdo, enviarRegaloEnCamino, enviarRegaloLlego, enviarIdeasVideo, enviarChecklistPublicar, enviarVenderMas, enviarCierreQuincena, enviarCuponSinUsar } = require('./whatsapp');
 const acuerdo = require('./acuerdo');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
@@ -2366,10 +2366,10 @@ let ultimoOnboarding = null;
 // Secuencia de onboarding de ventas — un paso por creadora por corrida, sin repetir
 const SECUENCIA_ONBOARDING = [
   { dia: 3,  template: 'regalo_llego_brujeria',       enviar: enviarRegaloLlego },
-  { dia: 4,  template: 'ideas_video_brujeria',        enviar: enviarIdeasVideo },
   { dia: 6,  template: 'checklist_publicar_brujeria', enviar: enviarChecklistPublicar },
   { dia: 9,  template: 'vender_mas_brujeria',         enviar: enviarVenderMas },
-  { dia: 15, template: 'cierre_quincena_brujeria',    enviar: enviarCierreQuincena },
+  // A los 12 días, solo si NO ha usado su cupón ni una vez (0 ventas)
+  { dia: 12, template: 'cupon_sin_usar_brujeria',     enviar: enviarCuponSinUsar, soloSinVentas: true },
 ];
 
 async function runOnboardingVentas() {
@@ -2392,6 +2392,11 @@ async function runOnboardingVentas() {
       for (const paso of SECUENCIA_ONBOARDING) {
         if (paso.dia > dias) break;                                   // aún no toca
         if (await supabase.yaEnviadoTemplate(id, paso.template)) continue; // ya se envió
+        // Paso condicionado a que el cupón siga sin usarse (0 ventas)
+        if (paso.soloSinVentas) {
+          const totalVentas = await supabase.getUGCVentasTotales(id);
+          if (totalVentas > 0) continue; // ya usó su cupón → no aplica
+        }
         try {
           const wa = await paso.enviar(g.inf);
           if (wa?.sent) { await supabase.registrarNotificacion(id, paso.template, 'cron'); enviadosCount++; }

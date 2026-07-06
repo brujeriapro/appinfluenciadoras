@@ -411,7 +411,7 @@ async function getUGCRegalosAllPendientes() {
 // Regalos ya despachados — para la secuencia de onboarding de ventas
 async function getUGCRegalosEnviados() {
   return supabaseGet('ugc_regalos', {
-    select: 'id,influencer_id,fecha_envio,influencers(nombre,telefono)',
+    select: 'id,influencer_id,fecha_envio,influencers(nombre,telefono,codigo_ugc)',
     estado: 'eq.enviado',
     order: 'fecha_envio.asc',
   });
