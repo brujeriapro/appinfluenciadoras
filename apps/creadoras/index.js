@@ -1949,8 +1949,20 @@ button.primary:disabled{opacity:.5;cursor:default}
   <div class="tag">Programa de Creadoras ✨</div>
 
   <div id="app" style="display:none">
+    <div style="background:linear-gradient(135deg,#2a1a4e,#3d1f6e);border:1px solid #4c3080;border-radius:14px;padding:18px;margin-bottom:16px">
+      <div style="font-size:16px;font-weight:700;color:#f0e6ff;margin-bottom:6px">¡Hola! Bienvenida al Club de Creadoras 🔮</div>
+      <div style="font-size:13px;color:#c9b8ef;line-height:1.5;margin-bottom:12px">Para enviarte tu <b>regalo</b> y activar tu <b>código de descuento</b>, completa este formulario. Toma unos 2 minutos 💜</div>
+      <div style="font-size:13px;color:#e9dcff;line-height:1.8">
+        <div>1️⃣ Revisa y completa <b>tus datos</b>.</div>
+        <div>2️⃣ Confirma la <b>dirección</b> donde te enviamos el regalo.</div>
+        <div>3️⃣ <b>Lee</b> tu acuerdo de colaboración.</div>
+        <div>4️⃣ <b>Firma</b> con tu dedo y toca "Firmar y enviar".</div>
+      </div>
+      <div style="font-size:11px;color:#9970d4;margin-top:12px">✨ Es gratis, sin permanencia y puedes retirarte cuando quieras.</div>
+    </div>
     <div class="form">
       <h3>1. Tus datos</h3>
+      <div style="font-size:11px;color:#9970d4;margin:-6px 0 10px">Escríbelos como aparecen en tu documento de identidad.</div>
       <div class="fld full"><label>Nombre completo</label><input id="f_nombre_completo" placeholder="Como aparece en tu documento"></div>
       <div class="grid">
         <div class="fld"><label>Tipo de documento</label><select id="f_tipo_documento"><option>C.C.</option><option>C.E.</option></select></div>
@@ -1958,7 +1970,8 @@ button.primary:disabled{opacity:.5;cursor:default}
         <div class="fld"><label>Usuario (@)</label><input id="f_usuario" placeholder="tuusuario"></div>
         <div class="fld"><label>Teléfono</label><input id="f_telefono" inputmode="tel"></div>
       </div>
-      <h3 style="margin-top:14px">2. Datos de envío del regalo</h3>
+      <h3 style="margin-top:14px">2. ¿A dónde te enviamos el regalo?</h3>
+      <div style="font-size:11px;color:#9970d4;margin:-6px 0 10px">Dirección completa y correcta para que tu paquete llegue sin problemas.</div>
       <div class="fld full"><label>Dirección de envío</label><input id="f_direccion_envio" placeholder="Calle, número, barrio, apto"></div>
       <div class="grid">
         <div class="fld"><label>Ciudad</label><input id="f_ciudad"></div>
@@ -1966,11 +1979,15 @@ button.primary:disabled{opacity:.5;cursor:default}
       </div>
     </div>
 
+    <div style="margin:4px 0 8px">
+      <div style="font-size:14px;font-weight:700;color:#c084fc">3. Lee tu acuerdo de colaboración</div>
+      <div style="font-size:11px;color:#9970d4">Tus datos aparecen <span style="background:#f3ecff;color:#4c1d95;padding:0 4px;border-radius:3px">resaltados</span>. Desliza para leerlo completo 👇</div>
+    </div>
     <div class="doc-card ac-doc" id="doc">${acuerdo.acuerdoBody()}</div>
 
     <div class="sign">
-      <h3>3. Tu firma</h3>
-      <div class="hint">Dibuja tu firma con el dedo o el mouse 👇</div>
+      <h3>4. Firma aquí ✍️</h3>
+      <div class="hint">Dibuja tu firma con el dedo (o el mouse) dentro del recuadro blanco 👇</div>
       <canvas id="pad"></canvas>
       <button class="clear" onclick="limpiarFirma()">Borrar firma</button>
       <div style="clear:both"></div>
