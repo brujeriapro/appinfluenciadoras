@@ -1893,10 +1893,23 @@ app.get('/api/ugc/acuerdos', async (req, res) => {
 app.post('/api/admin/pedir-acuerdo', async (req, res) => {
   try {
     let ids = req.body?.ids;
-    if (!Array.isArray(ids) || !ids.length) {
-      const pendientes = await supabase.getUGCRegalosAllPendientes();
-      ids = [...new Set(pendientes.map(r => r.influencer_id))];
+    const target = req.body?.target;
+    const explicit = Array.isArray(ids) && ids.length;
+    if (!explicit) {
+      if (target === 'todas') {
+        const creadoras = await supabase.getUGCCreadoras();
+        ids = creadoras.map(c => c.id);
+      } else {
+        const pendientes = await supabase.getUGCRegalosAllPendientes();
+        ids = [...new Set(pendientes.map(r => r.influencer_id))];
+      }
+      // No re-pedir a las que ya firmaron
+      try {
+        const firmados = new Set((await supabase.getAcuerdosFirmados()).map(a => a.influencer_id));
+        ids = ids.filter(id => !firmados.has(id));
+      } catch {}
     }
+    ids = [...new Set(ids)];
     const resultados = [];
     for (const id of ids) {
       try {

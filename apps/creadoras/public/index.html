@@ -1964,16 +1964,19 @@
         setEnviandoRegalo(false);
       }
 
-      async function pedirFirma(ids, label) {
+      async function pedirFirma(ids, label, target) {
         const msg = ids && ids.length === 1
           ? `¿Enviar por WhatsApp el link del acuerdo a ${label}?`
-          : `¿Enviar el link del acuerdo por WhatsApp a las creadoras con regalo pendiente?`;
+          : target === 'todas'
+            ? `¿Enviar el link del acuerdo por WhatsApp a TODAS las creadoras que aún no han firmado?`
+            : `¿Enviar el link del acuerdo por WhatsApp a las creadoras con regalo pendiente?`;
         if (!confirm(msg)) return;
         setPidiendo(true);
         try {
+          const payload = ids && ids.length ? { ids } : (target ? { target } : {});
           const r = await fetch('/api/admin/pedir-acuerdo', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(ids && ids.length ? { ids } : {}),
+            body: JSON.stringify(payload),
           }).then(r => r.json());
           const errs = [...new Set((r.resultados || []).filter(x => !x.ok).map(x => x.error).filter(Boolean))];
           alert(`Enviados: ${r.ok}/${r.total}` + (errs.length ? `\n\nErrores:\n${errs.join('\n')}` : ''));
@@ -2220,15 +2223,20 @@
           ) : (
             /* Tabla regalos pendientes */
             <div>
-              {regalos.length > 0 && (
-                <div style={{display:'flex',justifyContent:'flex-end',marginBottom:12}}>
+              <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginBottom:12}}>
+                <button className="btn btn-sm" disabled={pidiendo}
+                  style={{background:'var(--gold)',color:'#000',fontSize:12,padding:'6px 14px',fontWeight:600}}
+                  onClick={() => pedirFirma(null, null, 'todas')}>
+                  {pidiendo ? 'Enviando…' : '📣 Pedir datos + firma a TODAS'}
+                </button>
+                {regalos.length > 0 && (
                   <button className="btn btn-sm" disabled={pidiendo}
                     style={{background:'var(--purple)',color:'#fff',fontSize:12,padding:'6px 14px'}}
                     onClick={() => pedirFirma(null)}>
-                    {pidiendo ? 'Enviando…' : '📝 Pedir datos + firma a pendientes'}
+                    📝 Solo a pendientes
                   </button>
-                </div>
-              )}
+                )}
+              </div>
               {regalos.length === 0 ? (
                 <div style={{textAlign:'center',padding:60,color:'var(--text-muted)'}}>
                   <div style={{fontSize:48,marginBottom:12}}>🎁</div>
