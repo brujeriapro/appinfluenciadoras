@@ -1690,6 +1690,90 @@ app.post('/api/ugc/regalos/:id/enviar', async (req, res) => {
   } catch (e) { console.error('[regalo/enviar]', e.message); res.status(500).json({ error: e.message }); }
 });
 
+// Crea la orden de gifting de un regalo y lo marca enviado (usado por single y masivo)
+async function despacharRegaloDeInfluencer(regalo, inf, skus, producto_nombre) {
+  const label = producto_nombre || `Regalo #${regalo.numero_regalo}`;
+  const shopifyResult = await shopify.createGiftingOrder(inf, skus, label);
+  await supabase.updateUGCRegalo(regalo.id, {
+    estado: 'enviado',
+    fecha_envio: new Date().toISOString(),
+    producto_nombre: producto_nombre || skus.join(', '),
+    sku: skus.join(','),
+    shopify_order_id: shopifyResult.shopify_order_id || null,
+  });
+  return shopifyResult;
+}
+
+// Revisa, ANTES de crear nada, qué creadoras están completas y a cuáles les falta un dato
+// Body: { influencer_ids: [] }
+app.post('/api/ugc/regalos/preparar-masivo', async (req, res) => {
+  try {
+    const ids = req.body?.influencer_ids;
+    if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'influencer_ids requerido' });
+
+    const pendientes = await supabase.getUGCRegalosAllPendientes();
+    const primerPendiente = {};
+    for (const r of pendientes) if (!primerPendiente[r.influencer_id]) primerPendiente[r.influencer_id] = r;
+
+    const listas = [], incompletas = [];
+    for (const id of ids) {
+      const inf = await supabase.getInfluencerById(id);
+      if (!inf) { incompletas.push({ id, nombre: '(no encontrada)', faltan: ['registro'] }); continue; }
+      const faltan = [];
+      const regalo = primerPendiente[id];
+      if (!regalo) faltan.push('regalo pendiente');
+      if (!inf.direccion_envio) faltan.push('dirección');
+      if (!inf.telefono) faltan.push('teléfono');
+      const province = inf.departamento || shopify.inferirDepartamento(inf.ciudad || '');
+      if (!province) faltan.push('departamento');
+      if (faltan.length) incompletas.push({ id, nombre: inf.nombre, faltan });
+      else listas.push({ id, nombre: inf.nombre, regalo_id: regalo.id });
+    }
+    res.json({ listas, incompletas });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Crea las órdenes de gifting en masa para el mismo producto
+// Body: { influencer_ids: [], skus: [], producto_nombre }
+app.post('/api/ugc/regalos/enviar-masivo', async (req, res) => {
+  try {
+    const { influencer_ids, skus, producto_nombre } = req.body;
+    if (!Array.isArray(influencer_ids) || !influencer_ids.length) return res.status(400).json({ error: 'influencer_ids requerido' });
+    if (!Array.isArray(skus) || !skus.length) return res.status(400).json({ error: 'skus requerido' });
+
+    const pendientes = await supabase.getUGCRegalosAllPendientes();
+    const primerPendiente = {};
+    for (const r of pendientes) if (!primerPendiente[r.influencer_id]) primerPendiente[r.influencer_id] = r;
+
+    async function correr() {
+      const out = [];
+      for (const id of influencer_ids) {
+        try {
+          const inf = await supabase.getInfluencerById(id);
+          const regalo = primerPendiente[id];
+          if (!inf || !regalo) { out.push({ id, ok: false, error: 'sin regalo pendiente' }); continue; }
+          const province = inf.departamento || shopify.inferirDepartamento(inf.ciudad || '');
+          if (!inf.direccion_envio || !province) { out.push({ id, ok: false, error: 'datos incompletos' }); continue; }
+          await despacharRegaloDeInfluencer(regalo, inf, skus, producto_nombre);
+          out.push({ id, nombre: inf.nombre, ok: true });
+        } catch (e) { out.push({ id, ok: false, error: e.message }); }
+        await new Promise(r => setTimeout(r, 500));
+      }
+      return out;
+    }
+
+    // Lotes grandes → segundo plano para no exceder el timeout del gateway
+    if (influencer_ids.length > 5) {
+      correr()
+        .then(r => console.log(`[enviar-masivo] ${r.filter(x => x.ok).length}/${influencer_ids.length} órdenes creadas`))
+        .catch(e => console.error('[enviar-masivo]', e.message));
+      return res.json({ ok: true, queued: influencer_ids.length, background: true });
+    }
+    const r = await correr();
+    res.json({ ok: true, total: influencer_ids.length, creadas: r.filter(x => x.ok).length, resultados: r });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── RUTAS PÚBLICAS UGC ────────────────────────────────────────────────────────
 app.get('/registro-ugc',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'registro-ugc.html')));
 app.get('/bienvenida-ugc',(req, res) => res.sendFile(path.join(__dirname, 'public', 'bienvenida-ugc.html')));

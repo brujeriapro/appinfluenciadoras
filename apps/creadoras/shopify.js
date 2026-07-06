@@ -338,4 +338,4 @@ function generateUGCDiscountCode(handle) {
   return base + 'UGC' + rand;
 }
 
-module.exports = { getVentas, createGiftingOrder, createDiscountCode, generateDiscountCode, getProductosConStock, getPreciosPorSku, getOrdenesParaCodigo, createUGCDiscountCode, generateUGCDiscountCode };
+module.exports = { getVentas, createGiftingOrder, createDiscountCode, generateDiscountCode, getProductosConStock, getPreciosPorSku, getOrdenesParaCodigo, createUGCDiscountCode, generateUGCDiscountCode, inferirDepartamento };

@@ -1922,6 +1922,11 @@
       const [modalMarcar, setModalMarcar] = useState(false);
       const [textoMarcar, setTextoMarcar] = useState('');
       const [marcando, setMarcando] = useState(false);
+      const [modalMasivo, setModalMasivo]   = useState(false);
+      const [masivoSkus, setMasivoSkus]     = useState([]);
+      const [masivoReporte, setMasivoReporte] = useState(null);
+      const [masivoPaso, setMasivoPaso]     = useState('producto');
+      const [masivoEnviando, setMasivoEnviando] = useState(false);
 
       useEffect(() => { loadAll(); }, []);
 
@@ -1985,6 +1990,48 @@
           alert('🎁 ¡Regalo despachado! Orden creada en Shopify.');
         } catch(e) { alert('Error: ' + e.message); }
         setEnviandoRegalo(false);
+      }
+
+      function abrirMasivo() {
+        const listas = creadoras.filter(estaLista);
+        if (!listas.length) { alert('No hay creadoras listas (con datos + firma). Actívalas con el filtro.'); return; }
+        setMasivoSkus([]); setMasivoReporte(null); setMasivoPaso('producto'); setModalMasivo(true);
+        cargarProductos();
+      }
+      function toggleMasivoSku(sku) {
+        setMasivoSkus(s => s.includes(sku) ? s.filter(x => x !== sku) : [...s, sku]);
+      }
+      async function revisarMasivo() {
+        if (!masivoSkus.length) { alert('Elige al menos un producto.'); return; }
+        const ids = creadoras.filter(estaLista).map(c => c.id);
+        setMasivoEnviando(true);
+        try {
+          const r = await fetch('/api/ugc/regalos/preparar-masivo', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ influencer_ids: ids }),
+          }).then(r => r.json());
+          if (r.error) throw new Error(r.error);
+          setMasivoReporte(r); setMasivoPaso('revision');
+        } catch(e) { alert('Error: ' + e.message); }
+        setMasivoEnviando(false);
+      }
+      async function crearOrdenesMasivo() {
+        const ids = (masivoReporte?.listas || []).map(x => x.id);
+        if (!ids.length) { alert('No hay creadoras completas para crear órdenes.'); return; }
+        const producto_nombre = productos.filter(p => masivoSkus.includes(p.sku)).map(p => p.nombre).join(', ');
+        setMasivoEnviando(true);
+        try {
+          const r = await fetch('/api/ugc/regalos/enviar-masivo', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ influencer_ids: ids, skus: masivoSkus, producto_nombre }),
+          }).then(r => r.json());
+          if (r.error) throw new Error(r.error);
+          if (r.background) alert(`📦 Creando ${r.queued} órdenes en segundo plano.\nRefresca en un par de minutos para verlas marcadas como enviadas.`);
+          else alert(`✅ Órdenes creadas: ${r.creadas}/${r.total}`);
+          setModalMasivo(false);
+          await loadAll();
+        } catch(e) { alert('Error: ' + e.message); }
+        setMasivoEnviando(false);
       }
 
       async function pedirFirma(ids, label, target) {
@@ -2207,12 +2254,18 @@
             /* Tabla creadoras */
             <div style={{overflowX:'auto'}}>
               {creadoras.length > 0 && (
-                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12,flexWrap:'wrap'}}>
                   <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
                     <input type="checkbox" checked={soloListas} onChange={e=>setSoloListas(e.target.checked)} style={{width:16,height:16}} />
                     🎁 Solo listas para regalo (datos + firma)
                   </label>
                   <span style={{fontSize:12,color:'var(--text-muted)'}}>{creadorasMostradas.length} de {creadoras.length}</span>
+                  {creadoras.filter(estaLista).length > 0 && (
+                    <button className="btn btn-sm" style={{marginLeft:'auto',background:'var(--green)',color:'#000',fontSize:12,padding:'6px 14px',fontWeight:600}}
+                      onClick={abrirMasivo}>
+                      🎁 Enviar mismo regalo a las listas ({creadoras.filter(estaLista).length})
+                    </button>
+                  )}
                 </div>
               )}
               {creadoras.length === 0 ? (
@@ -2545,6 +2598,77 @@
                     {enviandoRegalo ? 'Creando orden…' : `🚚 Enviar regalo${modalRegalo.skus.length?` (${modalRegalo.skus.length})`:''}`}
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal despacho masivo del mismo regalo */}
+          {modalMasivo && (
+            <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}} onClick={()=>!masivoEnviando&&setModalMasivo(false)}>
+              <div style={{background:'var(--bg2)',borderRadius:12,padding:24,width:560,maxWidth:'100%',maxHeight:'90vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+                <h2 style={{marginBottom:2,fontSize:16}}>🎁 Enviar el mismo regalo a las creadoras listas</h2>
+
+                {masivoPaso === 'producto' ? (
+                  <>
+                    <p style={{color:'var(--text-muted)',fontSize:12,marginBottom:14}}>Elige el producto que recibirán todas. Luego revisamos que no falte ningún dato antes de crear las órdenes.</p>
+                    <div style={{maxHeight:280,overflowY:'auto',background:'var(--bg3)',borderRadius:8,padding:6,marginBottom:16}}>
+                      {productos.length === 0 ? (
+                        <div style={{padding:16,textAlign:'center',color:'var(--text-muted)',fontSize:13}}>Cargando productos…</div>
+                      ) : productos.map(p => {
+                        const sel = masivoSkus.includes(p.sku);
+                        const sinStock = p.stock !== null && p.stock <= 0;
+                        return (
+                          <label key={p.sku} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 10px',borderRadius:6,cursor:'pointer',background:sel?'rgba(124,58,237,0.18)':'transparent'}}>
+                            <input type="checkbox" checked={sel} onChange={()=>toggleMasivoSku(p.sku)} style={{width:18,height:18,flexShrink:0}} />
+                            <span style={{flex:1,fontSize:13}}>{p.nombre}</span>
+                            <span style={{fontSize:11,color:sinStock?'var(--red)':'var(--text-muted)'}}>{p.stock===null?'—':`${p.stock} und`}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <div style={{display:'flex',gap:8}}>
+                      <button className="btn btn-secondary btn-sm" style={{flex:1}} disabled={masivoEnviando} onClick={()=>setModalMasivo(false)}>Cancelar</button>
+                      <button className="btn btn-sm" style={{flex:2,background:'var(--purple)',color:'#fff',fontWeight:600}} disabled={masivoEnviando||!masivoSkus.length} onClick={revisarMasivo}>
+                        {masivoEnviando ? 'Revisando…' : `Revisar datos (${creadoras.filter(estaLista).length})`}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{display:'flex',gap:12,margin:'14px 0'}}>
+                      <div style={{flex:1,background:'rgba(34,197,94,0.12)',border:'1px solid var(--green)',borderRadius:8,padding:'12px',textAlign:'center'}}>
+                        <div style={{fontSize:24,fontWeight:700,color:'var(--green)'}}>{masivoReporte?.listas?.length||0}</div>
+                        <div style={{fontSize:11,color:'var(--text-muted)'}}>listas para crear</div>
+                      </div>
+                      <div style={{flex:1,background:'rgba(245,158,11,0.10)',border:'1px solid var(--orange)',borderRadius:8,padding:'12px',textAlign:'center'}}>
+                        <div style={{fontSize:24,fontWeight:700,color:'var(--orange)'}}>{masivoReporte?.incompletas?.length||0}</div>
+                        <div style={{fontSize:11,color:'var(--text-muted)'}}>con datos faltantes</div>
+                      </div>
+                    </div>
+
+                    {masivoReporte?.incompletas?.length > 0 && (
+                      <div style={{background:'var(--bg3)',borderRadius:8,padding:12,marginBottom:14,maxHeight:180,overflowY:'auto'}}>
+                        <div style={{fontSize:12,fontWeight:600,color:'var(--orange)',marginBottom:8}}>⚠️ Estas NO se incluirán (falta dato):</div>
+                        {masivoReporte.incompletas.map((c,i) => (
+                          <div key={i} style={{fontSize:12,padding:'4px 0',borderTop:i?'1px solid var(--border)':'none'}}>
+                            <span style={{fontWeight:600}}>{c.nombre}</span> — <span style={{color:'var(--orange)'}}>falta {c.faltan.join(', ')}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div style={{fontSize:12,color:'var(--text-muted)',marginBottom:14}}>
+                      Producto: <span style={{color:'var(--text)',fontWeight:600}}>{productos.filter(p=>masivoSkus.includes(p.sku)).map(p=>p.nombre).join(', ')}</span>
+                    </div>
+
+                    <div style={{display:'flex',gap:8}}>
+                      <button className="btn btn-secondary btn-sm" style={{flex:1}} disabled={masivoEnviando} onClick={()=>setMasivoPaso('producto')}>← Volver</button>
+                      <button className="btn btn-sm" style={{flex:2,background:'var(--green)',color:'#000',fontWeight:600}} disabled={masivoEnviando||!(masivoReporte?.listas?.length)} onClick={crearOrdenesMasivo}>
+                        {masivoEnviando ? 'Creando órdenes…' : `✅ Crear ${masivoReporte?.listas?.length||0} órdenes`}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
