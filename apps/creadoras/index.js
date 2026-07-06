@@ -2138,12 +2138,25 @@ button.primary:disabled{opacity:.5;cursor:default}
       <div class="fld full"><label>Correo electrónico</label><input id="f_email" type="email" inputmode="email" placeholder="tucorreo@ejemplo.com"></div>
       <h3 style="margin-top:14px">2. ¿A dónde te enviamos el regalo?</h3>
       <div style="font-size:11px;color:#9970d4;margin:-6px 0 10px">Dirección completa y correcta para que tu paquete llegue sin problemas.</div>
-      <div class="fld full"><label>Dirección de envío</label><input id="f_direccion_envio" placeholder="Ej: Calle 45 # 10-20, barrio Laureles"></div>
+      <div class="fld full"><label>Dirección de envío *</label><input id="f_direccion_envio" placeholder="Ej: Calle 45 # 10-20, barrio Laureles"></div>
       <div class="fld full"><label>Detalle (casa, apto, torre, urbanización)</label><input id="f_direccion_detalle" placeholder="Ej: Apto 302, Torre 4, Urb. Los Almendros"></div>
       <div class="grid">
-        <div class="fld"><label>Ciudad</label><input id="f_ciudad"></div>
-        <div class="fld"><label>Departamento</label><input id="f_departamento"></div>
+        <div class="fld"><label>Ciudad *</label><input id="f_ciudad" placeholder="Ej: Medellín"></div>
+        <div class="fld"><label>Departamento *</label><input id="f_departamento" list="deps" placeholder="Elige tu departamento"></div>
       </div>
+      <datalist id="deps">
+        <option value="Amazonas"></option><option value="Antioquia"></option><option value="Arauca"></option>
+        <option value="Atlántico"></option><option value="Bogotá D.C."></option><option value="Bolívar"></option>
+        <option value="Boyacá"></option><option value="Caldas"></option><option value="Caquetá"></option>
+        <option value="Casanare"></option><option value="Cauca"></option><option value="Cesar"></option>
+        <option value="Chocó"></option><option value="Córdoba"></option><option value="Cundinamarca"></option>
+        <option value="Guainía"></option><option value="Guaviare"></option><option value="Huila"></option>
+        <option value="La Guajira"></option><option value="Magdalena"></option><option value="Meta"></option>
+        <option value="Nariño"></option><option value="Norte de Santander"></option><option value="Putumayo"></option>
+        <option value="Quindío"></option><option value="Risaralda"></option><option value="San Andrés y Providencia"></option>
+        <option value="Santander"></option><option value="Sucre"></option><option value="Tolima"></option>
+        <option value="Valle del Cauca"></option><option value="Vaupés"></option><option value="Vichada"></option>
+      </datalist>
     </div>
 
     <div style="margin:4px 0 8px">
@@ -2252,6 +2265,10 @@ function enviar(){
   var nombre=document.getElementById('f_nombre_completo').value.trim();
   var doc=document.getElementById('f_numero_documento').value.trim();
   if(!nombre||!doc){alert('Completa tu nombre completo y número de documento.');return;}
+  var dir=document.getElementById('f_direccion_envio').value.trim();
+  var ciu=document.getElementById('f_ciudad').value.trim();
+  var dep=document.getElementById('f_departamento').value.trim();
+  if(!dir||!ciu||!dep){alert('Completa tu dirección, ciudad y departamento para poder enviarte el regalo.');return;}
   if(!hayFirma){alert('Dibuja tu firma antes de enviar.');return;}
   if(!document.getElementById('acepto').checked){alert('Debes marcar que leíste y aceptas el acuerdo.');return;}
   btn.disabled=true;btn.textContent='Enviando…';
