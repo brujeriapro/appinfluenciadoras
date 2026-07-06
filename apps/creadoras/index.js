@@ -1645,7 +1645,7 @@ app.get('/api/ugc/regalos-pendientes', async (req, res) => {
 // Sin skus → solo marca enviado (comportamiento anterior).
 app.post('/api/ugc/regalos/:id/enviar', async (req, res) => {
   try {
-    const { skus, producto_nombre, direccion_envio, ciudad, departamento, telefono, codigo_postal, notas } = req.body;
+    const { skus, producto_nombre, direccion_envio, direccion_detalle, ciudad, departamento, telefono, codigo_postal, notas } = req.body;
 
     if (!skus || !Array.isArray(skus) || skus.length === 0) {
       await supabase.updateUGCRegalo(req.params.id, {
@@ -1661,7 +1661,8 @@ app.post('/api/ugc/regalos/:id/enviar', async (req, res) => {
 
     // Overrides de dirección desde el modal (si el admin los ajustó)
     const dir = {};
-    if (direccion_envio !== undefined) dir.direccion_envio = direccion_envio;
+    if (direccion_envio !== undefined)  dir.direccion_envio = direccion_envio;
+    if (direccion_detalle !== undefined) dir.direccion_detalle = direccion_detalle;
     if (ciudad !== undefined)          dir.ciudad = ciudad;
     if (departamento !== undefined)    dir.departamento = departamento;
     if (telefono !== undefined)        dir.telefono = telefono;
@@ -1815,9 +1816,11 @@ app.get('/api/acuerdo/:id/data', async (req, res) => {
       tipo_documento:   inf.tipo_documento || 'C.C.',
       numero_documento: inf.numero_documento || '',
       usuario:          inf.instagram_handle || inf.tiktok_handle || '',
+      email:            inf.email || '',
       ciudad:           inf.ciudad || '',
       departamento:     inf.departamento || '',
       direccion_envio:  inf.direccion_envio || '',
+      direccion_detalle:inf.direccion_detalle || '',
       telefono:         inf.telefono || '',
       codigo_postal:    inf.codigo_postal || '',
       firmado:          !!firmado,
@@ -1831,8 +1834,8 @@ app.post('/api/acuerdo/:id', async (req, res) => {
   try {
     const inf = await supabase.getInfluencerById(req.params.id);
     if (!inf) return res.status(404).json({ error: 'Creadora no encontrada' });
-    const { nombre_completo, tipo_documento, numero_documento, usuario, ciudad_firma,
-            direccion_envio, ciudad, departamento, telefono, codigo_postal, firma_base64, acepto } = req.body;
+    const { nombre_completo, tipo_documento, numero_documento, usuario, ciudad_firma, email,
+            direccion_envio, direccion_detalle, ciudad, departamento, telefono, codigo_postal, firma_base64, acepto } = req.body;
 
     if (!nombre_completo || !numero_documento || !firma_base64 || !acepto)
       return res.status(400).json({ error: 'Faltan datos obligatorios, la firma o la aceptación' });
@@ -1841,7 +1844,9 @@ app.post('/api/acuerdo/:id', async (req, res) => {
       nombre_completo,
       tipo_documento: tipo_documento || 'C.C.',
       numero_documento,
+      ...(email && { email }),
       ...(direccion_envio && { direccion_envio }),
+      ...(direccion_detalle && { direccion_detalle }),
       ...(ciudad && { ciudad }),
       ...(departamento && { departamento }),
       ...(telefono && { telefono }),
@@ -1970,9 +1975,11 @@ button.primary:disabled{opacity:.5;cursor:default}
         <div class="fld"><label>Usuario (@)</label><input id="f_usuario" placeholder="tuusuario"></div>
         <div class="fld"><label>Teléfono</label><input id="f_telefono" inputmode="tel"></div>
       </div>
+      <div class="fld full"><label>Correo electrónico</label><input id="f_email" type="email" inputmode="email" placeholder="tucorreo@ejemplo.com"></div>
       <h3 style="margin-top:14px">2. ¿A dónde te enviamos el regalo?</h3>
       <div style="font-size:11px;color:#9970d4;margin:-6px 0 10px">Dirección completa y correcta para que tu paquete llegue sin problemas.</div>
-      <div class="fld full"><label>Dirección de envío</label><input id="f_direccion_envio" placeholder="Calle, número, barrio, apto"></div>
+      <div class="fld full"><label>Dirección de envío</label><input id="f_direccion_envio" placeholder="Ej: Calle 45 # 10-20, barrio Laureles"></div>
+      <div class="fld full"><label>Detalle (casa, apto, torre, urbanización)</label><input id="f_direccion_detalle" placeholder="Ej: Apto 302, Torre 4, Urb. Los Almendros"></div>
       <div class="grid">
         <div class="fld"><label>Ciudad</label><input id="f_ciudad"></div>
         <div class="fld"><label>Departamento</label><input id="f_departamento"></div>
@@ -2025,7 +2032,9 @@ function pintarForm(d){
   document.getElementById('f_numero_documento').value=d.numero_documento||'';
   document.getElementById('f_usuario').value=d.usuario||'';
   document.getElementById('f_telefono').value=d.telefono||'';
+  document.getElementById('f_email').value=d.email||'';
   document.getElementById('f_direccion_envio').value=d.direccion_envio||'';
+  document.getElementById('f_direccion_detalle').value=d.direccion_detalle||'';
   document.getElementById('f_ciudad').value=d.ciudad||'';
   document.getElementById('f_departamento').value=d.departamento||'';
   ['nombre_completo','tipo_documento','numero_documento','usuario'].forEach(function(f){setSpan(f,d[f]);});
@@ -2042,7 +2051,7 @@ function cargar(){
     banner.style.cssText='background:#3d1f6e;color:#e9dcff;text-align:center;font-size:12px;padding:8px;border-radius:8px;margin-bottom:12px';
     banner.textContent='👁️ Vista previa — así lo verán tus creadoras (no se guarda nada)';
     document.getElementById('app').prepend(banner);
-    pintarForm({nombre_completo:'Laura Gómez (ejemplo)',tipo_documento:'C.C.',numero_documento:'1000000000',usuario:'lauracreadora',telefono:'3001234567',direccion_envio:'Cra 45 # 10-20, Laureles',ciudad:'Medellín',departamento:'Antioquia'});
+    pintarForm({nombre_completo:'Laura Gómez (ejemplo)',tipo_documento:'C.C.',numero_documento:'1000000000',usuario:'lauracreadora',telefono:'3001234567',email:'laura@ejemplo.com',direccion_envio:'Cra 45 # 10-20, Laureles',direccion_detalle:'Apto 302, Torre 4',ciudad:'Medellín',departamento:'Antioquia'});
     return;
   }
   fetch('/api/acuerdo/'+ID+'/data').then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(d){
@@ -2091,8 +2100,10 @@ function enviar(){
     tipo_documento:document.getElementById('f_tipo_documento').value,
     numero_documento:doc,
     usuario:document.getElementById('f_usuario').value.trim(),
+    email:document.getElementById('f_email').value.trim(),
     ciudad_firma:document.getElementById('f_ciudad').value.trim(),
     direccion_envio:document.getElementById('f_direccion_envio').value.trim(),
+    direccion_detalle:document.getElementById('f_direccion_detalle').value.trim(),
     ciudad:document.getElementById('f_ciudad').value.trim(),
     departamento:document.getElementById('f_departamento').value.trim(),
     telefono:document.getElementById('f_telefono').value.trim(),

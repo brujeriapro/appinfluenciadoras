@@ -1936,7 +1936,7 @@
         setModalRegalo({
           id: r.id, numero_regalo: r.numero_regalo, influencer_id: r.influencer_id,
           nombre: inf.nombre || '', skus: [],
-          direccion_envio: inf.direccion_envio || '', ciudad: inf.ciudad || '',
+          direccion_envio: inf.direccion_envio || '', direccion_detalle: inf.direccion_detalle || '', ciudad: inf.ciudad || '',
           departamento: inf.departamento || '', telefono: inf.telefono || '', codigo_postal: inf.codigo_postal || '',
         });
         cargarProductos();
@@ -1952,7 +1952,7 @@
         if (!m.direccion_envio || !m.direccion_envio.trim()) { alert('La creadora no tiene dirección. Pídele que firme/confirme sus datos primero.'); return; }
         const producto_nombre = productos.filter(p => m.skus.includes(p.sku)).map(p => p.nombre).join(', ');
         const body = { skus: m.skus, producto_nombre };
-        ['direccion_envio','ciudad','departamento','telefono','codigo_postal'].forEach(k => { if (m[k] && String(m[k]).trim()) body[k] = String(m[k]).trim(); });
+        ['direccion_envio','direccion_detalle','ciudad','departamento','telefono','codigo_postal'].forEach(k => { if (m[k] && String(m[k]).trim()) body[k] = String(m[k]).trim(); });
         setEnviandoRegalo(true);
         try {
           const r = await fetch(`/api/ugc/regalos/${m.id}/enviar`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
@@ -2443,7 +2443,8 @@
                 </div>
 
                 <div style={{fontSize:12,fontWeight:600,color:'var(--purple-light)',marginBottom:8}}>2. Dirección de envío</div>
-                <input className="input" value={modalRegalo.direccion_envio} onChange={e=>setModalRegalo(m=>({...m,direccion_envio:e.target.value}))} placeholder="Dirección" style={{width:'100%',marginBottom:8}} />
+                <input className="input" value={modalRegalo.direccion_envio} onChange={e=>setModalRegalo(m=>({...m,direccion_envio:e.target.value}))} placeholder="Dirección (calle y número)" style={{width:'100%',marginBottom:8}} />
+                <input className="input" value={modalRegalo.direccion_detalle} onChange={e=>setModalRegalo(m=>({...m,direccion_detalle:e.target.value}))} placeholder="Detalle (casa, apto, torre, urbanización)" style={{width:'100%',marginBottom:8}} />
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
                   <input className="input" value={modalRegalo.ciudad} onChange={e=>setModalRegalo(m=>({...m,ciudad:e.target.value}))} placeholder="Ciudad" />
                   <input className="input" value={modalRegalo.departamento} onChange={e=>setModalRegalo(m=>({...m,departamento:e.target.value}))} placeholder="Departamento" />

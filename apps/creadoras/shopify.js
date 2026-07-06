@@ -162,6 +162,7 @@ async function createGiftingOrder(influencer, skus, kitNombre) {
         first_name: firstName,
         last_name: lastName,
         address1: influencer.direccion_envio || '',
+        address2: influencer.direccion_detalle || '',
         city: influencer.ciudad || '',
         province,
         zip: influencer.codigo_postal || '',

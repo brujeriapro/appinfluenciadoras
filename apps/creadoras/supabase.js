@@ -402,7 +402,7 @@ async function updateUGCRegalo(id, data) {
 
 async function getUGCRegalosAllPendientes() {
   return supabaseGet('ugc_regalos', {
-    select: '*,influencers(nombre,instagram_handle,telefono,ciudad,direccion_envio)',
+    select: '*,influencers(nombre,instagram_handle,telefono,email,ciudad,departamento,direccion_envio,direccion_detalle,codigo_postal)',
     estado: 'eq.pendiente',
     order: 'created_at.asc',
   });
