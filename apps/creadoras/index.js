@@ -9,10 +9,11 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida, enviarUGCConfirmacionRegistro } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida, enviarUGCConfirmacionRegistro, enviarAcuerdo } = require('./whatsapp');
+const acuerdo = require('./acuerdo');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro', '/acuerdo', '/api/acuerdo/'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -1757,6 +1758,332 @@ app.post('/api/ugc/envio-masivo', async (req, res) => {
   const errors = resultados.filter(r => !r.ok).length;
   res.json({ total: leads.length, ok, errors, resultados });
 });
+
+// ══════════════════════════════════════════════════════════════════════════
+// ACUERDO DE COLABORACIÓN — llenar datos + firma electrónica
+// ══════════════════════════════════════════════════════════════════════════
+
+// Página para que la creadora llene sus datos y firme
+app.get('/acuerdo', (req, res) => res.send(paginaAcuerdo()));
+
+// Prefill: datos actuales de la creadora + si ya firmó
+app.get('/api/acuerdo/:id/data', async (req, res) => {
+  try {
+    const inf = await supabase.getInfluencerById(req.params.id);
+    if (!inf) return res.status(404).json({ error: 'Creadora no encontrada' });
+    const firmado = await supabase.getAcuerdoByInfluencer(inf.id);
+    res.json({
+      nombre:           inf.nombre,
+      nombre_completo:  inf.nombre_completo || inf.nombre || '',
+      tipo_documento:   inf.tipo_documento || 'C.C.',
+      numero_documento: inf.numero_documento || '',
+      usuario:          inf.instagram_handle || inf.tiktok_handle || '',
+      ciudad:           inf.ciudad || '',
+      departamento:     inf.departamento || '',
+      direccion_envio:  inf.direccion_envio || '',
+      telefono:         inf.telefono || '',
+      codigo_postal:    inf.codigo_postal || '',
+      firmado:          !!firmado,
+      fecha_firma:      firmado ? firmado.fecha_firma : null,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Guardar el acuerdo firmado
+app.post('/api/acuerdo/:id', async (req, res) => {
+  try {
+    const inf = await supabase.getInfluencerById(req.params.id);
+    if (!inf) return res.status(404).json({ error: 'Creadora no encontrada' });
+    const { nombre_completo, tipo_documento, numero_documento, usuario, ciudad_firma,
+            direccion_envio, ciudad, departamento, telefono, codigo_postal, firma_base64, acepto } = req.body;
+
+    if (!nombre_completo || !numero_documento || !firma_base64 || !acepto)
+      return res.status(400).json({ error: 'Faltan datos obligatorios, la firma o la aceptación' });
+
+    await supabase.updateInfluencer(inf.id, {
+      nombre_completo,
+      tipo_documento: tipo_documento || 'C.C.',
+      numero_documento,
+      ...(direccion_envio && { direccion_envio }),
+      ...(ciudad && { ciudad }),
+      ...(departamento && { departamento }),
+      ...(telefono && { telefono }),
+      ...(codigo_postal && { codigo_postal }),
+      acuerdo_firmado: true,
+    });
+
+    const ip = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').toString().split(',')[0].trim();
+    const acu = await supabase.insertAcuerdo({
+      influencer_id:    inf.id,
+      nombre_completo,
+      tipo_documento:   tipo_documento || 'C.C.',
+      numero_documento,
+      usuario:          usuario || inf.instagram_handle || null,
+      ciudad_firma:     ciudad_firma || ciudad || null,
+      firma_base64,
+      ip,
+      user_agent:       (req.headers['user-agent'] || '').slice(0, 300),
+      estado:           'firmado',
+    });
+    res.json({ ok: true, id: acu?.id });
+  } catch (e) { console.error('[acuerdo]', e.message); res.status(500).json({ error: e.message }); }
+});
+
+// Vista del acuerdo firmado (imprimible / adjunto en el dashboard)
+app.get('/acuerdo/ver/:id', async (req, res) => {
+  try {
+    const inf = await supabase.getInfluencerById(req.params.id);
+    if (!inf) return res.status(404).send('Creadora no encontrada');
+    const acu = await supabase.getAcuerdoByInfluencer(inf.id);
+    if (!acu) return res.status(404).send('Esta creadora aún no ha firmado el acuerdo.');
+    res.send(paginaAcuerdoFirmado(acu));
+  } catch (e) { res.status(500).send(e.message); }
+});
+
+// Ids de creadoras con acuerdo firmado (para pintar el estado en el dashboard)
+app.get('/api/ugc/acuerdos', async (req, res) => {
+  try { res.json(await supabase.getAcuerdosFirmados()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Enviar el link del acuerdo por WhatsApp. Body: { ids?: [] }
+// Sin ids → creadoras con regalo pendiente (para firmar antes de despachar)
+app.post('/api/admin/pedir-acuerdo', async (req, res) => {
+  try {
+    let ids = req.body?.ids;
+    if (!Array.isArray(ids) || !ids.length) {
+      const pendientes = await supabase.getUGCRegalosAllPendientes();
+      ids = [...new Set(pendientes.map(r => r.influencer_id))];
+    }
+    const resultados = [];
+    for (const id of ids) {
+      try {
+        const inf = await supabase.getInfluencerById(id);
+        if (!inf || !inf.telefono) { resultados.push({ id, ok: false, error: 'sin teléfono' }); continue; }
+        const r = await enviarAcuerdo(inf);
+        resultados.push({ id, nombre: inf.nombre, ok: !!(r?.sent || r?.skipped), ...r });
+      } catch (e) { resultados.push({ id, ok: false, error: e.message }); }
+      await new Promise(r => setTimeout(r, 800));
+    }
+    res.json({ total: ids.length, ok: resultados.filter(r => r.ok).length, resultados });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Builders de las páginas del acuerdo ────────────────────────────────────
+function paginaAcuerdo() {
+  return `<!DOCTYPE html><html lang="es"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Acuerdo de Colaboración — Brujería Capilar</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0a1e;color:#f0e6ff;padding:20px 12px 60px}
+.wrap{max-width:720px;margin:0 auto}
+.logo{text-align:center;font-size:22px;font-weight:700;color:#c084fc}
+.logo span{color:#f0e6ff}
+.tag{text-align:center;font-size:12px;color:#9970d4;margin-bottom:18px}
+.form{background:#1a1030;border:1px solid #3d2a6e;border-radius:14px;padding:18px;margin-bottom:16px}
+.form h3{font-size:14px;margin-bottom:12px;color:#c084fc}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fld{display:flex;flex-direction:column;gap:4px;margin-bottom:2px}
+.fld.full{grid-column:1/-1}
+label{font-size:11px;color:#9970d4}
+input,select{background:#2a1a4e;border:1px solid #4c3080;border-radius:8px;padding:10px;color:#f0e6ff;font-size:14px;width:100%}
+.doc-card{background:#fff;border-radius:14px;padding:22px;margin-bottom:16px;max-height:46vh;overflow-y:auto}
+.sign{background:#1a1030;border:1px solid #3d2a6e;border-radius:14px;padding:18px;margin-bottom:8px}
+.sign h3{font-size:14px;margin-bottom:6px;color:#c084fc}
+.hint{font-size:12px;color:#9970d4;margin-bottom:10px}
+canvas{background:#fff;border-radius:10px;width:100%;height:170px;touch-action:none;display:block}
+.clear{background:none;border:none;color:#9970d4;font-size:12px;cursor:pointer;text-decoration:underline;margin-top:8px;float:right}
+.chk{display:flex;align-items:flex-start;gap:10px;margin:16px 0;font-size:13px;color:#e9dcff;line-height:1.4}
+.chk input{width:20px;height:20px;flex-shrink:0;margin-top:1px}
+button.primary{width:100%;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;border-radius:12px;padding:16px;font-size:16px;font-weight:600;cursor:pointer}
+button.primary:disabled{opacity:.5;cursor:default}
+.ok{display:none;text-align:center;padding:36px 10px}
+.ok .e{font-size:52px;margin-bottom:14px}
+.ok h2{color:#c084fc;margin-bottom:8px}
+.ok p{color:#9970d4;line-height:1.5}
+.msg{text-align:center;color:#e9dcff;padding:30px 16px;line-height:1.6}
+.msg a{color:#c084fc}
+</style>
+<style>${acuerdo.ACUERDO_CSS}</style>
+</head><body>
+<div class="wrap">
+  <div class="logo">Brujería <span>Capilar</span></div>
+  <div class="tag">Programa de Creadoras ✨</div>
+
+  <div id="app" style="display:none">
+    <div class="form">
+      <h3>1. Tus datos</h3>
+      <div class="fld full"><label>Nombre completo</label><input id="f_nombre_completo" placeholder="Como aparece en tu documento"></div>
+      <div class="grid">
+        <div class="fld"><label>Tipo de documento</label><select id="f_tipo_documento"><option>C.C.</option><option>C.E.</option></select></div>
+        <div class="fld"><label>Número de documento</label><input id="f_numero_documento" inputmode="numeric"></div>
+        <div class="fld"><label>Usuario (@)</label><input id="f_usuario" placeholder="tuusuario"></div>
+        <div class="fld"><label>Teléfono</label><input id="f_telefono" inputmode="tel"></div>
+      </div>
+      <h3 style="margin-top:14px">2. Datos de envío del regalo</h3>
+      <div class="fld full"><label>Dirección de envío</label><input id="f_direccion_envio" placeholder="Calle, número, barrio, apto"></div>
+      <div class="grid">
+        <div class="fld"><label>Ciudad</label><input id="f_ciudad"></div>
+        <div class="fld"><label>Departamento</label><input id="f_departamento"></div>
+      </div>
+    </div>
+
+    <div class="doc-card ac-doc" id="doc">${acuerdo.acuerdoBody()}</div>
+
+    <div class="sign">
+      <h3>3. Tu firma</h3>
+      <div class="hint">Dibuja tu firma con el dedo o el mouse 👇</div>
+      <canvas id="pad"></canvas>
+      <button class="clear" onclick="limpiarFirma()">Borrar firma</button>
+      <div style="clear:both"></div>
+    </div>
+
+    <label class="chk"><input type="checkbox" id="acepto">
+      He leído y acepto el Acuerdo de Colaboración, y autorizo el tratamiento de mis datos personales conforme a la Ley 1581 de 2012.</label>
+
+    <button class="primary" id="btn" onclick="enviar()">Firmar y enviar ✍️</button>
+  </div>
+
+  <div class="msg" id="loading">Cargando tu acuerdo…</div>
+
+  <div class="ok" id="ok">
+    <div class="e">🔮</div>
+    <h2>¡Listo!</h2>
+    <p>Tu acuerdo quedó firmado y guardado.<br>Pronto coordinamos el envío de tu regalo. 💜</p>
+  </div>
+</div>
+
+<script>
+var MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+var ID=new URLSearchParams(location.search).get('id')||'';
+var PH={};
+document.querySelectorAll('.ph').forEach(function(el){PH[el.getAttribute('data-f')]=el.textContent;});
+function setSpan(f,val){document.querySelectorAll('.ph[data-f="'+f+'"]').forEach(function(el){el.textContent=(val&&String(val).trim())?val:(PH[f]||'—');});}
+function bind(inputId,field){var el=document.getElementById(inputId);if(!el)return;el.addEventListener('input',function(){setSpan(field,el.value);});}
+
+function initFecha(){var d=new Date();setSpan('dia',String(d.getDate()));setSpan('mes',MESES[d.getMonth()]);setSpan('anio',String(d.getFullYear()));}
+
+function cargar(){
+  if(!ID){document.getElementById('loading').innerHTML='Link inválido. Pídele a Brujería Capilar tu link personal.';return;}
+  fetch('/api/acuerdo/'+ID+'/data').then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(d){
+    if(d.firmado){
+      document.getElementById('loading').innerHTML='Ya firmaste este acuerdo ✅<br><br><a href="/acuerdo/ver/'+ID+'" target="_blank">Ver mi acuerdo firmado</a>';
+      return;
+    }
+    document.getElementById('f_nombre_completo').value=d.nombre_completo||'';
+    document.getElementById('f_tipo_documento').value=d.tipo_documento||'C.C.';
+    document.getElementById('f_numero_documento').value=d.numero_documento||'';
+    document.getElementById('f_usuario').value=d.usuario||'';
+    document.getElementById('f_telefono').value=d.telefono||'';
+    document.getElementById('f_direccion_envio').value=d.direccion_envio||'';
+    document.getElementById('f_ciudad').value=d.ciudad||'';
+    document.getElementById('f_departamento').value=d.departamento||'';
+    ['nombre_completo','tipo_documento','numero_documento','usuario'].forEach(function(f){setSpan(f,d[f]);});
+    setSpan('ciudad_firma',d.ciudad);
+    initFecha();
+    document.getElementById('loading').style.display='none';
+    document.getElementById('app').style.display='block';
+    setupPad();
+  }).catch(function(){document.getElementById('loading').innerHTML='No pudimos cargar tus datos. Intenta más tarde.';});
+}
+bind('f_nombre_completo','nombre_completo');
+bind('f_tipo_documento','tipo_documento');
+bind('f_numero_documento','numero_documento');
+bind('f_usuario','usuario');
+document.getElementById('f_ciudad')&&document.getElementById('f_ciudad');
+
+// Firma (canvas)
+var pad,ctx,dibujando=false,hayFirma=false;
+function setupPad(){
+  pad=document.getElementById('pad');
+  var r=pad.getBoundingClientRect();
+  pad.width=r.width;pad.height=170;
+  ctx=pad.getContext('2d');ctx.lineWidth=2.5;ctx.lineCap='round';ctx.strokeStyle='#1a1030';
+  function pos(e){var b=pad.getBoundingClientRect();var t=e.touches?e.touches[0]:e;return {x:t.clientX-b.left,y:t.clientY-b.top};}
+  function start(e){dibujando=true;var p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);e.preventDefault();}
+  function move(e){if(!dibujando)return;var p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();hayFirma=true;e.preventDefault();}
+  function end(){dibujando=false;}
+  pad.addEventListener('mousedown',start);pad.addEventListener('mousemove',move);window.addEventListener('mouseup',end);
+  pad.addEventListener('touchstart',start,{passive:false});pad.addEventListener('touchmove',move,{passive:false});pad.addEventListener('touchend',end);
+  // Re-bind ciudad ahora que el form está visible
+  var c=document.getElementById('f_ciudad');if(c){c.addEventListener('input',function(){setSpan('ciudad_firma',c.value);});}
+}
+function limpiarFirma(){if(ctx){ctx.clearRect(0,0,pad.width,pad.height);hayFirma=false;}}
+
+function enviar(){
+  var btn=document.getElementById('btn');
+  var nombre=document.getElementById('f_nombre_completo').value.trim();
+  var doc=document.getElementById('f_numero_documento').value.trim();
+  if(!nombre||!doc){alert('Completa tu nombre completo y número de documento.');return;}
+  if(!hayFirma){alert('Dibuja tu firma antes de enviar.');return;}
+  if(!document.getElementById('acepto').checked){alert('Debes marcar que leíste y aceptas el acuerdo.');return;}
+  btn.disabled=true;btn.textContent='Enviando…';
+  var body={
+    nombre_completo:nombre,
+    tipo_documento:document.getElementById('f_tipo_documento').value,
+    numero_documento:doc,
+    usuario:document.getElementById('f_usuario').value.trim(),
+    ciudad_firma:document.getElementById('f_ciudad').value.trim(),
+    direccion_envio:document.getElementById('f_direccion_envio').value.trim(),
+    ciudad:document.getElementById('f_ciudad').value.trim(),
+    departamento:document.getElementById('f_departamento').value.trim(),
+    telefono:document.getElementById('f_telefono').value.trim(),
+    firma_base64:pad.toDataURL('image/png'),
+    acepto:true
+  };
+  fetch('/api/acuerdo/'+ID,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){if(!r.ok)throw new Error();return r.json();})
+    .then(function(){document.getElementById('app').style.display='none';document.getElementById('ok').style.display='block';window.scrollTo(0,0);})
+    .catch(function(){btn.disabled=false;btn.textContent='Firmar y enviar ✍️';alert('Error al enviar. Intenta de nuevo.');});
+}
+cargar();
+</script>
+</body></html>`;
+}
+
+function paginaAcuerdoFirmado(acu) {
+  const d = acu.fecha_firma ? new Date(acu.fecha_firma) : new Date();
+  const values = {
+    nombre_completo:  acu.nombre_completo,
+    tipo_documento:   acu.tipo_documento,
+    numero_documento: acu.numero_documento,
+    usuario:          acu.usuario,
+    ciudad_firma:     acu.ciudad_firma,
+    dia:              String(d.getDate()),
+    mes:              acuerdo.MESES[d.getMonth()],
+    anio:             String(d.getFullYear()),
+  };
+  const fechaTxt = d.toLocaleString('es-CO');
+  return `<!DOCTYPE html><html lang="es"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acuerdo firmado — ${acuerdo.esc(acu.nombre_completo || '')}</title>
+<style>
+body{background:#ece7f5;margin:0;padding:24px 12px}
+.sheet{max-width:760px;margin:0 auto;background:#fff;border-radius:10px;padding:40px 44px;box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.bar{max-width:760px;margin:0 auto 14px;display:flex;justify-content:space-between;align-items:center}
+.bar .b{font-family:sans-serif;font-weight:700;color:#6d28d9}
+.bar button{background:#6d28d9;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;cursor:pointer}
+.firma-block{margin-top:34px;border-top:1px solid #ddd;padding-top:18px;font-family:Georgia,serif}
+.firma-block img{max-width:260px;max-height:110px;display:block;margin-bottom:2px}
+.firma-block .nm{font-weight:700}
+.firma-block .meta{font-family:sans-serif;font-size:11px;color:#888;margin-top:10px}
+@media print{body{background:#fff;padding:0}.bar{display:none}.sheet{box-shadow:none;border-radius:0;max-width:none;padding:24px 10px}}
+</style>
+<style>${acuerdo.ACUERDO_CSS}</style>
+</head><body>
+<div class="bar"><span class="b">Brujería Capilar · Acuerdo firmado</span><button onclick="window.print()">⬇ Descargar / Imprimir PDF</button></div>
+<div class="sheet">
+  <div class="ac-doc">${acuerdo.acuerdoBody(values)}</div>
+  <div class="firma-block">
+    <img src="${acu.firma_base64 || ''}" alt="Firma">
+    <div class="nm">${acuerdo.esc(acu.nombre_completo || '')}</div>
+    <div>${acuerdo.esc(acu.tipo_documento || '')} No. ${acuerdo.esc(acu.numero_documento || '')}</div>
+    <div class="meta">Firmado electrónicamente el ${fechaTxt}${acu.ip ? ' · IP ' + acuerdo.esc(acu.ip) : ''}</div>
+  </div>
+</div>
+</body></html>`;
+}
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

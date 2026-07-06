@@ -182,6 +182,14 @@ async function enviarUGCConfirmacionRegistro(telefono, nombre, codigo) {
   return enviarTemplate(telefono, 'ugc_confirmacion_registro', [primerNombre, codigo]);
 }
 
+// Acuerdo de colaboración — link para llenar datos y firmar
+// Template: acuerdo_creadoras_brujeria · Variables: {{1}} nombre
+// Botón URL dinámico → /acuerdo?id={{1}} (base configurada en Meta, variable = id de la creadora)
+async function enviarAcuerdo(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre || 'creadora';
+  return enviarTemplate(influencer.telefono, 'acuerdo_creadoras_brujeria', [nombre], influencer.id);
+}
+
 module.exports = {
   enviarBienvenidaKit,
   enviarRecordatorioWhatsApp,
@@ -196,4 +204,5 @@ module.exports = {
   enviarSeguimientoProductos,
   enviarUGCBienvenida,
   enviarUGCConfirmacionRegistro,
+  enviarAcuerdo,
 };

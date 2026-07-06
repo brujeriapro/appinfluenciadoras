@@ -403,4 +403,18 @@ async function getUGCRegalosAllPendientes() {
   });
 }
 
-module.exports = { getCandidatas, getCandidataById, updateCandidataStatus, aprobarCandidataComoInfluencer, getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, getInfluencerByTelefono, getInfluencerByTikTok, getInfluencerByInstagram, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate, insertSolicitudReenvio, getSolicitudesReenvio, updateSolicitudReenvio, enrollUGC, getUGCCreadoras, insertUGCVenta, getUGCVentas, getUGCVentasTotales, insertUGCPago, getUGCPagos, insertUGCRegalo, getUGCRegalos, updateUGCRegalo, getUGCRegalosAllPendientes };
+// ── ACUERDOS DE COLABORACIÓN ──────────────────────────────────────────────
+async function insertAcuerdo(data) {
+  const r = await supabasePost('ugc_acuerdos', data);
+  return Array.isArray(r) ? r[0] : r;
+}
+async function getAcuerdoByInfluencer(influencer_id) {
+  const r = await supabaseGet('ugc_acuerdos', { influencer_id: `eq.${influencer_id}`, order: 'created_at.desc', limit: 1 });
+  return r[0] || null;
+}
+async function getAcuerdosFirmados() {
+  // Solo los ids de creadoras con acuerdo firmado (para el dashboard)
+  return supabaseGet('ugc_acuerdos', { select: 'id,influencer_id,fecha_firma', estado: 'eq.firmado' });
+}
+
+module.exports = { getCandidatas, getCandidataById, updateCandidataStatus, aprobarCandidataComoInfluencer, getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, getInfluencerByTelefono, getInfluencerByTikTok, getInfluencerByInstagram, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate, insertSolicitudReenvio, getSolicitudesReenvio, updateSolicitudReenvio, enrollUGC, getUGCCreadoras, insertUGCVenta, getUGCVentas, getUGCVentasTotales, insertUGCPago, getUGCPagos, insertUGCRegalo, getUGCRegalos, updateUGCRegalo, getUGCRegalosAllPendientes, insertAcuerdo, getAcuerdoByInfluencer, getAcuerdosFirmados };

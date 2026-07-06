@@ -1914,8 +1914,26 @@
       const [leads, setLeads]           = useState([]);
       const [enviando, setEnviando]     = useState(false);
       const [resultadoEnvio, setResultadoEnvio] = useState(null);
+      const [acuerdos, setAcuerdos]     = useState({});
+      const [pidiendo, setPidiendo]     = useState(false);
 
       useEffect(() => { loadAll(); }, []);
+
+      async function pedirFirma(ids, label) {
+        const msg = ids && ids.length === 1
+          ? `¿Enviar por WhatsApp el link del acuerdo a ${label}?`
+          : `¿Enviar el link del acuerdo por WhatsApp a las creadoras con regalo pendiente?`;
+        if (!confirm(msg)) return;
+        setPidiendo(true);
+        try {
+          const r = await fetch('/api/admin/pedir-acuerdo', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ids && ids.length ? { ids } : {}),
+          }).then(r => r.json());
+          alert(`Enviados: ${r.ok}/${r.total}`);
+        } catch(e) { alert('Error: ' + e.message); }
+        setPidiendo(false);
+      }
 
       function parsearCSVLeads(text) {
         const lines = text.replace(/\r/g, '').split('\n').filter(l => l.trim());
@@ -1962,12 +1980,16 @@
       async function loadAll() {
         setLoading(true);
         try {
-          const [c, r] = await Promise.all([
+          const [c, r, a] = await Promise.all([
             fetch('/api/ugc/creadoras').then(r => r.json()),
             fetch('/api/ugc/regalos-pendientes').then(r => r.json()),
+            fetch('/api/ugc/acuerdos').then(r => r.json()).catch(() => []),
           ]);
           setCreadoras(Array.isArray(c) ? c : []);
           setRegalos(Array.isArray(r) ? r : []);
+          const map = {};
+          (Array.isArray(a) ? a : []).forEach(x => { map[x.influencer_id] = x; });
+          setAcuerdos(map);
         } catch(e) { console.error(e); }
         setLoading(false);
       }
@@ -2152,6 +2174,15 @@
           ) : (
             /* Tabla regalos pendientes */
             <div>
+              {regalos.length > 0 && (
+                <div style={{display:'flex',justifyContent:'flex-end',marginBottom:12}}>
+                  <button className="btn btn-sm" disabled={pidiendo}
+                    style={{background:'var(--purple)',color:'#fff',fontSize:12,padding:'6px 14px'}}
+                    onClick={() => pedirFirma(null)}>
+                    {pidiendo ? 'Enviando…' : '📝 Pedir datos + firma a pendientes'}
+                  </button>
+                </div>
+              )}
               {regalos.length === 0 ? (
                 <div style={{textAlign:'center',padding:60,color:'var(--text-muted)'}}>
                   <div style={{fontSize:48,marginBottom:12}}>🎁</div>
@@ -2163,6 +2194,7 @@
                     <tr style={{borderBottom:'1px solid var(--border)',color:'var(--text-muted)',fontSize:11,textTransform:'uppercase',letterSpacing:'0.5px'}}>
                       <th style={{padding:'10px 12px',textAlign:'left'}}>Creadora</th>
                       <th style={{padding:'10px 12px',textAlign:'left'}}>Dirección</th>
+                      <th style={{padding:'10px 12px',textAlign:'center'}}>Acuerdo</th>
                       <th style={{padding:'10px 12px',textAlign:'center'}}>Regalo #</th>
                       <th style={{padding:'10px 12px',textAlign:'left'}}>Hito</th>
                       <th style={{padding:'10px 12px',textAlign:'center'}}>Acción</th>
@@ -2178,6 +2210,16 @@
                             <div style={{fontSize:11,color:'var(--text-muted)'}}>@{inf.instagram_handle||'-'} · {inf.telefono||''}</div>
                           </td>
                           <td style={{padding:'12px',fontSize:12,color:'var(--text-muted)',maxWidth:220}}>{inf.direccion_envio||'Sin dirección'}, {inf.ciudad||''}</td>
+                          <td style={{padding:'12px',textAlign:'center'}}>
+                            {acuerdos[r.influencer_id] ? (
+                              <a href={`/acuerdo/ver/${r.influencer_id}`} target="_blank" rel="noreferrer"
+                                 style={{color:'var(--green)',fontSize:12,fontWeight:600,textDecoration:'none'}}>✅ Ver acuerdo</a>
+                            ) : (
+                              <button className="btn btn-sm" disabled={pidiendo}
+                                style={{background:'var(--bg3)',color:'var(--purple-light)',border:'1px solid var(--border)',fontSize:11,padding:'4px 10px'}}
+                                onClick={() => pedirFirma([r.influencer_id], inf.nombre)}>📝 Pedir firma</button>
+                            )}
+                          </td>
                           <td style={{padding:'12px',textAlign:'center'}}>
                             <span style={{fontSize:20}}>{'🎁'}</span>
                             <span style={{display:'block',fontSize:11,color:'var(--text-muted)'}}>#{r.numero_regalo}</span>
