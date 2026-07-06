@@ -1993,6 +1993,14 @@ app.get('/api/ugc/acuerdos', async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Ids de creadoras a las que ya se les envió el mensaje/link del acuerdo
+app.get('/api/ugc/acuerdo-enviados', async (req, res) => {
+  try {
+    const rows = await supabase.getNotificadosPorTemplate('acuerdo_creadoras_brujeria');
+    res.json([...new Set(rows.map(r => r.influencer_id))]);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // Enviar el link del acuerdo por WhatsApp. Body: { ids?: [] }
 // Sin ids → creadoras con regalo pendiente (para firmar antes de despachar)
 app.post('/api/admin/pedir-acuerdo', async (req, res) => {
