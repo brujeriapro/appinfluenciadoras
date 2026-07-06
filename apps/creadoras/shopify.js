@@ -153,6 +153,7 @@ async function createGiftingOrder(influencer, skus, kitNombre) {
   }));
 
   const province = influencer.departamento || inferirDepartamento(influencer.ciudad || '');
+  if (!province) throw new Error('Falta el departamento de la creadora (obligatorio para el envío en Colombia). Complétalo en el modal y reintenta.');
 
   const draftPayload = {
     draft_order: {

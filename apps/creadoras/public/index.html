@@ -1972,6 +1972,7 @@
         const m = modalRegalo;
         if (!m.skus.length) { alert('Elige al menos un producto para enviar.'); return; }
         if (!m.direccion_envio || !m.direccion_envio.trim()) { alert('La creadora no tiene dirección. Pídele que firme/confirme sus datos primero.'); return; }
+        if (!m.departamento || !String(m.departamento).trim()) { alert('Falta el departamento (ej: Antioquia). Complétalo en el modal antes de despachar — Shopify lo exige para el envío.'); return; }
         const producto_nombre = productos.filter(p => m.skus.includes(p.sku)).map(p => p.nombre).join(', ');
         const body = { skus: m.skus, producto_nombre };
         ['direccion_envio','direccion_detalle','ciudad','departamento','telefono','codigo_postal'].forEach(k => { if (m[k] && String(m[k]).trim()) body[k] = String(m[k]).trim(); });
