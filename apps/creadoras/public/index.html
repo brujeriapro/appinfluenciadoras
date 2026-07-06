@@ -1918,6 +1918,7 @@
       const [pidiendo, setPidiendo]     = useState(false);
       const [productos, setProductos]   = useState([]);
       const [enviandoRegalo, setEnviandoRegalo] = useState(false);
+      const [soloListas, setSoloListas] = useState(false);
 
       useEffect(() => { loadAll(); }, []);
 
@@ -2126,6 +2127,16 @@
 
       const NIVEL_COLOR = { 'Bruja Iniciada': 'var(--text-muted)', 'Bruja Activa': 'var(--purple-light)', 'Gran Bruja': 'var(--gold)' };
 
+      // Datos mínimos para poder despachar + acuerdo firmado = lista para regalo
+      const datosCompletos = c => !!(c.direccion_envio && String(c.direccion_envio).trim() && c.telefono && String(c.telefono).trim());
+      const estaLista = c => !!acuerdos[c.id] && datosCompletos(c);
+      const creadorasMostradas = soloListas ? creadoras.filter(estaLista) : creadoras;
+      function enviarRegaloDeCreadora(c) {
+        const rg = regalos.find(r => r.influencer_id === c.id);
+        if (!rg) { alert('Esta creadora no tiene un regalo pendiente por enviar (ya se le enviaron todos).'); return; }
+        abrirRegalo(rg);
+      }
+
       return (
         <div>
           <div style={{marginBottom:24}}>
@@ -2173,6 +2184,15 @@
           {loading ? <div style={{color:'var(--text-muted)',textAlign:'center',padding:40}}>Cargando...</div> : tab === 'creadoras' ? (
             /* Tabla creadoras */
             <div style={{overflowX:'auto'}}>
+              {creadoras.length > 0 && (
+                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+                  <label style={{display:'flex',alignItems:'center',gap:6,fontSize:13,cursor:'pointer'}}>
+                    <input type="checkbox" checked={soloListas} onChange={e=>setSoloListas(e.target.checked)} style={{width:16,height:16}} />
+                    🎁 Solo listas para regalo (datos + firma)
+                  </label>
+                  <span style={{fontSize:12,color:'var(--text-muted)'}}>{creadorasMostradas.length} de {creadoras.length}</span>
+                </div>
+              )}
               {creadoras.length === 0 ? (
                 <div style={{textAlign:'center',padding:60,color:'var(--text-muted)'}}>
                   <div style={{fontSize:48,marginBottom:12}}>💰</div>
@@ -2189,12 +2209,14 @@
                       <th style={{padding:'10px 12px',textAlign:'left'}}>Nivel</th>
                       <th style={{padding:'10px 12px',textAlign:'right'}}>Comisión mes</th>
                       <th style={{padding:'10px 12px',textAlign:'right'}}>Ventas totales</th>
+                      <th style={{padding:'10px 12px',textAlign:'center'}}>Datos</th>
+                      <th style={{padding:'10px 12px',textAlign:'center'}}>Acuerdo</th>
                       <th style={{padding:'10px 12px',textAlign:'center'}}>Regalos</th>
                       <th style={{padding:'10px 12px',textAlign:'center'}}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {creadoras.map(c => (
+                    {creadorasMostradas.map(c => (
                       <tr key={c.id} style={{borderBottom:'1px solid var(--border)'}}>
                         <td style={{padding:'12px'}}>
                           <div style={{fontWeight:600}}>{c.nombre}</div>
@@ -2210,6 +2232,16 @@
                         </td>
                         <td style={{padding:'12px',textAlign:'right',color:'var(--gold)',fontWeight:600}}>{fmtCOP(c.comision_mes_pendiente)}</td>
                         <td style={{padding:'12px',textAlign:'right',color:'var(--text-muted)'}}>{fmtCOP(c.ventas_totales)}</td>
+                        <td style={{padding:'12px',textAlign:'center',fontSize:14}}>
+                          {datosCompletos(c)
+                            ? <span style={{color:'var(--green)'}} title="Dirección y teléfono OK">✅</span>
+                            : <span style={{color:'var(--orange)'}} title="Faltan dirección o teléfono">⚠️</span>}
+                        </td>
+                        <td style={{padding:'12px',textAlign:'center'}}>
+                          {acuerdos[c.id]
+                            ? <a href={`/acuerdo/ver/${c.id}`} target="_blank" rel="noreferrer" style={{color:'var(--green)',fontSize:12,fontWeight:600,textDecoration:'none'}}>✅ Ver</a>
+                            : <span style={{color:'var(--text-muted)',fontSize:12}}>⏳ pend.</span>}
+                        </td>
                         <td style={{padding:'12px',textAlign:'center'}}>
                           <span title={`${c.regalos_enviados} enviados / ${c.regalos_ganados} ganados`}>
                             {'🎁'.repeat(Math.min(c.regalos_pendientes,5))}
@@ -2218,12 +2250,20 @@
                           </span>
                         </td>
                         <td style={{padding:'12px',textAlign:'center'}}>
-                          {c.comision_mes_pendiente > 0 && (
-                            <button className="btn btn-sm" style={{background:'var(--gold)',color:'#000',fontSize:11,padding:'4px 10px'}}
-                              onClick={() => { setModalPago(c); setPagoForm({ metodo_pago:'Nequi', notas:'' }); }}>
-                              Pagar
-                            </button>
-                          )}
+                          <div style={{display:'flex',gap:6,justifyContent:'center',flexWrap:'wrap'}}>
+                            {estaLista(c) && regalos.some(r => r.influencer_id === c.id) && (
+                              <button className="btn btn-sm" style={{background:'var(--green)',color:'#000',fontSize:11,padding:'4px 10px',fontWeight:600}}
+                                onClick={() => enviarRegaloDeCreadora(c)}>
+                                🎁 Regalo
+                              </button>
+                            )}
+                            {c.comision_mes_pendiente > 0 && (
+                              <button className="btn btn-sm" style={{background:'var(--gold)',color:'#000',fontSize:11,padding:'4px 10px'}}
+                                onClick={() => { setModalPago(c); setPagoForm({ metodo_pago:'Nequi', notas:'' }); }}>
+                                Pagar
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
