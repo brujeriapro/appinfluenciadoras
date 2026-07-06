@@ -1964,6 +1964,29 @@ app.post('/api/admin/pedir-acuerdo', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Marcar creadoras como "ya se les envió el acuerdo" (pegando sus teléfonos).
+// Body: { telefonos: [] | "string con saltos de línea/comas" }
+app.post('/api/admin/marcar-enviados', async (req, res) => {
+  try {
+    const TEMPLATE = 'acuerdo_creadoras_brujeria';
+    let telefonos = req.body?.telefonos;
+    if (!Array.isArray(telefonos)) telefonos = String(telefonos || '').split(/[\n,;]+/);
+    telefonos = telefonos.map(t => String(t).trim()).filter(Boolean);
+    if (!telefonos.length) return res.status(400).json({ error: 'No se recibieron números' });
+
+    const marcados = [], no_encontrados = [];
+    for (const tel of telefonos) {
+      try {
+        const inf = await supabase.getInfluencerByTelefono(tel);
+        if (!inf) { no_encontrados.push(tel); continue; }
+        try { await supabase.registrarNotificacion(inf.id, TEMPLATE, 'admin'); } catch {}
+        marcados.push({ tel, nombre: inf.nombre });
+      } catch (e) { no_encontrados.push(tel); }
+    }
+    res.json({ ok: true, marcados: marcados.length, no_encontrados, detalle: marcados });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Builders de las páginas del acuerdo ────────────────────────────────────
 function paginaAcuerdo() {
   return `<!DOCTYPE html><html lang="es"><head>

@@ -1919,8 +1919,29 @@
       const [productos, setProductos]   = useState([]);
       const [enviandoRegalo, setEnviandoRegalo] = useState(false);
       const [soloListas, setSoloListas] = useState(false);
+      const [modalMarcar, setModalMarcar] = useState(false);
+      const [textoMarcar, setTextoMarcar] = useState('');
+      const [marcando, setMarcando] = useState(false);
 
       useEffect(() => { loadAll(); }, []);
+
+      async function marcarEnviados() {
+        const nums = textoMarcar.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
+        if (!nums.length) { alert('Pega al menos un número.'); return; }
+        setMarcando(true);
+        try {
+          const r = await fetch('/api/admin/marcar-enviados', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ telefonos: nums }),
+          }).then(r => r.json());
+          if (r.error) throw new Error(r.error);
+          let m = `✅ Marcadas como ya enviadas: ${r.marcados} de ${nums.length}`;
+          if (r.no_encontrados && r.no_encontrados.length) m += `\n\nNo encontradas en la base (${r.no_encontrados.length}):\n${r.no_encontrados.join('\n')}`;
+          alert(m);
+          setModalMarcar(false); setTextoMarcar('');
+        } catch(e) { alert('Error: ' + e.message); }
+        setMarcando(false);
+      }
 
       async function cargarProductos() {
         if (productos.length) return productos;
@@ -2275,6 +2296,11 @@
             /* Tabla regalos pendientes */
             <div>
               <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginBottom:12}}>
+                <button className="btn btn-sm"
+                  style={{background:'var(--bg3)',color:'var(--purple-light)',border:'1px solid var(--border)',fontSize:12,padding:'6px 14px'}}
+                  onClick={() => setModalMarcar(true)}>
+                  ✓ Marcar ya enviados
+                </button>
                 <button className="btn btn-sm" disabled={pidiendo}
                   style={{background:'var(--gold)',color:'#000',fontSize:12,padding:'6px 14px',fontWeight:600}}
                   onClick={() => pedirFirma(null, null, 'todas')}>
@@ -2516,6 +2542,27 @@
                   <button className="btn btn-secondary btn-sm" style={{flex:1}} disabled={enviandoRegalo} onClick={()=>setModalRegalo(null)}>Cancelar</button>
                   <button className="btn btn-sm" style={{flex:2,background:'var(--green)',color:'#000',fontWeight:600}} disabled={enviandoRegalo||!modalRegalo.skus.length} onClick={confirmarEnvioRegalo}>
                     {enviandoRegalo ? 'Creando orden…' : `🚚 Enviar regalo${modalRegalo.skus.length?` (${modalRegalo.skus.length})`:''}`}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal marcar como ya enviados (pegar números) */}
+          {modalMarcar && (
+            <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16}} onClick={()=>!marcando&&setModalMarcar(false)}>
+              <div style={{background:'var(--bg2)',borderRadius:12,padding:24,width:460,maxWidth:'100%'}} onClick={e=>e.stopPropagation()}>
+                <h2 style={{marginBottom:4,fontSize:16}}>✓ Marcar como ya enviados</h2>
+                <p style={{color:'var(--text-muted)',fontSize:12,marginBottom:14,lineHeight:1.5}}>
+                  Pega los números de las creadoras que ya recibieron el acuerdo (una por línea o separadas por coma). Quedarán excluidas del envío masivo para no repetirles.
+                </p>
+                <textarea value={textoMarcar} onChange={e=>setTextoMarcar(e.target.value)}
+                  placeholder={'573001234567\n573007654321\n…'}
+                  style={{width:'100%',minHeight:140,background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:8,padding:12,color:'var(--text)',fontSize:13,fontFamily:'monospace',boxSizing:'border-box',resize:'vertical'}} />
+                <div style={{display:'flex',gap:8,marginTop:14}}>
+                  <button className="btn btn-secondary btn-sm" style={{flex:1}} disabled={marcando} onClick={()=>setModalMarcar(false)}>Cancelar</button>
+                  <button className="btn btn-sm" style={{flex:2,background:'var(--purple)',color:'#fff',fontWeight:600}} disabled={marcando} onClick={marcarEnviados}>
+                    {marcando ? 'Marcando…' : 'Marcar como enviados'}
                   </button>
                 </div>
               </div>
