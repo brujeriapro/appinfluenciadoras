@@ -1975,7 +1975,8 @@
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(ids && ids.length ? { ids } : {}),
           }).then(r => r.json());
-          alert(`Enviados: ${r.ok}/${r.total}`);
+          const errs = [...new Set((r.resultados || []).filter(x => !x.ok).map(x => x.error).filter(Boolean))];
+          alert(`Enviados: ${r.ok}/${r.total}` + (errs.length ? `\n\nErrores:\n${errs.join('\n')}` : ''));
         } catch(e) { alert('Error: ' + e.message); }
         setPidiendo(false);
       }
