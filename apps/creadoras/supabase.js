@@ -408,6 +408,15 @@ async function getUGCRegalosAllPendientes() {
   });
 }
 
+// Regalos ya despachados — para la secuencia de onboarding de ventas
+async function getUGCRegalosEnviados() {
+  return supabaseGet('ugc_regalos', {
+    select: 'id,influencer_id,fecha_envio,influencers(nombre,telefono)',
+    estado: 'eq.enviado',
+    order: 'fecha_envio.asc',
+  });
+}
+
 // ── ACUERDOS DE COLABORACIÓN ──────────────────────────────────────────────
 async function insertAcuerdo(data) {
   const r = await supabasePost('ugc_acuerdos', data);
@@ -422,4 +431,4 @@ async function getAcuerdosFirmados() {
   return supabaseGet('ugc_acuerdos', { select: 'id,influencer_id,fecha_firma', estado: 'eq.firmado' });
 }
 
-module.exports = { getCandidatas, getCandidataById, updateCandidataStatus, aprobarCandidataComoInfluencer, getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, getInfluencerByTelefono, getInfluencerByTikTok, getInfluencerByInstagram, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate, insertSolicitudReenvio, getSolicitudesReenvio, updateSolicitudReenvio, enrollUGC, getUGCCreadoras, insertUGCVenta, getUGCVentas, getUGCVentasTotales, insertUGCPago, getUGCPagos, insertUGCRegalo, getUGCRegalos, getUGCRegaloById, updateUGCRegalo, getUGCRegalosAllPendientes, insertAcuerdo, getAcuerdoByInfluencer, getAcuerdosFirmados };
+module.exports = { getCandidatas, getCandidataById, updateCandidataStatus, aprobarCandidataComoInfluencer, getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, getInfluencerByTelefono, getInfluencerByTikTok, getInfluencerByInstagram, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate, insertSolicitudReenvio, getSolicitudesReenvio, updateSolicitudReenvio, enrollUGC, getUGCCreadoras, insertUGCVenta, getUGCVentas, getUGCVentasTotales, insertUGCPago, getUGCPagos, insertUGCRegalo, getUGCRegalos, getUGCRegaloById, updateUGCRegalo, getUGCRegalosAllPendientes, getUGCRegalosEnviados, insertAcuerdo, getAcuerdoByInfluencer, getAcuerdosFirmados };

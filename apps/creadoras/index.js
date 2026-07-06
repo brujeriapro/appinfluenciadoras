@@ -9,7 +9,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida, enviarUGCConfirmacionRegistro, enviarAcuerdo, enviarRegaloEnCamino } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida, enviarUGCConfirmacionRegistro, enviarAcuerdo, enviarRegaloEnCamino, enviarRegaloLlego, enviarIdeasVideo, enviarChecklistPublicar, enviarVenderMas, enviarCierreQuincena } = require('./whatsapp');
 const acuerdo = require('./acuerdo');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
@@ -2073,6 +2073,12 @@ app.post('/api/admin/marcar-enviados', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Secuencia de onboarding de ventas (días 3→15 tras el envío del regalo)
+app.post('/api/cron/onboarding-ventas', async (req, res) => {
+  try { res.json({ ok: true, enviados: await runOnboardingVentas() }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Builders de las páginas del acuerdo ────────────────────────────────────
 function paginaAcuerdo() {
   return `<!DOCTYPE html><html lang="es"><head>
@@ -2355,6 +2361,49 @@ app.listen(PORT, () => {
 // Revisa cada hora si hay crons que correr segÃºn hora UTC
 let ultimoIdeas = null;
 let ultimoSeguimiento = null;
+let ultimoOnboarding = null;
+
+// Secuencia de onboarding de ventas — un paso por creadora por corrida, sin repetir
+const SECUENCIA_ONBOARDING = [
+  { dia: 3,  template: 'regalo_llego_brujeria',       enviar: enviarRegaloLlego },
+  { dia: 4,  template: 'ideas_video_brujeria',        enviar: enviarIdeasVideo },
+  { dia: 6,  template: 'checklist_publicar_brujeria', enviar: enviarChecklistPublicar },
+  { dia: 9,  template: 'vender_mas_brujeria',         enviar: enviarVenderMas },
+  { dia: 15, template: 'cierre_quincena_brujeria',    enviar: enviarCierreQuincena },
+];
+
+async function runOnboardingVentas() {
+  console.log('[cron/onboarding] Ejecutando...');
+  let enviadosCount = 0;
+  try {
+    const enviados = await supabase.getUGCRegalosEnviados();
+    // Tomar el primer regalo (más antiguo) de cada creadora
+    const porInf = {};
+    for (const r of enviados) {
+      const inf = r.influencers;
+      if (!inf || !inf.telefono || !r.fecha_envio) continue;
+      const prev = porInf[r.influencer_id];
+      if (!prev || new Date(r.fecha_envio) < new Date(prev.fecha_envio))
+        porInf[r.influencer_id] = { fecha_envio: r.fecha_envio, inf };
+    }
+    for (const id of Object.keys(porInf)) {
+      const g = porInf[id];
+      const dias = Math.floor((Date.now() - new Date(g.fecha_envio).getTime()) / 86400000);
+      for (const paso of SECUENCIA_ONBOARDING) {
+        if (paso.dia > dias) break;                                   // aún no toca
+        if (await supabase.yaEnviadoTemplate(id, paso.template)) continue; // ya se envió
+        try {
+          const wa = await paso.enviar(g.inf);
+          if (wa?.sent) { await supabase.registrarNotificacion(id, paso.template, 'cron'); enviadosCount++; }
+        } catch (e) { console.error('[cron/onboarding]', paso.template, e.message); }
+        break; // solo un paso por creadora por corrida
+      }
+      await new Promise(r => setTimeout(r, 400));
+    }
+    console.log(`[cron/onboarding] ${enviadosCount} mensajes enviados`);
+  } catch (e) { console.error('[cron/onboarding] Error:', e.message); }
+  return enviadosCount;
+}
 
 async function runCronIdeas() {
   console.log('[cron/ideas] Ejecutando...');
@@ -2409,6 +2458,12 @@ setInterval(() => {
   if (horaUTC === 15 && ultimoIdeas !== hoy) {
     ultimoIdeas = hoy;
     runCronIdeas();
+  }
+
+  // Diario a las 16:00 UTC (11am Bogotá) — secuencia de onboarding de ventas
+  if (horaUTC === 16 && ultimoOnboarding !== hoy) {
+    ultimoOnboarding = hoy;
+    runOnboardingVentas();
   }
 
   // Lunes a las 14:00 UTC (9am BogotÃ¡) â€” seguimiento semanal

@@ -197,6 +197,33 @@ async function enviarRegaloEnCamino(influencer) {
   return enviarTemplate(influencer.telefono, 'regalo_en_camino_brujeria', [nombre]);
 }
 
+// ── Secuencia de onboarding de ventas (cron diario) ────────────────────────
+// Día 3 — ¿ya te llegó? ábrelo grabando · Template: regalo_llego_brujeria · {{1}} nombre
+async function enviarRegaloLlego(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre || 'creadora';
+  return enviarTemplate(influencer.telefono, 'regalo_llego_brujeria', [nombre]);
+}
+// Día 4 — 3 ideas para grabar · Template: ideas_video_brujeria · {{1}} nombre · Botón → /guia-ugc
+async function enviarIdeasVideo(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre || 'creadora';
+  return enviarTemplate(influencer.telefono, 'ideas_video_brujeria', [nombre]);
+}
+// Día 6 — checklist al publicar · Template: checklist_publicar_brujeria · {{1}} nombre
+async function enviarChecklistPublicar(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre || 'creadora';
+  return enviarTemplate(influencer.telefono, 'checklist_publicar_brujeria', [nombre]);
+}
+// Día 9 — vender más · Template: vender_mas_brujeria · {{1}} nombre
+async function enviarVenderMas(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre || 'creadora';
+  return enviarTemplate(influencer.telefono, 'vender_mas_brujeria', [nombre]);
+}
+// Día 15 — cierre + portal · Template: cierre_quincena_brujeria · {{1}} nombre · Botón → /influencer
+async function enviarCierreQuincena(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre || 'creadora';
+  return enviarTemplate(influencer.telefono, 'cierre_quincena_brujeria', [nombre]);
+}
+
 module.exports = {
   enviarBienvenidaKit,
   enviarRecordatorioWhatsApp,
@@ -213,4 +240,9 @@ module.exports = {
   enviarUGCConfirmacionRegistro,
   enviarAcuerdo,
   enviarRegaloEnCamino,
+  enviarRegaloLlego,
+  enviarIdeasVideo,
+  enviarChecklistPublicar,
+  enviarVenderMas,
+  enviarCierreQuincena,
 };
