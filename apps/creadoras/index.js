@@ -1656,6 +1656,7 @@ app.post('/api/ugc/regalos/:id/enviar', async (req, res) => {
 
     const regalo = await supabase.getUGCRegaloById(req.params.id);
     if (!regalo) return res.status(404).json({ error: 'Regalo no encontrado' });
+    if (regalo.estado !== 'pendiente') return res.status(400).json({ error: 'Este regalo ya fue enviado.' });
     const inf = await supabase.getInfluencerById(regalo.influencer_id);
     if (!inf) return res.status(404).json({ error: 'Creadora no encontrada' });
 
@@ -1692,6 +1693,11 @@ app.post('/api/ugc/regalos/:id/enviar', async (req, res) => {
 
 // Crea la orden de gifting de un regalo y lo marca enviado (usado por single y masivo)
 async function despacharRegaloDeInfluencer(regalo, inf, skus, producto_nombre) {
+  // Re-verificar que siga pendiente para no enviar doble regalo (corridas simultáneas)
+  const actual = await supabase.getUGCRegaloById(regalo.id);
+  if (!actual || actual.estado !== 'pendiente') {
+    const e = new Error('ya enviado (regalo no pendiente)'); e.yaEnviado = true; throw e;
+  }
   const label = producto_nombre || `Regalo #${regalo.numero_regalo}`;
   const shopifyResult = await shopify.createGiftingOrder(inf, skus, label);
   await supabase.updateUGCRegalo(regalo.id, {

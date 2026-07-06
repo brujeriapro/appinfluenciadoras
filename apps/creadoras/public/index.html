@@ -2198,7 +2198,9 @@
 
       // Datos mínimos para poder despachar + acuerdo firmado = lista para regalo
       const datosCompletos = c => !!(c.direccion_envio && String(c.direccion_envio).trim() && c.telefono && String(c.telefono).trim());
-      const estaLista = c => !!acuerdos[c.id] && datosCompletos(c);
+      // Tiene un regalo pendiente REAL (misma fuente que el servidor) → no re-enviar a las ya despachadas
+      const tienePendiente = c => regalos.some(r => r.influencer_id === c.id);
+      const estaLista = c => !!acuerdos[c.id] && datosCompletos(c) && tienePendiente(c);
       const creadorasMostradas = soloListas ? creadoras.filter(estaLista) : creadoras;
       function enviarRegaloDeCreadora(c) {
         const rg = regalos.find(r => r.influencer_id === c.id);
