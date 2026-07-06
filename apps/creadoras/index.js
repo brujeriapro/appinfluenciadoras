@@ -1640,16 +1640,53 @@ app.get('/api/ugc/regalos-pendientes', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// Marcar regalo como enviado
+// Enviar regalo — crea la orden de gifting en Shopify con el producto elegido.
+// Body: { skus:[], producto_nombre, direccion_envio, ciudad, departamento, telefono, codigo_postal, notas }
+// Sin skus → solo marca enviado (comportamiento anterior).
 app.post('/api/ugc/regalos/:id/enviar', async (req, res) => {
   try {
+    const { skus, producto_nombre, direccion_envio, ciudad, departamento, telefono, codigo_postal, notas } = req.body;
+
+    if (!skus || !Array.isArray(skus) || skus.length === 0) {
+      await supabase.updateUGCRegalo(req.params.id, {
+        estado: 'enviado', fecha_envio: new Date().toISOString(), notas: notas || null,
+      });
+      return res.json({ ok: true });
+    }
+
+    const regalo = await supabase.getUGCRegaloById(req.params.id);
+    if (!regalo) return res.status(404).json({ error: 'Regalo no encontrado' });
+    const inf = await supabase.getInfluencerById(regalo.influencer_id);
+    if (!inf) return res.status(404).json({ error: 'Creadora no encontrada' });
+
+    // Overrides de dirección desde el modal (si el admin los ajustó)
+    const dir = {};
+    if (direccion_envio !== undefined) dir.direccion_envio = direccion_envio;
+    if (ciudad !== undefined)          dir.ciudad = ciudad;
+    if (departamento !== undefined)    dir.departamento = departamento;
+    if (telefono !== undefined)        dir.telefono = telefono;
+    if (codigo_postal !== undefined)   dir.codigo_postal = codigo_postal;
+    const infParaOrden = { ...inf, ...dir };
+    const huboCambio = Object.entries(dir).some(([k, v]) => v && v !== inf[k]);
+    if (huboCambio) await supabase.updateInfluencer(inf.id, dir);
+
+    if (!infParaOrden.direccion_envio)
+      return res.status(400).json({ error: 'La creadora no tiene dirección de envío' });
+
+    // Crear orden gifting $0 en Shopify
+    const label = producto_nombre || `Regalo #${regalo.numero_regalo}`;
+    const shopifyResult = await shopify.createGiftingOrder(infParaOrden, skus, label);
+
     await supabase.updateUGCRegalo(req.params.id, {
       estado: 'enviado',
       fecha_envio: new Date().toISOString(),
-      notas: req.body.notas || null,
+      producto_nombre: producto_nombre || skus.join(', '),
+      sku: skus.join(','),
+      shopify_order_id: shopifyResult.shopify_order_id || null,
+      notas: notas || null,
     });
-    res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    res.json({ ok: true, shopify: shopifyResult });
+  } catch (e) { console.error('[regalo/enviar]', e.message); res.status(500).json({ error: e.message }); }
 });
 
 // ── RUTAS PÚBLICAS UGC ────────────────────────────────────────────────────────
