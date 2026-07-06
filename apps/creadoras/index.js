@@ -13,7 +13,7 @@ const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, e
 const acuerdo = require('./acuerdo');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro', '/acuerdo', '/api/acuerdo/', '/api/wa-status'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro', '/acuerdo', '/api/acuerdo/', '/api/wa-status', '/api/onboarding-status'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -1886,6 +1886,16 @@ app.post('/api/ugc/envio-masivo', async (req, res) => {
 // ══════════════════════════════════════════════════════════════════════════
 // ACUERDO DE COLABORACIÓN — llenar datos + firma electrónica
 // ══════════════════════════════════════════════════════════════════════════
+
+// Diagnóstico: cuántos mensajes de cada plantilla se han registrado como enviados
+app.get('/api/onboarding-status', async (req, res) => {
+  try {
+    const templates = ['acuerdo_creadoras_brujeria', 'regalo_en_camino_brujeria', 'regalo_llego_brujeria', 'checklist_publicar_brujeria', 'vender_mas_brujeria', 'cupon_sin_usar_brujeria'];
+    const out = {};
+    for (const t of templates) out[t] = await supabase.contarNotificaciones(t);
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // Diagnóstico: ¿está configurado WhatsApp en el servidor? (solo booleanos)
 app.get('/api/wa-status', (req, res) => {
