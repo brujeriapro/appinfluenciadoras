@@ -13,7 +13,7 @@ const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, e
 const acuerdo = require('./acuerdo');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro', '/acuerdo', '/api/acuerdo/'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro', '/acuerdo', '/api/acuerdo/', '/api/wa-status'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -1801,6 +1801,15 @@ app.post('/api/ugc/envio-masivo', async (req, res) => {
 // ACUERDO DE COLABORACIÓN — llenar datos + firma electrónica
 // ══════════════════════════════════════════════════════════════════════════
 
+// Diagnóstico: ¿está configurado WhatsApp en el servidor? (solo booleanos)
+app.get('/api/wa-status', (req, res) => {
+  res.json({
+    token:      !!config.whatsapp.token,
+    phone_id:   !!config.whatsapp.phone_id,
+    configured: !!(config.whatsapp.token && config.whatsapp.phone_id),
+  });
+});
+
 // Página para que la creadora llene sus datos y firme
 app.get('/acuerdo', (req, res) => res.send(paginaAcuerdo()));
 
@@ -1928,9 +1937,9 @@ app.post('/api/admin/pedir-acuerdo', async (req, res) => {
           const inf = await supabase.getInfluencerById(id);
           if (!inf || !inf.telefono) { resultados.push({ id, ok: false, error: 'sin teléfono' }); continue; }
           const r = await enviarAcuerdo(inf);
-          const sent = !!(r?.sent);
-          resultados.push({ id, nombre: inf.nombre, ok: !!(r?.sent || r?.skipped) });
-          if (sent) { try { await supabase.registrarNotificacion(id, TEMPLATE, 'admin'); } catch {} }
+          if (r?.skipped) { resultados.push({ id, nombre: inf.nombre, ok: false, error: 'no enviado (WhatsApp sin configurar o número inválido)' }); continue; }
+          resultados.push({ id, nombre: inf.nombre, ok: !!r?.sent });
+          if (r?.sent) { try { await supabase.registrarNotificacion(id, TEMPLATE, 'admin'); } catch {} }
         } catch (e) { resultados.push({ id, ok: false, error: e.message }); }
         await new Promise(r => setTimeout(r, 800));
       }
