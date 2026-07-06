@@ -2001,27 +2001,39 @@ function bind(inputId,field){var el=document.getElementById(inputId);if(!el)retu
 
 function initFecha(){var d=new Date();setSpan('dia',String(d.getDate()));setSpan('mes',MESES[d.getMonth()]);setSpan('anio',String(d.getFullYear()));}
 
+var PREVIEW=false;
+function pintarForm(d){
+  document.getElementById('f_nombre_completo').value=d.nombre_completo||'';
+  document.getElementById('f_tipo_documento').value=d.tipo_documento||'C.C.';
+  document.getElementById('f_numero_documento').value=d.numero_documento||'';
+  document.getElementById('f_usuario').value=d.usuario||'';
+  document.getElementById('f_telefono').value=d.telefono||'';
+  document.getElementById('f_direccion_envio').value=d.direccion_envio||'';
+  document.getElementById('f_ciudad').value=d.ciudad||'';
+  document.getElementById('f_departamento').value=d.departamento||'';
+  ['nombre_completo','tipo_documento','numero_documento','usuario'].forEach(function(f){setSpan(f,d[f]);});
+  setSpan('ciudad_firma',d.ciudad);
+  initFecha();
+  document.getElementById('loading').style.display='none';
+  document.getElementById('app').style.display='block';
+  setupPad();
+}
 function cargar(){
-  if(!ID){document.getElementById('loading').innerHTML='Link inválido. Pídele a Brujería Capilar tu link personal.';return;}
+  if(!ID||ID==='demo'){
+    PREVIEW=true;
+    var banner=document.createElement('div');
+    banner.style.cssText='background:#3d1f6e;color:#e9dcff;text-align:center;font-size:12px;padding:8px;border-radius:8px;margin-bottom:12px';
+    banner.textContent='👁️ Vista previa — así lo verán tus creadoras (no se guarda nada)';
+    document.getElementById('app').prepend(banner);
+    pintarForm({nombre_completo:'Laura Gómez (ejemplo)',tipo_documento:'C.C.',numero_documento:'1000000000',usuario:'lauracreadora',telefono:'3001234567',direccion_envio:'Cra 45 # 10-20, Laureles',ciudad:'Medellín',departamento:'Antioquia'});
+    return;
+  }
   fetch('/api/acuerdo/'+ID+'/data').then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(d){
     if(d.firmado){
       document.getElementById('loading').innerHTML='Ya firmaste este acuerdo ✅<br><br><a href="/acuerdo/ver/'+ID+'" target="_blank">Ver mi acuerdo firmado</a>';
       return;
     }
-    document.getElementById('f_nombre_completo').value=d.nombre_completo||'';
-    document.getElementById('f_tipo_documento').value=d.tipo_documento||'C.C.';
-    document.getElementById('f_numero_documento').value=d.numero_documento||'';
-    document.getElementById('f_usuario').value=d.usuario||'';
-    document.getElementById('f_telefono').value=d.telefono||'';
-    document.getElementById('f_direccion_envio').value=d.direccion_envio||'';
-    document.getElementById('f_ciudad').value=d.ciudad||'';
-    document.getElementById('f_departamento').value=d.departamento||'';
-    ['nombre_completo','tipo_documento','numero_documento','usuario'].forEach(function(f){setSpan(f,d[f]);});
-    setSpan('ciudad_firma',d.ciudad);
-    initFecha();
-    document.getElementById('loading').style.display='none';
-    document.getElementById('app').style.display='block';
-    setupPad();
+    pintarForm(d);
   }).catch(function(){document.getElementById('loading').innerHTML='No pudimos cargar tus datos. Intenta más tarde.';});
 }
 bind('f_nombre_completo','nombre_completo');
@@ -2049,6 +2061,7 @@ function setupPad(){
 function limpiarFirma(){if(ctx){ctx.clearRect(0,0,pad.width,pad.height);hayFirma=false;}}
 
 function enviar(){
+  if(PREVIEW){alert('Es una vista previa 🔮 Así lo verán tus creadoras. Aquí no se guarda nada.');return;}
   var btn=document.getElementById('btn');
   var nombre=document.getElementById('f_nombre_completo').value.trim();
   var doc=document.getElementById('f_numero_documento').value.trim();
