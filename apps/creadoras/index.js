@@ -56,6 +56,11 @@ const PORT = process.env.PORT || 3030;
 
 app.use(cors());
 app.use(express.json());
+
+// Mini-conector de solo lectura para El Cerebro (hub central) — antes de adminAuth,
+// tiene su propia autenticación por header x-cerebro-key.
+require('./cerebro-connector')(app);
+
 app.use(adminAuth);
 app.use(express.static(path.join(__dirname, 'public')));
 
