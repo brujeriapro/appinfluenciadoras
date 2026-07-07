@@ -49,7 +49,8 @@ const config = {
   productos_disponibles: PRODUCTOS,
   kits: KITS,
   kit_defaults: KIT_DEFAULTS,
-  jwt_secret: process.env.JWT_SECRET || localConfig?.jwt_secret || 'dev-secret-local',
+  jwt_secret: process.env.JWT_SECRET || localConfig?.jwt_secret || '',
+  import_token: process.env.IMPORT_TOKEN || localConfig?.import_token || '',
   tally_contenido_url: process.env.TALLY_CONTENIDO_URL || localConfig?.email?.tally_form_contenido_url || 'https://tally.so/r/rjEZdo',
   tally_registro_url: process.env.TALLY_REGISTRO_URL || localConfig?.tally_registro_url || '',
   tally_webhook_secret: process.env.TALLY_WEBHOOK_SECRET || localConfig?.tally_webhook_secret || '',
@@ -67,6 +68,14 @@ const config = {
 // Validar que las credenciales esenciales están presentes
 if (!config.supabase.url || !config.supabase.service_role_key) {
   throw new Error('Faltan variables de entorno: SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY son requeridas');
+}
+// Secretos sin valor por defecto: si faltan, el arranque falla en vez de usar
+// una llave pública del repositorio (que permitiría forjar tokens o crear kits).
+if (!config.jwt_secret) {
+  throw new Error('Falta la variable de entorno JWT_SECRET (obligatoria en producción)');
+}
+if (!config.import_token) {
+  throw new Error('Falta la variable de entorno IMPORT_TOKEN (obligatoria en producción)');
 }
 
 module.exports = config;

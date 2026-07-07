@@ -30,7 +30,8 @@ module.exports = function mountCerebro(app) {
       const mes = new Date().toISOString().slice(0, 7); // YYYY-MM
 
       const [creadoras, ventas, pagos, contenidos] = await Promise.all([
-        q('influencers', { select: '*', ugc_activa: 'eq.true' }),
+        // Solo las columnas del contrato — evita traer password_hash, documento, dirección, etc.
+        q('influencers', { select: 'id,nombre,instagram_handle,tiktok_handle,seguidores,tier,nivel_bruja,status', ugc_activa: 'eq.true' }),
         q('ugc_ventas', { select: 'influencer_id,total_orden,comision_valor,mes' }),
         q('ugc_pagos', { select: 'influencer_id,total_comision,estado' }),
         q('contenidos', { select: 'influencer_id,fecha_submision' }),

@@ -51,6 +51,31 @@ function authMiddleware(req, res, next) {
   }
 }
 
+// Rate limiter simple en memoria (sin dependencias): máx. N peticiones por ventana por IP.
+// Protege los endpoints públicos de escritura (registro, webhooks) contra spam automatizado.
+const _rlBuckets = new Map();
+function rateLimit({ windowMs = 60000, max = 5 } = {}) {
+  return (req, res, next) => {
+    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'anon';
+    const now = Date.now();
+    const arr = (_rlBuckets.get(ip) || []).filter(t => now - t < windowMs);
+    if (arr.length >= max) return res.status(429).json({ error: 'Demasiadas solicitudes, intenta en un momento' });
+    arr.push(now);
+    _rlBuckets.set(ip, arr);
+    next();
+  };
+}
+
+// Valida el secreto de los webhooks de Tally. Se activa cuando TALLY_WEBHOOK_SECRET
+// está configurado: en Tally, agrega ?secret=EL_VALOR a la URL del webhook (o el
+// header x-tally-secret). Si el secreto no está configurado, no bloquea (compatibilidad).
+function webhookTallyAutorizado(req) {
+  const esperado = config.tally_webhook_secret;
+  if (!esperado) return true; // aún no configurado — no romper el flujo
+  const recibido = req.query.secret || req.headers['x-tally-secret'];
+  return recibido === esperado;
+}
+
 const app = express();
 const PORT = process.env.PORT || 3030;
 
@@ -243,7 +268,7 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
 // â”€â”€ ENVÃO MASIVO DE KITS (token protegido) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.post('/api/admin/enviar-kits-bulk', async (req, res) => {
   const { token, skus, primera_preferencia, dry_run, exclude_ids = [] } = req.body;
-  const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
+  const IMPORT_TOKEN = config.import_token;
   if (token !== IMPORT_TOKEN) return res.status(403).json({ error: 'Token invÃ¡lido' });
   if (!skus || !Array.isArray(skus) || skus.length === 0) return res.status(400).json({ error: 'Se requieren SKUs' });
   if (!primera_preferencia) return res.status(400).json({ error: 'Se requiere primera_preferencia' });
@@ -474,7 +499,8 @@ function tallyVal(map, ...keys) {
 }
 
 // â”€â”€ WEBHOOK REGISTRO (Tally â†’ Supabase, sin auto-envÃ­o) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.post('/api/webhooks/registro', async (req, res) => {
+app.post('/api/webhooks/registro', rateLimit({ windowMs: 60000, max: 20 }), async (req, res) => {
+  if (!webhookTallyAutorizado(req)) return res.status(401).json({ error: 'No autorizado' });
   try {
     const fields = parseTallyFields(req.body?.data?.fields || []);
 
@@ -637,7 +663,8 @@ app.post('/api/influencer/contenido', authMiddleware, async (req, res) => {
 });
 
 // â”€â”€ WEBHOOK CONTENIDO (Tally â†’ auto-score) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-app.post('/api/webhooks/contenido', async (req, res) => {
+app.post('/api/webhooks/contenido', rateLimit({ windowMs: 60000, max: 20 }), async (req, res) => {
+  if (!webhookTallyAutorizado(req)) return res.status(401).json({ error: 'No autorizado' });
   try {
     const fields = parseTallyFields(req.body?.data?.fields || []);
 
@@ -704,7 +731,8 @@ app.post('/api/webhooks/contenido', async (req, res) => {
 });
 
 // â”€â”€ WEBHOOK ENCUESTA PRODUCTOS (Tally â†’ preferencias por telÃ©fono) â”€â”€
-app.post('/api/webhooks/encuesta-productos', async (req, res) => {
+app.post('/api/webhooks/encuesta-productos', rateLimit({ windowMs: 60000, max: 20 }), async (req, res) => {
+  if (!webhookTallyAutorizado(req)) return res.status(401).json({ error: 'No autorizado' });
   try {
     const fields = parseTallyFields(req.body?.data?.fields || []);
 
@@ -986,7 +1014,7 @@ app.post('/webhook/wa', async (req, res) => {
 // EnvÃ­a template con botones para confirmar si llegÃ³ el paquete
 app.post('/api/cron/confirmacion-llegada', async (req, res) => {
   const secret = req.headers['x-cron-secret'] || req.query.secret;
-  const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
+  const IMPORT_TOKEN = config.import_token;
   const validSecret = secret === IMPORT_TOKEN || (config.tally_webhook_secret && secret === config.tally_webhook_secret);
   if (!validSecret) return res.status(401).json({ error: 'No autorizado' });
   const debug = req.query.debug === '1';
@@ -1038,7 +1066,7 @@ app.post('/api/cron/confirmacion-llegada', async (req, res) => {
 // EnvÃ­a pregunta sobre productos y contenido despuÃ©s de confirmar llegada
 app.post('/api/cron/seguimiento-productos', async (req, res) => {
   const secret = req.headers['x-cron-secret'] || req.query.secret;
-  const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
+  const IMPORT_TOKEN = config.import_token;
   const validSecret = secret === IMPORT_TOKEN || (config.tally_webhook_secret && secret === config.tally_webhook_secret);
   if (!validSecret) return res.status(401).json({ error: 'No autorizado' });
   try {
@@ -1333,7 +1361,7 @@ app.get('/api/influencer/tally-urls', (req, res) => {
 // â”€â”€ NOTIFICACIONES MANUALES (admin â†’ WhatsApp) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.post('/api/admin/notificaciones', async (req, res) => {
   const { influencer_ids, template, status_filter, fuente_filter, token } = req.body;
-  const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
+  const IMPORT_TOKEN = config.import_token;
   if (token !== IMPORT_TOKEN) {
     return res.status(403).json({ error: 'Token invÃ¡lido' });
   }
@@ -1414,7 +1442,7 @@ app.post('/api/admin/notificaciones', async (req, res) => {
 // â”€â”€ IMPORTACIÃ“N MASIVA DE INFLUENCERS (token protegido, un solo uso) â”€â”€
 app.post('/api/admin/influencers/bulk-import', async (req, res) => {
   const { influencers, token } = req.body;
-  const IMPORT_TOKEN = process.env.IMPORT_TOKEN || 'brujeria-import-2026';
+  const IMPORT_TOKEN = config.import_token;
   if (token !== IMPORT_TOKEN) {
     return res.status(403).json({ error: 'Token de importaciÃ³n invÃ¡lido' });
   }
@@ -1787,12 +1815,16 @@ app.get('/bienvenida-ugc',(req, res) => res.sendFile(path.join(__dirname, 'publi
 app.get('/guia-ugc',      (req, res) => res.sendFile(path.join(__dirname, 'public', 'guia-ugc.html')));
 
 // Registro de nueva creadora UGC — crea perfil, código Shopify y regalo de bienvenida
-app.post('/api/ugc/registro', async (req, res) => {
+app.post('/api/ugc/registro', rateLimit({ windowMs: 60000, max: 5 }), async (req, res) => {
   try {
     const { nombre, email, telefono, red_social, red_social_handle, ciudad, departamento, tipo_cabello, direccion_envio, password } = req.body;
 
     if (!nombre || !email || !telefono || !direccion_envio || !password)
       return res.status(400).json({ error: 'Todos los campos obligatorios deben completarse' });
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()))
+      return res.status(400).json({ error: 'Email inválido' });
+    if (String(password).length < 8)
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
 
     const emailClean = email.toLowerCase().trim();
     const plataforma = red_social || 'instagram';

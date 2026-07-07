@@ -39,3 +39,7 @@ scripts/scraper_tiktok/tiktok_cookies.json
 scripts/scraper_tiktok/dms_enviados.json
 scripts/scraper_tiktok/debug_*.png
 scripts/scraper_tiktok/outputs/
+
+# Scraper cookies / sesiones (NUNCA subir)
+*cookies*.json
+scripts/scraper_facebook/facebook_cookies.json
