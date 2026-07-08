@@ -266,6 +266,76 @@ app.post('/api/influencers/:id/enviar', async (req, res) => {
 });
 
 // â”€â”€ ENVÃO MASIVO DE KITS (token protegido) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── ENVÍO MASIVO A INFLUENCERS SELECCIONADAS (mismo producto, valida datos) ──
+// Preview: quién está completa y a quién le falta un dato, sin crear nada.
+app.post('/api/admin/influencers/preparar-masivo', async (req, res) => {
+  try {
+    const ids = req.body?.ids;
+    if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'ids requerido' });
+    const listas = [], incompletas = [];
+    for (const id of ids) {
+      const inf = await supabase.getInfluencerById(id);
+      if (!inf) { incompletas.push({ id, nombre: '(no encontrada)', faltan: ['registro'] }); continue; }
+      const faltan = [];
+      if (!inf.direccion_envio) faltan.push('dirección');
+      if (!inf.ciudad) faltan.push('ciudad');
+      if (!inf.telefono) faltan.push('teléfono');
+      const province = inf.departamento || shopify.inferirDepartamento(inf.ciudad || '');
+      if (!province) faltan.push('departamento');
+      if (faltan.length) incompletas.push({ id, nombre: inf.nombre, faltan });
+      else listas.push({ id, nombre: inf.nombre });
+    }
+    res.json({ listas, incompletas });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Crea la orden de gifting con el mismo producto para cada influencer seleccionada.
+// Body: { ids: [], skus: [], kit_nombre }
+app.post('/api/admin/influencers/enviar-masivo', async (req, res) => {
+  try {
+    const { ids, skus, kit_nombre } = req.body;
+    if (!Array.isArray(ids) || !ids.length) return res.status(400).json({ error: 'ids requerido' });
+    if (!Array.isArray(skus) || !skus.length) return res.status(400).json({ error: 'skus requerido' });
+    const label = kit_nombre || `${skus.length} producto(s)`;
+
+    async function despachar(id) {
+      const inf = await supabase.getInfluencerById(id);
+      if (!inf) return { id, ok: false, error: 'no encontrada' };
+      if (!inf.direccion_envio || !inf.ciudad) return { id, nombre: inf.nombre, ok: false, error: 'sin dirección/ciudad' };
+      try {
+        const shopifyResult = await shopify.createGiftingOrder(inf, skus, label);
+        await supabase.updateEnvio(inf.id, { skus, shopify_order_id: shopifyResult.shopify_order_id, kit_asignado: kit_nombre || null });
+        if (!inf.codigo_descuento) {
+          try {
+            const handle = (inf.instagram_handle || inf.nombre || 'CREADORA').replace(/[^a-zA-Z0-9]/g, '');
+            const codigo = await shopify.createDiscountCode(handle);
+            await supabase.updateInfluencer(inf.id, { codigo_descuento: codigo });
+            inf.codigo_descuento = codigo;
+          } catch {}
+        }
+        try {
+          const ya = await supabase.yaEnviadoTemplate(inf.id, 'bienvenida_club_brujeria');
+          if (!ya) { const w = await enviarBienvenidaKit(inf, inf.codigo_descuento); if (w?.sent) await supabase.registrarNotificacion(inf.id, 'bienvenida_club_brujeria', 'kit'); }
+        } catch {}
+        return { id, nombre: inf.nombre, ok: true, shopify_order_id: shopifyResult.shopify_order_id };
+      } catch (e) { return { id, nombre: inf.nombre, ok: false, error: e.message }; }
+    }
+
+    async function correr() {
+      const out = [];
+      for (const id of ids) { out.push(await despachar(id)); await new Promise(r => setTimeout(r, 400)); }
+      return out;
+    }
+
+    if (ids.length > 5) {
+      correr().then(r => console.log(`[influencers/enviar-masivo] ${r.filter(x => x.ok).length}/${ids.length} órdenes creadas`)).catch(e => console.error('[influencers/enviar-masivo]', e.message));
+      return res.json({ ok: true, queued: ids.length, background: true });
+    }
+    const r = await correr();
+    res.json({ ok: true, total: ids.length, creadas: r.filter(x => x.ok).length, resultados: r });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/api/admin/enviar-kits-bulk', async (req, res) => {
   const { token, skus, primera_preferencia, dry_run, exclude_ids = [] } = req.body;
   const IMPORT_TOKEN = config.import_token;

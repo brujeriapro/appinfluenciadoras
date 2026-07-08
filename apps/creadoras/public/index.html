@@ -483,6 +483,13 @@
       const [error, setError] = useState(null);
       const [filters, setFilters] = useState({ status: '', tier: '', nivel_bruja: '', search: '', preferencias: '' });
       const [updatingStatus, setUpdatingStatus] = useState(null);
+      const [selInf, setSelInf] = useState(new Set());
+      const [modalMasivo, setModalMasivo] = useState(false);
+      const [masivoProductos, setMasivoProductos] = useState([]);
+      const [masivoSkus, setMasivoSkus] = useState([]);
+      const [masivoReporte, setMasivoReporte] = useState(null);
+      const [masivoPaso, setMasivoPaso] = useState('producto');
+      const [masivoEnviando, setMasivoEnviando] = useState(false);
 
       const load = () => {
         API('/api/influencers')
@@ -531,6 +538,42 @@
         }
       };
 
+      // ── Selección múltiple + envío masivo del mismo producto ──
+      const idsVisibles = filtered.map(i => i.id);
+      const todasSel = idsVisibles.length > 0 && idsVisibles.every(id => selInf.has(id));
+      const toggleUna = id => setSelInf(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+      const toggleTodas = () => setSelInf(prev => { const n = new Set(prev); if (todasSel) idsVisibles.forEach(id => n.delete(id)); else idsVisibles.forEach(id => n.add(id)); return n; });
+      const abrirMasivo = async () => {
+        if (!selInf.size) return;
+        setMasivoSkus([]); setMasivoReporte(null); setMasivoPaso('producto'); setModalMasivo(true);
+        if (!masivoProductos.length) { try { const cfg = await API('/api/config/productos'); setMasivoProductos(cfg.productos || []); } catch(e){} }
+      };
+      const toggleMasivoSku = sku => setMasivoSkus(s => s.includes(sku) ? s.filter(x => x !== sku) : [...s, sku]);
+      const revisarMasivo = async () => {
+        if (!masivoSkus.length) { alert('Elige al menos un producto.'); return; }
+        setMasivoEnviando(true);
+        try {
+          const r = await fetch('/api/admin/influencers/preparar-masivo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [...selInf] }) }).then(x => x.json());
+          if (r.error) throw new Error(r.error);
+          setMasivoReporte(r); setMasivoPaso('revision');
+        } catch(e) { alert('Error: ' + e.message); }
+        setMasivoEnviando(false);
+      };
+      const crearMasivo = async () => {
+        const ids = (masivoReporte?.listas || []).map(x => x.id);
+        if (!ids.length) { alert('No hay influencers con datos completos.'); return; }
+        const kit_nombre = masivoProductos.filter(p => masivoSkus.includes(p.sku)).map(p => p.nombre).join(', ');
+        setMasivoEnviando(true);
+        try {
+          const r = await fetch('/api/admin/influencers/enviar-masivo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids, skus: masivoSkus, kit_nombre }) }).then(x => x.json());
+          if (r.error) throw new Error(r.error);
+          if (r.background) alert(`📦 Creando ${r.queued} órdenes en segundo plano. Refresca en un rato para verlas.`);
+          else alert(`✅ Órdenes creadas: ${r.creadas}/${r.total}`);
+          setModalMasivo(false); setSelInf(new Set()); load();
+        } catch(e) { alert('Error: ' + e.message); }
+        setMasivoEnviando(false);
+      };
+
       if (loading) return <div className="loading">Cargando influencers...</div>;
       if (error) return <div className="error-msg">{error}</div>;
 
@@ -538,6 +581,14 @@
         <div>
           <h1>Influencers</h1>
           <p className="page-subtitle">{filtered.length} de {all.length} influencers</p>
+
+          {selInf.size > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: 13, color: 'var(--purple-light)', fontWeight: 600 }}>{selInf.size} seleccionada{selInf.size > 1 ? 's' : ''}</span>
+              <button className="btn btn-primary btn-sm" onClick={abrirMasivo}>🎁 Enviar mismo producto a {selInf.size}</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => setSelInf(new Set())}>Limpiar</button>
+            </div>
+          )}
 
           <div className="table-wrap">
             <div className="table-header">
@@ -582,6 +633,9 @@
             <table>
               <thead>
                 <tr>
+                  <th style={{ width: 32 }}>
+                    <input type="checkbox" checked={todasSel} onChange={toggleTodas} title="Seleccionar todas" style={{ cursor: 'pointer' }} />
+                  </th>
                   <th>Nombre</th>
                   <th>Instagram</th>
                   <th>TikTok</th>
@@ -596,9 +650,12 @@
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan="10" className="empty-state">Sin resultados</td></tr>
+                  <tr><td colSpan="11" className="empty-state">Sin resultados</td></tr>
                 ) : filtered.map(inf => (
-                  <tr key={inf.id} onClick={() => onNavigate('detalle', inf.id)} style={{ cursor: 'pointer' }}>
+                  <tr key={inf.id} onClick={() => onNavigate('detalle', inf.id)} style={{ cursor: 'pointer', background: selInf.has(inf.id) ? 'rgba(124,58,237,0.08)' : '' }}>
+                    <td onClick={e => e.stopPropagation()} style={{ textAlign: 'center' }}>
+                      <input type="checkbox" checked={selInf.has(inf.id)} onChange={() => toggleUna(inf.id)} style={{ cursor: 'pointer' }} />
+                    </td>
                     <td style={{ fontWeight: 500 }}>{inf.nombre || '—'}</td>
                     <td className="td-muted">{inf.instagram_handle || '—'}</td>
                     <td className="td-muted">
@@ -633,6 +690,66 @@
               </tbody>
             </table>
           </div>
+
+          {modalMasivo && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }} onClick={() => !masivoEnviando && setModalMasivo(false)}>
+              <div style={{ background: 'var(--bg2)', borderRadius: 12, padding: 24, width: 560, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+                <h2 style={{ marginBottom: 2, fontSize: 16 }}>🎁 Enviar el mismo producto a {selInf.size} influencers</h2>
+                {masivoPaso === 'producto' ? (
+                  <>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 14 }}>Elige el/los producto(s) que recibirán todas. Luego revisamos que no falte ningún dato antes de crear las órdenes.</p>
+                    <div style={{ maxHeight: 280, overflowY: 'auto', background: 'var(--bg3)', borderRadius: 8, padding: 6, marginBottom: 16 }}>
+                      {masivoProductos.length === 0 ? (
+                        <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Cargando productos…</div>
+                      ) : masivoProductos.map(p => {
+                        const sel = masivoSkus.includes(p.sku);
+                        const sinStock = p.stock !== null && p.stock <= 0;
+                        return (
+                          <label key={p.sku} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 6, cursor: 'pointer', background: sel ? 'rgba(124,58,237,0.18)' : 'transparent' }}>
+                            <input type="checkbox" checked={sel} onChange={() => toggleMasivoSku(p.sku)} style={{ width: 18, height: 18, flexShrink: 0 }} />
+                            <span style={{ flex: 1, fontSize: 13 }}>{p.nombre}</span>
+                            <span style={{ fontSize: 11, color: sinStock ? 'var(--red)' : 'var(--text-muted)' }}>{p.stock === null ? '—' : `${p.stock} und`}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} disabled={masivoEnviando} onClick={() => setModalMasivo(false)}>Cancelar</button>
+                      <button className="btn btn-primary btn-sm" style={{ flex: 2 }} disabled={masivoEnviando || !masivoSkus.length} onClick={revisarMasivo}>{masivoEnviando ? 'Revisando…' : `Revisar datos (${selInf.size})`}</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', gap: 12, margin: '14px 0' }}>
+                      <div style={{ flex: 1, background: 'rgba(34,197,94,0.12)', border: '1px solid var(--green)', borderRadius: 8, padding: 12, textAlign: 'center' }}>
+                        <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--green)' }}>{masivoReporte?.listas?.length || 0}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>listas para crear</div>
+                      </div>
+                      <div style={{ flex: 1, background: 'rgba(245,158,11,0.10)', border: '1px solid var(--orange)', borderRadius: 8, padding: 12, textAlign: 'center' }}>
+                        <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--orange)' }}>{masivoReporte?.incompletas?.length || 0}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>con datos faltantes</div>
+                      </div>
+                    </div>
+                    {masivoReporte?.incompletas?.length > 0 && (
+                      <div style={{ background: 'var(--bg3)', borderRadius: 8, padding: 12, marginBottom: 14, maxHeight: 180, overflowY: 'auto' }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--orange)', marginBottom: 8 }}>⚠️ Estas NO se incluirán (falta dato):</div>
+                        {masivoReporte.incompletas.map((c, i) => (
+                          <div key={i} style={{ fontSize: 12, padding: '4px 0', borderTop: i ? '1px solid var(--border)' : 'none' }}>
+                            <span style={{ fontWeight: 600 }}>{c.nombre}</span> — <span style={{ color: 'var(--orange)' }}>falta {c.faltan.join(', ')}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>Producto: <span style={{ color: 'var(--text)', fontWeight: 600 }}>{masivoProductos.filter(p => masivoSkus.includes(p.sku)).map(p => p.nombre).join(', ')}</span></div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} disabled={masivoEnviando} onClick={() => setMasivoPaso('producto')}>← Volver</button>
+                      <button className="btn btn-primary btn-sm" style={{ flex: 2 }} disabled={masivoEnviando || !(masivoReporte?.listas?.length)} onClick={crearMasivo}>{masivoEnviando ? 'Creando órdenes…' : `✅ Crear ${masivoReporte?.listas?.length || 0} órdenes`}</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       );
     }
