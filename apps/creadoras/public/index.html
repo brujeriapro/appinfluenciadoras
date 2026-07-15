@@ -1522,6 +1522,19 @@
       const [prev, setPrev] = useState(null);
       const [res, setRes] = useState(null);
       const [err, setErr] = useState(null);
+      const [tel, setTel] = useState('');
+      const [testRes, setTestRes] = useState(null);
+      const [testBusy, setTestBusy] = useState(false);
+
+      const probar = async () => {
+        if (!tel.trim()) return;
+        setTestBusy(true); setTestRes(null);
+        try {
+          const data = await POSTJSON('/api/admin/demo/test-cupon', { telefono: tel.trim() });
+          setTestRes(data);
+        } catch (e) { setTestRes({ ok: false, error: e.message }); }
+        finally { setTestBusy(false); }
+      };
 
       const correr = async (dry) => {
         setBusy(true); setErr(null);
@@ -1578,6 +1591,25 @@
               )}
             </div>
           )}
+
+          <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px dashed var(--border)' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+              ¿Dudas de si llega? Envíate una <b>de prueba</b> a tu número y revisa tu WhatsApp:
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <input type="tel" value={tel} onChange={e => setTel(e.target.value)} placeholder="573001234567" style={{ padding: '6px 10px', maxWidth: 180 }} />
+              <button className="btn btn-secondary btn-sm" onClick={probar} disabled={testBusy || !tel.trim()}>
+                {testBusy ? 'Enviando...' : 'Probar a mi número'}
+              </button>
+            </div>
+            {testRes && (
+              <div style={{ marginTop: 8, fontSize: 12, background: 'var(--bg3)', borderRadius: 8, padding: 10 }}>
+                {testRes.ok
+                  ? <span>✅ WhatsApp <b>aceptó</b> el mensaje (id: {testRes.message_id || 's/n'}). Revisa tu teléfono — si no llega en 1–2 min, el problema es de entrega en Meta, no del sistema.</span>
+                  : <span style={{ color: 'var(--danger, #e00)' }}>❌ No se pudo enviar: {testRes.error || testRes.motivo || 'error desconocido'}</span>}
+              </div>
+            )}
+          </div>
         </div>
       );
     }

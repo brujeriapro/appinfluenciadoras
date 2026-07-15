@@ -1621,6 +1621,20 @@ app.post('/api/admin/demo/recordar-cupon', async (req, res) => {
   }
 });
 
+// ── PRUEBA: enviar cupon_sin_usar a un número propio para verificar entrega end-to-end ──
+app.post('/api/admin/demo/test-cupon', async (req, res) => {
+  const { telefono } = req.body || {};
+  if (!telefono) return res.status(400).json({ error: 'Teléfono requerido' });
+  try {
+    const wa = await enviarCuponSinUsar({ nombre: 'Prueba', telefono, codigo_descuento: 'PRUEBA10' });
+    if (wa?.skipped) return res.json({ ok: false, skipped: true, motivo: 'WhatsApp no configurado o teléfono inválido' });
+    res.json({ ok: !!wa?.sent, message_id: wa?.message_id || null, to: wa?.to || null });
+  } catch (e) {
+    // El error de Meta (plantilla no aprobada, número inválido, etc.) llega aquí
+    res.status(200).json({ ok: false, error: e.message });
+  }
+});
+
 // â”€â”€ IMPORTACIÃ“N MASIVA DE INFLUENCERS (token protegido, un solo uso) â”€â”€
 app.post('/api/admin/influencers/bulk-import', async (req, res) => {
   const { influencers, token } = req.body;
