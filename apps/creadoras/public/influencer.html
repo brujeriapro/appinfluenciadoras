@@ -679,14 +679,16 @@ function LandingPage({
 // ── LOGIN ──────────────────────────────────────────────────────
 function LoginPage({
   onSuccess,
-  onBack
+  onBack,
+  resetToken
 }) {
-  const [step, setStep] = useState('email');
+  const [step, setStep] = useState(resetToken ? 'reset' : 'email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   async function handleEmail(e) {
     e.preventDefault();
     if (!email.trim()) return;
@@ -754,10 +756,61 @@ function LoginPage({
       setLoading(false);
     }
   }
+  async function handleForgot(e) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setLoading(true);
+    setError('');
+    setInfo('');
+    try {
+      await apiFetch('/api/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: email.trim()
+        })
+      });
+      setInfo('Si tu email está registrado, te enviamos un enlace para crear una contraseña nueva. Revisa tu correo (y la carpeta de spam). El enlace vence en 30 minutos.');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+  async function handleReset(e) {
+    e.preventDefault();
+    if (password !== password2) {
+      setError('Las contraseñas no coinciden');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Mínimo 6 caracteres');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const data = await apiFetch('/api/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          token: resetToken,
+          password
+        })
+      });
+      setToken(data.token);
+      if (window.history && window.history.replaceState) window.history.replaceState({}, '', '/influencer');
+      onSuccess(data.nombre);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
   const subtitles = {
     email: 'Ingresa el email con el que te registraste en el programa',
     'set-password': 'Primera vez — crea una contraseña para tu cuenta',
-    login: 'Bienvenida de vuelta 💜'
+    login: 'Bienvenida de vuelta 💜',
+    forgot: 'Te enviaremos un enlace a tu correo para crear una contraseña nueva',
+    reset: 'Crea tu nueva contraseña'
   };
   return /*#__PURE__*/React.createElement("div", {
     className: "login-wrap"
@@ -767,11 +820,18 @@ function LoginPage({
     className: "logo",
     src: LOGO,
     alt: "Brujer\xEDa Capilar"
-  }), /*#__PURE__*/React.createElement("h2", null, step === 'email' ? 'Entrar al portal' : step === 'set-password' ? 'Crear contraseña' : 'Iniciar sesión'), /*#__PURE__*/React.createElement("p", {
+  }), /*#__PURE__*/React.createElement("h2", null, step === 'email' ? 'Entrar al portal' : step === 'set-password' ? 'Crear contraseña' : step === 'forgot' ? 'Recuperar contraseña' : step === 'reset' ? 'Nueva contraseña' : 'Iniciar sesión'), /*#__PURE__*/React.createElement("p", {
     className: "subtitle"
   }, subtitles[step]), error && /*#__PURE__*/React.createElement("div", {
     className: "alert-error"
-  }, error), step === 'email' && /*#__PURE__*/React.createElement("form", {
+  }, error), info && /*#__PURE__*/React.createElement("div", {
+    className: "alert-error",
+    style: {
+      background: '#e8f9ee',
+      color: '#1a7f4b',
+      borderColor: '#1a7f4b'
+    }
+  }, info), step === 'email' && /*#__PURE__*/React.createElement("form", {
     onSubmit: handleEmail
   }, /*#__PURE__*/React.createElement("div", {
     className: "field"
@@ -849,7 +909,63 @@ function LoginPage({
       setPassword('');
       setError('');
     }
-  }, "\u2190 Cambiar email")))));
+  }, "\u2190 Cambiar email"), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "link-btn",
+    onClick: () => {
+      setStep('forgot');
+      setError('');
+      setInfo('');
+    }
+  }, "\xBFOlvidaste tu contrase\xF1a?"))), step === 'forgot' && /*#__PURE__*/React.createElement("form", {
+    onSubmit: handleForgot
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Tu email"), /*#__PURE__*/React.createElement("input", {
+    type: "email",
+    value: email,
+    onChange: e => setEmail(e.target.value),
+    placeholder: "tu@email.com",
+    required: true,
+    autoFocus: true
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    type: "submit",
+    disabled: loading
+  }, loading ? 'Enviando...' : 'Enviarme el enlace \u2192'), /*#__PURE__*/React.createElement("div", {
+    className: "divider"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "link-btn",
+    onClick: () => {
+      setStep('email');
+      setError('');
+      setInfo('');
+    }
+  }, "\u2190 Volver"))), step === 'reset' && /*#__PURE__*/React.createElement("form", {
+    onSubmit: handleReset
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Nueva contrase\xF1a"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    value: password,
+    onChange: e => setPassword(e.target.value),
+    placeholder: "M\xEDnimo 6 caracteres",
+    required: true,
+    autoFocus: true
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "Confirmar contrase\xF1a"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    value: password2,
+    onChange: e => setPassword2(e.target.value),
+    placeholder: "Repite la contrase\xF1a",
+    required: true
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    type: "submit",
+    disabled: loading
+  }, loading ? 'Guardando...' : 'Guardar y entrar \u2192'))));
 }
 
 // ── TOP BAR ────────────────────────────────────────────────────
@@ -1564,7 +1680,8 @@ function Dashboard({
 
 // ── APP ────────────────────────────────────────────────────────
 function App() {
-  const [view, setView] = useState(getToken() ? 'dashboard' : 'landing');
+  const resetToken = (() => { try { return new URLSearchParams(window.location.search).get('reset'); } catch (e) { return null; } })();
+  const [view, setView] = useState(resetToken ? 'login' : getToken() ? 'dashboard' : 'landing');
   const [nombre, setNombre] = useState('');
   const [tallyContenido, setTallyContenido] = useState('https://tally.so/r/rjEZdo');
   const [tallyRegistro, setTallyRegistro] = useState('');
@@ -1592,7 +1709,8 @@ function App() {
   if (view === 'login') {
     return /*#__PURE__*/React.createElement(LoginPage, {
       onSuccess: onLoginSuccess,
-      onBack: () => setView('landing')
+      onBack: () => setView('landing'),
+      resetToken: resetToken
     });
   }
   return /*#__PURE__*/React.createElement(Dashboard, {

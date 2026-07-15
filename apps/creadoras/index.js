@@ -8,7 +8,7 @@ const siigo = require('./siigo');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
-const { enviarRecordatorioContenido } = require('./email');
+const { enviarRecordatorioContenido, enviarResetPassword } = require('./email');
 const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida, enviarUGCConfirmacionRegistro, enviarAcuerdo, enviarRegaloEnCamino, enviarRegaloLlego, enviarIdeasVideo, enviarChecklistPublicar, enviarVenderMas, enviarCierreQuincena, enviarCuponSinUsar } = require('./whatsapp');
 const acuerdo = require('./acuerdo');
 
@@ -1261,6 +1261,54 @@ app.post('/api/auth/login', async (req, res) => {
     if (!ok) return res.status(401).json({ error: 'ContraseÃ±a incorrecta' });
     const token = jwt.sign({ id: influencer.id, email: influencer.email }, config.jwt_secret, { expiresIn: '30d' });
     res.json({ token, nombre: influencer.nombre });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Auth: solicitar restablecimiento de contraseña por email
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email: correo } = req.body;
+  if (!correo) return res.status(400).json({ error: 'Email requerido' });
+  try {
+    const influencer = await supabase.getInfluencerByEmail(correo.toLowerCase().trim());
+    // Respuesta uniforme: nunca revelamos si el email existe (evita enumerar cuentas)
+    if (influencer && influencer.email) {
+      const crypto = require('crypto');
+      const fp = crypto.createHash('sha256').update(influencer.password_hash || 'sin-pass').digest('hex').slice(0, 12);
+      const token = jwt.sign({ id: influencer.id, purpose: 'reset', fp }, config.jwt_secret, { expiresIn: '30m' });
+      const proto = req.headers['x-forwarded-proto'] || req.protocol;
+      const base = `${proto}://${req.get('host')}`;
+      const resetUrl = `${base}/influencer?reset=${encodeURIComponent(token)}`;
+      try { await enviarResetPassword(influencer, resetUrl); }
+      catch (e) { console.error('[forgot-password] envío falló:', e.message); }
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Auth: restablecer contraseña con el token del correo (single-use, vence en 30 min)
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: 'Token y contraseña requeridos' });
+  if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+  try {
+    let payload;
+    try { payload = jwt.verify(token, config.jwt_secret); }
+    catch (e) { return res.status(400).json({ error: 'El enlace venció o no es válido. Solicita uno nuevo.' }); }
+    if (payload.purpose !== 'reset') return res.status(400).json({ error: 'Enlace inválido' });
+    const influencer = await supabase.getInfluencerById(payload.id);
+    if (!influencer) return res.status(404).json({ error: 'Cuenta no encontrada' });
+    // single-use: el fingerprint debe coincidir con el hash actual; al cambiar la clave el token viejo deja de servir
+    const crypto = require('crypto');
+    const fp = crypto.createHash('sha256').update(influencer.password_hash || 'sin-pass').digest('hex').slice(0, 12);
+    if (payload.fp !== fp) return res.status(400).json({ error: 'Este enlace ya fue usado. Solicita uno nuevo.' });
+    const hash = await bcrypt.hash(password, 10);
+    await supabase.updatePasswordHash(influencer.id, hash);
+    const nuevo = jwt.sign({ id: influencer.id, email: influencer.email }, config.jwt_secret, { expiresIn: '30d' });
+    res.json({ token: nuevo, nombre: influencer.nombre });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

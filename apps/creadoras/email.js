@@ -52,4 +52,34 @@ async function enviarRecordatorioContenido(influencer) {
   return { sent: true, to: influencer.email };
 }
 
-module.exports = { enviarRecordatorioContenido };
+async function enviarResetPassword(influencer, resetUrl) {
+  const transporter = getTransporter();
+  if (!transporter) {
+    console.warn('Email no configurado — no se pudo enviar reset a', influencer.email);
+    return { skipped: true };
+  }
+  const nombre = influencer.nombre?.split(' ')[0] || 'creadora';
+  await transporter.sendMail({
+    from: `"Brujería Capilar" <${config.gmail.user}>`,
+    to: influencer.email,
+    subject: 'Recupera tu contraseña · Portal de Creadoras ✨',
+    html: `
+      <div style="font-family:sans-serif;max-width:500px;margin:auto;color:#1a1a1a">
+        <h2 style="color:#7C3AED">Hola ${nombre} 💜</h2>
+        <p>Recibimos una solicitud para restablecer la contraseña de tu portal de creadoras.</p>
+        <p>Haz clic en el botón para crear una nueva contraseña. El enlace vence en <strong>30 minutos</strong>.</p>
+        <p style="text-align:center;margin:24px 0">
+          <a href="${resetUrl}"
+             style="background:#7C3AED;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold">
+            Crear nueva contraseña →
+          </a>
+        </p>
+        <p style="color:#666;font-size:13px">Si tú no pediste esto, ignora este correo — tu contraseña sigue igual.</p>
+        <p style="color:#666;font-size:13px">Con amor,<br>Equipo Brujería Capilar 🔮</p>
+      </div>
+    `,
+  });
+  return { sent: true, to: influencer.email };
+}
+
+module.exports = { enviarRecordatorioContenido, enviarResetPassword };
