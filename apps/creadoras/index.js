@@ -13,7 +13,7 @@ const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, e
 const acuerdo = require('./acuerdo');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro', '/acuerdo', '/api/acuerdo/', '/api/wa-status', '/api/onboarding-status', '/api/demo/test-entrega'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro', '/acuerdo', '/api/acuerdo/', '/api/wa-status', '/api/onboarding-status', '/api/demo/test-entrega', '/api/demo/enviar-checklist-27'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -1636,6 +1636,39 @@ app.post('/api/demo/test-entrega', async (req, res) => {
     res.json({ ok: !!wa?.sent, message_id: wa?.message_id || null, to: wa?.to || null });
   } catch (e) {
     res.status(200).json({ ok: false, error: e.message });
+  }
+});
+
+// ── ENVÍO checklist_publicar a la cohorte fija (confirmaron recibo + no publicaron) ──
+// Ruta pública pero SIN parámetros de audiencia (cohorte fija) y con dedup: llamarla de nuevo
+// no reenvía a quien ya la recibió. No es abusable para spam arbitrario. Temporal.
+app.post('/api/demo/enviar-checklist-27', async (req, res) => {
+  try {
+    const [todas, contenidos] = await Promise.all([
+      supabase.getInfluencersConTelefono(),
+      supabase.getContenidos(),
+    ]);
+    const publicaron = new Set(contenidos.map(c => c.influencer_id));
+    const objetivo = todas.filter(i => i.fecha_confirmacion_recibo && i.telefono && !publicaron.has(i.id));
+    const resultados = [];
+    for (const inf of objetivo) {
+      try {
+        const ya = await supabase.yaEnviadoTemplate(inf.id, 'checklist_publicar_brujeria');
+        if (ya) { resultados.push({ id: inf.id, nombre: inf.nombre, ok: false, skipped: true }); continue; }
+        const wa = await enviarChecklistPublicar(inf);
+        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'checklist_publicar_brujeria', 'admin');
+        resultados.push({ id: inf.id, nombre: inf.nombre, ok: !!wa?.sent, message_id: wa?.message_id || null, error: wa?.sent ? undefined : (wa?.error || wa?.motivo || 'no enviado') });
+      } catch (e) {
+        resultados.push({ id: inf.id, nombre: inf.nombre, ok: false, error: e.message });
+      }
+    }
+    const enviadas = resultados.filter(r => r.ok).length;
+    const skipped = resultados.filter(r => r.skipped).length;
+    console.log(`[demo/enviar-checklist-27] objetivo=${objetivo.length} enviadas=${enviadas} skipped=${skipped}`);
+    res.json({ ok: true, objetivo: objetivo.length, enviadas, skipped, resultados });
+  } catch (e) {
+    console.error('[demo/enviar-checklist-27] Error:', e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
