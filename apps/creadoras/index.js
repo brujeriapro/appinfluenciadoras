@@ -13,7 +13,7 @@ const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, e
 const acuerdo = require('./acuerdo');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro', '/acuerdo', '/api/acuerdo/', '/api/wa-status', '/api/onboarding-status'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro', '/acuerdo', '/api/acuerdo/', '/api/wa-status', '/api/onboarding-status', '/api/demo/test-entrega'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -1618,6 +1618,24 @@ app.post('/api/admin/demo/recordar-cupon', async (req, res) => {
   } catch (e) {
     console.error('[demo/recordar-cupon] Error:', e.message);
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ── PRUEBA DE ENTREGA (pública, bloqueada a una allowlist de números) ──
+// Permite disparar un envío de prueba sin autenticación, pero SOLO a números en la lista
+// (evita que se use para spam). Temporal, para verificar entrega end-to-end.
+const TEST_ENTREGA_ALLOWLIST = ['573207133122'];
+app.post('/api/demo/test-entrega', async (req, res) => {
+  const num = String((req.body && req.body.telefono) || '').replace(/\D/g, '');
+  if (!TEST_ENTREGA_ALLOWLIST.includes(num)) {
+    return res.status(403).json({ error: 'Número no permitido para prueba' });
+  }
+  try {
+    const wa = await enviarCuponSinUsar({ nombre: 'María', telefono: num, codigo_descuento: 'PRUEBA10' });
+    if (wa?.skipped) return res.json({ ok: false, skipped: true, motivo: 'WhatsApp no configurado o teléfono inválido' });
+    res.json({ ok: !!wa?.sent, message_id: wa?.message_id || null, to: wa?.to || null });
+  } catch (e) {
+    res.status(200).json({ ok: false, error: e.message });
   }
 });
 
