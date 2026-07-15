@@ -1509,6 +1509,67 @@ app.post('/api/admin/notificaciones', async (req, res) => {
   }
 });
 
+// ── DEMO: recordatorio "cupón sin usar" a las que confirmaron recibo pero NO publicaron ──
+// Audiencia fija (no arbitraria): confirmaron recibo del kit + sin registro en `contenidos`.
+// Repara de paso los cupones dañados (los que se generaron desde una URL de Instagram o quedaron vacíos)
+// creando uno limpio en Shopify a partir del nombre, y luego envía cupon_sin_usar con el cupón real.
+// dry_run:true → solo previsualiza (no crea cupones ni envía).
+app.post('/api/admin/demo/recordar-cupon', async (req, res) => {
+  try {
+    const dryRun = !!(req.body && req.body.dry_run);
+    const cuponRoto = (c) => !c
+      || /instagram|nosubo/i.test(c)
+      || /^\d+$/.test(c)
+      || c.replace(/10$/, '').replace(/[^a-zA-Z0-9]/g, '').length < 3;
+
+    const [todas, contenidos] = await Promise.all([
+      supabase.getInfluencersConTelefono(),
+      supabase.getContenidos(),
+    ]);
+    const publicaron = new Set(contenidos.map(c => c.influencer_id));
+    const objetivo = todas.filter(i => i.fecha_confirmacion_recibo && i.telefono && !publicaron.has(i.id));
+
+    const resultados = [];
+    for (const inf of objetivo) {
+      try {
+        const ya = await supabase.yaEnviadoTemplate(inf.id, 'cupon_sin_usar_brujeria');
+        if (ya) { resultados.push({ id: inf.id, nombre: inf.nombre, ok: false, skipped: true, razon: 'ya enviado' }); continue; }
+
+        // Reparar cupón dañado creando uno limpio desde el nombre
+        let reparado = false;
+        if (cuponRoto(inf.codigo_descuento)) {
+          const base = inf.nombre || ('creadora' + inf.id);
+          let code;
+          try { code = await shopify.createDiscountCode(base); }
+          catch (e1) { code = await shopify.createDiscountCode(base + inf.id); }
+          await supabase.updateInfluencer(inf.id, { codigo_descuento: code });
+          inf.codigo_descuento = code;
+          reparado = true;
+        }
+
+        if (dryRun) {
+          resultados.push({ id: inf.id, nombre: inf.nombre, ok: true, dry_run: true, codigo: inf.codigo_descuento, reparado });
+          continue;
+        }
+
+        const wa = await enviarCuponSinUsar(inf);
+        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'cupon_sin_usar_brujeria', 'admin');
+        resultados.push({ id: inf.id, nombre: inf.nombre, ok: !!wa?.sent, codigo: inf.codigo_descuento, reparado, error: wa?.sent ? undefined : (wa?.error || 'no enviado') });
+      } catch (e) {
+        resultados.push({ id: inf.id, nombre: inf.nombre, ok: false, error: e.message });
+      }
+    }
+
+    const enviadas = resultados.filter(r => r.ok && !r.dry_run && !r.skipped).length;
+    const reparadas = resultados.filter(r => r.reparado).length;
+    console.log(`[demo/recordar-cupon] objetivo=${objetivo.length} enviadas=${enviadas} reparadas=${reparadas} dry=${dryRun}`);
+    res.json({ ok: true, objetivo: objetivo.length, enviadas, reparadas, dry_run: dryRun, resultados });
+  } catch (e) {
+    console.error('[demo/recordar-cupon] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // â”€â”€ IMPORTACIÃ“N MASIVA DE INFLUENCERS (token protegido, un solo uso) â”€â”€
 app.post('/api/admin/influencers/bulk-import', async (req, res) => {
   const { influencers, token } = req.body;
