@@ -1535,9 +1535,17 @@ app.post('/api/admin/demo/recordar-cupon', async (req, res) => {
         const ya = await supabase.yaEnviadoTemplate(inf.id, 'cupon_sin_usar_brujeria');
         if (ya) { resultados.push({ id: inf.id, nombre: inf.nombre, ok: false, skipped: true, razon: 'ya enviado' }); continue; }
 
+        const necesitaReparar = cuponRoto(inf.codigo_descuento);
+
+        // En previsualización NO se crean cupones ni se envía: solo se informa qué pasaría.
+        if (dryRun) {
+          resultados.push({ id: inf.id, nombre: inf.nombre, ok: true, dry_run: true, codigo: inf.codigo_descuento, reparado: necesitaReparar });
+          continue;
+        }
+
         // Reparar cupón dañado creando uno limpio desde el nombre
         let reparado = false;
-        if (cuponRoto(inf.codigo_descuento)) {
+        if (necesitaReparar) {
           const base = inf.nombre || ('creadora' + inf.id);
           let code;
           try { code = await shopify.createDiscountCode(base); }
@@ -1545,11 +1553,6 @@ app.post('/api/admin/demo/recordar-cupon', async (req, res) => {
           await supabase.updateInfluencer(inf.id, { codigo_descuento: code });
           inf.codigo_descuento = code;
           reparado = true;
-        }
-
-        if (dryRun) {
-          resultados.push({ id: inf.id, nombre: inf.nombre, ok: true, dry_run: true, codigo: inf.codigo_descuento, reparado });
-          continue;
         }
 
         const wa = await enviarCuponSinUsar(inf);
