@@ -13,7 +13,7 @@ const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, e
 const acuerdo = require('./acuerdo');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro', '/acuerdo', '/api/acuerdo/', '/api/wa-status', '/api/onboarding-status'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro', '/acuerdo', '/api/acuerdo/', '/api/wa-status', '/api/onboarding-status', '/api/demo/test-entrega'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -1618,6 +1618,33 @@ app.post('/api/admin/demo/recordar-cupon', async (req, res) => {
   } catch (e) {
     console.error('[demo/recordar-cupon] Error:', e.message);
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ── PRUEBA DE ENTREGA (pública, bloqueada a la allowlist de números) ──
+// Envía una plantilla de la secuencia a un número propio para VERLA. Solo a números en la lista
+// (no abusable para spam). Acepta { telefono, template }. Temporal.
+const TEST_ENTREGA_ALLOWLIST = ['573207133122'];
+const TEST_ENTREGA_TEMPLATES = {
+  checklist: (inf) => enviarChecklistPublicar(inf),
+  vender: (inf) => enviarVenderMas(inf),
+  ideas: (inf) => enviarIdeasVideo(inf),
+  cupon: (inf) => enviarCuponSinUsar({ ...inf, codigo_descuento: 'PRUEBA10' }),
+};
+app.post('/api/demo/test-entrega', async (req, res) => {
+  const num = String((req.body && req.body.telefono) || '').replace(/\D/g, '');
+  if (!TEST_ENTREGA_ALLOWLIST.includes(num)) {
+    return res.status(403).json({ error: 'Número no permitido para prueba' });
+  }
+  const which = (req.body && req.body.template) || 'checklist';
+  const fn = TEST_ENTREGA_TEMPLATES[which];
+  if (!fn) return res.status(400).json({ error: 'Plantilla no permitida' });
+  try {
+    const wa = await fn({ nombre: 'María', telefono: num });
+    if (wa?.skipped) return res.json({ ok: false, skipped: true, motivo: 'WhatsApp no configurado o teléfono inválido' });
+    res.json({ ok: !!wa?.sent, template: which, message_id: wa?.message_id || null, to: wa?.to || null });
+  } catch (e) {
+    res.status(200).json({ ok: false, error: e.message });
   }
 });
 
