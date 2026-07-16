@@ -481,7 +481,7 @@
       const [filtered, setFiltered] = useState([]);
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
-      const [filters, setFilters] = useState({ status: '', tier: '', nivel_bruja: '', search: '', preferencias: '', envio: '' });
+      const [filters, setFilters] = useState({ status: '', tier: '', nivel_bruja: '', search: '', preferencias: '', envio: '', cabello: '' });
       const [tipo, setTipo] = useState('influencer'); // 'influencer' (elegidas por el equipo) | 'ugc' (se postulan solas)
       const [ugcEnviados, setUgcEnviados] = useState(new Set()); // ids UGC con kit ya enviado (tabla ugc_regalos)
       const [updatingStatus, setUpdatingStatus] = useState(null);
@@ -534,6 +534,11 @@
         if (filters.envio === 'listas') res = res.filter(i => datosCompletos(i) && sinEnvio(i));
         else if (filters.envio === 'enviadas') res = res.filter(i => !sinEnvio(i));
         else if (filters.envio === 'incompletos') res = res.filter(i => !datosCompletos(i) && sinEnvio(i));
+        if (filters.cabello) {
+          const c = i => String(i.tipo_cabello || '').trim().toLowerCase();
+          if (filters.cabello === 'no_crespo') res = res.filter(i => !['rizos', 'rizado', 'afro'].includes(c(i)));
+          else res = res.filter(i => c(i) === filters.cabello);
+        }
         setFiltered(res);
       }, [filters, all, tipo, ugcEnviados]);
 
@@ -667,8 +672,17 @@
                   <option value="incompletos">⚠️ Faltan datos (sin enviar)</option>
                   <option value="enviadas">✅ Ya enviadas</option>
                 </select>
-                {(filters.status || filters.tier || filters.nivel_bruja || filters.search || filters.preferencias || filters.envio) && (
-                  <button className="btn btn-secondary btn-sm" onClick={() => setFilters({ status: '', tier: '', nivel_bruja: '', search: '', preferencias: '', envio: '' })}>
+                <select value={filters.cabello} onChange={e => setFilter('cabello', e.target.value)}>
+                  <option value="">Cabello: todos</option>
+                  <option value="no_crespo">✨ No crespas/rizadas</option>
+                  <option value="liso">Liso</option>
+                  <option value="ondulado">Ondulado</option>
+                  <option value="rizos">Rizos</option>
+                  <option value="rizado">Rizado</option>
+                  <option value="afro">Afro</option>
+                </select>
+                {(filters.status || filters.tier || filters.nivel_bruja || filters.search || filters.preferencias || filters.envio || filters.cabello) && (
+                  <button className="btn btn-secondary btn-sm" onClick={() => setFilters({ status: '', tier: '', nivel_bruja: '', search: '', preferencias: '', envio: '', cabello: '' })}>
                     Limpiar
                   </button>
                 )}
