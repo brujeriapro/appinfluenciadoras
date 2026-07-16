@@ -481,7 +481,8 @@
       const [filtered, setFiltered] = useState([]);
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
-      const [filters, setFilters] = useState({ status: '', tier: '', nivel_bruja: '', search: '', preferencias: '' });
+      const [filters, setFilters] = useState({ status: '', tier: '', nivel_bruja: '', search: '', preferencias: '', envio: '' });
+      const [tipo, setTipo] = useState('influencer'); // 'influencer' (elegidas por el equipo) | 'ugc' (se postulan solas)
       const [updatingStatus, setUpdatingStatus] = useState(null);
       const [selInf, setSelInf] = useState(new Set());
       const [modalMasivo, setModalMasivo] = useState(false);
@@ -503,8 +504,13 @@
 
       useEffect(() => { load(); }, []);
 
+      // Separar por tipo: UGC (se postulan solas) vs Influencers (elegidas por el equipo)
+      const tiene = v => v != null && String(v).trim() !== '';
+      const datosCompletos = i => tiene(i.nombre) && tiene(i.telefono) && tiene(i.direccion_envio) && tiene(i.ciudad);
+      const sinEnvio = i => !tiene(i.fecha_envio) && !tiene(i.shopify_order_id) && !tiene(i.numero_guia);
+
       useEffect(() => {
-        let res = all;
+        let res = all.filter(i => tipo === 'ugc' ? !!i.ugc_activa : !i.ugc_activa);
         if (filters.status) res = res.filter(i => i.status === filters.status);
         if (filters.tier) res = res.filter(i => i.tier === filters.tier);
         if (filters.nivel_bruja) res = res.filter(i => i.nivel_bruja === filters.nivel_bruja);
@@ -519,8 +525,11 @@
         }
         if (filters.preferencias === 'si') res = res.filter(i => i.productos_favoritos && i.productos_favoritos.length > 0);
         if (filters.preferencias === 'no') res = res.filter(i => !i.productos_favoritos || i.productos_favoritos.length === 0);
+        if (filters.envio === 'listas') res = res.filter(i => datosCompletos(i) && sinEnvio(i));
+        else if (filters.envio === 'enviadas') res = res.filter(i => !sinEnvio(i));
+        else if (filters.envio === 'incompletos') res = res.filter(i => !datosCompletos(i) && sinEnvio(i));
         setFiltered(res);
-      }, [filters, all]);
+      }, [filters, all, tipo]);
 
       const setFilter = (k, v) => setFilters(f => ({ ...f, [k]: v }));
 
@@ -577,10 +586,33 @@
       if (loading) return <div className="loading">Cargando influencers...</div>;
       if (error) return <div className="error-msg">{error}</div>;
 
+      const countInfluencer = all.filter(i => !i.ugc_activa).length;
+      const countUgc = all.filter(i => i.ugc_activa).length;
+      const baseTipo = all.filter(i => tipo === 'ugc' ? !!i.ugc_activa : !i.ugc_activa);
+      const countListas = baseTipo.filter(i => datosCompletos(i) && sinEnvio(i)).length;
+      const cambiarTipo = (t) => { setTipo(t); setSelInf(new Set()); };
+      const tabStyle = (activo) => ({
+        padding: '8px 18px', borderRadius: 99, cursor: 'pointer', fontWeight: 600, fontSize: 14,
+        border: `1px solid ${activo ? 'var(--purple)' : 'var(--border)'}`,
+        background: activo ? 'var(--purple)' : 'transparent',
+        color: activo ? '#fff' : 'var(--text)',
+      });
+
       return (
         <div>
-          <h1>Influencers</h1>
-          <p className="page-subtitle">{filtered.length} de {all.length} influencers</p>
+          <h1>{tipo === 'ugc' ? 'Creadoras UGC' : 'Influencers'}</h1>
+          <div style={{ display: 'flex', gap: 10, margin: '10px 0 6px' }}>
+            <button style={tabStyle(tipo === 'influencer')} onClick={() => cambiarTipo('influencer')}>
+              Influencers <span style={{ opacity: 0.75 }}>({countInfluencer})</span>
+            </button>
+            <button style={tabStyle(tipo === 'ugc')} onClick={() => cambiarTipo('ugc')}>
+              Creadoras UGC <span style={{ opacity: 0.75 }}>({countUgc})</span>
+            </button>
+          </div>
+          <p className="page-subtitle">
+            {filtered.length} de {baseTipo.length} {tipo === 'ugc' ? 'creadoras UGC' : 'influencers'}
+            {countListas > 0 && <> · <b style={{ color: 'var(--purple-light)' }}>{countListas} listas para envío</b></>}
+          </p>
 
           {selInf.size > 0 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -623,8 +655,14 @@
                   <option value="si">💜 Con preferencias</option>
                   <option value="no">Sin preferencias</option>
                 </select>
-                {(filters.status || filters.tier || filters.nivel_bruja || filters.search || filters.preferencias) && (
-                  <button className="btn btn-secondary btn-sm" onClick={() => setFilters({ status: '', tier: '', nivel_bruja: '', search: '', preferencias: '' })}>
+                <select value={filters.envio} onChange={e => setFilter('envio', e.target.value)}>
+                  <option value="">Envío: todas</option>
+                  <option value="listas">📦 Listas para envío</option>
+                  <option value="incompletos">⚠️ Faltan datos (sin enviar)</option>
+                  <option value="enviadas">✅ Ya enviadas</option>
+                </select>
+                {(filters.status || filters.tier || filters.nivel_bruja || filters.search || filters.preferencias || filters.envio) && (
+                  <button className="btn btn-secondary btn-sm" onClick={() => setFilters({ status: '', tier: '', nivel_bruja: '', search: '', preferencias: '', envio: '' })}>
                     Limpiar
                   </button>
                 )}
