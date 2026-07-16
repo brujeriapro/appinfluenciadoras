@@ -483,6 +483,7 @@
       const [error, setError] = useState(null);
       const [filters, setFilters] = useState({ status: '', tier: '', nivel_bruja: '', search: '', preferencias: '', envio: '' });
       const [tipo, setTipo] = useState('influencer'); // 'influencer' (elegidas por el equipo) | 'ugc' (se postulan solas)
+      const [ugcEnviados, setUgcEnviados] = useState(new Set()); // ids UGC con kit ya enviado (tabla ugc_regalos)
       const [updatingStatus, setUpdatingStatus] = useState(null);
       const [selInf, setSelInf] = useState(new Set());
       const [modalMasivo, setModalMasivo] = useState(false);
@@ -493,10 +494,14 @@
       const [masivoEnviando, setMasivoEnviando] = useState(false);
 
       const load = () => {
-        API('/api/influencers')
-          .then(data => {
+        Promise.all([
+          API('/api/influencers'),
+          API('/api/ugc/regalos/enviados-ids').catch(() => ({ ids: [] })),
+        ])
+          .then(([data, env]) => {
             const sorted = data.sort((a, b) => new Date(b.fecha_registro) - new Date(a.fecha_registro));
             setAll(sorted); setFiltered(sorted);
+            setUgcEnviados(new Set((env && env.ids) || []));
           })
           .catch(e => setError(e.message))
           .finally(() => setLoading(false));
@@ -507,7 +512,8 @@
       // Separar por tipo: UGC (se postulan solas) vs Influencers (elegidas por el equipo)
       const tiene = v => v != null && String(v).trim() !== '';
       const datosCompletos = i => tiene(i.nombre) && tiene(i.telefono) && tiene(i.direccion_envio) && tiene(i.ciudad);
-      const sinEnvio = i => !tiene(i.fecha_envio) && !tiene(i.shopify_order_id) && !tiene(i.numero_guia);
+      // "Sin envío" = ni campos de envío de influencer, ni kit UGC enviado (tabla ugc_regalos)
+      const sinEnvio = i => !tiene(i.fecha_envio) && !tiene(i.shopify_order_id) && !tiene(i.numero_guia) && !ugcEnviados.has(i.id);
 
       useEffect(() => {
         let res = all.filter(i => tipo === 'ugc' ? !!i.ugc_activa : !i.ugc_activa);
@@ -529,7 +535,7 @@
         else if (filters.envio === 'enviadas') res = res.filter(i => !sinEnvio(i));
         else if (filters.envio === 'incompletos') res = res.filter(i => !datosCompletos(i) && sinEnvio(i));
         setFiltered(res);
-      }, [filters, all, tipo]);
+      }, [filters, all, tipo, ugcEnviados]);
 
       const setFilter = (k, v) => setFilters(f => ({ ...f, [k]: v }));
 

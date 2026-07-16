@@ -1888,6 +1888,17 @@ app.post('/api/ugc/pagos', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// IDs de creadoras UGC que ya tienen un regalo/kit enviado (para el panel de Influencers)
+app.get('/api/ugc/regalos/enviados-ids', async (req, res) => {
+  try {
+    const enviados = await supabase.getUGCRegalosEnviados();
+    const ids = [...new Set((enviados || []).map(r => r.influencer_id))];
+    res.json({ ids });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Listar todos los regalos pendientes de enviar
 app.get('/api/ugc/regalos-pendientes', async (req, res) => {
   try {
