@@ -481,7 +481,7 @@
       const [filtered, setFiltered] = useState([]);
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState(null);
-      const [filters, setFilters] = useState({ status: '', tier: '', nivel_bruja: '', search: '', preferencias: '', envio: '', cabello: '' });
+      const [filters, setFilters] = useState({ status: '', tier: '', nivel_bruja: '', search: '', preferencias: '', envio: '', cabello: '', fuente: '' });
       const [tipo, setTipo] = useState('influencer'); // 'influencer' (elegidas por el equipo) | 'ugc' (se postulan solas)
       const [ugcEnviados, setUgcEnviados] = useState(new Set()); // ids UGC con kit ya enviado (tabla ugc_regalos)
       const [updatingStatus, setUpdatingStatus] = useState(null);
@@ -539,6 +539,8 @@
           if (filters.cabello === 'no_crespo') res = res.filter(i => !['rizos', 'rizado', 'afro'].includes(c(i)));
           else res = res.filter(i => c(i) === filters.cabello);
         }
+        if (filters.fuente === 'importadas') res = res.filter(i => i.fuente === 'importacion');
+        else if (filters.fuente === 'registradas') res = res.filter(i => i.fuente === 'tally' || i.fuente === 'ugc_registro');
         setFiltered(res);
       }, [filters, all, tipo, ugcEnviados]);
 
@@ -681,8 +683,13 @@
                   <option value="rizado">Rizado</option>
                   <option value="afro">Afro</option>
                 </select>
-                {(filters.status || filters.tier || filters.nivel_bruja || filters.search || filters.preferencias || filters.envio || filters.cabello) && (
-                  <button className="btn btn-secondary btn-sm" onClick={() => setFilters({ status: '', tier: '', nivel_bruja: '', search: '', preferencias: '', envio: '', cabello: '' })}>
+                <select value={filters.fuente} onChange={e => setFilter('fuente', e.target.value)}>
+                  <option value="">Origen: todas</option>
+                  <option value="registradas">📝 Registradas</option>
+                  <option value="importadas">📥 Importadas</option>
+                </select>
+                {(filters.status || filters.tier || filters.nivel_bruja || filters.search || filters.preferencias || filters.envio || filters.cabello || filters.fuente) && (
+                  <button className="btn btn-secondary btn-sm" onClick={() => setFilters({ status: '', tier: '', nivel_bruja: '', search: '', preferencias: '', envio: '', cabello: '', fuente: '' })}>
                     Limpiar
                   </button>
                 )}
