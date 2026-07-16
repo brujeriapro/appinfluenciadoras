@@ -2757,27 +2757,40 @@ async function runCronSeguimiento() {
   }
 }
 
-setInterval(() => {
+// Fecha en la que NO se disparan corridas atrasadas (se marcan como hechas sin enviar).
+// María pidió no mandar los mensajes atrasados de ese día; el cron sigue normal el resto.
+const CRON_SKIP_DATE = '2026-07-16';
+
+// Robusto ante redeploys: dispara si YA PASÓ la hora programada y aún no corrió hoy
+// (>= en vez de == exacto). El dedup (yaEnviadoTemplate) evita reenvíos si corre de más.
+function revisarCrons() {
   const now = new Date();
   const hoy = now.toISOString().split('T')[0];
   const horaUTC = now.getUTCHours();
   const diaUTC = now.getUTCDay(); // 1 = lunes
 
-  // Diario a las 15:00 UTC (10am BogotÃ¡) â€” ideas post-envÃ­o
-  if (horaUTC === 15 && ultimoIdeas !== hoy) {
+  // No disparar corridas atrasadas en la fecha marcada (pero sí marcarlas como hechas)
+  if (hoy === CRON_SKIP_DATE) {
+    ultimoIdeas = ultimoOnboarding = ultimoSeguimiento = hoy;
+    return;
+  }
+
+  // Diario desde las 15:00 UTC (10am Bogotá) — ideas post-envío
+  if (horaUTC >= 15 && ultimoIdeas !== hoy) {
     ultimoIdeas = hoy;
     runCronIdeas();
   }
-
-  // Diario a las 16:00 UTC (11am Bogotá) — secuencia de onboarding de ventas
-  if (horaUTC === 16 && ultimoOnboarding !== hoy) {
+  // Diario desde las 16:00 UTC (11am Bogotá) — secuencia de onboarding de ventas
+  if (horaUTC >= 16 && ultimoOnboarding !== hoy) {
     ultimoOnboarding = hoy;
     runOnboardingVentas();
   }
-
-  // Lunes a las 14:00 UTC (9am BogotÃ¡) â€” seguimiento semanal
-  if (diaUTC === 1 && horaUTC === 14 && ultimoSeguimiento !== hoy) {
+  // Lunes desde las 14:00 UTC (9am Bogotá) — seguimiento semanal
+  if (diaUTC === 1 && horaUTC >= 14 && ultimoSeguimiento !== hoy) {
     ultimoSeguimiento = hoy;
     runCronSeguimiento();
   }
-}, 60 * 60 * 1000); // revisa cada hora
+}
+
+setInterval(revisarCrons, 60 * 60 * 1000); // revisa cada hora
+setTimeout(revisarCrons, 30 * 1000);       // y una vez al arrancar — catch-up tras redeploys
