@@ -1653,7 +1653,7 @@ app.post('/api/admin/demo/recordar-cupon', async (req, res) => {
 // ── PRUEBA DE ENTREGA (pública, bloqueada a la allowlist de números) ──
 // Envía una plantilla de la secuencia a un número propio para VERLA. Solo a números en la lista
 // (no abusable para spam). Acepta { telefono, template }. Temporal.
-const TEST_ENTREGA_ALLOWLIST = ['573207133122'];
+const TEST_ENTREGA_ALLOWLIST = ['573207133122', '573014225113'];
 const TEST_ENTREGA_TEMPLATES = {
   checklist: (inf) => enviarChecklistPublicar(inf),
   vender: (inf) => enviarVenderMas(inf),
