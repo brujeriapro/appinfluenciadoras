@@ -2196,6 +2196,19 @@
       const [regUrl, setRegUrl] = useState('');
       const [regPlat, setRegPlat] = useState('Instagram');
       const [saving, setSaving] = useState(false);
+      const [enviando, setEnviando] = useState(false);
+      const [resEnvio, setResEnvio] = useState(null);
+
+      const recordarCodigo = async () => {
+        const n = data.filter(c => !c.publico && c.kit_enviado).length;
+        if (!window.confirm(`Vas a mandar por WhatsApp el recordatorio de código + pedir reporte a ${n} creadoras (con kit, sin publicación registrada). ¿Confirmas?`)) return;
+        setEnviando(true); setResEnvio(null);
+        try {
+          const r = await POSTJSON('/api/ugc/recordar-codigo', {});
+          setResEnvio(r);
+        } catch (e) { setResEnvio({ error: e.message }); }
+        finally { setEnviando(false); }
+      };
 
       const load = () => {
         setLoading(true);
@@ -2251,6 +2264,15 @@
             <Chip label="⏳ Kit enviado, sin publicar" val={counts.pendiente} color="#b45309" active={filtro === 'pendiente'} on={() => setFiltro('pendiente')} />
             <Chip label="○ Sin kit" val={counts.sin_kit} color="#6b7280" active={filtro === 'sin_kit'} on={() => setFiltro('sin_kit')} />
             <input type="text" value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar nombre / @..." style={{ padding: '6px 10px', maxWidth: 200, marginLeft: 'auto' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface, var(--bg3))' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>📣 Recordarles su código y pedirles que reporten si ya publicaron (a las {counts.pendiente} con kit sin publicar):</span>
+            <button className="btn btn-primary btn-sm" onClick={recordarCodigo} disabled={enviando || counts.pendiente === 0}>
+              {enviando ? 'Enviando...' : `Enviar a ${counts.pendiente}`}
+            </button>
+            {resEnvio && (resEnvio.error
+              ? <span style={{ fontSize: 12, color: 'var(--danger, #e00)' }}>Error: {resEnvio.error}</span>
+              : <span style={{ fontSize: 12 }}>✅ Enviadas: <b>{resEnvio.enviadas}</b>{resEnvio.skipped ? ` · omitidas ${resEnvio.skipped}` : ''}{resEnvio.resultados && resEnvio.resultados.filter(r => !r.ok && !r.skipped).length ? ` · fallidas ${resEnvio.resultados.filter(r => !r.ok && !r.skipped).length}` : ''}</span>)}
           </div>
           <div className="table-wrap">
             <table>

@@ -223,6 +223,14 @@ async function enviarCierreQuincena(influencer) {
   const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre || 'creadora';
   return enviarTemplate(influencer.telefono, 'cierre_quincena_brujeria', [nombre]);
 }
+// Recordar código UGC + pedir que reporten si ya publicaron
+// Template: recordar_codigo_reportar_brujeria · {{1}} nombre · {{2}} código · botón URL estático → form de reporte
+async function enviarRecordarCodigoReportar(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre || 'creadora';
+  const codigo = influencer.codigo_ugc || influencer.codigo_descuento || 'tu código';
+  return enviarTemplate(influencer.telefono, 'recordar_codigo_reportar_brujeria', [nombre, codigo]);
+}
+
 // Cupón aún sin usar (0 ventas) · Template: cupon_sin_usar_brujeria · {{1}} nombre · {{2}} código
 // El cupón real que funciona en Shopify vive en codigo_descuento; codigo_ugc casi siempre está vacío.
 async function enviarCuponSinUsar(influencer) {
@@ -253,4 +261,5 @@ module.exports = {
   enviarVenderMas,
   enviarCierreQuincena,
   enviarCuponSinUsar,
+  enviarRecordarCodigoReportar,
 };

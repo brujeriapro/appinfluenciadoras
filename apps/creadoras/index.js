@@ -9,7 +9,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido, enviarResetPassword } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida, enviarUGCConfirmacionRegistro, enviarAcuerdo, enviarRegaloEnCamino, enviarRegaloLlego, enviarIdeasVideo, enviarChecklistPublicar, enviarVenderMas, enviarCierreQuincena, enviarCuponSinUsar } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida, enviarUGCConfirmacionRegistro, enviarAcuerdo, enviarRegaloEnCamino, enviarRegaloLlego, enviarIdeasVideo, enviarChecklistPublicar, enviarVenderMas, enviarCierreQuincena, enviarCuponSinUsar, enviarRecordarCodigoReportar } = require('./whatsapp');
 const acuerdo = require('./acuerdo');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
@@ -1961,6 +1961,42 @@ app.get('/api/ugc/seguimiento', async (req, res) => {
       };
     });
     res.json({ total: creadoras.length, creadoras });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Recordar código UGC + pedir reporte de publicación. Audiencia: UGC con kit enviado.
+// Por defecto solo a las que NO tienen publicación registrada (solo_sin_publicar). Dedup por plantilla.
+app.post('/api/ugc/recordar-codigo', async (req, res) => {
+  try {
+    const soloSinPublicar = !(req.body && req.body.solo_sin_publicar === false);
+    const [todas, contenidos, regalos] = await Promise.all([
+      supabase.getInfluencers({}),
+      supabase.getContenidos(),
+      supabase.getUGCRegalosEnviados(),
+    ]);
+    const kit = new Set(regalos.filter(r => r.fecha_envio).map(r => r.influencer_id));
+    const pub = new Set(contenidos.map(c => c.influencer_id));
+    let objetivo = todas.filter(i => i.ugc_activa && i.telefono && i.codigo_ugc && kit.has(i.id));
+    if (soloSinPublicar) objetivo = objetivo.filter(i => !pub.has(i.id));
+
+    const resultados = [];
+    for (const inf of objetivo) {
+      try {
+        const ya = await supabase.yaEnviadoTemplate(inf.id, 'recordar_codigo_reportar_brujeria');
+        if (ya) { resultados.push({ id: inf.id, nombre: inf.nombre, ok: false, skipped: true }); continue; }
+        const wa = await enviarRecordarCodigoReportar(inf);
+        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'recordar_codigo_reportar_brujeria', 'admin');
+        resultados.push({ id: inf.id, nombre: inf.nombre, ok: !!wa?.sent, error: wa?.sent ? undefined : (wa?.error || wa?.motivo || 'no enviado') });
+      } catch (e) {
+        resultados.push({ id: inf.id, nombre: inf.nombre, ok: false, error: e.message });
+      }
+    }
+    const enviadas = resultados.filter(r => r.ok).length;
+    const skipped = resultados.filter(r => r.skipped).length;
+    console.log(`[ugc/recordar-codigo] objetivo=${objetivo.length} enviadas=${enviadas} skipped=${skipped}`);
+    res.json({ ok: true, objetivo: objetivo.length, enviadas, skipped, resultados });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
