@@ -475,6 +475,35 @@ app.get('/api/contenidos', async (req, res) => {
   }
 });
 
+// Registrar una publicación a mano (verificada por el equipo desde el panel)
+app.post('/api/contenidos', async (req, res) => {
+  try {
+    const { influencer_id, url_contenido, plataforma, tipo_contenido, vistas } = req.body || {};
+    if (!influencer_id || !url_contenido?.trim()) {
+      return res.status(400).json({ error: 'influencer_id y url_contenido son requeridos' });
+    }
+    const nuevo = await supabase.insertContenido({
+      influencer_id,
+      fecha_submision: new Date().toISOString(),
+      tipo_contenido: tipo_contenido || 'Reel',
+      plataforma: plataforma || 'Instagram',
+      url_contenido: url_contenido.trim(),
+      vistas: parseInt(vistas) || 0,
+      notas_equipo: 'Registrado manualmente desde el panel',
+    });
+    // Avanzar el estado si aún no reflejaba contenido entregado
+    try {
+      const inf = await supabase.getInfluencerById(influencer_id);
+      if (inf && !['Contenido Entregado', 'Calificada'].includes(inf.status)) {
+        await supabase.updateInfluencer(influencer_id, { status: 'Contenido Entregado' });
+      }
+    } catch (_) {}
+    res.json({ ok: true, contenido: nuevo });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // â”€â”€ ROI / VENTAS SHOPIFY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.get('/api/roi', async (req, res) => {
   try {
@@ -1886,6 +1915,55 @@ app.post('/api/ugc/pagos', async (req, res) => {
     });
     res.json(pago);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Seguimiento de publicaciones UGC: por creadora, si tiene kit enviado, días transcurridos,
+// si ya publicó (tiene contenido registrado) y sus publicaciones. Base del tablero de seguimiento.
+app.get('/api/ugc/seguimiento', async (req, res) => {
+  try {
+    const [todas, contenidos, regalos] = await Promise.all([
+      supabase.getInfluencers({}),
+      supabase.getContenidos(),
+      supabase.getUGCRegalosEnviados(),
+    ]);
+    // fecha del primer kit enviado por creadora
+    const kitPorInf = {};
+    for (const r of regalos) {
+      if (!r.fecha_envio) continue;
+      const prev = kitPorInf[r.influencer_id];
+      if (!prev || new Date(r.fecha_envio) < new Date(prev)) kitPorInf[r.influencer_id] = r.fecha_envio;
+    }
+    // publicaciones por creadora
+    const contPorInf = {};
+    for (const c of contenidos) {
+      (contPorInf[c.influencer_id] = contPorInf[c.influencer_id] || []).push({
+        url: c.url_contenido, plataforma: c.plataforma, vistas: c.vistas || 0, fecha: c.fecha_submision,
+      });
+    }
+    const now = Date.now();
+    const creadoras = todas.filter(i => i.ugc_activa).map(i => {
+      const kit = kitPorInf[i.id] || null;
+      const conts = (contPorInf[i.id] || []).sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
+      return {
+        id: i.id,
+        nombre: i.nombre,
+        instagram_handle: i.instagram_handle || null,
+        tiktok_handle: i.tiktok_handle || null,
+        telefono: i.telefono || null,
+        codigo_ugc: i.codigo_ugc || null,
+        status: i.status,
+        kit_enviado: !!kit,
+        kit_fecha: kit,
+        dias_desde_kit: kit ? Math.floor((now - new Date(kit).getTime()) / 86400000) : null,
+        publico: conts.length > 0,
+        num_contenidos: conts.length,
+        contenidos: conts,
+      };
+    });
+    res.json({ total: creadoras.length, creadoras });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // IDs de creadoras UGC que ya tienen un regalo/kit enviado (para el panel de Influencers)

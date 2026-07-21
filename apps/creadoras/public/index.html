@@ -2166,6 +2166,7 @@
             <button className={view === 'notificaciones' ? 'active' : ''} onClick={() => navigate('notificaciones')}>Notificaciones</button>
             <button className={view === 'solicitudes' ? 'active' : ''} onClick={() => navigate('solicitudes')}>Solicitudes</button>
             <button className={view === 'candidatas' ? 'active' : ''} onClick={() => navigate('candidatas')}>Candidatas TikTok</button>
+            <button className={view === 'seguimiento' ? 'active' : ''} onClick={() => navigate('seguimiento')}>📋 Seguimiento</button>
             <button className={view === 'ugc' ? 'active' : ''} onClick={() => navigate('ugc')} style={{color:'var(--gold)'}}>💰 UGC</button>
           </nav>
           <main>
@@ -2177,8 +2178,115 @@
             {view === 'notificaciones' && <Notificaciones />}
             {view === 'solicitudes' && <Solicitudes />}
             {view === 'candidatas' && <Candidatas />}
+            {view === 'seguimiento' && <SeguimientoUGC />}
             {view === 'ugc' && <UGC />}
           </main>
+        </div>
+      );
+    }
+
+    // ── SEGUIMIENTO DE PUBLICACIONES UGC ──────────────────────────────────────
+    function SeguimientoUGC() {
+      const [data, setData] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [filtro, setFiltro] = useState('todas');
+      const [busca, setBusca] = useState('');
+      const [regId, setRegId] = useState(null);
+      const [regUrl, setRegUrl] = useState('');
+      const [regPlat, setRegPlat] = useState('Instagram');
+      const [saving, setSaving] = useState(false);
+
+      const load = () => {
+        setLoading(true);
+        API('/api/ugc/seguimiento')
+          .then(r => setData(r.creadoras || []))
+          .catch(e => setError(e.message))
+          .finally(() => setLoading(false));
+      };
+      useEffect(() => { load(); }, []);
+
+      const estado = c => c.publico ? 'publico' : c.kit_enviado ? 'pendiente' : 'sin_kit';
+      const counts = {
+        publico: data.filter(c => c.publico).length,
+        pendiente: data.filter(c => !c.publico && c.kit_enviado).length,
+        sin_kit: data.filter(c => !c.publico && !c.kit_enviado).length,
+      };
+      const q = busca.trim().toLowerCase();
+      const filtrada = data.filter(c =>
+        (filtro === 'todas' || estado(c) === filtro) &&
+        (!q || (c.nombre || '').toLowerCase().includes(q) || (c.instagram_handle || '').toLowerCase().includes(q) || (c.tiktok_handle || '').toLowerCase().includes(q))
+      );
+      const igUrl = h => { if (!h) return null; if (/^https?:/i.test(h)) return h; return 'https://instagram.com/' + h.replace(/^@/, ''); };
+      const ttUrl = h => { if (!h) return null; if (/^https?:/i.test(h)) return h; return 'https://tiktok.com/@' + h.replace(/^@/, ''); };
+
+      const registrar = async () => {
+        if (!regUrl.trim()) return;
+        setSaving(true);
+        try {
+          await POSTJSON('/api/contenidos', { influencer_id: regId, url_contenido: regUrl.trim(), plataforma: regPlat });
+          setRegId(null); setRegUrl(''); setRegPlat('Instagram');
+          load();
+        } catch (e) { alert('Error: ' + e.message); }
+        finally { setSaving(false); }
+      };
+
+      if (loading) return <div className="loading">Cargando seguimiento...</div>;
+      if (error) return <div className="error-msg">{error}</div>;
+
+      const Chip = ({ label, val, color, active, on }) => (
+        <button onClick={on} style={{ padding: '6px 12px', borderRadius: 99, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+          border: `1px solid ${active ? color : 'var(--border)'}`, background: active ? color : 'transparent', color: active ? '#fff' : 'var(--text)' }}>
+          {label} <span style={{ opacity: .8 }}>({val})</span>
+        </button>
+      );
+
+      return (
+        <div>
+          <h1>Seguimiento de publicaciones UGC</h1>
+          <p className="page-subtitle">{filtrada.length} de {data.length} creadoras · marca quién publicó y verifica en sus redes</p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '12px 0' }}>
+            <Chip label="Todas" val={data.length} color="var(--purple)" active={filtro === 'todas'} on={() => setFiltro('todas')} />
+            <Chip label="✅ Publicó" val={counts.publico} color="#1a7f4b" active={filtro === 'publico'} on={() => setFiltro('publico')} />
+            <Chip label="⏳ Kit enviado, sin publicar" val={counts.pendiente} color="#b45309" active={filtro === 'pendiente'} on={() => setFiltro('pendiente')} />
+            <Chip label="○ Sin kit" val={counts.sin_kit} color="#6b7280" active={filtro === 'sin_kit'} on={() => setFiltro('sin_kit')} />
+            <input type="text" value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar nombre / @..." style={{ padding: '6px 10px', maxWidth: 200, marginLeft: 'auto' }} />
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Creadora</th><th>Redes</th><th>Kit</th><th>Estado</th><th>Publicaciones</th><th>Acción</th>
+              </tr></thead>
+              <tbody>
+                {filtrada.length === 0 ? <tr><td colSpan="6" className="empty-state">Sin resultados</td></tr> :
+                 filtrada.map(c => (
+                  <React.Fragment key={c.id}>
+                  <tr>
+                    <td><b>{c.nombre}</b>{c.codigo_ugc && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.codigo_ugc}</div>}</td>
+                    <td>
+                      {igUrl(c.instagram_handle) && <a href={igUrl(c.instagram_handle)} target="_blank" rel="noopener" style={{ marginRight: 8 }}>IG↗</a>}
+                      {ttUrl(c.tiktok_handle) && <a href={ttUrl(c.tiktok_handle)} target="_blank" rel="noopener">TikTok↗</a>}
+                      {!c.instagram_handle && !c.tiktok_handle && <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                    </td>
+                    <td>{c.kit_enviado ? <span>{fmtDate(c.kit_fecha)} <span style={{ color: 'var(--text-muted)' }}>({c.dias_desde_kit}d)</span></span> : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
+                    <td>{c.publico ? <span className="badge badge-calificada">✅ Publicó</span> : c.kit_enviado ? <span className="badge badge-enviado">⏳ Esperando</span> : <span className="badge badge-registrada">○ Sin kit</span>}</td>
+                    <td>{c.num_contenidos > 0 ? <span>{c.num_contenidos} · {c.contenidos.filter(x => x.url).slice(0, 3).map((x, i) => <a key={i} href={x.url} target="_blank" rel="noopener" style={{ marginRight: 6 }}>{x.plataforma || 'link'}↗</a>)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span>}</td>
+                    <td><button className="btn btn-secondary btn-sm" onClick={() => { setRegId(regId === c.id ? null : c.id); setRegUrl(''); }}>{regId === c.id ? 'Cancelar' : '+ Registrar'}</button></td>
+                  </tr>
+                  {regId === c.id &&
+                  <tr><td colSpan="6" style={{ background: 'var(--bg3)' }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '6px 2px' }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Pega el link de la publicación de {c.nombre}:</span>
+                      <input type="text" value={regUrl} onChange={e => setRegUrl(e.target.value)} placeholder="https://instagram.com/reel/..." style={{ padding: '6px 10px', minWidth: 260, flex: 1 }} autoFocus />
+                      <select value={regPlat} onChange={e => setRegPlat(e.target.value)}><option>Instagram</option><option>TikTok</option></select>
+                      <button className="btn btn-primary btn-sm" onClick={registrar} disabled={saving || !regUrl.trim()}>{saving ? 'Guardando...' : 'Guardar'}</button>
+                    </div>
+                  </td></tr>}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       );
     }
