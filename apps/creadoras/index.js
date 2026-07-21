@@ -1659,6 +1659,7 @@ const TEST_ENTREGA_TEMPLATES = {
   vender: (inf) => enviarVenderMas(inf),
   ideas: (inf) => enviarIdeasVideo(inf),
   cupon: (inf) => enviarCuponSinUsar({ ...inf, codigo_descuento: 'PRUEBA10' }),
+  recordar: (inf) => enviarRecordarCodigoReportar({ ...inf, codigo_ugc: 'BYMARIANAMARUGC10' }),
 };
 app.post('/api/demo/test-entrega', async (req, res) => {
   const num = String((req.body && req.body.telefono) || '').replace(/\D/g, '');
