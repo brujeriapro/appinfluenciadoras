@@ -1985,10 +1985,10 @@ app.post('/api/ugc/recordar-codigo', async (req, res) => {
     const resultados = [];
     for (const inf of objetivo) {
       try {
-        const ya = await supabase.yaEnviadoTemplate(inf.id, 'recordar_codigo_reportar_brujeria');
+        const ya = await supabase.yaEnviadoTemplate(inf.id, 'recordar_codigo_reportar_brujeria2');
         if (ya) { resultados.push({ id: inf.id, nombre: inf.nombre, ok: false, skipped: true }); continue; }
         const wa = await enviarRecordarCodigoReportar(inf);
-        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'recordar_codigo_reportar_brujeria', 'admin');
+        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'recordar_codigo_reportar_brujeria2', 'admin');
         resultados.push({ id: inf.id, nombre: inf.nombre, ok: !!wa?.sent, error: wa?.sent ? undefined : (wa?.error || wa?.motivo || 'no enviado') });
       } catch (e) {
         resultados.push({ id: inf.id, nombre: inf.nombre, ok: false, error: e.message });

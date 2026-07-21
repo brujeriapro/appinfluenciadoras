@@ -228,7 +228,7 @@ async function enviarCierreQuincena(influencer) {
 async function enviarRecordarCodigoReportar(influencer) {
   const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre || 'creadora';
   const codigo = influencer.codigo_ugc || influencer.codigo_descuento || 'tu código';
-  return enviarTemplate(influencer.telefono, 'recordar_codigo_reportar_brujeria', [nombre, codigo]);
+  return enviarTemplate(influencer.telefono, 'recordar_codigo_reportar_brujeria2', [nombre, codigo]);
 }
 
 // Cupón aún sin usar (0 ventas) · Template: cupon_sin_usar_brujeria · {{1}} nombre · {{2}} código
