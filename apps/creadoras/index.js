@@ -614,7 +614,7 @@ app.post('/api/webhooks/registro', rateLimit({ windowMs: 60000, max: 20 }), asyn
     const departamento = tallyVal(fields, 'departamento', 'department', 'depto');
     const direccion    = tallyVal(fields, 'direcciÃ³n de envÃ­o', 'direccion de envio', 'direcciÃ³n', 'direccion', 'address');
     const tipoCabello  = tallyVal(fields, 'tipo de cabello', 'tipo cabello', 'hair type', 'cabello');
-    const password     = tallyVal(fields, 'contraseña', 'contrasena', 'clave', 'password', 'crea tu contraseña', 'contraseña portal');
+    const password     = tallyVal(fields, 'contraseña para tu portal', 'contraseña', 'contrasena', 'clave', 'password', 'crea tu contraseña', 'contraseña portal', 'contraseña del portal');
 
     if (!nombre || !email) {
       return res.status(400).json({ error: 'Faltan campos obligatorios: nombre y email' });
