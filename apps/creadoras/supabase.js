@@ -327,10 +327,16 @@ async function updateSolicitudReenvio(id, data) {
 // ── UGC ──────────────────────────────────────────────────────────────────────
 
 async function enrollUGC(influencer_id, codigo_ugc) {
+  // Al mover a UGC, arrancamos el proceso desde cero: activa UGC + resetea
+  // el acuerdo, la confirmación de recibo y el status para un onboarding limpio.
   return supabasePatch('influencers', { id: influencer_id }, {
     codigo_ugc,
     ugc_activa: true,
     ugc_fecha_inicio: new Date().toISOString(),
+    acuerdo_firmado: false,
+    fecha_confirmacion_recibo: null,
+    paquete_no_llego: false,
+    status: 'Registrada',
   });
 }
 

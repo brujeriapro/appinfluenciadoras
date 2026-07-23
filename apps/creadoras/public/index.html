@@ -844,6 +844,7 @@
       const [modalDepartamento, setModalDepartamento] = useState('');
       const [modalTelefono, setModalTelefono] = useState('');
       const [modalCodigoPostal, setModalCodigoPostal] = useState('');
+      const [moviendoUGC, setMoviendoUGC] = useState(false);
 
       const load = useCallback(() => {
         setLoading(true);
@@ -941,6 +942,21 @@
         }
       };
 
+      const moverAUGC = async () => {
+        if (!confirm(`¿Mover a ${data.nombre} a Creadora UGC?\n\nSe le crea/reutiliza su código UGC y un regalo (kit) pendiente, y arranca el proceso UGC desde cero: acuerdo → kit → onboarding. Aparecerá en la pestaña Creadoras UGC.`)) return;
+        setMoviendoUGC(true);
+        try {
+          const r = await fetch(`/api/ugc/enroll/${id}`, { method: 'POST' }).then(r => r.json());
+          if (r.error) throw new Error(r.error);
+          alert(`✓ ${data.nombre} ahora es Creadora UGC.\nCódigo: ${r.codigo || '—'}\n\nSíguela desde la pestaña Creadoras UGC (pídele la firma del acuerdo y despacha su kit).`);
+          onBack();
+        } catch (e) {
+          setError(e.message);
+        } finally {
+          setMoviendoUGC(false);
+        }
+      };
+
       const tierSugerencia = { 'Nano': 1, 'Micro': 2, 'Macro': 3 };
 
       if (loading) return <div className="loading">Cargando...</div>;
@@ -960,6 +976,11 @@
             {puedeEnviar && (
               <button className="btn btn-primary" onClick={abrirModal}>
                 📦 Enviar Kit
+              </button>
+            )}
+            {!data.ugc_activa && (
+              <button className="btn" style={{ background: 'var(--purple)' }} disabled={moviendoUGC} onClick={moverAUGC}>
+                {moviendoUGC ? 'Moviendo…' : '✦ Mover a creadora UGC'}
               </button>
             )}
           </div>
