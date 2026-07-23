@@ -704,6 +704,7 @@
                     <input type="checkbox" checked={todasSel} onChange={toggleTodas} title="Seleccionar todas" style={{ cursor: 'pointer' }} />
                   </th>
                   <th>Nombre</th>
+                  <th>Registro</th>
                   <th>Instagram</th>
                   <th>TikTok</th>
                   <th>Seguidores</th>
@@ -712,7 +713,6 @@
                   <th>Status</th>
                   <th>Nivel Bruja</th>
                   <th>Score</th>
-                  <th>Registro</th>
                 </tr>
               </thead>
               <tbody>
@@ -724,6 +724,7 @@
                       <input type="checkbox" checked={selInf.has(inf.id)} onChange={() => toggleUna(inf.id)} style={{ cursor: 'pointer' }} />
                     </td>
                     <td style={{ fontWeight: 500 }}>{inf.nombre || '—'}</td>
+                    <td className="td-muted" style={{ whiteSpace: 'nowrap' }}>{fmtDate(inf.fecha_registro)}</td>
                     <td className="td-muted">{inf.instagram_handle || '—'}</td>
                     <td className="td-muted">
                       {inf.tiktok_handle
@@ -751,7 +752,6 @@
                     </td>
                     <td><NivelBadge nivel={inf.nivel_bruja} /></td>
                     <td style={{ minWidth: 120 }}><ScoreBar score={inf.score_total} /></td>
-                    <td className="td-muted">{fmtDate(inf.fecha_registro)}</td>
                   </tr>
                 ))}
               </tbody>
