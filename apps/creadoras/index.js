@@ -614,6 +614,7 @@ app.post('/api/webhooks/registro', rateLimit({ windowMs: 60000, max: 20 }), asyn
     const departamento = tallyVal(fields, 'departamento', 'department', 'depto');
     const direccion    = tallyVal(fields, 'direcciÃ³n de envÃ­o', 'direccion de envio', 'direcciÃ³n', 'direccion', 'address');
     const tipoCabello  = tallyVal(fields, 'tipo de cabello', 'tipo cabello', 'hair type', 'cabello');
+    const password     = tallyVal(fields, 'contraseña', 'contrasena', 'clave', 'password', 'crea tu contraseña', 'contraseña portal');
 
     if (!nombre || !email) {
       return res.status(400).json({ error: 'Faltan campos obligatorios: nombre y email' });
@@ -649,6 +650,12 @@ app.post('/api/webhooks/registro', rateLimit({ windowMs: 60000, max: 20 }), asyn
 
       await supabase.updateInfluencer(existe.id, actualizaciones);
 
+      // Contraseña para el portal (si la influencer la definió en el form de Tally)
+      if (password && String(password).length >= 8) {
+        const hash = await bcrypt.hash(String(password), 10);
+        await supabase.updatePasswordHash(existe.id, hash);
+      }
+
       if (yaRecibiKit) {
         console.warn("[webhook/registro] DUPLICADO: " + nombre + " (" + email + ") ya tiene kit — status conservado: " + existe.status);
         return res.json({ ok: true, mensaje: "Perfil existente, ya recibio kit", id: existe.id, duplicado: true });
@@ -678,6 +685,12 @@ app.post('/api/webhooks/registro', rateLimit({ windowMs: 60000, max: 20 }), asyn
       status: 'Registrada',
       fuente: 'tally',
     });
+
+    // Contraseña para el portal (si la influencer la definió en el form de Tally)
+    if (password && String(password).length >= 8 && influencer?.id) {
+      const hash = await bcrypt.hash(String(password), 10);
+      await supabase.updatePasswordHash(influencer.id, hash);
+    }
 
     console.log(`[webhook/registro] Nueva influencer: ${nombre} | ${tier} | pendiente de envÃ­o por admin`);
     res.json({ ok: true, influencer_id: influencer?.id, tier });
