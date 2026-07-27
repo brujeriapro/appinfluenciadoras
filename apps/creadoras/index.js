@@ -73,6 +73,12 @@ function webhookTallyAutorizado(req) {
   const esperado = config.tally_webhook_secret;
   if (!esperado) return true; // aún no configurado — no romper el flujo
   const recibido = req.query.secret || req.headers['x-tally-secret'];
+  // Modo compatibilidad: si Tally aún no manda el secreto, se acepta igual (evita perder
+  // registros como pasó del 7-jul en adelante). Si SÍ manda un secreto, debe ser el correcto.
+  if (!recibido) {
+    console.warn('[webhook-tally] recibido sin secreto — aceptado en modo compatibilidad');
+    return true;
+  }
   return recibido === esperado;
 }
 
