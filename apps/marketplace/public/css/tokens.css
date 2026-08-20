@@ -1,0 +1,308 @@
+/* ==========================================================================
+   Creadores.app — sistema visual
+   Portado del handoff de diseño: brutalismo digital / Y2K editorial.
+
+   Las tres reglas que sostienen el look, y que no se negocian:
+     1. border-radius: 0 en TODO. Ni botones, ni tarjetas, ni avatares.
+     2. Sin sombras y sin gradientes. La jerarquía se hace con color plano
+        en bloques grandes y bordes duros de 2px.
+     3. Solo tipografía monoespaciada. Martian Mono para titulares y números,
+        Space Mono para cuerpo y etiquetas.
+   ========================================================================== */
+
+:root {
+  /* Cinco colores estructurales, más sus tonos de placeholder */
+  --ink:              #0E0E0E;
+  --lime:             #D6FF00;
+  --lime-shade:       #C2E800;
+  --magenta:          #FF2E9A;
+  --magenta-shade:    #E82A8B;
+  --blue:             #2323F0;
+  --blue-shade:       #1C1CD6;
+  --blue-text-soft:   #CFCFFF;
+  --blue-text-softer: #B9B9FF;
+  --blue-text-softest:#DADAFF;
+  --off-white:        #F2F2F2;
+
+  --grey-300: #DEDEDE;
+  --grey-500: #B4B4B4;
+  --grey-600: #9A9A9A;
+  --grey-700: #7A7A7A;
+
+  --border-dark:      #262626;
+  --border-dark-soft: #2C2C2C;
+  --border-dark-mid:  #3A3A3A;
+
+  --mono-title: 'Martian Mono', ui-monospace, Menlo, monospace;
+  --mono-body:  'Space Mono', ui-monospace, Menlo, monospace;
+
+  --pad-x: clamp(16px, 4vw, 52px);
+  --pad-y: clamp(40px, 6vw, 86px);
+  --grid-gap: clamp(20px, 3vw, 38px);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  border-radius: 0;   /* regla 1, aplicada de forma global a propósito */
+}
+
+body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--off-white);
+  font-family: var(--mono-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--lime); text-decoration: none; transition: background-color 120ms ease-out, color 120ms ease-out, border-color 120ms ease-out; }
+
+img { max-width: 100%; display: block; }
+
+/* ── Tipografía ─────────────────────────────────────────────────────────── */
+
+.h1 {
+  font-family: var(--mono-title);
+  font-weight: 800;
+  font-size: clamp(34px, 8.4vw, 116px);
+  line-height: 0.86;
+  letter-spacing: -4px;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.h2 {
+  font-family: var(--mono-title);
+  font-weight: 800;
+  font-size: clamp(24px, 4.6vw, 60px);
+  /* El handoff pedía 0.94, pero cualquier titular en mayúsculas con tilde o Ñ
+     (COMISIÓN, CAMPAÑA, PELUQUERÍA) choca con la línea de arriba por debajo de
+     1.0. Se sube a 1.0 en todos: la diferencia visual es mínima y evita que el
+     texto se vea roto. */
+  line-height: 1.0;
+  letter-spacing: -2.6px;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.h2--sm { font-size: clamp(20px, 3vw, 38px); letter-spacing: -1.6px; }
+.h2--md { font-size: clamp(24px, 4.4vw, 56px); letter-spacing: -2.4px; }
+.h2--creadoras { font-size: clamp(23px, 4vw, 50px); letter-spacing: -2.2px; }
+.h2--cta { font-size: clamp(26px, 6.2vw, 86px); letter-spacing: -3.4px; }
+
+.h3 {
+  font-family: var(--mono-title);
+  font-weight: 800;
+  font-size: clamp(19px, 2.4vw, 30px);
+  line-height: 1.1;
+  letter-spacing: -1.2px;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.p       { font-size: 13px; line-height: 1.6; margin: 0; }
+.p--lg   { font-size: 13.5px; line-height: 1.7; }
+.p--xl   { font-size: 14px; line-height: 1.7; }
+
+/* Eyebrow entre llaves: {ASÍ}. Mayúsculas con tracking positivo. */
+.tag {
+  display: inline-block;
+  padding: 4px 9px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+}
+.tag--blue    { background: var(--blue);    color: #fff; }
+.tag--lime    { background: var(--lime);    color: var(--ink); }
+.tag--magenta { background: var(--magenta); color: var(--ink); }
+.tag--ink     { background: var(--ink);     color: var(--lime); }
+
+.meta { font-size: 11.5px; letter-spacing: 1.2px; color: var(--grey-700); }
+
+.punto { color: var(--magenta); }   /* el punto final magenta de los titulares */
+
+/* ── Botones ────────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-block;
+  font-family: var(--mono-title);
+  font-weight: 800;
+  font-size: 13.5px;
+  letter-spacing: 0.6px;
+  padding: 16px 26px;
+  cursor: pointer;
+  border: none;
+}
+.btn--sm { padding: 11px 18px; font-size: 12px; }
+
+.btn--lime    { background: var(--lime); color: var(--ink); }
+.btn--lime:hover { background: #fff; color: var(--ink); }
+
+/* El CTA del header invierte a magenta; el del hero, a blanco. Es intencional. */
+.btn--header  { background: var(--lime); color: var(--ink); }
+.btn--header:hover { background: var(--magenta); color: #fff; }
+
+.btn--ghost   { border: 2px solid var(--lime); color: var(--lime); background: transparent; }
+.btn--ghost:hover { background: var(--lime); color: var(--ink); }
+
+.btn--ink     { background: var(--ink); color: var(--lime); }
+.btn--ink:hover { background: var(--blue); color: #fff; }
+
+.link-underline {
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.6px;
+  border-bottom: 2px solid var(--ink);
+}
+.link-underline:hover { color: var(--blue); border-bottom-color: var(--blue); }
+
+/* ── Grillas de bordes compartidos ──────────────────────────────────────────
+   Se dibujan como tablas: borde arriba e izquierda en el contenedor, borde
+   derecha y abajo en cada celda. Así ningún borde se duplica y la grilla se
+   reflowea sin romperse. */
+
+.grid-bordes {
+  display: grid;
+  border-top: 2px solid var(--border-dark);
+  border-left: 2px solid var(--border-dark);
+}
+.grid-bordes > * {
+  border-right: 2px solid var(--border-dark);
+  border-bottom: 2px solid var(--border-dark);
+}
+.grid-bordes--ink { border-color: var(--ink); }
+.grid-bordes--ink > * { border-right-color: var(--ink); border-bottom-color: var(--ink); }
+
+/* ── Marquesinas ────────────────────────────────────────────────────────────
+   Contenedor con overflow oculto, fila interior de ancho max-content con el
+   contenido duplicado exacto, animada de 0 a -50%. */
+
+@keyframes tick  { from { transform: translateX(0);    } to { transform: translateX(-50%); } }
+@keyframes tickR { from { transform: translateX(-50%); } to { transform: translateX(0);    } }
+
+.ticker { overflow: hidden; padding: 9px 0; }
+.ticker__fila {
+  display: flex;
+  gap: 34px;
+  width: max-content;
+  animation: tick 26s linear infinite;
+  font-family: var(--mono-title);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  white-space: nowrap;
+}
+.ticker--top    { background: var(--blue); border-bottom: 2px solid var(--ink); }
+.ticker--top .ticker__fila { color: #fff; }
+
+.ticker--bottom { background: var(--magenta); border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); padding: 8px 0; }
+.ticker--bottom .ticker__fila { color: var(--ink); animation: tickR 30s linear infinite; gap: 30px; }
+
+/* Accesibilidad: quien pidió menos movimiento no debería ver tres marquesinas
+   corriendo. El prototipo no lo contemplaba. */
+@media (prefers-reduced-motion: reduce) {
+  .ticker__fila, .banco__fila { animation: none !important; }
+  .banco__fila { overflow-x: auto; }
+}
+
+/* ── Tarjeta de creadora ────────────────────────────────────────────────────
+   Doble marco: borde negro encerrado por un outline del color de la tarjeta. */
+
+.tarjeta {
+  width: 246px;
+  flex: none;
+  border: 2px solid var(--ink);
+  outline: 2px solid currentColor;
+}
+.tarjeta__foto {
+  height: 210px;
+  border-bottom: 2px solid var(--ink);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: rgba(14,14,14,.35);
+}
+.tarjeta__cuerpo { padding: 12px 13px 14px; }
+.tarjeta__nombre { font-family: var(--mono-title); font-weight: 800; font-size: 14px; text-transform: uppercase; }
+.tarjeta__nicho  { font-size: 11.5px; font-weight: 700; margin-top: 5px; letter-spacing: 0.5px; text-transform: uppercase; }
+.tarjeta__pills  { display: flex; gap: 10px; margin-top: 10px; font-size: 11.5px; font-weight: 700; }
+.tarjeta__pills span { padding: 2px 6px; }
+.tarjeta__pie {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 2px solid var(--ink);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.tarjeta__entregable { font-size: 11px; font-weight: 700; }
+.tarjeta__precio { font-family: var(--mono-title); font-weight: 800; font-size: 14px; }
+
+/* Variantes de color. `color` alimenta el outline vía currentColor. */
+.tarjeta--lima    { color: var(--lime);    background: var(--lime); }
+.tarjeta--lima    .tarjeta__foto { background: var(--lime-shade); }
+.tarjeta--magenta { color: var(--magenta); background: var(--magenta); }
+.tarjeta--magenta .tarjeta__foto { background: var(--magenta-shade); }
+.tarjeta--blanco  { color: var(--off-white); background: var(--off-white); }
+.tarjeta--blanco  .tarjeta__foto { background: var(--grey-300); }
+.tarjeta--azul    { color: var(--blue);   background: var(--blue); }
+.tarjeta--azul    .tarjeta__foto { background: var(--blue-shade); }
+
+.tarjeta--lima .tarjeta__cuerpo,
+.tarjeta--magenta .tarjeta__cuerpo,
+.tarjeta--blanco .tarjeta__cuerpo { color: var(--ink); }
+.tarjeta--azul .tarjeta__cuerpo   { color: #fff; }
+.tarjeta--azul .tarjeta__pie      { border-top-color: #fff; }
+
+.tarjeta--lima    .tarjeta__pills span { background: var(--ink); color: var(--lime); }
+.tarjeta--magenta .tarjeta__pills span { background: var(--ink); color: var(--magenta); }
+.tarjeta--blanco  .tarjeta__pills span { background: var(--ink); color: var(--off-white); }
+.tarjeta--azul    .tarjeta__pills span { background: var(--lime); color: var(--ink); }
+
+/* Rupturas deliberadas del patrón: una pildora en otro color rompe la
+   mecánica de la grilla. Se conservan del diseño original. */
+.pill--azul    { background: var(--blue) !important;    color: #fff !important; }
+.pill--magenta { background: var(--magenta) !important; color: var(--ink) !important; }
+
+/* ── Secciones ──────────────────────────────────────────────────────────── */
+
+.seccion { padding: var(--pad-y) var(--pad-x); }
+.seccion--ink   { background: var(--ink); }
+.seccion--blue  { background: var(--blue); color: #fff; border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); }
+.seccion--lime  { background: var(--lime); color: var(--ink); }
+.seccion--light { background: var(--off-white); color: var(--ink); border-top: 2px solid var(--ink); }
+
+.fila-encabezado {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+/* Texto resaltado en escalera: el recurso de énfasis del sistema, en vez de
+   párrafos centrados. El desplazamiento crece línea a línea. */
+.escalera { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; max-width: 900px; }
+.escalera span {
+  background: var(--magenta);
+  color: var(--ink);
+  padding: 3px 7px;
+  font-size: clamp(12px, 1.5vw, 17px);
+  font-weight: 700;
+  line-height: 1.45;
+}
+.escalera span:nth-child(2) { margin-left: clamp(0px, 4vw, 88px); }
+.escalera span:nth-child(3) { margin-left: clamp(0px, 8vw, 180px); }
+
+.escalera--centro { align-items: center; gap: 4px; max-width: none; }
+.escalera--centro span {
+  background: var(--lime);
+  font-family: var(--mono-title);
+  font-size: clamp(14px, 2.2vw, 28px);
+  line-height: 1.35;
+  text-align: center;
+  padding: 3px 8px;
+}
+.escalera--centro span:nth-child(2) { margin-left: clamp(0px, 6vw, 120px); }
+.escalera--centro span:nth-child(3) { margin-left: 0; margin-right: clamp(0px, 8vw, 160px); }

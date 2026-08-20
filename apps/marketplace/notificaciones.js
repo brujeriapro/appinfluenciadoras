@@ -1,0 +1,185 @@
+// Correos transaccionales de Creadores.app.
+//
+// Remitente propio: estos correos NO pueden salir del Gmail de Brujería Capilar
+// o delatarían que el marketplace es de la marca, que es justo lo que el
+// producto promete no hacer.
+//
+// Regla de oro: un correo que falla NUNCA tumba una transición de estado. Todas
+// las funciones capturan su propio error y lo registran. Quien las llama lo hace
+// sin await bloqueante.
+//
+// WhatsApp queda fuera de la Fase 1: el equipo copia el mensaje desde el panel
+// admin si quiere avisar por ese canal.
+
+const nodemailer = require('nodemailer');
+const config = require('./config');
+const { formatearCOP } = require('./comisiones');
+
+let _transporte = null;
+
+function transporte() {
+  if (_transporte) return _transporte;
+  if (!config.smtp.user || !config.smtp.pass) return null;
+  _transporte = nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user: config.smtp.user, pass: config.smtp.pass },
+  });
+  return _transporte;
+}
+
+async function enviar(para, asunto, cuerpoHTML) {
+  const t = transporte();
+  if (!t) {
+    console.warn(`[notif] SMTP sin configurar — no se envió "${asunto}" a ${para}`);
+    return false;
+  }
+  if (!para) {
+    console.warn(`[notif] Sin destinatario para "${asunto}"`);
+    return false;
+  }
+  try {
+    await t.sendMail({
+      from: config.smtp.remitente,
+      to: para,
+      subject: asunto,
+      html: plantilla(cuerpoHTML),
+    });
+    return true;
+  } catch (e) {
+    console.error(`[notif] Falló el envío de "${asunto}":`, e.message);
+    return false;
+  }
+}
+
+// Envoltura visual mínima, en el sistema del handoff: negro, lima, monoespaciada.
+function plantilla(contenido) {
+  return `
+<div style="font-family:'Space Mono',ui-monospace,Menlo,monospace;background:#F2F2F2;padding:24px">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border:2px solid #0E0E0E">
+    <div style="background:#0E0E0E;padding:16px 20px">
+      <span style="display:inline-block;background:#D6FF00;color:#0E0E0E;font-weight:800;padding:4px 7px;letter-spacing:-0.5px">C</span>
+      <span style="color:#F2F2F2;font-weight:800;letter-spacing:-0.5px;margin-left:8px">CREADORES.APP</span>
+    </div>
+    <div style="padding:24px 20px;color:#0E0E0E;font-size:13px;line-height:1.7">
+      ${contenido}
+    </div>
+    <div style="border-top:2px solid #0E0E0E;padding:12px 20px;font-size:10.5px;letter-spacing:1px;color:#7A7A7A">
+      COLOMBIA / 2026
+    </div>
+  </div>
+</div>`;
+}
+
+const boton = (texto, url) =>
+  `<a href="${url}" style="display:inline-block;background:#D6FF00;color:#0E0E0E;font-weight:700;text-decoration:none;padding:12px 20px;margin-top:12px;border:2px solid #0E0E0E">${texto} &rarr;</a>`;
+
+const urlTrato = (lado, id) => `${config.base_url}/${lado}.html#/trato/${id}`;
+
+// ── Eventos del trato ───────────────────────────────────────────────────────
+
+/** A la creadora: le llegó una propuesta. Va con el neto, no con el bruto. */
+function nuevaSolicitud({ trato, creadora, marca }) {
+  return enviar(
+    creadora.email,
+    `Nueva propuesta de colaboración · ${formatearCOP(trato.neto_a_recibir_creadora)}`,
+    `<p><strong>${marca?.nombre_empresa || 'Una marca'}</strong> quiere colaborar contigo.</p>
+     <p style="background:#D6FF00;padding:10px;border:2px solid #0E0E0E">
+       Recibes: <strong style="font-size:16px">${formatearCOP(trato.neto_a_recibir_creadora)}</strong><br>
+       <span style="font-size:11px;color:#3A3A3A">Monto acordado ${formatearCOP(trato.monto_creadora)} menos ${trato.comision_creadora_pct}% de comisión</span>
+     </p>
+     <p><strong>Brief:</strong> ${trato.brief}</p>
+     ${trato.fecha_entrega_esperada ? `<p><strong>Entrega esperada:</strong> ${trato.fecha_entrega_esperada}</p>` : ''}
+     <p>Entra a tu perfil para aceptar o rechazar.</p>
+     ${boton('VER LA PROPUESTA', urlTrato('creadora', trato.id))}`
+  );
+}
+
+/** A la marca: la creadora dijo que sí, falta pagar. */
+function tratoAceptado({ trato, marca }) {
+  return enviar(
+    marca.email,
+    `Propuesta aceptada · ${trato.codigo}`,
+    `<p>La creadora aceptó tu propuesta.</p>
+     <p style="background:#D6FF00;padding:10px;border:2px solid #0E0E0E">
+       Total a pagar: <strong style="font-size:16px">${formatearCOP(trato.total_a_pagar_marca)}</strong><br>
+       <span style="font-size:11px;color:#3A3A3A">${formatearCOP(trato.monto_creadora)} + ${trato.comision_marca_pct}% de comisión</span>
+     </p>
+     <p>Escríbenos para coordinar el pago. Apenas quede retenido, se abren los datos de contacto entre las dos partes y la creadora arranca.</p>
+     ${boton('VER EL TRATO', urlTrato('trato', trato.id))}`
+  );
+}
+
+function tratoRechazado({ trato, marca }) {
+  return enviar(
+    marca.email,
+    `Propuesta rechazada · ${trato.codigo}`,
+    `<p>La creadora no pudo tomar esta colaboración${trato.motivo_rechazo ? `: <em>${trato.motivo_rechazo}</em>` : '.'}</p>
+     <p>No se hizo ningún cobro. Puedes proponerle a otra creadora del banco.</p>
+     ${boton('VOLVER AL CATÁLOGO', `${config.base_url}/catalogo.html`)}`
+  );
+}
+
+/** A ambas partes: el dinero está en custodia y ya pueden hablar directo. */
+async function pagoRetenido({ trato, marca, contacto }) {
+  const aMarca = enviar(
+    marca.email,
+    `Pago retenido · ya puedes hablar con la creadora · ${trato.codigo}`,
+    `<p>Recibimos tu pago. El dinero queda retenido y se libera cuando apruebes el contenido.</p>
+     <p style="background:#D6FF00;padding:10px;border:2px solid #0E0E0E">
+       <strong>Contacto de la creadora</strong><br>
+       ${contacto?.nombre_real || contacto?.nombre_publico || ''}<br>
+       ${contacto?.instagram ? `Instagram: @${contacto.instagram}<br>` : ''}
+       ${contacto?.telefono ? `WhatsApp: ${contacto.telefono}<br>` : ''}
+       ${contacto?.email ? `Correo: ${contacto.email}` : ''}
+     </p>
+     <p style="font-size:11px;color:#7A7A7A">Recuerda: contratar por fuera de la plataforma a una creadora que conociste aquí sigue causando la comisión (cláusula 7 de los términos).</p>
+     ${boton('VER EL TRATO', urlTrato('trato', trato.id))}`
+  );
+
+  const aCreadora = enviar(
+    contacto?.email,
+    `Ya está el pago · puedes empezar · ${trato.codigo}`,
+    `<p>El pago de <strong>${marca.nombre_empresa}</strong> ya está retenido en la plataforma. Tienes garantizado tu dinero: se te libera apenas la marca apruebe el contenido.</p>
+     <p style="background:#D6FF00;padding:10px;border:2px solid #0E0E0E">
+       Recibes al terminar: <strong style="font-size:16px">${formatearCOP(trato.neto_a_recibir_creadora)}</strong>
+     </p>
+     <p><strong>Contacto de la marca:</strong> ${marca.nombre_contacto} · ${marca.email}${marca.whatsapp ? ` · ${marca.whatsapp}` : ''}</p>
+     ${boton('VER EL TRATO', urlTrato('creadora', trato.id))}`
+  );
+
+  return Promise.all([aMarca, aCreadora]);
+}
+
+function contenidoEntregado({ trato, marca }) {
+  return enviar(
+    marca.email,
+    `Contenido entregado · falta tu aprobación · ${trato.codigo}`,
+    `<p>La creadora entregó el contenido. Revísalo y apruébalo para liberar el pago, o pide ajustes si algo no cumple el brief.</p>
+     ${boton('REVISAR EL CONTENIDO', urlTrato('trato', trato.id))}`
+  );
+}
+
+function contenidoAprobado({ trato, creadora }) {
+  return enviar(
+    creadora.email,
+    `Contenido aprobado · viene tu pago · ${trato.codigo}`,
+    `<p>La marca aprobó tu contenido. Vamos a liberarte el pago de <strong>${formatearCOP(trato.neto_a_recibir_creadora)}</strong>.</p>
+     ${boton('VER EL TRATO', urlTrato('creadora', trato.id))}`
+  );
+}
+
+function pagoLiberado({ trato, creadora }) {
+  return enviar(
+    creadora.email,
+    `Pago enviado · ${formatearCOP(trato.neto_a_recibir_creadora)} · ${trato.codigo}`,
+    `<p>Te transferimos <strong>${formatearCOP(trato.neto_a_recibir_creadora)}</strong> por esta colaboración. Gracias por tu trabajo.</p>
+     <p>Esta colaboración ya cuenta en tu historial: entre más cierras, mejor tarifa puedes pedir.</p>
+     ${boton('VER MI PERFIL', `${config.base_url}/creadora.html`)}`
+  );
+}
+
+module.exports = {
+  enviar,
+  nuevaSolicitud, tratoAceptado, tratoRechazado,
+  pagoRetenido, contenidoEntregado, contenidoAprobado, pagoLiberado,
+};

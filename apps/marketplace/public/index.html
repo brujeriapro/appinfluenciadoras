@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Creadores.app · Marketplace de creadoras de Colombia</title>
+<meta name="description" content="Un banco de creadoras colombianas verificadas, con métricas reales y precio publicado. Pago protegido en escrow. Publicar es gratis: comisión solo al cerrar.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/tokens.css">
+<style>
+  /* Estilos propios de la landing. El sistema visual vive en tokens.css. */
+
+  .header {
+    position: sticky; top: 0; z-index: 40;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 20px; flex-wrap: wrap;
+    padding: 14px var(--pad-x);
+    background: var(--ink);
+    border-bottom: 2px solid var(--border-dark);
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo__marca {
+    width: 26px; height: 26px; background: var(--lime);
+    display: grid; place-items: center;
+    color: var(--ink); font-family: var(--mono-title); font-weight: 800; font-size: 13px;
+  }
+  .logo__texto { font-family: var(--mono-title); font-weight: 800; font-size: 14.5px; letter-spacing: -0.5px; }
+
+  .nav { display: flex; align-items: center; gap: clamp(12px, 2vw, 26px); flex-wrap: wrap;
+         font-size: 13px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
+  .nav a { color: var(--off-white); border-bottom: 1px solid transparent; }
+  .nav a:hover { color: var(--lime); border-bottom-color: var(--lime); }
+
+  .nav-toggle { display: none; background: none; border: 2px solid var(--border-dark);
+                color: var(--off-white); font-family: var(--mono-title); font-weight: 800;
+                font-size: 12px; padding: 8px 12px; cursor: pointer; }
+
+  /* El handoff advierte que a ~1500px el ítem [CREADORAS] salta de línea.
+     Bajo 1024px el nav se colapsa a un desplegable. */
+  @media (max-width: 1023px) {
+    .nav-toggle { display: block; order: 3; }
+    .nav { display: none; order: 4; width: 100%; flex-direction: column; align-items: flex-start; gap: 12px; padding-top: 6px; }
+    .nav.abierto { display: flex; }
+  }
+
+  .hero { padding: clamp(34px, 5vw, 64px) var(--pad-x) 0; background: var(--ink); }
+  .hero h1 { margin: clamp(18px, 3vw, 34px) 0 0; color: var(--lime); }
+  .hero__escalera { margin-top: clamp(22px, 3vw, 40px); }
+  .hero__ctas { margin-top: clamp(26px, 3.5vw, 44px); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .hero__metricas { margin-top: clamp(34px, 5vw, 64px); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border-left: none; }
+  .hero__metricas > * { padding: 20px 18px; }
+  .hero__metricas > *:last-child { border-right: none; }
+  .metrica__cifra { font-family: var(--mono-title); font-size: clamp(26px, 3.2vw, 42px); font-weight: 800; letter-spacing: -2px; color: #fff; }
+  .metrica__cifra--lime { color: var(--lime); }
+  .metrica__label { font-size: 11.5px; color: var(--grey-700); letter-spacing: 1px; margin-top: 6px; }
+
+  .banco { padding: clamp(34px, 4vw, 54px) 0; background: var(--ink); overflow: hidden; }
+  .banco__encabezado { padding: 0 var(--pad-x); display: flex; justify-content: space-between;
+                       gap: 14px; flex-wrap: wrap; align-items: baseline; margin-bottom: 22px; }
+  .banco__pista { overflow: hidden; }
+  .banco__fila { display: flex; gap: 14px; width: max-content; animation: tick 46s linear infinite; padding: 2px 14px; }
+  /* Mejora sobre el prototipo: las tarjetas serán clicables al perfil, así que
+     la marquesina se detiene al pasar el mouse. */
+  .banco__pista:hover .banco__fila { animation-play-state: paused; }
+  /* Y en táctil se convierte en scroll horizontal manual. */
+  @media (hover: none) {
+    .banco__pista { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .banco__fila { animation: none; }
+  }
+
+  .razones { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--grid-gap); }
+  .razon__indice { font-size: 12px; color: var(--lime); font-weight: 700; letter-spacing: 1.4px; }
+  .razon__titulo { font-family: var(--mono-title); font-weight: 700; font-size: 14.5px; margin-top: 8px; line-height: 1.3; }
+  .razon p { margin: 10px 0 0; color: var(--blue-text-soft); }
+
+  .pasos { margin-top: clamp(28px, 4vw, 48px); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .pasos > * { padding: 22px 20px; }
+  .paso__numero { font-family: var(--mono-title); font-size: 30px; font-weight: 800; letter-spacing: -1.5px; }
+  .paso__titulo { font-family: var(--mono-title); font-weight: 700; font-size: 14px; margin-top: 12px; }
+  .paso p { margin: 9px 0 0; }
+  /* Ruptura deliberada: la tercera celda se invierte. Se conserva. */
+  .paso--invertido { background: var(--ink); color: var(--lime); }
+  .paso--invertido p { color: #E9E9E9; }
+
+  .mock-wrap { margin-top: clamp(30px, 4vw, 52px); display: grid;
+               grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+               gap: clamp(20px, 3vw, 34px); align-items: center; }
+  .mock { background: var(--ink); border: 2px solid var(--ink); }
+  .mock__barra { display: flex; align-items: center; gap: 8px; padding: 10px 13px; border-bottom: 2px solid var(--border-dark); }
+  /* Cuadrados de 8px, no círculos. */
+  .mock__punto { width: 8px; height: 8px; }
+  .mock__titulo { margin-left: 8px; font-size: 11px; color: var(--grey-700); letter-spacing: 0.8px; }
+  .mock__cuerpo { padding: 14px; }
+  .mock__filtros { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; font-size: 11px; font-weight: 700; letter-spacing: 0.6px; }
+  .mock__filtro { padding: 5px 10px; border: 1px solid var(--border-dark-mid); color: var(--grey-600); }
+  .mock__filtro--activo { background: var(--lime); color: var(--ink); border-color: var(--lime); }
+  .mock__filas { display: flex; flex-direction: column; gap: 8px; }
+  .mock__fila { display: flex; align-items: center; gap: 11px; border: 1px solid var(--border-dark-soft); padding: 11px; }
+  .mock__avatar { width: 34px; height: 34px; flex: none; background: var(--border-dark); }
+  .mock__handle { font-weight: 700; font-size: 12.5px; color: var(--off-white); }
+  .mock__sub { font-size: 11px; color: var(--grey-700); margin-top: 2px; }
+  .mock__estado { padding: 4px 8px; font-size: 10px; font-weight: 700; letter-spacing: 0.6px; }
+
+  .precios { margin-top: clamp(28px, 4vw, 48px); grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  .precios > * { padding: 26px 22px; }
+  .precio__label { font-size: 11.5px; font-weight: 700; letter-spacing: 1.4px; color: var(--grey-700); }
+  .precio__cifra-fila { margin-top: 16px; display: flex; align-items: baseline; gap: 6px; }
+  .precio__cifra { font-family: var(--mono-title); font-size: clamp(40px, 5vw, 64px); font-weight: 800; letter-spacing: -3px; }
+  .precio__sufijo { font-size: 12px; color: var(--grey-700); font-weight: 700; }
+  .precio p { margin: 14px 0 0; color: var(--grey-500); }
+  .precio--azul { background: var(--blue); }
+  .precio--azul .precio__label { color: var(--blue-text-soft); }
+  .precio--azul p { color: var(--blue-text-softest); }
+  .precio__convenir { margin-top: 16px; font-family: var(--mono-title); font-size: clamp(22px, 2.6vw, 34px); font-weight: 800; letter-spacing: -1.4px; color: #fff; }
+
+  .creadoras-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: clamp(24px, 4vw, 52px); align-items: center; }
+  .punto-num { display: flex; gap: 10px; align-items: flex-start; }
+  .punto-num span:first-child { background: var(--lime); padding: 1px 6px; font-weight: 700; font-size: 12px; }
+  .punto-num span:last-child { font-size: 13.5px; line-height: 1.55; }
+  .fotos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .foto-slot { border: 2px solid var(--ink); background: var(--grey-300); display: grid; place-items: center;
+               font-size: 10px; letter-spacing: 1px; color: rgba(14,14,14,.4); text-align: center; padding: 8px; }
+  .foto-slot--alta { aspect-ratio: 3/4; }
+  .foto-slot--flex { flex: 1; min-height: 110px; }
+  .tarjeta-pago { background: var(--lime); border: 2px solid var(--ink); padding: 16px; }
+  .tarjeta-pago__label { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; }
+  .tarjeta-pago__cifra { font-family: var(--mono-title); font-size: clamp(20px, 2.6vw, 30px); font-weight: 800; letter-spacing: -1.6px; margin-top: 6px; }
+  .tarjeta-pago__sub { font-size: 11.5px; font-weight: 700; margin-top: 5px; }
+
+  .cta-final { background: var(--ink); padding: clamp(46px, 7vw, 100px) var(--pad-x); text-align: center; border-top: 2px solid var(--ink); }
+  .cta-final h2 { color: var(--lime); }
+  .cta-final__botones { margin-top: 30px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  .footer { background: var(--ink); padding: 26px var(--pad-x); border-top: 2px solid var(--border-dark);
+            display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; align-items: center;
+            font-size: 11.5px; letter-spacing: 1px; color: var(--grey-700); }
+  .footer a { color: var(--grey-700); }
+  .footer a:hover { color: var(--lime); }
+  .footer__links { display: flex; gap: 18px; flex-wrap: wrap; }
+
+  .pagina { max-width: 100%; overflow-x: hidden; background: var(--ink); }
+</style>
+</head>
+<body>
+<div class="pagina">
+
+  <!-- 1 · Ticker superior -->
+  <div class="ticker ticker--top">
+    <div class="ticker__fila">
+      <span>COLABORACIONES PAGAS ✦ CREADORAS VERIFICADAS ✦ PAGO PROTEGIDO ✦ SOLO COLOMBIA ✦ COMISIÓN AL CERRAR ✦ BELLEZA + CONSUMO ✦</span>
+      <span aria-hidden="true">COLABORACIONES PAGAS ✦ CREADORAS VERIFICADAS ✦ PAGO PROTEGIDO ✦ SOLO COLOMBIA ✦ COMISIÓN AL CERRAR ✦ BELLEZA + CONSUMO ✦</span>
+    </div>
+  </div>
+
+  <!-- 2 · Header -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo__marca">C</div>
+      <span class="logo__texto">CREADORES.APP</span>
+    </div>
+    <button class="nav-toggle" aria-expanded="false" aria-controls="nav">MENÚ</button>
+    <nav class="nav" id="nav">
+      <a href="#como">[cómo funciona]</a>
+      <a href="#banco">[banco]</a>
+      <a href="#precios">[precios]</a>
+      <a href="#creadora">[creadoras]</a>
+    </nav>
+    <a href="/registro.html" class="btn btn--sm btn--header">PUBLICAR CAMPAÑA →</a>
+  </header>
+
+  <!-- 3 · Hero -->
+  <section id="marca" class="hero">
+    <div class="fila-encabezado">
+      <span class="tag tag--blue">{MARKETPLACE DE CREADORAS · CO}</span>
+      <span class="meta"><span data-metrica="perfiles">420</span> PERFILES / <span data-metrica="ciudades">4</span> CIUDADES / 2026</span>
+    </div>
+
+    <h1 class="h1">UN MUNDO DE<br>CREADORES<span class="punto">.</span></h1>
+
+    <div class="escalera hero__escalera">
+      <span>UN BANCO DE CREADORAS COLOMBIANAS VERIFICADAS,</span>
+      <span>CON MÉTRICAS REALES Y PRECIO PUBLICADO.</span>
+      <span>PAGO PROTEGIDO. TRATO CERRADO EN MINUTOS.</span>
+    </div>
+
+    <div class="hero__ctas">
+      <a href="/registro.html" class="btn btn--lime">SOY MARCA →</a>
+      <a href="/creadora.html" class="btn btn--ghost">SOY CREADORA →</a>
+      <span class="meta">SIN MENSUALIDAD / COMISIÓN SOLO AL CERRAR</span>
+    </div>
+
+    <div class="grid-bordes hero__metricas">
+      <div>
+        <div class="metrica__cifra" data-metrica="perfiles">420+</div>
+        <div class="metrica__label">CREADORAS VERIFICADAS</div>
+      </div>
+      <div>
+        <div class="metrica__cifra" data-metrica="dias_entrega">7 DÍAS</div>
+        <div class="metrica__label">DE BRIEF A CONTENIDO AL AIRE</div>
+      </div>
+      <div>
+        <div class="metrica__cifra metrica__cifra--lime" data-metrica="escrow">100%</div>
+        <div class="metrica__label">DE LOS PAGOS EN ESCROW</div>
+      </div>
+      <div>
+        <div class="metrica__cifra" data-metrica="costo_publicar">0 COP</div>
+        <div class="metrica__label">POR PUBLICAR UNA CAMPAÑA</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · Banco de creadoras -->
+  <section id="banco" class="banco">
+    <div class="banco__encabezado">
+      <h2 class="h2 h2--sm">EL BANCO<span class="punto"> /</span> EN VIVO</h2>
+      <span class="meta">CABELLO · SKINCARE · MAKEUP · UÑAS · LIFESTYLE</span>
+    </div>
+    <div class="banco__pista">
+      <div class="banco__fila" id="banco-fila">
+        <!-- Se puebla desde /api/landing -->
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · Por qué -->
+  <section class="seccion seccion--blue">
+    <div class="fila-encabezado">
+      <span class="tag tag--lime">{POR QUÉ CREADORES.APP}</span>
+      <span class="meta" style="color:var(--blue-text-softer)">5 RAZONES / 0 EXCUSAS</span>
+    </div>
+
+    <div class="escalera escalera--centro" style="margin:clamp(30px,4vw,54px) 0">
+      <span>TODO LO LENTO DEL INFLUENCER</span>
+      <span>MARKETING, RESUELTO EN UNA</span>
+      <span>SOLA PLATAFORMA.</span>
+    </div>
+
+    <div class="razones">
+      <div class="razon">
+        <div class="razon__indice">{1}</div>
+        <div class="razon__titulo">MÉTRICAS REALES,<br>NO CAPTURAS</div>
+        <p class="p">Cada creadora conecta su cuenta. Ves alcance, engagement y guardados verificados por la plataforma.</p>
+      </div>
+      <div class="razon">
+        <div class="razon__indice">{2}</div>
+        <div class="razon__titulo">PRECIO<br>PUBLICADO</div>
+        <p class="p">Cada entregable tiene tarifa visible. Sin negociación eterna por DM ni cotizaciones a ciegas.</p>
+      </div>
+      <div class="razon">
+        <div class="razon__indice">{3}</div>
+        <div class="razon__titulo">PAGO<br>PROTEGIDO</div>
+        <p class="p">El dinero queda en escrow y se libera cuando el contenido se publica y se aprueba. Cero riesgo para ambos lados.</p>
+      </div>
+      <div class="razon">
+        <div class="razon__indice">{4}</div>
+        <div class="razon__titulo">100% BELLEZA<br>Y COLOMBIA</div>
+        <p class="p">Un banco curado de creadoras de cabello, skincare, makeup y consumo. Audiencia local que sí compra.</p>
+      </div>
+      <div class="razon">
+        <div class="razon__indice">{5}</div>
+        <div class="razon__titulo">CAMPAÑA EN<br>MINUTOS</div>
+        <p class="p">Filtra por nicho, tier y presupuesto, arma el lote de creadoras y manda propuestas a todas de una vez.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · Cómo funciona -->
+  <section id="como" class="seccion seccion--lime">
+    <div class="fila-encabezado" style="align-items:flex-end">
+      <div>
+        <span class="tag tag--ink">{CÓMO FUNCIONA · MARCAS}</span>
+        <h2 class="h2 h2--md" style="margin-top:20px;max-width:20ch">DEL BRIEF AL CONTENIDO EN 4 PASOS</h2>
+      </div>
+      <a href="#creadora" class="link-underline">VER EL FLUJO DE LA CREADORA →</a>
+    </div>
+
+    <div class="grid-bordes grid-bordes--ink pasos">
+      <div class="paso">
+        <div class="paso__numero">01</div>
+        <div class="paso__titulo">PUBLICA EL BRIEF</div>
+        <p class="p">Producto, entregables, fechas y presupuesto. Diez minutos.</p>
+      </div>
+      <div class="paso">
+        <div class="paso__numero">02</div>
+        <div class="paso__titulo">ELIGE CREADORAS</div>
+        <p class="p">Filtra el banco por nicho, ciudad, tier y tarifa. Arma tu lote.</p>
+      </div>
+      <div class="paso paso--invertido">
+        <div class="paso__numero">03</div>
+        <div class="paso__titulo">CIERRA Y PAGA EN ESCROW</div>
+        <p class="p">Ella acepta, el pago queda retenido y el contrato se firma solo.</p>
+      </div>
+      <div class="paso">
+        <div class="paso__numero">04</div>
+        <div class="paso__titulo">RECIBE CONTENIDO Y DATOS</div>
+        <p class="p">Aprueba la pieza, libera el pago y mide el resultado en un panel.</p>
+      </div>
+    </div>
+
+    <div class="mock-wrap">
+      <div>
+        <span class="tag tag--magenta">{DENTRO DE LA APP}</span>
+        <h3 class="h3" style="margin-top:18px;max-width:22ch">UN PANEL PARA CADA TRATO, PAGO Y PIEZA</h3>
+        <p class="p p--lg" style="margin-top:14px;max-width:44ch">Estados de campaña, propuestas enviadas, contenido pendiente de aprobación y el histórico de desempeño de cada creadora.</p>
+      </div>
+      <div class="mock">
+        <div class="mock__barra">
+          <span class="mock__punto" style="background:var(--magenta)"></span>
+          <span class="mock__punto" style="background:var(--lime)"></span>
+          <span class="mock__punto" style="background:var(--blue)"></span>
+          <span class="mock__titulo">CREADORES.APP / CAMPAÑAS</span>
+        </div>
+        <div class="mock__cuerpo">
+          <div class="mock__filtros">
+            <span class="mock__filtro mock__filtro--activo">ACTIVAS 3</span>
+            <span class="mock__filtro">PROPUESTAS 12</span>
+            <span class="mock__filtro">POR APROBAR 4</span>
+          </div>
+          <div class="mock__filas">
+            <div class="mock__fila">
+              <div class="mock__avatar"></div>
+              <div style="flex:1;min-width:0">
+                <div class="mock__handle">Valeria R.</div>
+                <div class="mock__sub">Reel + story · entrega 24 ago</div>
+              </div>
+              <span class="mock__estado" style="background:var(--lime);color:var(--ink)">EN ESCROW</span>
+            </div>
+            <div class="mock__fila">
+              <div class="mock__avatar"></div>
+              <div style="flex:1;min-width:0">
+                <div class="mock__handle">Camila H.</div>
+                <div class="mock__sub">TikTok x2 · publicado</div>
+              </div>
+              <span class="mock__estado" style="background:var(--blue);color:#fff">POR APROBAR</span>
+            </div>
+            <div class="mock__fila">
+              <div class="mock__avatar"></div>
+              <div style="flex:1;min-width:0">
+                <div class="mock__handle">Sofía M.</div>
+                <div class="mock__sub">Reseña UGC · propuesta enviada</div>
+              </div>
+              <span class="mock__estado" style="background:var(--magenta);color:var(--ink)">PENDIENTE</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 · Ticker inferior -->
+  <div class="ticker ticker--bottom">
+    <div class="ticker__fila">
+      <span>PUBLICAR ES GRATIS ✦ COMISIÓN SOLO AL CERRAR ✦ RETIRO EN 48H ✦ SIN EXCLUSIVIDAD ✦ PUBLICAR ES GRATIS ✦ COMISIÓN SOLO AL CERRAR ✦</span>
+      <span aria-hidden="true">PUBLICAR ES GRATIS ✦ COMISIÓN SOLO AL CERRAR ✦ RETIRO EN 48H ✦ SIN EXCLUSIVIDAD ✦ PUBLICAR ES GRATIS ✦ COMISIÓN SOLO AL CERRAR ✦</span>
+    </div>
+  </div>
+
+  <!-- 8 · Precios -->
+  <section id="precios" class="seccion seccion--ink">
+    <span class="tag tag--lime">{PRECIOS}</span>
+    <h2 class="h2" style="margin-top:20px;max-width:24ch">GRATIS PUBLICAR. COMISIÓN SOLO AL CERRAR<span class="punto">.</span></h2>
+    <p class="p p--lg" style="margin-top:18px;max-width:56ch;color:var(--grey-600)">Sin planes ni fee de entrada. Cobramos un porcentaje sobre cada trato cerrado en la plataforma, ya incluido en el precio que ves.</p>
+
+    <div class="grid-bordes precios">
+      <div class="precio">
+        <div class="precio__label">MARCAS</div>
+        <div class="precio__cifra-fila">
+          <span class="precio__cifra" style="color:var(--lime)"><span id="comision-marca">12</span>%</span>
+          <span class="precio__sufijo">POR TRATO</span>
+        </div>
+        <p class="p">Publicar campañas, ver el banco completo y usar escrow: sin costo.</p>
+      </div>
+      <div class="precio">
+        <div class="precio__label">CREADORAS</div>
+        <div class="precio__cifra-fila">
+          <span class="precio__cifra" style="color:var(--magenta)"><span id="comision-creadora">8</span>%</span>
+          <span class="precio__sufijo">DEL PAGO</span>
+        </div>
+        <p class="p">Perfil, métricas verificadas y cobro garantizado. Retiro a tu cuenta en 48 horas.</p>
+      </div>
+      <div class="precio precio--azul">
+        <div class="precio__label">MARCAS GRANDES</div>
+        <div class="precio__convenir">A CONVENIR</div>
+        <p class="p">Volumen alto, campañas siempre activas y manager dedicado.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 · Para creadoras -->
+  <section id="creadora" class="seccion seccion--light">
+    <div class="creadoras-grid">
+      <div>
+        <span class="tag tag--blue">{PARA CREADORAS}</span>
+        <h2 class="h2 h2--creadoras" style="margin-top:20px;max-width:20ch">PON TU TARIFA Y DEJA DE PERSEGUIR MARCAS</h2>
+        <p class="p p--xl" style="margin-top:18px;max-width:48ch">Creas tu perfil, conectas Instagram y TikTok y publicas cuánto cobras por cada tipo de contenido. Las marcas te llegan con la propuesta ya lista.</p>
+        <div style="display:flex;flex-direction:column;gap:9px;margin-top:24px">
+          <div class="punto-num"><span>01</span><span>Cobro garantizado: el dinero está retenido antes de que publiques.</span></div>
+          <div class="punto-num"><span>02</span><span>Sin exclusividad. Trabajas con las marcas que quieras.</span></div>
+          <div class="punto-num"><span>03</span><span>Tu historial de desempeño sube tu tarifa con el tiempo.</span></div>
+        </div>
+        <a href="/creadora.html" class="btn btn--ink" style="margin-top:26px">CREAR MI PERFIL →</a>
+      </div>
+      <div class="fotos-grid">
+        <div class="foto-slot foto-slot--alta">CREADORA GRABANDO</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="foto-slot foto-slot--flex">PRODUCTO EN MANO</div>
+          <div class="tarjeta-pago">
+            <div class="tarjeta-pago__label">PAGADO ESTE MES</div>
+            <div class="tarjeta-pago__cifra">$2.340.000</div>
+            <div class="tarjeta-pago__sub">3 COLABORACIONES CERRADAS</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 · CTA final y footer -->
+  <section class="cta-final">
+    <h2 class="h2 h2--cta">ARMA TU PRIMERA<br>CAMPAÑA HOY<span class="punto">.</span></h2>
+    <div class="cta-final__botones">
+      <a href="/registro.html" class="btn btn--lime" style="padding:16px 30px">SOY MARCA →</a>
+      <a href="/creadora.html" class="btn btn--ghost" style="padding:16px 30px">SOY CREADORA →</a>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="logo">
+      <div class="logo__marca" style="width:20px;height:20px;font-size:11px">C</div>
+      <span class="logo__texto" style="font-size:12px;color:var(--off-white)">CREADORES.APP</span>
+    </div>
+    <div class="footer__links">
+      <a href="#precios">PRECIOS</a>
+      <a href="#como">CÓMO FUNCIONA</a>
+      <a href="#creadora">CREADORAS</a>
+      <a href="/terminos">TÉRMINOS</a>
+      <a href="/terminos#datos">PRIVACIDAD</a>
+    </div>
+    <div>COLOMBIA / 2026</div>
+  </footer>
+</div>
+
+<script>
+// Nav colapsable bajo 1024px.
+const toggle = document.querySelector('.nav-toggle');
+const nav = document.getElementById('nav');
+toggle.addEventListener('click', () => {
+  const abierto = nav.classList.toggle('abierto');
+  toggle.setAttribute('aria-expanded', String(abierto));
+});
+nav.addEventListener('click', e => {
+  if (e.target.tagName === 'A') nav.classList.remove('abierto');
+});
+
+const COLOR_CLASE = { lima: 'lima', magenta: 'magenta', blanco: 'blanco', azul: 'azul' };
+
+// Formato compacto para el alcance: 48000 -> "48K", 1250000 -> "1.2M".
+function compacto(n) {
+  if (typeof n === 'string') return n;                 // ya viene formateado (demo)
+  if (!n) return '—';
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace('.0', '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace('.0', '') + 'K';
+  return String(n);
+}
+
+function precioCorto(v) {
+  if (!v) return '—';
+  const n = Number(v);
+  if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(2).replace(/\.?0+$/, '') + 'M';
+  return '$' + Math.round(n / 1000) + 'K';
+}
+
+function tarjetaHTML(c, i) {
+  const color = COLOR_CLASE[c.color] || 'lima';
+  // Ruptura deliberada del patrón que venía del diseño: en la 3ª y 5ª tarjeta
+  // la píldora de engagement cambia de color para que la fila no se sienta
+  // mecánica.
+  const pillRota = i === 2 ? ' pill--azul' : (i === 4 ? ' pill--magenta' : '');
+  const nicho = Array.isArray(c.nicho) ? c.nicho[0] : (c.nicho || '');
+  return `
+    <article class="tarjeta tarjeta--${color}">
+      <div class="tarjeta__foto">FOTO</div>
+      <div class="tarjeta__cuerpo">
+        <div class="tarjeta__nombre">${c.nombre_publico || ''}</div>
+        <div class="tarjeta__nicho">${nicho} · ${c.ciudad || ''}</div>
+        <div class="tarjeta__pills">
+          <span>${compacto(c.rango_alcance)}</span>
+          <span class="${pillRota.trim()}">${c.engagement_pct ?? '—'}% ENG</span>
+        </div>
+        <div class="tarjeta__pie">
+          <span class="tarjeta__entregable">${c.entregable_tipico || 'COLABORACIÓN'}</span>
+          <span class="tarjeta__precio">${precioCorto(c.tarifa_min)}</span>
+        </div>
+      </div>
+    </article>`;
+}
+
+fetch('/api/landing')
+  .then(r => r.json())
+  .then(d => {
+    document.getElementById('comision-marca').textContent = d.comision_marca_pct;
+    document.getElementById('comision-creadora').textContent = d.comision_creadora_pct;
+
+    Object.entries(d.metricas || {}).forEach(([clave, valor]) => {
+      document.querySelectorAll(`[data-metrica="${clave}"]`)
+        .forEach(el => { el.textContent = valor; });
+    });
+
+    // La marquesina necesita el contenido duplicado exacto para que el bucle
+    // de -50% no salte.
+    const tarjetas = (d.banco || []).map(tarjetaHTML).join('');
+    document.getElementById('banco-fila').innerHTML = tarjetas + tarjetas;
+  })
+  .catch(() => {
+    // Si el API no responde, la landing se queda con las cifras del HTML y sin
+    // banco. Nunca se rompe la página entera por eso.
+    document.getElementById('banco-fila').innerHTML =
+      '<p class="meta" style="padding:0 var(--pad-x)">El banco no está disponible en este momento.</p>';
+  });
+</script>
+</body>
+</html>

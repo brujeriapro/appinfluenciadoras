@@ -1,0 +1,53 @@
+// Proxy de piezas de contenido de muestra.
+//
+// Por qué existe: si el catálogo sirviera la URL original del CDN de Instagram
+// o TikTok, esa URL llevaría identificadores que permiten llegar al perfil, y
+// la identidad oculta se caería sola. Aquí el binario se descarga desde un
+// bucket PRIVADO de Supabase Storage con nombre aleatorio y se hace stream al
+// navegador. Nunca se devuelve ni se redirige a la URL de Storage.
+//
+// En esta fase no hay marca de agua (decisión de producto). El proxy es, por
+// ahora, lo único que separa "ver la pieza" de "identificar a la creadora": una
+// búsqueda inversa de imagen sigue siendo posible. Cuando se agregue el
+// watermark, se hace en el pipeline de subida y este archivo no cambia.
+
+const express = require('express');
+const fetch = require('node-fetch');
+const db = require('./db');
+const config = require('./config');
+const { sesionAuth } = require('./auth');
+
+const router = express.Router();
+
+const STORAGE_URL = String(config.supabase.url || '').replace(/\/$/, '') + '/storage/v1/object';
+
+router.get('/:id', sesionAuth, async (req, res) => {
+  try {
+    const muestra = await db.getMuestra(req.params.id);
+    if (!muestra) return res.status(404).send('No encontrada');
+
+    const url = `${STORAGE_URL}/${config.supabase.bucket_muestras}/${muestra.storage_path}`;
+    const upstream = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${config.supabase.service_role_key}` },
+    });
+
+    if (!upstream.ok) {
+      console.error(`[media] Storage respondió ${upstream.status} para ${muestra.id}`);
+      return res.status(404).send('No disponible');
+    }
+
+    res.setHeader('Content-Type', muestra.mime || upstream.headers.get('content-type') || 'application/octet-stream');
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    // Que no aparezca en resultados de búsqueda ni se indexe la pieza.
+    res.setHeader('X-Robots-Tag', 'noindex, noimageindex');
+
+    upstream.body.pipe(res);
+  } catch (e) {
+    console.error('[media]', e.message);
+    res.status(500).send('Error sirviendo la pieza');
+  }
+});
+
+module.exports = router;

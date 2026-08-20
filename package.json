@@ -2,7 +2,8 @@
   "name": "creadoras-app",
   "version": "1.0.0",
   "scripts": {
-    "start": "node apps/creadoras/index.js"
+    "start": "node apps/creadoras/index.js",
+    "start:marketplace": "node apps/marketplace/index.js"
   },
   "dependencies": {
     "express": "^4.18.2",

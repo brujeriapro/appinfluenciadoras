@@ -65,7 +65,8 @@ Claude should always orient itself through `/prime` at session start, then act w
 │       ├── config_influencers.json  # Credentials (gitignored — local fallback only)
 │       └── _legacy/                 # Scripts Python deprecados — lógica portada a apps/creadoras/
 ├── apps/
-│   └── creadoras/         # App Node del Programa Creadoras (desplegada en Railway)
+│   ├── creadoras/         # App Node del Programa Creadoras (desplegada en Railway)
+│   └── marketplace/       # Creadores.app — marketplace de creadoras (servicio Railway aparte)
 ├── reference/             # Templates, examples, reusable patterns
 ├── README.md              # Onboarding entry point para colaboradoras
 └── shell-aliases.md       # Shell aliases reference
@@ -82,6 +83,7 @@ Claude should always orient itself through `/prime` at session start, then act w
 | `scripts/`   | Competitor analysis automation — scraper, report generator, config.                 |
 | `scripts/influencers/_legacy/` | Scripts Python archivados del pipeline (lógica ahora en `apps/creadoras/`). |
 | `apps/creadoras/` | App Node del Programa Creadoras — dashboard admin, webhooks Tally, scoring, cron. Desplegada en Railway. |
+| `apps/marketplace/` | **Creadores.app** — marketplace donde marcas contratan colaboraciones pagas con creadoras. Servicio Railway independiente, misma base Supabase. |
 | `reference/` | Helpful docs, templates and patterns to assist in various workflows.                |
 
 ---
@@ -244,6 +246,52 @@ node index.js   # → http://localhost:3030
 ```
 
 Requiere `scripts/influencers/config_influencers.json` con credenciales válidas (no incluido en repo). Para trabajo normal, edita en Claude Code, commitea y pushea — Railway redeploya solo.
+
+---
+
+## Creadores.app — Marketplace de Creadoras (apps/marketplace/)
+
+Marketplace de dos lados: marcas de belleza y consumo colombianas contratan colaboraciones pagas con un banco de creadoras, y la plataforma cobra comisión por cada trato cerrado. **Es una marca y un producto aparte de Brujería Capilar.** Comparte la base de datos de Supabase con el Programa Creadoras (para no duplicar el banco de creadoras) pero corre en su propio proceso, con su propio dominio, su propio panel admin y sus propios secretos. No importa código de `apps/creadoras/`.
+
+Documentación completa: [apps/marketplace/README.md](apps/marketplace/README.md) · Plan: [plans/2026-08-20-marketplace-creadoras-fase1.md](plans/2026-08-20-marketplace-creadoras-fase1.md)
+
+### Flujo del trato
+
+```
+solicitado → aceptado → pago_retenido → entregado → aprobado → pagado → cerrado
+                    ↘ rechazado / cancelado ↙
+```
+
+La marca envía brief + monto; la creadora acepta viendo su neto; el admin registra el pago de la marca (escrow manual, sin pasarela); ahí se revela el contacto; la creadora entrega; la marca aprueba; el admin registra el pago a la creadora.
+
+### Las cuatro reglas que no se rompen
+
+1. **El handle no vive en la tabla del catálogo.** `mk_creadoras` guarda un alias (`nombre_publico`); el `instagram_handle` está en `influencers` y solo lo lee `db.getContactoCreadora()`. Es un control estructural, no de presentación: si el catálogo tuviera un bug de `select *`, no hay nada sensible que filtrar.
+2. **Los porcentajes de comisión se congelan dentro de cada trato.** Cambiar la comisión en `mk_config` no altera tratos ya creados.
+3. **El contacto se revela con el pago retenido, no al aceptar.** Es lo que hace exigible la cláusula de no-circunvalación de los términos.
+4. **Las muestras se sirven por proxy** (`/media/:id`) desde un bucket privado, nunca con la URL del CDN de Instagram, que delataría el perfil.
+
+### Ejecución
+
+```bash
+cd apps/marketplace
+npm install
+node index.js       # http://localhost:3040
+npm test            # 27 pruebas: comisiones + máquina de estados
+```
+
+Migraciones (a mano en el SQL Editor de Supabase): `migrations/mk_001_init.sql`, luego `migrations/mk_002_seed_config.sql`. Además, crear el bucket privado `mk-muestras` en Storage.
+
+### Identidad visual
+
+Brutalismo digital / Y2K editorial, definido en el handoff de Claude Design y codificado en `public/css/tokens.css`: negro `#0E0E0E`, lima `#D6FF00`, magenta `#FF2E9A`, azul `#2323F0`; Martian Mono + Space Mono; `border-radius: 0` en todo, sin sombras, sin gradientes, bordes duros de 2px. **Nada de la identidad mística de Brujería Capilar.**
+
+### Estado
+
+- Backend completo y probado; landing pública portada del handoff.
+- Faltan las pantallas de producto (catálogo, registro de marca, portal de creadora, línea de tiempo, panel admin) — esperan mockups.
+- El dominio (`creadores.app`) aún no está comprado: corre sobre la URL de Railway.
+- Sin marca de agua y sin pasarela de pagos en esta fase, por decisión de producto.
 
 ---
 
