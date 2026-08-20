@@ -1,6 +1,6 @@
 # Creadores.app — marketplace de creadoras
 
-Marketplace de dos lados: marcas de belleza y consumo colombianas contratan colaboraciones pagas con un banco de creadoras. La plataforma cobra comisión por cada trato cerrado y retiene el pago hasta que el contenido se entrega y se aprueba.
+Marketplace de dos lados: marcas colombianas contratan colaboraciones pagas con un banco de creadoras de todos los nichos — belleza, moda, fitness, comida, hogar, viajes, tech y más. La plataforma cobra comisión por cada trato cerrado y retiene el pago hasta que el contenido se entrega y se aprueba.
 
 **Es un producto y una marca aparte de Brujería Capilar.** Comparte la base de datos con el Programa Creadoras (`apps/creadoras/`) para no duplicar el banco de creadoras, pero corre en su propio proceso, con su propio dominio, su propio panel admin y sus propios secretos. No importa una sola línea de código de la otra app.
 
@@ -20,7 +20,7 @@ Plan completo: [`plans/2026-08-20-marketplace-creadoras-fase1.md`](../../plans/2
 cd apps/marketplace
 npm install
 node index.js          # http://localhost:3040
-npm test               # 27 pruebas: comisiones y máquina de estados
+npm test               # 34 pruebas: comisiones, máquina de estados y tarifas
 ```
 
 ### Variables de entorno
@@ -46,7 +46,8 @@ El arranque **falla** si falta alguna de las obligatorias: es preferible no leva
 Se corren a mano en el SQL Editor de Supabase, en orden:
 
 1. `migrations/mk_001_init.sql` — las 8 tablas `mk_*`
-2. `migrations/mk_002_seed_config.sql` — comisiones, niveles de tarifa, nichos
+2. `migrations/mk_002_seed_config.sql` — comisiones y configuración base
+3. `migrations/mk_003_nichos_y_tarifas.sql` — taxonomía amplia de nichos + tabla `mk_tarifas`
 
 Además hay que crear el bucket **privado** `mk-muestras` en Supabase Storage.
 
@@ -57,7 +58,7 @@ node scripts/importar_creadoras.js --dry-run   # ver qué haría
 node scripts/importar_creadoras.js             # escribir
 ```
 
-Trae solo las que ya demostraron que entregan (status Calificada / Contenido Entregado, o UGC activa). **Ninguna queda publicada**: entran con `visible = false` y hay que curar el perfil desde el panel admin — asignar nicho, engagement y tarifa — antes de que aparezca en el catálogo.
+Trae solo las que ya demostraron que entregan (status Calificada / Contenido Entregado, o UGC activa). **Ninguna queda publicada**: entran con `visible = false`. Para que aparezca en el catálogo hacen falta dos pasos — el admin le asigna nicho y engagement, y ella define sus tarifas desde su portal.
 
 ---
 
@@ -91,7 +92,7 @@ Quién puede mover qué está en la tabla `TRANSICIONES` de `tratos.js`. Una tra
 
 ---
 
-## Las cuatro reglas que no se rompen
+## Las cinco reglas que no se rompen
 
 **1. El handle nunca vive en la tabla del catálogo.**
 `mk_creadoras` guarda `nombre_publico` (un alias). El `instagram_handle` está en `influencers` y solo lo lee `db.getContactoCreadora()`, que se llama desde el panel admin o desde un trato con `contacto_revelado_at` no nulo. Si un endpoint del catálogo tuviera un bug de `select *`, no habría nada sensible que filtrar. No agregar esa columna "por comodidad".
@@ -104,6 +105,19 @@ Es lo único que hace exigible la cláusula de no-circunvalación. El momento es
 
 **4. Las muestras se sirven por proxy, nunca con la URL de origen.**
 Las URLs del CDN de Instagram y TikTok llevan identificadores que permiten llegar al perfil. Se re-alojan en Storage privado con nombre aleatorio y se hace stream desde `/media/:id`.
+
+**5. La tarifa la pone la creadora, no la plataforma.**
+`mk_tarifas` guarda un precio por creadora y tipo de entregable; ella lo define con un control deslizante. `tarifa_min`, `tarifa_max` y `nivel_tarifa` en `mk_creadoras` son **derivados** — se recalculan al guardar y el admin no puede editarlos. Los niveles `inicial`/`medio`/`top` ya no asignan precio: son rangos de presupuesto para que la marca filtre. Y un perfil sin tarifas no se publica: el producto promete "precio publicado".
+
+---
+
+## Nichos y tarifas
+
+**Taxonomía de dos niveles**, en `mk_config.nichos`: 15 categorías madre (belleza, moda, salud y fitness, comida, hogar, familia, mascotas, viajes, tecnología, gaming, finanzas, educación, entretenimiento, autos y movilidad, estilo de vida) con sus subnichos. La creadora elige hasta 3 subnichos; la categoría madre se deduce sola. La marca filtra por categoría o afina por subnicho.
+
+**Entregables** en `mk_config.entregables`: reel, TikTok, historias, post/carrusel, UGC sin publicar, reseña en video, combo, evento presencial y embajadora mensual. Cada uno lleva su propio precio.
+
+**Slider** en `mk_config.rango_tarifa`: de $50.000 a $8.000.000, paso $10.000. Todo se cambia desde `/api/admin/config` sin desplegar.
 
 ---
 

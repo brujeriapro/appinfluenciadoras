@@ -13,7 +13,7 @@ const crypto = require('crypto');
 const db = require('./db');
 const config = require('./config');
 const maquina = require('./tratos');
-const { calcularTrato, rangoAlcance, nivelPorTarifa } = require('./comisiones');
+const { rangoAlcance } = require('./comisiones');
 const notificaciones = require('./notificaciones');
 
 const router = express.Router();
@@ -258,12 +258,13 @@ router.get('/creadoras/:id', async (req, res) => {
   try {
     const creadora = await db.getCreadoraCompleta(req.params.id);
     if (!creadora) return res.status(404).json({ error: 'No encontrada' });
-    const [muestras, contacto] = await Promise.all([
+    const [muestras, contacto, tarifas] = await Promise.all([
       db.getMuestrasDeCreadora(creadora.id),
       db.getContactoCreadora(creadora.id),
+      db.getTarifasDeCreadora(creadora.id),
     ]);
     const { password_hash, ...perfil } = creadora;
-    res.json({ ...perfil, muestras, contacto });
+    res.json({ ...perfil, muestras, contacto, tarifas });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -294,24 +295,43 @@ router.post('/creadoras', async (req, res) => {
  */
 router.patch('/creadoras/:id', async (req, res) => {
   try {
+    // tarifa_min, tarifa_max, nivel_tarifa y entregable_tipico NO están aquí a
+    // propósito: son derivados de mk_tarifas, que llena la creadora. El admin
+    // no le pone precio a nadie.
     const permitidos = [
-      'nombre_publico', 'whatsapp', 'ciudad', 'nicho', 'alcance_total',
-      'rango_alcance', 'engagement_pct', 'nivel_tarifa', 'tarifa_min',
-      'tarifa_max', 'entregable_tipico', 'es_bruja_embajadora', 'visible',
-      'bio_corta', 'notas_admin',
+      'nombre_publico', 'whatsapp', 'ciudad', 'nicho', 'categorias',
+      'alcance_total', 'rango_alcance', 'engagement_pct',
+      'es_bruja_embajadora', 'visible', 'bio_corta', 'notas_admin',
     ];
     const data = {};
     permitidos.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
 
+    const cfg = await db.getConfig();
+
     // Si cambia el alcance, el rango visible se recalcula solo.
     if (data.alcance_total !== undefined) {
-      const cfg = await db.getConfig();
       data.rango_alcance = rangoAlcance(data.alcance_total, cfg.rangos_alcance || []);
     }
-    // Y si se fija una tarifa sin nivel, se sugiere el nivel que corresponde.
-    if (data.tarifa_min !== undefined && !data.nivel_tarifa) {
-      const cfg = await db.getConfig();
-      data.nivel_tarifa = nivelPorTarifa(data.tarifa_min, cfg.niveles_tarifa || {});
+
+    // La categoría madre se deduce de los subnichos elegidos.
+    if (data.nicho !== undefined && !data.categorias) {
+      const taxonomia = cfg.nichos || [];
+      data.categorias = [...new Set(
+        taxonomia
+          .filter(c => (c.subnichos || []).some(s => data.nicho.includes(s)))
+          .map(c => c.clave)
+      )];
+    }
+
+    // Publicar un perfil sin tarifas lo deja en el catálogo sin precio, que es
+    // justo lo que el producto promete no hacer ("precio publicado").
+    if (data.visible === true) {
+      const tarifas = await db.getTarifasDeCreadora(req.params.id);
+      if (!tarifas.some(t => t.activo !== false)) {
+        return res.status(409).json({
+          error: 'No se puede publicar sin tarifas. La creadora debe definir sus precios primero.',
+        });
+      }
     }
 
     res.json(await db.updateCreadora(req.params.id, data));

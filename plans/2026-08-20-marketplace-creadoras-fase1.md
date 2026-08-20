@@ -146,6 +146,10 @@ Ninguno. Este plan es puramente aditivo — no toca el código del Programa Crea
 
 13. **La landing pública es parte de la Fase 1.** El handoff entregó la landing completa (10 bloques) antes que las 6 pantallas de producto, así que se porta primero y se sirve como raíz del sitio. Sus CTAs (`SOY MARCA`, `SOY CREADORA`) enlazan a los flujos de registro reales. Los datos que la landing muestra como fijos (métricas del hero, 8 tarjetas del banco) se sirven desde el backend vía `GET /api/landing`, no hardcodeados, para que dejen de mentir en cuanto haya datos reales.
 
+14. **Taxonomía de nichos amplia y de dos niveles.** La spec arrancó como marketplace de belleza; se abrió a todo el universo de creadoras. La taxonomía tiene 15 categorías madre con subnichos, construida cruzando las 15 categorías canónicas de YouTube (cobertura completa y estable) con los nichos que de verdad contratan las marcas en marketplaces de creadoras — donde lifestyle, belleza, moda, fitness y viajes concentran la demanda. Dos niveles porque la marca busca primero amplio ("moda") y luego afina ("streetwear"), y porque una lista plana de 100 nichos es imposible de filtrar. La creadora elige máximo 3: un perfil enfocado se contrata más que uno que dice hacer de todo.
+
+15. **La tarifa la pone la creadora, no la plataforma.** Tabla `mk_tarifas` con una fila por creadora + entregable (reel, TikTok, historias, post, UGC, reseña, combo, evento, embajadora mensual). Ella mueve un slider y publica su precio. `tarifa_min`, `tarifa_max` y `nivel_tarifa` en `mk_creadoras` pasan a ser **derivados** y se recalculan cada vez que guarda, para que el catálogo filtre por presupuesto sin cruzar tablas en cada consulta. El admin no puede editarlos: se quitaron de la lista de campos permitidos. Y un perfil sin tarifas no se puede publicar — el producto promete "precio publicado", y una ficha sin precio lo incumple.
+
 ### Alternatives Considered
 
 - **Extender `apps/creadoras/index.js` directamente** (lectura literal de la spec). Rechazado: acopla el producto externo al interno, obliga a compartir el admin Basic Auth de Brujería, y hace que un despliegue del marketplace pueda tumbar el pipeline de gifting.
@@ -158,9 +162,9 @@ Ninguno. Este plan es puramente aditivo — no toca el código del Programa Crea
 
 Ninguna de estas bloquea el arranque de la implementación; se necesitan antes de los pasos indicados.
 
-1. **Nicho de cada creadora** (bloquea el Paso 12, curaduría). El dato no existe en `influencers` y no es derivable. Propuesta: partir de una lista cerrada (`rizos`, `cuidado capilar`, `maquillaje`, `skincare`, `lifestyle`, `maternidad`, `fitness`, `moda`) y que el admin la asigne al revisar cada perfil. ¿Se aprueba esa lista o hay otra taxonomía preferida?
+1. ~~Nicho~~ **Resuelto (ampliado).** La taxonomía de belleza se reemplazó por una de **dos niveles que cubre todo el universo de creadoras**: 15 categorías madre con ~100 subnichos (`mk_003`). La creadora elige hasta 3 subnichos y la categoría madre se deduce sola. La marca filtra por categoría (amplio) o afina por subnicho.
 2. **Rangos de alcance a mostrar** (bloquea el Paso 12). Propuesta: `1K–10K`, `10K–50K`, `50K–100K`, `100K+`. Mostrar rango en vez de número exacto también dificulta identificar a la creadora.
-3. **Niveles de tarifa sugerida en COP** (bloquea el Paso 4, semillas). Hacen falta valores iniciales para `inicial` / `medio` / `top`. Son configurables después, pero la primera semilla necesita números.
+3. ~~Niveles de tarifa~~ **Resuelto (cambio de modelo).** La plataforma ya no asigna tarifa. **Cada creadora publica su precio por tipo de entregable** con un control deslizante ($50.000–$8.000.000, paso $10.000). Los niveles `inicial`/`medio`/`top` pasaron a ser rangos de presupuesto para que la marca filtre, y el nivel de cada creadora se **deriva** de lo que ella misma publicó.
 4. ~~Dominio~~ **Resuelto**: el DNS aún no está comprado. Todo corre sobre la URL `.up.railway.app` hasta que se adquiera. El handoff de diseño usa `CREADORES.APP` como marca, así que el dominio a comprar es **creadores.app** (o `creadoresapp.com` como alterno). El paso de despliegue omite la configuración de dominio.
 5. **Email remitente del marketplace**: se necesita una cuenta distinta a `brujeriapro@gmail.com` para que los correos no lleguen firmados por Brujería. Bloquea el Paso 17.
 6. **Plazo de no-circunvalación**: la spec dice "6-12 meses". Propuesta: 12 meses. Bloquea el Paso 16 (texto legal).

@@ -128,22 +128,26 @@ const getMarcas = () =>
 // Columnas que puede ver una marca. Sin influencer_id, sin email, sin whatsapp:
 // nada que permita contactar o identificar a la creadora por fuera del trato.
 const COLS_CATALOGO = [
-  'id', 'nombre_publico', 'ciudad', 'nicho', 'rango_alcance', 'engagement_pct',
-  'nivel_tarifa', 'tarifa_min', 'tarifa_max', 'entregable_tipico', 'bio_corta',
-  'colaboraciones_completadas',
+  'id', 'nombre_publico', 'ciudad', 'categorias', 'nicho', 'rango_alcance',
+  'engagement_pct', 'nivel_tarifa', 'tarifa_min', 'tarifa_max',
+  'entregable_tipico', 'bio_corta', 'colaboraciones_completadas',
 ].join(',');
 
-async function getCatalogo({ nicho, rango_alcance, nivel_tarifa, ciudad } = {}) {
+async function getCatalogo({ categoria, nicho, rango_alcance, nivel_tarifa, ciudad, presupuesto_max } = {}) {
   const params = {
     select: COLS_CATALOGO,
     visible: 'eq.true',
     order: 'colaboraciones_completadas.desc',
   };
-  // nicho es un array en Postgres: "cs" = contains
+  // categorias y nicho son arrays en Postgres: "cs" = contains
+  if (categoria)     params.categorias = `cs.{${categoria}}`;
   if (nicho)         params.nicho = `cs.{${nicho}}`;
   if (rango_alcance) params.rango_alcance = `eq.${rango_alcance}`;
   if (nivel_tarifa)  params.nivel_tarifa = `eq.${nivel_tarifa}`;
   if (ciudad)        params.ciudad = `eq.${ciudad}`;
+  // "Muéstrame quién cabe en mi presupuesto": basta con que su entregable más
+  // barato quepa, aunque tenga otros más caros.
+  if (presupuesto_max) params.tarifa_min = `lte.${presupuesto_max}`;
   return get('mk_creadoras', params);
 }
 
@@ -204,6 +208,66 @@ async function getContactoCreadora(creadora_id) {
     ciudad: c.ciudad,
     ...handles,
   };
+}
+
+// ── Tarifas ─────────────────────────────────────────────────────────────────
+// Cada creadora publica cuánto cobra por cada tipo de entregable. La plataforma
+// no le asigna precio a nadie: solo sugiere un rango en el control deslizante.
+
+const getTarifasDeCreadora = (creadora_id) =>
+  get('mk_tarifas', {
+    creadora_id: `eq.${creadora_id}`,
+    select: 'id,entregable,precio,activo',
+    order: 'precio.asc',
+  });
+
+async function getTarifasDeVarias(ids = []) {
+  if (!ids.length) return {};
+  const filas = await get('mk_tarifas', {
+    creadora_id: `in.(${ids.join(',')})`,
+    activo: 'eq.true',
+    select: 'creadora_id,entregable,precio',
+    order: 'precio.asc',
+  });
+  const porCreadora = {};
+  filas.forEach(t => {
+    (porCreadora[t.creadora_id] = porCreadora[t.creadora_id] || []).push(t);
+  });
+  return porCreadora;
+}
+
+/**
+ * Reemplaza el set completo de tarifas de una creadora.
+ *
+ * Se hace por reemplazo y no por merge para que la creadora pueda quitar un
+ * entregable simplemente no incluyéndolo: lo que manda es lo que queda.
+ */
+async function guardarTarifas(creadora_id, tarifas = []) {
+  const existentes = await getTarifasDeCreadora(creadora_id);
+  const porEntregable = new Map(existentes.map(t => [t.entregable, t]));
+
+  for (const t of tarifas) {
+    const previa = porEntregable.get(t.entregable);
+    const fila = {
+      precio: Number(t.precio),
+      activo: t.activo !== false,
+      updated_at: new Date().toISOString(),
+    };
+    if (previa) {
+      await patch('mk_tarifas', { id: previa.id }, fila);
+      porEntregable.delete(t.entregable);
+    } else {
+      await post('mk_tarifas', { creadora_id, entregable: t.entregable, ...fila });
+    }
+  }
+  // Lo que ya no viene en la lista se desactiva (no se borra: conserva el
+  // histórico de a qué precio se cerró en su momento).
+  for (const sobrante of porEntregable.values()) {
+    if (sobrante.activo) {
+      await patch('mk_tarifas', { id: sobrante.id }, { activo: false, updated_at: new Date().toISOString() });
+    }
+  }
+  return getTarifasDeCreadora(creadora_id);
 }
 
 // ── Muestras ────────────────────────────────────────────────────────────────
@@ -346,6 +410,7 @@ module.exports = {
   getCatalogo, getCreadoraCatalogo, getCreadoraCompleta, getCreadoraPorEmail,
   getCreadoraPorInfluencer, insertCreadora, updateCreadora, getCreadorasAdmin,
   getContactoCreadora,
+  getTarifasDeCreadora, getTarifasDeVarias, guardarTarifas,
   getMuestrasDeCreadora, getMuestra, insertMuestra, getMuestrasDeVarias,
   insertTrato, getTratoById, updateTrato, getTratosDeMarca, getTratosDeCreadora,
   getTratosAdmin, siguienteCodigoTrato,

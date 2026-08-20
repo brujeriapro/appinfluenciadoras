@@ -9,6 +9,8 @@
 //   - No inventa nicho ni engagement. Esos datos no existen en `influencers` y
 //     no son derivables: un catálogo con nichos inventados es peor que uno
 //     incompleto. Quedan nulos y el admin los completa al curar.
+//   - No pone tarifas. El precio lo define cada creadora desde su portal; la
+//     plataforma no le asigna precio a nadie.
 //   - No publica a nadie. Todas entran con visible=false: nadie llega al
 //     catálogo sin que un humano revise el perfil.
 //   - No copia el handle. mk_creadoras no tiene esa columna; el nombre público
@@ -100,9 +102,11 @@ async function main() {
   }
 
   console.log(`\nCreadas: ${creadas} · Actualizadas: ${actualizadas} · Saltadas: ${saltadas}`);
-  console.log('\nSiguiente paso: entrar al panel admin y curar cada perfil —');
-  console.log('asignar nicho, engagement, tarifa y publicar (visible = true).');
-  console.log('Ninguna aparece en el catálogo hasta que se haga esa revisión.');
+  console.log('\nSiguientes pasos:');
+  console.log('  1. Panel admin: asignar nicho y engagement a cada perfil.');
+  console.log('  2. Cada creadora entra a su portal y define sus tarifas.');
+  console.log('  3. Publicar el perfil — no se puede publicar sin tarifas.');
+  console.log('\nNinguna aparece en el catálogo hasta que se complete eso.');
 }
 
 main().catch(e => {

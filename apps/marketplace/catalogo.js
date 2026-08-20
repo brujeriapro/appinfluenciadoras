@@ -20,7 +20,10 @@ router.get('/filtros', async (req, res) => {
   try {
     const cfg = await db.getConfig();
     res.json({
-      nichos: cfg.nichos || [],
+      // Taxonomía de dos niveles: la marca filtra por categoría (amplio) o
+      // afina por subnicho.
+      categorias: cfg.nichos || [],
+      entregables: cfg.entregables || [],
       rangos_alcance: (cfg.rangos_alcance || []).map(r => r.clave),
       niveles_tarifa: Object.entries(cfg.niveles_tarifa || {}).map(([clave, n]) => ({
         clave,
@@ -37,17 +40,31 @@ router.get('/filtros', async (req, res) => {
 /** Listado con filtros. */
 router.get('/', async (req, res) => {
   try {
-    const { nicho, rango_alcance, nivel_tarifa, ciudad } = req.query;
-    const creadoras = await db.getCatalogo({ nicho, rango_alcance, nivel_tarifa, ciudad });
+    const { categoria, nicho, rango_alcance, nivel_tarifa, ciudad, presupuesto_max, entregable } = req.query;
+    let creadoras = await db.getCatalogo({
+      categoria, nicho, rango_alcance, nivel_tarifa, ciudad, presupuesto_max,
+    });
 
+    const ids = creadoras.map(c => c.id);
     // Las muestras se adjuntan como ids: el binario se pide después a /media/:id.
-    const muestras = await db.getMuestrasDeVarias(creadoras.map(c => c.id));
-    const conMuestras = creadoras.map(c => ({
+    const [muestras, tarifas] = await Promise.all([
+      db.getMuestrasDeVarias(ids),
+      db.getTarifasDeVarias(ids),
+    ]);
+
+    let resultado = creadoras.map(c => ({
       ...c,
       muestras: (muestras[c.id] || []).map(m => ({ id: m.id, tipo: m.tipo })),
+      tarifas: (tarifas[c.id] || []).map(t => ({ entregable: t.entregable, precio: t.precio })),
     }));
 
-    res.json({ total: conMuestras.length, creadoras: conMuestras });
+    // "Quiero un reel": se filtra en memoria porque depende de la tabla de
+    // tarifas, no de una columna de mk_creadoras.
+    if (entregable) {
+      resultado = resultado.filter(c => c.tarifas.some(t => t.entregable === entregable));
+    }
+
+    res.json({ total: resultado.length, creadoras: resultado });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -59,10 +76,18 @@ router.get('/:id', async (req, res) => {
     const creadora = await db.getCreadoraCatalogo(req.params.id);
     if (!creadora) return res.status(404).json({ error: 'Creadora no encontrada' });
 
-    const muestras = await db.getMuestrasDeCreadora(creadora.id);
+    const [muestras, tarifas] = await Promise.all([
+      db.getMuestrasDeCreadora(creadora.id),
+      db.getTarifasDeCreadora(creadora.id),
+    ]);
+
     res.json({
       ...creadora,
       muestras: muestras.map(m => ({ id: m.id, tipo: m.tipo })),
+      // Solo las que ella tiene publicadas.
+      tarifas: tarifas
+        .filter(t => t.activo !== false)
+        .map(t => ({ entregable: t.entregable, precio: t.precio })),
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

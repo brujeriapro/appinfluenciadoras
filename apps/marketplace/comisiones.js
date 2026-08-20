@@ -56,9 +56,15 @@ function calcularTrato({ monto, comision_marca_pct, comision_creadora_pct, es_br
 }
 
 /**
- * Devuelve el nivel de tarifa (inicial | medio | top) que corresponde a un
- * monto dado, según los niveles configurados. Sirve para sugerir tarifa al
- * curar un perfil nuevo.
+ * Devuelve el nivel de presupuesto (inicial | medio | top) que corresponde a
+ * una tarifa.
+ *
+ * El nivel NO se le asigna a la creadora: ella pone su precio y el nivel se
+ * deriva de ahí. Existe solo para que la marca pueda filtrar el catálogo por
+ * lo que tiene disponible para gastar.
+ *
+ * Los rangos son semiabiertos [min, max) para que un valor justo en el corte
+ * caiga siempre en el nivel de arriba y no en dos a la vez.
  */
 function nivelPorTarifa(monto, niveles = {}) {
   const base = Number(monto) || 0;
@@ -66,9 +72,34 @@ function nivelPorTarifa(monto, niveles = {}) {
   for (const clave of orden) {
     const n = niveles[clave];
     if (!n) continue;
-    if (base >= (n.min ?? 0) && base <= (n.max ?? Infinity)) return clave;
+    if (base >= (n.min ?? 0) && base < (n.max ?? Infinity)) return clave;
   }
   return base > 0 ? 'top' : null;
+}
+
+/**
+ * Resume las tarifas publicadas por una creadora en los tres valores que el
+ * catálogo necesita para filtrar rápido, sin cruzar tablas en cada consulta.
+ *
+ * Solo cuentan las tarifas activas: una creadora puede tener precio guardado
+ * para un entregable que decidió no ofrecer.
+ */
+function resumirTarifas(tarifas = [], niveles = {}) {
+  const activas = tarifas.filter(t => t.activo !== false && Number(t.precio) > 0);
+  if (!activas.length) {
+    return { tarifa_min: null, tarifa_max: null, nivel_tarifa: null, entregable_tipico: null };
+  }
+  const precios = activas.map(t => Number(t.precio));
+  const min = Math.min(...precios);
+  const barata = activas.find(t => Number(t.precio) === min);
+  return {
+    tarifa_min: min,
+    tarifa_max: Math.max(...precios),
+    // El nivel sale del precio de entrada: es lo que la marca compara con su
+    // presupuesto cuando busca "creadoras hasta $500K".
+    nivel_tarifa: nivelPorTarifa(min, niveles),
+    entregable_tipico: barata ? barata.entregable : null,
+  };
 }
 
 /**
@@ -93,4 +124,4 @@ function formatearCOP(valor) {
   return '$' + n.toLocaleString('es-CO');
 }
 
-module.exports = { calcularTrato, nivelPorTarifa, rangoAlcance, formatearCOP };
+module.exports = { calcularTrato, nivelPorTarifa, resumirTarifas, rangoAlcance, formatearCOP };

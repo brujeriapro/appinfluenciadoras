@@ -7,6 +7,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const db = require('./db');
 const maquina = require('./tratos');
+const { resumirTarifas } = require('./comisiones');
 const { creadoraAuth, firmarToken, rateLimit } = require('./auth');
 const notificaciones = require('./notificaciones');
 
@@ -63,13 +64,125 @@ router.get('/me', async (req, res) => {
   try {
     const creadora = await db.getCreadoraCompleta(req.usuarioId);
     if (!creadora) return res.status(404).json({ error: 'Perfil no encontrado' });
-    const muestras = await db.getMuestrasDeCreadora(creadora.id);
+    const [muestras, tarifas] = await Promise.all([
+      db.getMuestrasDeCreadora(creadora.id),
+      db.getTarifasDeCreadora(creadora.id),
+    ]);
     const { password_hash, ...perfil } = creadora;
-    res.json({ ...perfil, muestras });
+    res.json({ ...perfil, muestras, tarifas });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
+
+// ── Tarifas: las pone la creadora, no la plataforma ─────────────────────────
+
+/**
+ * Lo que necesita la pantalla del control deslizante: los entregables
+ * disponibles, los límites del slider y lo que ella ya tiene publicado.
+ */
+router.get('/tarifas', async (req, res) => {
+  try {
+    const [cfg, tarifas] = await Promise.all([
+      db.getConfig(),
+      db.getTarifasDeCreadora(req.usuarioId),
+    ]);
+    res.json({
+      entregables: cfg.entregables || [],
+      rango: cfg.rango_tarifa || { min: 50000, max: 8000000, paso: 10000 },
+      tarifas,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Guarda el set completo de tarifas. Manda lo que quede publicado: lo que no
+ * venga en la lista se desactiva.
+ */
+router.put('/tarifas', async (req, res) => {
+  try {
+    const { tarifas } = req.body;
+    if (!Array.isArray(tarifas)) {
+      return res.status(400).json({ error: 'Falta la lista de tarifas' });
+    }
+
+    const cfg = await db.getConfig();
+    const rango = cfg.rango_tarifa || { min: 50000, max: 8000000 };
+    const clavesValidas = new Set((cfg.entregables || []).map(e => e.clave));
+
+    for (const t of tarifas) {
+      if (!clavesValidas.has(t.entregable)) {
+        return res.status(400).json({ error: `Entregable desconocido: ${t.entregable}` });
+      }
+      const precio = Number(t.precio);
+      if (!Number.isFinite(precio) || precio < rango.min || precio > rango.max) {
+        return res.status(400).json({
+          error: `El precio de "${t.entregable}" debe estar entre ${rango.min} y ${rango.max}`,
+        });
+      }
+    }
+
+    const guardadas = await db.guardarTarifas(req.usuarioId, tarifas);
+
+    // El catálogo filtra por tarifa sin cruzar tablas, así que el resumen se
+    // recalcula cada vez que ella cambia sus precios.
+    const resumen = resumirTarifas(guardadas, cfg.niveles_tarifa || {});
+    await db.updateCreadora(req.usuarioId, resumen);
+
+    res.json({ ok: true, tarifas: guardadas, ...resumen });
+  } catch (e) {
+    console.error('[creadoras/tarifas]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** Nichos que la creadora puede elegir para su perfil. */
+router.get('/nichos', async (req, res) => {
+  try {
+    const cfg = await db.getConfig();
+    res.json({ categorias: cfg.nichos || [], max_subnichos: 3 });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** La creadora elige sus nichos (hasta 3 subnichos). */
+router.put('/nichos', async (req, res) => {
+  try {
+    const { nicho } = req.body;
+    if (!Array.isArray(nicho) || !nicho.length) {
+      return res.status(400).json({ error: 'Elige al menos un nicho' });
+    }
+    if (nicho.length > 3) {
+      return res.status(400).json({ error: 'Máximo 3 nichos: un perfil enfocado se contrata más' });
+    }
+
+    const cfg = await db.getConfig();
+    const taxonomia = cfg.nichos || [];
+    const validos = new Set(taxonomia.flatMap(c => c.subnichos || []));
+    const desconocido = nicho.find(n => !validos.has(n));
+    if (desconocido) {
+      return res.status(400).json({ error: `Nicho desconocido: ${desconocido}` });
+    }
+
+    // La categoría madre se deduce de los subnichos: la marca filtra primero
+    // por categoría y luego afina, así que no hace falta pedirla dos veces.
+    const categorias = [...new Set(
+      taxonomia
+        .filter(c => (c.subnichos || []).some(s => nicho.includes(s)))
+        .map(c => c.clave)
+    )];
+
+    await db.updateCreadora(req.usuarioId, { nicho, categorias });
+    res.json({ ok: true, nicho, categorias });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Tratos ──────────────────────────────────────────────────────────────────
 
 router.get('/tratos', async (req, res) => {
   try {
