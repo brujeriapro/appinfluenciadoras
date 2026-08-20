@@ -59,9 +59,11 @@ app.use('/media', require('./media'));
 // difícil dejar por accidente una ruta admin abierta.
 
 app.use('/api/admin', adminAuth, require('./admin'));
-app.get('/admin.html', adminAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
+
+// admin.html se sirve sin auth a propósito: es una cáscara vacía, no contiene
+// ni un dato. La puerta real está en /api/admin/*, y la página pide usuario y
+// clave con su propio formulario. Así hay una sola puerta —controlada por
+// nosotros— en vez de dos (el diálogo del navegador más el nuestro).
 
 // ── Estáticos ───────────────────────────────────────────────────────────────
 

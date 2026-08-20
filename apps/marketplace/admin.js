@@ -38,11 +38,14 @@ router.get('/resumen', async (req, res) => {
       destino[p.trato_id] = (destino[p.trato_id] || 0) + Number(p.monto || 0);
     });
 
-    // Dinero en custodia: lo que entró y todavía no ha salido.
-    let retenido = 0;
-    Object.entries(entradasPorTrato).forEach(([tratoId, entrada]) => {
-      retenido += Math.max(0, entrada - (salidasPorTrato[tratoId] || 0));
-    });
+    // Dinero en custodia: lo que una marca ya pagó y todavía se le debe a
+    // alguien. Se cuenta la entrada COMPLETA de los tratos que aún no se le han
+    // pagado a la creadora — no la resta entrada menos salida, porque en un
+    // trato ya pagado esa diferencia es la comisión ganada, no plata retenida.
+    const conSalida = new Set(Object.keys(salidasPorTrato));
+    const retenido = Object.entries(entradasPorTrato)
+      .filter(([tratoId]) => !conSalida.has(tratoId))
+      .reduce((s, [, entrada]) => s + entrada, 0);
 
     // La comisión se cuenta como causada cuando el trato llegó a pagado o cerrado:
     // antes de eso todavía puede cancelarse y devolverse.

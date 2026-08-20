@@ -8,7 +8,9 @@ Marketplace de dos lados: marcas colombianas contratan colaboraciones pagas con 
 
 ## Estado
 
-**Fase 1 — backend completo, landing pública lista.** Faltan las pantallas de producto (catálogo, registro, portal de creadora, línea de tiempo, panel admin), que esperan los mockups de Claude Design.
+**Fase 1 — backend completo, landing pública y panel admin listos.** Con eso el marketplace ya se puede operar a mano. Faltan las pantallas de cara al usuario (catálogo, registro de marca, portal de creadora, línea de tiempo), que esperan los mockups de Claude Design.
+
+El panel vive en `/admin.html`. Se sirve sin auth a propósito —es una cáscara vacía— y pide usuario y clave con su propio formulario; la puerta real está en `/api/admin/*`.
 
 Plan completo: [`plans/2026-08-20-marketplace-creadoras-fase1.md`](../../plans/2026-08-20-marketplace-creadoras-fase1.md)
 
@@ -79,6 +81,7 @@ media.js         Proxy de piezas de muestra desde Storage privado
 landing.js       GET /api/landing — datos de la landing pública
 terminos.js      Texto legal versionado
 notificaciones.js Correos transaccionales
+public/admin.html  Panel de operación: tratos, pagos, curaduría, ajustes, export
 ```
 
 ### Los estados de un trato

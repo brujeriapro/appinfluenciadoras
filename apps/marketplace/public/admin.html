@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel · Creadores.app</title>
+<meta name="robots" content="noindex, nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/tokens.css">
+<style>
+  /* Panel interno. Vanilla JS a propósito: se usa todos los días y no vale la
+     pena cargar Babel standalone (medio mega) para pintar tablas. */
+
+  body { background: var(--ink); color: var(--off-white); }
+
+  .barra {
+    position: sticky; top: 0; z-index: 30;
+    display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    padding: 12px clamp(14px, 3vw, 28px);
+    background: var(--ink); border-bottom: 2px solid var(--border-dark);
+  }
+  .logo { display: flex; align-items: center; gap: 9px; }
+  .logo__marca { width: 24px; height: 24px; background: var(--lime); display: grid; place-items: center;
+                 color: var(--ink); font-family: var(--mono-title); font-weight: 800; font-size: 12px; }
+  .logo__texto { font-family: var(--mono-title); font-weight: 800; font-size: 13px; letter-spacing: -0.5px; }
+
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
+  .tab {
+    font-family: var(--mono-title); font-weight: 800; font-size: 11.5px; letter-spacing: 0.4px;
+    padding: 8px 12px; border: 2px solid var(--border-dark); background: transparent;
+    color: var(--grey-600); cursor: pointer; text-transform: uppercase;
+  }
+  .tab:hover { color: var(--off-white); border-color: var(--grey-700); }
+  .tab.activa { background: var(--lime); color: var(--ink); border-color: var(--lime); }
+
+  .contenido { padding: clamp(16px, 3vw, 30px); }
+
+  /* Tiles de KPI: grilla de bordes compartidos, como en la landing. */
+  .kpis { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin-bottom: 26px; }
+  .kpi { padding: 18px 16px; }
+  .kpi__label { font-size: 10.5px; letter-spacing: 1.2px; color: var(--grey-700); text-transform: uppercase; }
+  .kpi__valor { font-family: var(--mono-title); font-size: clamp(20px, 2.6vw, 30px); font-weight: 800;
+                letter-spacing: -1.6px; margin-top: 8px; }
+  .kpi__valor--lime { color: var(--lime); }
+  .kpi__valor--magenta { color: var(--magenta); }
+  .kpi__nota { font-size: 10.5px; color: var(--grey-700); margin-top: 5px; }
+
+  .seccion-titulo {
+    font-family: var(--mono-title); font-weight: 800; font-size: 15px; letter-spacing: -0.6px;
+    text-transform: uppercase; margin: 30px 0 12px; padding-bottom: 8px;
+    border-bottom: 2px solid var(--border-dark);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    text-align: left; font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase;
+    color: var(--grey-700); font-weight: 700; padding: 9px 10px;
+    border-bottom: 2px solid var(--border-dark); white-space: nowrap;
+  }
+  td { padding: 11px 10px; border-bottom: 1px solid var(--border-dark-soft); vertical-align: middle; }
+  tbody tr:hover { background: #151515; }
+  tbody tr.clicable { cursor: pointer; }
+  .tabla-wrap { overflow-x: auto; }
+
+  .pill {
+    display: inline-block; padding: 3px 7px; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.6px; text-transform: uppercase; white-space: nowrap;
+  }
+  .pill--solicitado    { background: var(--magenta); color: var(--ink); }
+  .pill--aceptado      { background: var(--blue); color: #fff; }
+  .pill--pago_retenido { background: var(--lime); color: var(--ink); }
+  .pill--entregado     { background: var(--blue); color: #fff; }
+  .pill--aprobado      { background: var(--lime); color: var(--ink); }
+  .pill--pagado        { background: var(--lime); color: var(--ink); }
+  .pill--cerrado       { background: var(--border-dark); color: var(--grey-600); }
+  .pill--rechazado     { background: var(--border-dark); color: var(--grey-600); }
+  .pill--cancelado     { background: var(--border-dark); color: var(--grey-600); }
+  .pill--si            { background: var(--lime); color: var(--ink); }
+  .pill--no            { background: var(--border-dark); color: var(--grey-600); }
+
+  .num { font-family: var(--mono-title); font-weight: 700; text-align: right; white-space: nowrap; }
+
+  .btn-mini {
+    font-family: var(--mono-title); font-weight: 800; font-size: 10.5px; letter-spacing: 0.4px;
+    padding: 7px 11px; border: 2px solid var(--lime); background: var(--lime); color: var(--ink);
+    cursor: pointer; text-transform: uppercase;
+  }
+  .btn-mini:hover { background: #fff; border-color: #fff; }
+  .btn-mini--ghost { background: transparent; color: var(--lime); }
+  .btn-mini--ghost:hover { background: var(--lime); color: var(--ink); }
+  .btn-mini--peligro { background: transparent; border-color: var(--magenta); color: var(--magenta); }
+  .btn-mini--peligro:hover { background: var(--magenta); color: var(--ink); }
+  .btn-mini:disabled { opacity: .4; cursor: not-allowed; }
+
+  input, select, textarea {
+    font-family: var(--mono-body); font-size: 12.5px;
+    background: #151515; color: var(--off-white);
+    border: 2px solid var(--border-dark); padding: 9px 10px; width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--lime); }
+  label { display: block; font-size: 10.5px; letter-spacing: 1.1px; text-transform: uppercase;
+          color: var(--grey-700); margin-bottom: 5px; font-weight: 700; }
+  .campo { margin-bottom: 14px; }
+  .campos-fila { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+
+  /* Panel lateral de detalle */
+  .telon { position: fixed; inset: 0; background: rgba(0,0,0,.72); z-index: 50; display: none; }
+  .telon.abierto { display: block; }
+  .panel {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(620px, 100%);
+    background: var(--ink); border-left: 2px solid var(--lime); z-index: 51;
+    overflow-y: auto; display: none;
+  }
+  .panel.abierto { display: block; }
+  .panel__barra {
+    position: sticky; top: 0; background: var(--ink); border-bottom: 2px solid var(--border-dark);
+    padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .panel__titulo { font-family: var(--mono-title); font-weight: 800; font-size: 14px; letter-spacing: -0.5px; }
+  .panel__cuerpo { padding: 18px; }
+  .cerrar { background: none; border: none; color: var(--grey-600); font-size: 20px; cursor: pointer; line-height: 1; }
+  .cerrar:hover { color: var(--magenta); }
+
+  /* Línea de tiempo del trato */
+  .timeline { list-style: none; margin: 0; padding: 0; }
+  .timeline li { position: relative; padding: 0 0 16px 20px; border-left: 2px solid var(--border-dark); }
+  .timeline li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  .timeline li::before {
+    content: ''; position: absolute; left: -6px; top: 3px; width: 10px; height: 10px; background: var(--border-dark);
+  }
+  .timeline li.hecho::before { background: var(--lime); }
+  .timeline__estado { font-family: var(--mono-title); font-weight: 700; font-size: 12px; }
+  .timeline__meta { font-size: 10.5px; color: var(--grey-700); margin-top: 3px; }
+
+  .bloque { border: 2px solid var(--border-dark); padding: 14px; margin-bottom: 16px; }
+  .bloque__titulo { font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase;
+                    color: var(--grey-700); font-weight: 700; margin-bottom: 10px; }
+  .dato { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 12.5px; }
+  .dato span:first-child { color: var(--grey-600); }
+  .dato span:last-child { text-align: right; }
+
+  .aviso { border: 2px solid var(--magenta); background: #1a0a12; padding: 12px 14px;
+           font-size: 12.5px; margin-bottom: 18px; }
+  .aviso--ok { border-color: var(--lime); background: #12160a; }
+
+  .vacio { padding: 40px 16px; text-align: center; color: var(--grey-700); font-size: 12.5px; }
+
+  .filtros { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .filtro {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+    padding: 6px 10px; border: 1px solid var(--border-dark-mid); background: transparent;
+    color: var(--grey-600); cursor: pointer;
+  }
+  .filtro.activo { background: var(--lime); color: var(--ink); border-color: var(--lime); }
+
+  /* Login */
+  .login-wrap { display: grid; place-items: center; min-height: 100vh; padding: 20px; }
+  .login { width: min(360px, 100%); border: 2px solid var(--lime); padding: 26px; }
+  .login h1 { font-family: var(--mono-title); font-weight: 800; font-size: 20px;
+              letter-spacing: -1px; margin: 0 0 4px; text-transform: uppercase; }
+  .login p { font-size: 11.5px; color: var(--grey-700); margin: 0 0 20px; letter-spacing: 0.6px; }
+  .error { color: var(--magenta); font-size: 11.5px; margin-top: 10px; }
+
+  .oculto { display: none !important; }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; }
+  .chip { font-size: 10.5px; padding: 2px 6px; background: var(--border-dark); color: var(--grey-500); }
+  .chip.on { background: var(--lime); color: var(--ink); cursor: pointer; }
+  .chip.off { cursor: pointer; }
+  .chip.off:hover { background: var(--border-dark-mid); color: var(--off-white); }
+</style>
+</head>
+<body>
+
+<!-- ── Login ──────────────────────────────────────────────────────────────── -->
+<div class="login-wrap" id="login-wrap">
+  <form class="login" id="login-form">
+    <h1>Panel</h1>
+    <p>CREADORES.APP</p>
+    <div class="campo">
+      <label for="usuario">Usuario</label>
+      <input id="usuario" autocomplete="username" value="admin" required>
+    </div>
+    <div class="campo">
+      <label for="clave">Contraseña</label>
+      <input id="clave" type="password" autocomplete="current-password" required>
+    </div>
+    <button class="btn btn--lime" style="width:100%" type="submit">ENTRAR →</button>
+    <div class="error oculto" id="login-error"></div>
+  </form>
+</div>
+
+<!-- ── Panel ──────────────────────────────────────────────────────────────── -->
+<div id="app" class="oculto">
+  <div class="barra">
+    <div class="logo">
+      <div class="logo__marca">C</div>
+      <span class="logo__texto">CREADORES.APP</span>
+    </div>
+    <div class="tabs" id="tabs">
+      <button class="tab activa" data-vista="resumen">Resumen</button>
+      <button class="tab" data-vista="tratos">Tratos</button>
+      <button class="tab" data-vista="creadoras">Creadoras</button>
+      <button class="tab" data-vista="marcas">Marcas</button>
+      <button class="tab" data-vista="ajustes">Ajustes</button>
+    </div>
+  </div>
+  <div class="contenido" id="contenido"></div>
+</div>
+
+<div class="telon" id="telon"></div>
+<aside class="panel" id="panel">
+  <div class="panel__barra">
+    <span class="panel__titulo" id="panel-titulo"></span>
+    <button class="cerrar" id="panel-cerrar">✕</button>
+  </div>
+  <div class="panel__cuerpo" id="panel-cuerpo"></div>
+</aside>
+
+<script>
+// ── Sesión ──────────────────────────────────────────────────────────────────
+// Las credenciales viven en sessionStorage: se pierden al cerrar la pestaña,
+// que es lo correcto para un panel que maneja plata.
+
+let AUTH = sessionStorage.getItem('mk_auth') || null;
+
+async function api(ruta, opciones = {}) {
+  const res = await fetch('/api/admin' + ruta, {
+    ...opciones,
+    headers: {
+      'Authorization': 'Basic ' + AUTH,
+      'Content-Type': 'application/json',
+      ...(opciones.headers || {}),
+    },
+  });
+  if (res.status === 401) {
+    sessionStorage.removeItem('mk_auth');
+    location.reload();
+    throw new Error('Sesión vencida');
+  }
+  const texto = await res.text();
+  const datos = texto ? JSON.parse(texto) : null;
+  if (!res.ok) throw new Error((datos && datos.error) || 'Error ' + res.status);
+  return datos;
+}
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const usuario = document.getElementById('usuario').value;
+  const clave = document.getElementById('clave').value;
+  AUTH = btoa(usuario + ':' + clave);
+  const err = document.getElementById('login-error');
+  try {
+    await api('/resumen');
+    sessionStorage.setItem('mk_auth', AUTH);
+    arrancar();
+  } catch (e) {
+    AUTH = null;
+    err.textContent = 'Usuario o contraseña incorrectos';
+    err.classList.remove('oculto');
+  }
+});
+
+function arrancar() {
+  document.getElementById('login-wrap').classList.add('oculto');
+  document.getElementById('app').classList.remove('oculto');
+  ir('resumen');
+}
+
+// ── Utilidades ──────────────────────────────────────────────────────────────
+
+const COP = (v) => '$' + Math.round(Number(v) || 0).toLocaleString('es-CO');
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fecha = (f) => f ? new Date(f).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const fechaHora = (f) => f ? new Date(f).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+
+const ETIQUETAS = {
+  solicitado: 'Solicitado', aceptado: 'Aceptado', pago_retenido: 'Pago retenido',
+  entregado: 'Entregado', aprobado: 'Aprobado', pagado: 'Pagado',
+  cerrado: 'Cerrado', rechazado: 'Rechazado', cancelado: 'Cancelado',
+};
+const LINEA_TIEMPO = ['solicitado','aceptado','pago_retenido','entregado','aprobado','pagado','cerrado'];
+
+const pill = (estado) => `<span class="pill pill--${estado}">${ETIQUETAS[estado] || estado}</span>`;
+
+const $ = (id) => document.getElementById(id);
+const contenido = () => $('contenido');
+
+function abrirPanel(titulo, html) {
+  $('panel-titulo').textContent = titulo;
+  $('panel-cuerpo').innerHTML = html;
+  $('panel').classList.add('abierto');
+  $('telon').classList.add('abierto');
+}
+function cerrarPanel() {
+  $('panel').classList.remove('abierto');
+  $('telon').classList.remove('abierto');
+}
+$('panel-cerrar').addEventListener('click', cerrarPanel);
+$('telon').addEventListener('click', cerrarPanel);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarPanel(); });
+
+// ── Navegación ──────────────────────────────────────────────────────────────
+
+const VISTAS = {};
+let vistaActual = 'resumen';
+
+$('tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (tab) ir(tab.dataset.vista);
+});
+
+async function ir(vista) {
+  vistaActual = vista;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('activa', t.dataset.vista === vista));
+  contenido().innerHTML = '<div class="vacio">Cargando…</div>';
+  try {
+    await VISTAS[vista]();
+  } catch (e) {
+    contenido().innerHTML = `<div class="aviso">No se pudo cargar: ${esc(e.message)}</div>`;
+  }
+}
+const recargar = () => ir(vistaActual);
+
+// ── Vista: Resumen ──────────────────────────────────────────────────────────
+
+VISTAS.resumen = async () => {
+  const r = await api('/resumen');
+
+  const porEstado = Object.entries(r.por_estado || {})
+    .map(([e, n]) => `<div class="dato"><span>${ETIQUETAS[e] || e}</span><span class="num">${n}</span></div>`)
+    .join('') || '<div class="vacio" style="padding:14px">Todavía no hay tratos.</div>';
+
+  const estancados = (r.estancados || []).length
+    ? `<div class="tabla-wrap"><table>
+        <thead><tr><th>Código</th><th>Marca</th><th>Creadora</th><th>Estado</th><th>Días quieto</th><th></th></tr></thead>
+        <tbody>${r.estancados.map(t => `
+          <tr class="clicable" data-trato="${t.id}">
+            <td class="num">${esc(t.codigo || '')}</td>
+            <td>${esc(t.marca || '—')}</td>
+            <td>${esc(t.creadora || '—')}</td>
+            <td>${pill(t.estado)}</td>
+            <td class="num" style="color:var(--magenta)">${t.dias}</td>
+            <td><button class="btn-mini btn-mini--ghost" data-trato="${t.id}">VER</button></td>
+          </tr>`).join('')}
+        </tbody></table></div>`
+    : '<div class="aviso aviso--ok">Nada atascado. Todos los tratos se están moviendo.</div>';
+
+  contenido().innerHTML = `
+    <div class="grid-bordes kpis">
+      <div class="kpi">
+        <div class="kpi__label">Dinero retenido</div>
+        <div class="kpi__valor kpi__valor--lime">${COP(r.dinero_retenido)}</div>
+        <div class="kpi__nota">Pagado por marcas, sin liberar</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi__label">Comisión del mes</div>
+        <div class="kpi__valor kpi__valor--magenta">${COP(r.comision_mes_actual)}</div>
+        <div class="kpi__nota">Causada este mes</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi__label">Comisión total</div>
+        <div class="kpi__valor">${COP(r.comision_causada_total)}</div>
+        <div class="kpi__nota">Desde el inicio</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi__label">Tratos activos</div>
+        <div class="kpi__valor">${r.tratos_activos || 0}</div>
+        <div class="kpi__nota">De ${r.total_tratos || 0} en total</div>
+      </div>
+    </div>
+
+    <div class="seccion-titulo">Por revisar</div>
+    ${estancados}
+
+    <div class="seccion-titulo">Tratos por estado</div>
+    <div class="bloque">${porEstado}</div>
+  `;
+
+  contenido().querySelectorAll('[data-trato]').forEach(el => {
+    el.addEventListener('click', () => verTrato(el.dataset.trato));
+  });
+};
+
+// ── Vista: Tratos ───────────────────────────────────────────────────────────
+
+let filtroEstado = '';
+
+VISTAS.tratos = async () => {
+  const tratos = await api('/tratos' + (filtroEstado ? '?estado=' + filtroEstado : ''));
+
+  const filtros = ['', ...LINEA_TIEMPO, 'rechazado', 'cancelado'].map(e => `
+    <button class="filtro ${filtroEstado === e ? 'activo' : ''}" data-filtro="${e}">
+      ${e === '' ? 'Todos' : (ETIQUETAS[e] || e)}
+    </button>`).join('');
+
+  const filas = tratos.length ? tratos.map(t => `
+    <tr class="clicable" data-trato="${t.id}">
+      <td class="num">${esc(t.codigo || '')}</td>
+      <td>${esc(t.mk_marcas?.nombre_empresa || '—')}</td>
+      <td>
+        ${esc(t.mk_creadoras?.nombre_publico || '—')}
+        ${t.mk_creadoras?.es_bruja_embajadora ? '<span class="chip" style="margin-left:6px">0%</span>' : ''}
+      </td>
+      <td>${pill(t.estado)}</td>
+      <td class="num">${COP(t.monto_creadora)}</td>
+      <td class="num" style="color:var(--lime)">${COP(t.comision_total_valor)}</td>
+      <td style="color:var(--grey-700);font-size:11px">${fecha(t.created_at)}</td>
+    </tr>`).join('') : '';
+
+  contenido().innerHTML = `
+    <div class="filtros">${filtros}</div>
+    ${filas ? `<div class="tabla-wrap"><table>
+      <thead><tr><th>Código</th><th>Marca</th><th>Creadora</th><th>Estado</th>
+        <th style="text-align:right">Monto</th><th style="text-align:right">Comisión</th><th>Creado</th></tr></thead>
+      <tbody>${filas}</tbody></table></div>`
+      : '<div class="vacio">No hay tratos con ese filtro.</div>'}
+  `;
+
+  contenido().querySelectorAll('[data-filtro]').forEach(b => {
+    b.addEventListener('click', () => { filtroEstado = b.dataset.filtro; ir('tratos'); });
+  });
+  contenido().querySelectorAll('[data-trato]').forEach(tr => {
+    tr.addEventListener('click', () => verTrato(tr.dataset.trato));
+  });
+};
+
+async function verTrato(id) {
+  abrirPanel('Cargando…', '<div class="vacio">Un momento…</div>');
+  const t = await api('/tratos/' + id);
+
+  const idx = LINEA_TIEMPO.indexOf(t.estado);
+  const eventosPorEstado = {};
+  (t.eventos || []).forEach(ev => { eventosPorEstado[ev.estado_nuevo] = ev; });
+
+  const timeline = LINEA_TIEMPO.map((e, i) => {
+    const ev = eventosPorEstado[e];
+    const hecho = ev || (idx >= 0 && i <= idx);
+    return `<li class="${hecho ? 'hecho' : ''}">
+      <div class="timeline__estado" style="color:${hecho ? 'var(--off-white)' : 'var(--grey-700)'}">${ETIQUETAS[e]}</div>
+      <div class="timeline__meta">${ev ? `${fechaHora(ev.created_at)} · ${esc(ev.actor)}` : 'Pendiente'}</div>
+    </li>`;
+  }).join('');
+
+  const terminal = ['cerrado','rechazado','cancelado'].includes(t.estado);
+  const contactoRevelado = Boolean(t.contacto_revelado_at);
+
+  // Acciones disponibles según el estado. Se corresponden con la máquina de
+  // estados del backend: si aquí aparece un botón que allá no se permite, el
+  // backend responde 409 y no pasa nada.
+  let acciones = '';
+  if (t.estado === 'aceptado') {
+    acciones = `
+      <div class="bloque">
+        <div class="bloque__titulo">Registrar el pago de la marca</div>
+        <p class="p" style="color:var(--grey-600);margin-bottom:12px">
+          Al registrarlo, el dinero queda retenido y se abren los datos de contacto entre las dos partes.
+        </p>
+        <div class="campos-fila">
+          <div class="campo"><label>Monto recibido</label><input id="pe-monto" type="number" value="${t.total_a_pagar_marca}"></div>
+          <div class="campo"><label>Método</label>
+            <select id="pe-metodo">
+              <option value="transferencia">Transferencia</option>
+              <option value="bancolombia">Bancolombia</option>
+              <option value="nequi">Nequi</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+        </div>
+        <div class="campo"><label>Referencia o comprobante</label><input id="pe-ref" placeholder="Número de la transacción"></div>
+        <button class="btn-mini" id="btn-pago-entrada">REGISTRAR PAGO RECIBIDO →</button>
+      </div>`;
+  } else if (t.estado === 'aprobado') {
+    acciones = `
+      <div class="bloque">
+        <div class="bloque__titulo">Pagar a la creadora</div>
+        <p class="p" style="color:var(--grey-600);margin-bottom:12px">
+          Haz la transferencia por fuera y regístrala aquí. Se le avisa por correo.
+        </p>
+        <div class="campos-fila">
+          <div class="campo"><label>Monto pagado</label><input id="ps-monto" type="number" value="${t.neto_a_recibir_creadora}"></div>
+          <div class="campo"><label>Método</label>
+            <select id="ps-metodo">
+              <option value="transferencia">Transferencia</option>
+              <option value="bancolombia">Bancolombia</option>
+              <option value="nequi">Nequi</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+        </div>
+        <div class="campo"><label>Referencia</label><input id="ps-ref" placeholder="Número de la transacción"></div>
+        <button class="btn-mini" id="btn-pago-salida">REGISTRAR PAGO ENVIADO →</button>
+      </div>`;
+  } else if (t.estado === 'pagado') {
+    acciones = `
+      <div class="bloque">
+        <div class="bloque__titulo">Cerrar el trato</div>
+        <p class="p" style="color:var(--grey-600);margin-bottom:12px">
+          Suma una colaboración al historial de la creadora.
+        </p>
+        <button class="btn-mini" id="btn-cerrar-trato">CERRAR TRATO →</button>
+      </div>`;
+  }
+
+  const pagos = (t.pagos || []).length ? (t.pagos || []).map(p => `
+    <div class="dato">
+      <span>${p.direccion === 'entrada' ? 'Recibido de la marca' : 'Pagado a la creadora'} · ${fecha(p.fecha)}</span>
+      <span class="num" style="color:${p.direccion === 'entrada' ? 'var(--lime)' : 'var(--magenta)'}">${COP(p.monto)}</span>
+    </div>`).join('') : '<div style="color:var(--grey-700);font-size:12px">Sin movimientos todavía.</div>';
+
+  const entregas = (t.entregas || []).length ? (t.entregas || []).map(e => `
+    <div class="dato">
+      <span><a href="${esc(e.url_contenido)}" target="_blank" rel="noopener">Ver contenido ↗</a></span>
+      <span>${esc(e.estado)}</span>
+    </div>`).join('') : '<div style="color:var(--grey-700);font-size:12px">Sin entregas todavía.</div>';
+
+  abrirPanel(t.codigo || 'Trato', `
+    <div style="margin-bottom:16px">${pill(t.estado)}</div>
+
+    <div class="bloque">
+      <div class="bloque__titulo">Plata</div>
+      <div class="dato"><span>Monto acordado</span><span class="num">${COP(t.monto_creadora)}</span></div>
+      <div class="dato"><span>Comisión marca (${t.comision_marca_pct}%)</span><span class="num">${COP(t.comision_marca_valor)}</span></div>
+      <div class="dato" style="border-top:1px solid var(--border-dark);padding-top:8px">
+        <span style="color:var(--off-white)">Cobra a la marca</span>
+        <span class="num" style="color:var(--lime)">${COP(t.total_a_pagar_marca)}</span></div>
+      <div class="dato"><span>Comisión creadora (${t.comision_creadora_pct}%)</span><span class="num">${COP(t.comision_creadora_valor)}</span></div>
+      <div class="dato"><span style="color:var(--off-white)">Paga a la creadora</span>
+        <span class="num" style="color:var(--lime)">${COP(t.neto_a_recibir_creadora)}</span></div>
+      <div class="dato" style="border-top:2px solid var(--border-dark);padding-top:8px">
+        <span style="color:var(--off-white)">Queda para la plataforma</span>
+        <span class="num" style="color:var(--magenta)">${COP(t.comision_total_valor)}</span></div>
+    </div>
+
+    ${acciones}
+
+    <div class="bloque">
+      <div class="bloque__titulo">Brief</div>
+      <div style="font-size:12.5px;line-height:1.6">${esc(t.brief)}</div>
+      ${t.entregables ? `<div class="dato" style="margin-top:10px"><span>Entregables</span><span>${esc(t.entregables)}</span></div>` : ''}
+      ${t.fecha_entrega_esperada ? `<div class="dato"><span>Entrega esperada</span><span>${fecha(t.fecha_entrega_esperada)}</span></div>` : ''}
+    </div>
+
+    <div class="bloque">
+      <div class="bloque__titulo">Marca</div>
+      <div class="dato"><span>Empresa</span><span>${esc(t.marca?.nombre_empresa || '—')}</span></div>
+      <div class="dato"><span>Contacto</span><span>${esc(t.marca?.nombre_contacto || '—')}</span></div>
+      <div class="dato"><span>Correo</span><span>${esc(t.marca?.email || '—')}</span></div>
+      ${t.marca?.nit ? `<div class="dato"><span>NIT</span><span>${esc(t.marca.nit)}</span></div>` : ''}
+    </div>
+
+    <div class="bloque">
+      <div class="bloque__titulo">Creadora ${contactoRevelado ? '' : '· contacto aún oculto para la marca'}</div>
+      <div class="dato"><span>Nombre en catálogo</span><span>${esc(t.contacto?.nombre_publico || '—')}</span></div>
+      <div class="dato"><span>Nombre real</span><span>${esc(t.contacto?.nombre_real || '—')}</span></div>
+      <div class="dato"><span>Instagram</span><span>${t.contacto?.instagram ? '@' + esc(t.contacto.instagram) : '—'}</span></div>
+      <div class="dato"><span>WhatsApp</span><span>${esc(t.contacto?.telefono || '—')}</span></div>
+      <div class="dato"><span>Correo</span><span>${esc(t.contacto?.email || '—')}</span></div>
+      <div class="dato" style="border-top:1px solid var(--border-dark);padding-top:8px">
+        <span>Contacto revelado</span>
+        <span>${contactoRevelado ? fechaHora(t.contacto_revelado_at) : 'Todavía no'}</span></div>
+    </div>
+
+    <div class="bloque">
+      <div class="bloque__titulo">Movimientos de plata</div>
+      ${pagos}
+    </div>
+
+    <div class="bloque">
+      <div class="bloque__titulo">Contenido entregado</div>
+      ${entregas}
+    </div>
+
+    <div class="bloque">
+      <div class="bloque__titulo">Línea de tiempo</div>
+      <ul class="timeline">${timeline}</ul>
+    </div>
+
+    ${terminal ? '' : `
+      <button class="btn-mini btn-mini--peligro" id="btn-cancelar-trato">CANCELAR TRATO</button>
+    `}
+  `);
+
+  const accion = async (fn) => {
+    try { await fn(); cerrarPanel(); recargar(); }
+    catch (e) { alert('No se pudo: ' + e.message); }
+  };
+
+  $('btn-pago-entrada')?.addEventListener('click', () => accion(() =>
+    api('/tratos/' + id + '/pago-entrada', { method: 'POST', body: JSON.stringify({
+      monto: $('pe-monto').value, metodo: $('pe-metodo').value, referencia: $('pe-ref').value,
+    })})));
+
+  $('btn-pago-salida')?.addEventListener('click', () => accion(() =>
+    api('/tratos/' + id + '/pago-salida', { method: 'POST', body: JSON.stringify({
+      monto: $('ps-monto').value, metodo: $('ps-metodo').value, referencia: $('ps-ref').value,
+    })})));
+
+  $('btn-cerrar-trato')?.addEventListener('click', () => accion(() =>
+    api('/tratos/' + id + '/cerrar', { method: 'POST', body: '{}' })));
+
+  $('btn-cancelar-trato')?.addEventListener('click', () => {
+    const motivo = prompt('¿Por qué se cancela? (queda en el historial)');
+    if (motivo === null) return;
+    accion(() => api('/tratos/' + id + '/cancelar', { method: 'POST', body: JSON.stringify({ motivo }) }));
+  });
+}
+
+// ── Vista: Creadoras ────────────────────────────────────────────────────────
+
+let CONFIG = null;
+
+VISTAS.creadoras = async () => {
+  const [creadoras, cfg] = await Promise.all([api('/creadoras'), api('/config')]);
+  CONFIG = cfg;
+
+  const listas = creadoras.filter(c => c.visible).length;
+  const sinCurar = creadoras.filter(c => !c.visible).length;
+
+  const filas = creadoras.map(c => `
+    <tr class="clicable" data-creadora="${c.id}">
+      <td>${esc(c.nombre_publico)}</td>
+      <td>${(c.nicho || []).map(n => `<span class="chip">${esc(n)}</span>`).join(' ') || '<span style="color:var(--magenta);font-size:11px">falta nicho</span>'}</td>
+      <td>${esc(c.rango_alcance || '—')}</td>
+      <td class="num">${c.engagement_pct != null ? c.engagement_pct + '%' : '—'}</td>
+      <td class="num">${c.tarifa_min ? COP(c.tarifa_min) : '<span style="color:var(--magenta);font-size:11px">sin tarifa</span>'}</td>
+      <td>${c.es_bruja_embajadora ? '<span class="pill pill--si">0%</span>' : '<span class="pill pill--no">normal</span>'}</td>
+      <td>${c.visible ? '<span class="pill pill--pagado">En catálogo</span>' : '<span class="pill pill--no">Oculta</span>'}</td>
+    </tr>`).join('');
+
+  contenido().innerHTML = `
+    <div class="grid-bordes kpis">
+      <div class="kpi"><div class="kpi__label">En el catálogo</div><div class="kpi__valor kpi__valor--lime">${listas}</div></div>
+      <div class="kpi"><div class="kpi__label">Por curar</div><div class="kpi__valor">${sinCurar}</div>
+        <div class="kpi__nota">No aparecen hasta completarlas</div></div>
+      <div class="kpi"><div class="kpi__label">Total</div><div class="kpi__valor">${creadoras.length}</div></div>
+    </div>
+    ${creadoras.length
+      ? `<div class="tabla-wrap"><table>
+          <thead><tr><th>Nombre en catálogo</th><th>Nicho</th><th>Alcance</th>
+            <th style="text-align:right">Eng.</th><th style="text-align:right">Desde</th>
+            <th>Comisión</th><th>Estado</th></tr></thead>
+          <tbody>${filas}</tbody></table></div>`
+      : `<div class="vacio">
+           Todavía no hay creadoras.<br><br>
+           Corre <code style="color:var(--lime)">node scripts/importar_creadoras.js</code> para traer las Brujas Embajadoras.
+         </div>`}
+  `;
+
+  contenido().querySelectorAll('[data-creadora]').forEach(tr => {
+    tr.addEventListener('click', () => verCreadora(tr.dataset.creadora));
+  });
+};
+
+async function verCreadora(id) {
+  abrirPanel('Cargando…', '<div class="vacio">Un momento…</div>');
+  const c = await api('/creadoras/' + id);
+  const taxonomia = (CONFIG && CONFIG.nichos) || [];
+
+  const nichoActual = c.nicho || [];
+  const chipsNicho = taxonomia.map(cat => `
+    <div style="margin-bottom:10px">
+      <div style="font-size:10.5px;letter-spacing:1px;color:var(--grey-700);margin-bottom:4px">${esc(cat.nombre)}</div>
+      <div class="chips">
+        ${(cat.subnichos || []).map(s => `
+          <span class="chip ${nichoActual.includes(s) ? 'on' : 'off'}" data-nicho="${esc(s)}">${esc(s)}</span>
+        `).join('')}
+      </div>
+    </div>`).join('');
+
+  const tarifas = (c.tarifas || []).filter(t => t.activo !== false);
+  const bloqueTarifas = tarifas.length
+    ? tarifas.map(t => `<div class="dato"><span>${esc(t.entregable)}</span><span class="num">${COP(t.precio)}</span></div>`).join('')
+    : `<div class="aviso" style="margin:0">
+         Sin tarifas. La creadora tiene que entrar a su portal y ponerlas.
+         Sin eso no se puede publicar el perfil.
+       </div>`;
+
+  abrirPanel(c.nombre_publico, `
+    <div class="bloque">
+      <div class="bloque__titulo">Identidad real · no sale nunca del panel</div>
+      <div class="dato"><span>Nombre real</span><span>${esc(c.contacto?.nombre_real || '—')}</span></div>
+      <div class="dato"><span>Instagram</span><span>${c.contacto?.instagram ? '@' + esc(c.contacto.instagram) : '—'}</span></div>
+      <div class="dato"><span>TikTok</span><span>${c.contacto?.tiktok ? '@' + esc(c.contacto.tiktok) : '—'}</span></div>
+      <div class="dato"><span>WhatsApp</span><span>${esc(c.whatsapp || '—')}</span></div>
+      <div class="dato"><span>Correo</span><span>${esc(c.email)}</span></div>
+    </div>
+
+    <div class="bloque">
+      <div class="bloque__titulo">Sus tarifas · las pone ella</div>
+      ${bloqueTarifas}
+    </div>
+
+    <div class="bloque">
+      <div class="bloque__titulo">Lo que ve la marca</div>
+      <div class="campo"><label>Nombre en el catálogo</label>
+        <input id="cr-nombre" value="${esc(c.nombre_publico)}"></div>
+      <div class="campo"><label>Descripción corta</label>
+        <textarea id="cr-bio" rows="2" placeholder="Una línea sobre su contenido">${esc(c.bio_corta || '')}</textarea></div>
+      <div class="campos-fila">
+        <div class="campo"><label>Ciudad</label><input id="cr-ciudad" value="${esc(c.ciudad || '')}"></div>
+        <div class="campo"><label>Seguidores (total)</label><input id="cr-alcance" type="number" value="${c.alcance_total || ''}"></div>
+        <div class="campo"><label>Engagement %</label><input id="cr-eng" type="number" step="0.1" value="${c.engagement_pct ?? ''}"></div>
+      </div>
+      <div style="font-size:10.5px;color:var(--grey-700);margin-top:-6px">
+        El número exacto de seguidores no se muestra: la marca solo ve el rango.
+      </div>
+    </div>
+
+    <div class="bloque">
+      <div class="bloque__titulo">Nicho · máximo 3</div>
+      ${chipsNicho}
+    </div>
+
+    <div class="bloque">
+      <div class="bloque__titulo">Condiciones</div>
+      <div class="dato">
+        <span>Bruja Embajadora (comisión 0%)</span>
+        <span><input type="checkbox" id="cr-bruja" style="width:auto" ${c.es_bruja_embajadora ? 'checked' : ''}></span>
+      </div>
+      <div class="dato">
+        <span>Publicada en el catálogo</span>
+        <span><input type="checkbox" id="cr-visible" style="width:auto" ${c.visible ? 'checked' : ''}></span>
+      </div>
+      <div class="campo" style="margin-top:12px"><label>Notas internas</label>
+        <textarea id="cr-notas" rows="2">${esc(c.notas_admin || '')}</textarea></div>
+    </div>
+
+    <button class="btn-mini" id="btn-guardar-creadora">GUARDAR →</button>
+    <div class="error oculto" id="cr-error"></div>
+  `);
+
+  // Selección de nichos: tope de 3, avisando por qué.
+  let seleccion = [...nichoActual];
+  $('panel-cuerpo').querySelectorAll('[data-nicho]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const n = chip.dataset.nicho;
+      if (seleccion.includes(n)) {
+        seleccion = seleccion.filter(x => x !== n);
+      } else {
+        if (seleccion.length >= 3) {
+          alert('Máximo 3 nichos. Un perfil enfocado se contrata más que uno que dice hacer de todo.');
+          return;
+        }
+        seleccion.push(n);
+      }
+      chip.classList.toggle('on');
+      chip.classList.toggle('off');
+    });
+  });
+
+  $('btn-guardar-creadora').addEventListener('click', async () => {
+    const err = $('cr-error');
+    err.classList.add('oculto');
+    try {
+      await api('/creadoras/' + id, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          nombre_publico: $('cr-nombre').value,
+          bio_corta: $('cr-bio').value,
+          ciudad: $('cr-ciudad').value,
+          alcance_total: $('cr-alcance').value ? Number($('cr-alcance').value) : null,
+          engagement_pct: $('cr-eng').value ? Number($('cr-eng').value) : null,
+          nicho: seleccion,
+          es_bruja_embajadora: $('cr-bruja').checked,
+          visible: $('cr-visible').checked,
+          notas_admin: $('cr-notas').value,
+        }),
+      });
+      cerrarPanel();
+      recargar();
+    } catch (e) {
+      err.textContent = e.message;
+      err.classList.remove('oculto');
+    }
+  });
+}
+
+// ── Vista: Marcas ───────────────────────────────────────────────────────────
+
+VISTAS.marcas = async () => {
+  const marcas = await api('/marcas');
+  contenido().innerHTML = marcas.length ? `
+    <div class="tabla-wrap"><table>
+      <thead><tr><th>Empresa</th><th>Contacto</th><th>Correo</th><th>WhatsApp</th>
+        <th>NIT</th><th>Términos</th><th>Estado</th><th>Registro</th></tr></thead>
+      <tbody>${marcas.map(m => `
+        <tr>
+          <td>${esc(m.nombre_empresa)}</td>
+          <td>${esc(m.nombre_contacto)}</td>
+          <td>${esc(m.email)}</td>
+          <td>${esc(m.whatsapp || '—')}</td>
+          <td>${esc(m.nit || '—')}</td>
+          <td>${m.terminos_aceptados_at
+                ? `<span class="pill pill--si">${esc(m.terminos_version || 'sí')}</span>`
+                : '<span class="pill pill--no">no</span>'}</td>
+          <td>${m.estado === 'activa' ? '<span class="pill pill--pagado">Activa</span>' : '<span class="pill pill--no">Suspendida</span>'}</td>
+          <td style="color:var(--grey-700);font-size:11px">${fecha(m.created_at)}</td>
+        </tr>`).join('')}
+      </tbody></table></div>
+  ` : `<div class="vacio">
+        Todavía no se ha registrado ninguna marca.<br><br>
+        Se registran en <code style="color:var(--lime)">/registro.html</code> con un código de invitación.
+      </div>`;
+};
+
+// ── Vista: Ajustes ──────────────────────────────────────────────────────────
+
+VISTAS.ajustes = async () => {
+  const cfg = await api('/config');
+  CONFIG = cfg;
+  const hoy = new Date().toISOString().slice(0, 10);
+  const inicioMes = hoy.slice(0, 8) + '01';
+
+  contenido().innerHTML = `
+    <div class="seccion-titulo">Comisiones</div>
+    <div class="bloque">
+      <div class="campos-fila">
+        <div class="campo"><label>Marca paga (%)</label>
+          <input id="cfg-marca" type="number" step="0.5" value="${cfg.comision_marca_pct ?? 12}"></div>
+        <div class="campo"><label>Creadora aporta (%)</label>
+          <input id="cfg-creadora" type="number" step="0.5" value="${cfg.comision_creadora_pct ?? 8}"></div>
+      </div>
+      <div class="aviso aviso--ok" style="margin:6px 0 14px">
+        Cambiar esto <strong>no afecta los tratos que ya existen</strong>: cada uno guardó su comisión
+        el día que nació. Solo aplica a los nuevos.
+      </div>
+      <button class="btn-mini" id="btn-guardar-cfg">GUARDAR COMISIONES →</button>
+    </div>
+
+    <div class="seccion-titulo">Reglas</div>
+    <div class="bloque">
+      <div class="dato"><span>Contacto se revela en</span><span>${esc(cfg.revelar_contacto_en || 'pago_retenido')}</span></div>
+      <div class="dato"><span>No circunvalación</span><span>${esc(String(cfg.plazo_no_circunvalacion_meses ?? 12))} meses</span></div>
+      <div class="dato"><span>Tarifa mínima permitida</span><span class="num">${COP(cfg.rango_tarifa?.min)}</span></div>
+      <div class="dato"><span>Tarifa máxima permitida</span><span class="num">${COP(cfg.rango_tarifa?.max)}</span></div>
+      <div class="dato"><span>Categorías de nicho</span><span>${(cfg.nichos || []).length}</span></div>
+      <div class="dato"><span>Tipos de entregable</span><span>${(cfg.entregables || []).length}</span></div>
+    </div>
+
+    <div class="seccion-titulo">Reporte para contabilidad</div>
+    <div class="bloque">
+      <p class="p" style="color:var(--grey-600);margin-bottom:12px">
+        Descarga los tratos ya pagados, con su comisión desglosada. Es el archivo que se le pasa a la contadora.
+      </p>
+      <div class="campos-fila">
+        <div class="campo"><label>Desde</label><input id="exp-desde" type="date" value="${inicioMes}"></div>
+        <div class="campo"><label>Hasta</label><input id="exp-hasta" type="date" value="${hoy}"></div>
+      </div>
+      <button class="btn-mini" id="btn-export">DESCARGAR CSV →</button>
+    </div>
+  `;
+
+  $('btn-guardar-cfg').addEventListener('click', async () => {
+    try {
+      await api('/config', { method: 'PATCH', body: JSON.stringify({
+        comision_marca_pct: Number($('cfg-marca').value),
+        comision_creadora_pct: Number($('cfg-creadora').value),
+      })});
+      alert('Comisiones actualizadas.');
+      recargar();
+    } catch (e) { alert('No se pudo: ' + e.message); }
+  });
+
+  // El CSV se descarga con fetch porque necesita el header de autorización.
+  $('btn-export').addEventListener('click', async () => {
+    const desde = $('exp-desde').value, hasta = $('exp-hasta').value;
+    const res = await fetch(`/api/admin/export/comisiones.csv?desde=${desde}&hasta=${hasta}`, {
+      headers: { 'Authorization': 'Basic ' + AUTH },
+    });
+    if (!res.ok) return alert('No se pudo generar el archivo.');
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `comisiones-${desde}-${hasta}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+};
+
+// ── Arranque ────────────────────────────────────────────────────────────────
+
+if (AUTH) {
+  api('/resumen').then(arrancar).catch(() => {
+    sessionStorage.removeItem('mk_auth');
+    AUTH = null;
+  });
+}
+</script>
+</body>
+</html>

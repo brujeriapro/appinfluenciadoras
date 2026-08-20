@@ -293,8 +293,8 @@ Brutalismo digital / Y2K editorial, definido en el handoff de Claude Design y co
 
 ### Estado
 
-- Backend completo y probado; landing pública portada del handoff.
-- Faltan las pantallas de producto (catálogo, registro de marca, portal de creadora, línea de tiempo, panel admin) — esperan mockups.
+- Backend completo y probado; landing pública portada del handoff; **panel admin operativo** en `/admin.html` (tratos, registro de pagos, curaduría del catálogo, ajustes de comisión, export CSV).
+- Faltan las pantallas de cara al usuario (catálogo, registro de marca, portal de creadora, línea de tiempo) — esperan mockups.
 - El dominio (`creadores.app`) aún no está comprado: corre sobre la URL de Railway.
 - Sin marca de agua y sin pasarela de pagos en esta fase, por decisión de producto.
 
