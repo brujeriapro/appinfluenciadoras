@@ -172,3 +172,23 @@ CREATE TABLE IF NOT EXISTS mk_entregas (
   created_at      TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS mk_entregas_trato_idx ON mk_entregas(trato_id);
+
+-- -- 9. Row Level Security -----------------------------------------------------
+-- Se habilita en todas las tablas y NO se crean politicas: eso deja la puerta
+-- de Supabase cerrada para las llaves publicas (anon / authenticated).
+--
+-- La app no se ve afectada: se conecta con la service_role_key, que ignora RLS
+-- por diseno. El unico camino hacia estos datos es el backend de Creadores.app,
+-- que es donde viven las reglas de identidad oculta.
+--
+-- Sin esto, cualquiera con la anon key del proyecto (una llave publica, pensada
+-- para ir en el navegador) podria leer mk_creadoras completa: emails, telefonos
+-- y los montos de cada trato.
+ALTER TABLE mk_config        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mk_marcas        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mk_creadoras     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mk_muestras      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mk_tratos        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mk_trato_eventos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mk_pagos         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mk_entregas      ENABLE ROW LEVEL SECURITY;

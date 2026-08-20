@@ -107,3 +107,7 @@ UPDATE mk_config SET valor = '{
 descripcion = 'Rangos de presupuesto para filtrar. El nivel se deriva de la tarifa que publica la creadora, no se le asigna.',
 updated_at = now()
 WHERE clave = 'niveles_tarifa';
+
+-- Misma regla que en mk_001: puerta de Supabase cerrada para llaves publicas.
+-- La app entra con service_role, que ignora RLS.
+ALTER TABLE mk_tarifas ENABLE ROW LEVEL SECURITY;
