@@ -20,9 +20,11 @@ const { terminosHTML } = require('./terminos');
 const app = express();
 
 app.use(cors());
-// Las muestras se suben en base64 dentro del JSON: el límite por defecto de
-// 100kb no alcanza.
-app.use(express.json({ limit: '12mb' }));
+// Las muestras se suben en base64 dentro del JSON, y base64 infla el archivo
+// cerca de un 33%. El bucket acepta hasta 10 MB, así que el cuerpo tiene que
+// poder llegar a ~14 MB para que un archivo en el límite no se rechace aquí
+// antes de llegar a Storage.
+app.use(express.json({ limit: '16mb' }));
 
 // ── Rutas públicas ──────────────────────────────────────────────────────────
 

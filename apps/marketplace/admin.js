@@ -353,8 +353,26 @@ router.post('/creadoras/:id/muestras', async (req, res) => {
     const creadora = await db.getCreadoraCompleta(req.params.id);
     if (!creadora) return res.status(404).json({ error: 'Creadora no encontrada' });
 
+    // El bucket solo acepta estos tipos. Se valida antes de subir para dar un
+    // error entendible en vez de un 400 críptico de Storage.
+    const MIMES_OK = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4'];
+    const tipoMime = mime || 'image/jpeg';
+    if (!MIMES_OK.includes(tipoMime)) {
+      return res.status(400).json({
+        error: `Formato no permitido (${tipoMime}). Se aceptan: JPG, PNG, WebP y MP4.`,
+      });
+    }
+
     const buffer = Buffer.from(String(archivo_base64).replace(/^data:[^;]+;base64,/, ''), 'base64');
-    const ext = (mime || 'image/jpeg').split('/')[1] || 'jpg';
+
+    const MAX_BYTES = 10 * 1024 * 1024;   // el mismo tope del bucket
+    if (buffer.length > MAX_BYTES) {
+      return res.status(413).json({
+        error: `La pieza pesa ${(buffer.length / 1024 / 1024).toFixed(1)} MB. El máximo son 10 MB.`,
+      });
+    }
+
+    const ext = tipoMime === 'video/mp4' ? 'mp4' : tipoMime.split('/')[1];
     const storage_path = `${crypto.randomUUID()}.${ext}`;
 
     const url = `${String(config.supabase.url).replace(/\/$/, '')}/storage/v1/object/${config.supabase.bucket_muestras}/${storage_path}`;
@@ -362,7 +380,7 @@ router.post('/creadoras/:id/muestras', async (req, res) => {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${config.supabase.service_role_key}`,
-        'Content-Type': mime || 'image/jpeg',
+        'Content-Type': tipoMime,
       },
       body: buffer,
     });
@@ -373,9 +391,9 @@ router.post('/creadoras/:id/muestras', async (req, res) => {
     const existentes = await db.getMuestrasDeCreadora(creadora.id);
     const muestra = await db.insertMuestra({
       creadora_id: creadora.id,
-      tipo: tipo || 'imagen',
+      tipo: tipo || (tipoMime.startsWith('video/') ? 'video' : 'imagen'),
       storage_path,
-      mime: mime || 'image/jpeg',
+      mime: tipoMime,
       orden: existentes.length,
     });
 
