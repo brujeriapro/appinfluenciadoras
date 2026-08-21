@@ -63,6 +63,7 @@ async function main() {
 
     const datos = {
       influencer_id: inf.id,
+      codigo: await db.siguienteCodigoCreadora(),
       nombre_publico: aliasDe(inf.nombre),
       email: String(inf.email).toLowerCase().trim(),
       whatsapp: inf.telefono || null,

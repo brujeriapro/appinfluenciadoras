@@ -108,7 +108,7 @@ function invalidarCacheConfig() {
 
 // ── Marcas ──────────────────────────────────────────────────────────────────
 
-const COLS_MARCA = 'id,nombre_empresa,nombre_contacto,email,whatsapp,nit,ciudad,sitio_web,estado,terminos_version,terminos_aceptados_at,created_at';
+const COLS_MARCA = 'id,nombre_empresa,nombre_contacto,email,whatsapp,nit,pais,departamento,ciudad,sitio_web,estado,logo_path,bio,categoria,instagram,tiktok,que_espera,libertad_creativa,contacto_creadoras,terminos_version,terminos_aceptados_at,created_at';
 
 const getMarcaPorEmail = (email) =>
   getUno('mk_marcas', { email: `eq.${String(email).toLowerCase().trim()}`, select: '*' });
@@ -128,9 +128,10 @@ const getMarcas = () =>
 // Columnas que puede ver una marca. Sin influencer_id, sin email, sin whatsapp:
 // nada que permita contactar o identificar a la creadora por fuera del trato.
 const COLS_CATALOGO = [
-  'id', 'nombre_publico', 'pais', 'departamento', 'ciudad', 'categorias', 'nicho', 'rango_alcance',
-  'rango_instagram', 'rango_tiktok',
-  'engagement_pct', 'nivel_tarifa', 'tarifa_min', 'tarifa_max',
+  'id', 'codigo', 'nombre_publico', 'pais', 'departamento', 'ciudad',
+  'categorias', 'nicho', 'rango_alcance', 'rango_instagram', 'rango_tiktok',
+  'engagement_pct', 'dias_entrega', 'audiencia_mujeres', 'audiencia_pais',
+  'nivel_tarifa', 'tarifa_min', 'tarifa_max',
   'entregable_tipico', 'bio_corta', 'colaboraciones_completadas',
 ].join(',');
 
@@ -275,6 +276,95 @@ const getTokenReset = (token) =>
 
 const marcarTokenUsado = (token) =>
   patch('mk_tokens_reset', { token }, { usado_at: new Date().toISOString() });
+
+// ── Triage: lo que cada marca preseleccionó o descartó ──────────────────────
+// Vive en la base y no en el navegador: una marca que compara veinte perfiles
+// no puede perder su trabajo al recargar la página.
+
+const getTriageDeMarca = (marca_id) =>
+  get('mk_triage', { marca_id: `eq.${marca_id}`, select: 'creadora_id,decision' });
+
+async function guardarTriage(marca_id, creadora_id, decision) {
+  const previa = await getUno('mk_triage', {
+    marca_id: `eq.${marca_id}`, creadora_id: `eq.${creadora_id}`, select: 'decision',
+  });
+  // Tocar dos veces la misma decisión la deshace: el triage es reversible.
+  if (previa && previa.decision === decision) {
+    return borrarTriage(marca_id, creadora_id);
+  }
+  if (previa) {
+    return patch('mk_triage', { marca_id, creadora_id }, { decision });
+  }
+  return post('mk_triage', { marca_id, creadora_id, decision });
+}
+
+async function borrarTriage(marca_id, creadora_id) {
+  const url = new URL(`${BASE_URL}/mk_triage`);
+  url.searchParams.set('marca_id', `eq.${marca_id}`);
+  url.searchParams.set('creadora_id', `eq.${creadora_id}`);
+  const res = await fetch(url.toString(), { method: 'DELETE', headers: HEADERS });
+  if (!res.ok) throw new Error(`Supabase DELETE mk_triage: ${res.status}`);
+  return null;
+}
+
+// ── Campañas ────────────────────────────────────────────────────────────────
+
+const getCampanasDeMarca = (marca_id, { estado } = {}) => {
+  const params = { marca_id: `eq.${marca_id}`, select: '*', order: 'created_at.desc' };
+  if (estado) params.estado = `eq.${estado}`;
+  return get('mk_campanas', params);
+};
+
+const getCampana = (id) => getUno('mk_campanas', { id: `eq.${id}`, select: '*' });
+
+const insertCampana = (data) => post('mk_campanas', data);
+
+const updateCampana = (id, data) =>
+  patch('mk_campanas', { id }, { ...data, updated_at: new Date().toISOString() });
+
+/** Cuántas propuestas ya salieron de cada campaña. */
+async function contarTratosPorCampana(marca_id) {
+  const filas = await get('mk_tratos', {
+    marca_id: `eq.${marca_id}`,
+    campana_id: 'not.is.null',
+    select: 'campana_id',
+  });
+  const cuenta = {};
+  filas.forEach(t => { cuenta[t.campana_id] = (cuenta[t.campana_id] || 0) + 1; });
+  return cuenta;
+}
+
+// ── Productos de la marca ───────────────────────────────────────────────────
+
+const getProductosDeMarca = (marca_id) =>
+  get('mk_marca_productos', {
+    marca_id: `eq.${marca_id}`, select: 'id,titulo,orden', order: 'orden.asc',
+  });
+
+const getProductoMarca = (id) =>
+  getUno('mk_marca_productos', { id: `eq.${id}`, select: '*' });
+
+const insertProductoMarca = (data) => post('mk_marca_productos', data);
+
+async function borrarProductoMarca(id) {
+  const url = new URL(`${BASE_URL}/mk_marca_productos`);
+  url.searchParams.set('id', `eq.${id}`);
+  const res = await fetch(url.toString(), { method: 'DELETE', headers: HEADERS });
+  if (!res.ok) throw new Error(`Supabase DELETE mk_marca_productos: ${res.status}`);
+  return true;
+}
+
+/** Código legible de creadora: C-0412. Identifica sin nombrar. */
+async function siguienteCodigoCreadora() {
+  try {
+    const n = await rpc('mk_siguiente_codigo_creadora');
+    const num = Array.isArray(n) ? n[0] : n;
+    return 'C-' + String(num).padStart(4, '0');
+  } catch (e) {
+    const filas = await get('mk_creadoras', { select: 'id' });
+    return 'C-' + String(300 + filas.length + 1).padStart(4, '0');
+  }
+}
 
 // ── Tarifas ─────────────────────────────────────────────────────────────────
 // Cada creadora publica cuánto cobra por cada tipo de entregable. La plataforma
@@ -502,6 +592,10 @@ module.exports = {
   getContactoCreadora, getPrivadoDeCreadora, guardarPrivadoDeCreadora, getCreadoraPorHandle,
   crearTokenReset, getTokenReset, marcarTokenUsado,
   getTarifasDeCreadora, getTarifasDeVarias, guardarTarifas,
+  getTriageDeMarca, guardarTriage, borrarTriage,
+  getCampanasDeMarca, getCampana, insertCampana, updateCampana, contarTratosPorCampana,
+  getProductosDeMarca, getProductoMarca, insertProductoMarca, borrarProductoMarca,
+  siguienteCodigoCreadora,
   getMuestrasDeCreadora, getMuestra, insertMuestra, borrarMuestra, getMuestrasDeVarias,
   insertTrato, getTratoById, updateTrato, getTratosDeMarca, getTratosDeCreadora,
   getTratosAdmin, siguienteCodigoTrato, contarTratosPrevios,

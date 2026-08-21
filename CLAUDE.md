@@ -286,7 +286,7 @@ node index.js       # http://localhost:3040
 npm test            # 34 pruebas: comisiones, máquina de estados y tarifas
 ```
 
-Migraciones (a mano en el SQL Editor de Supabase, en orden): `mk_001_init.sql`, `mk_002_seed_config.sql`, `mk_003_nichos_y_tarifas.sql`, `mk_004_portal_creadora.sql`, `mk_005_registro_creadoras.sql`, `mk_006_perfil_creadora.sql`, `mk_007_paises.sql`, `mk_008_seguidores_por_red.sql`, `mk_009_departamentos.sql`. Además, crear el bucket privado `mk-muestras` en Storage.
+Migraciones (a mano en el SQL Editor de Supabase, en orden): `mk_001_init.sql`, `mk_002_seed_config.sql`, `mk_003_nichos_y_tarifas.sql`, `mk_004_portal_creadora.sql`, `mk_005_registro_creadoras.sql`, `mk_006_perfil_creadora.sql`, `mk_007_paises.sql`, `mk_008_seguidores_por_red.sql`, `mk_009_departamentos.sql`, `mk_010_panel_marca.sql`. Además, crear el bucket privado `mk-muestras` en Storage.
 
 ### Identidad visual
 
@@ -295,7 +295,8 @@ Brutalismo digital / Y2K editorial, definido en el handoff de Claude Design y co
 ### Estado
 
 - Backend completo y probado; landing pública portada del handoff; **panel admin operativo** en `/admin.html` (tratos, registro de pagos, curaduría del catálogo, ajustes de comisión, export CSV) y **portal de la creadora** en `/creadora.html` (perfil autogestionado con nicho, redes y su trabajo; tarifas con deslizador; propuestas con el neto siempre visible; entrega de contenido).
-- Del lado marca existe el acceso en `/registro.html` (registro por invitación, login, recuperar clave). Faltan catálogo, modal de propuesta y línea de tiempo — esperan mockups.
+- Lado marca completo en `/panel.html`: catálogo con cinco filtros y triage ✓/✕, ficha con panel de tarifas, modal de propuesta con el dinero en vivo, campañas, línea de tiempo del trato y perfil de marca.
+- En el catálogo una creadora se identifica con **alias descriptivo + código** (`RIZOS DE MEDELLÍN · C-0412`), nunca con nombre de persona: un nombre abreviado más ciudad y nicho permite encontrarla.
 - ⚠️ Hay **país** en el perfil (20 países) pero la **moneda es COP para todos**. Una creadora en México cobra y recibe en pesos colombianos, y la interfaz lo dice explícitamente. Multi-moneda es un proyecto aparte: exige conversión, pagos internacionales y repensar el escrow.
 - ⚠️ Las métricas de alcance son **declaradas** por la creadora, no verificadas. Los campos para verificarlas vía Instagram existen (`fuente_metricas`) pero la conexión con Meta no está construida. Al hacerla: nunca embeber el feed —muestra el @usuario— y recordar que la API exige cuenta Business o Creator.
 - ⚠️ El portal promete plazos (72h para responder, 48h para aprobar, pago 48h después) que **hoy solo se muestran**: no hay cron que los ejecute. Ver README de la app.

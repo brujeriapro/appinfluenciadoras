@@ -83,6 +83,7 @@ router.post('/registro', rateLimit({ windowMs: 600_000, max: 5 }), async (req, r
       email: emailNorm,
       password_hash: await bcrypt.hash(String(password), 10),
       whatsapp: whatsapp || null,
+      codigo: await db.siguienteCodigoCreadora(),
       pais: (pais || 'CO').toUpperCase(),
       departamento: departamento || null,
       ciudad: ciudad || null,

@@ -378,6 +378,11 @@ const ETIQUETAS = {
 };
 
 async function entrar() {
+  // El panel completo vive en /panel.html. Esta pagina es solo la puerta.
+  location.href = '/panel.html';
+}
+
+async function entrarViejo() {
   $('caja-acceso').classList.add('oculto');
   $('panel').classList.remove('oculto');
 

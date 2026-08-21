@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel · Creadores.app</title>
+<meta name="robots" content="noindex, nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/marca.css">
+<style>
+  /* Piezas propias de este panel. El sistema visual vive en marca.css. */
+
+  /* ── Ficha ──────────────────────────────────────────────────────────── */
+  .ficha { display: flex; gap: 24px; align-items: flex-start; }
+  .ficha__col { flex: 1; min-width: 0; }
+  .ficha__panel { width: 392px; flex: none; position: sticky; top: 76px;
+                  border: 2px solid var(--ink); background: var(--surface); }
+  .migas { font-size: 10px; letter-spacing: 1px; color: var(--text-3);
+           text-transform: uppercase; margin-bottom: 14px; }
+  .migas button { background: none; border: none; color: var(--text-3); cursor: pointer;
+                  font-family: inherit; font-size: inherit; letter-spacing: inherit; padding: 0; }
+  .migas button:hover { color: var(--ink); }
+  .alias-grande { font-family: var(--mono-t); font-weight: 800;
+                  font-size: clamp(26px, 3.2vw, 42px); letter-spacing: -2.2px;
+                  text-transform: uppercase; margin: 0; line-height: 1.05; }
+
+  .aviso-anon { display: flex; gap: 12px; align-items: flex-start; background: var(--surface);
+                border: 1px solid var(--border-1); padding: 14px 16px; margin: 18px 0; }
+  .aviso-anon__cuadro { width: 22px; height: 22px; flex: none; background: var(--ink);
+                        color: #fff; display: grid; place-items: center;
+                        font-family: var(--mono-t); font-weight: 800; font-size: 12px; }
+
+  .obra { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 8px; }
+  .obra__princ { aspect-ratio: 4/5; background: var(--border-3); min-width: 0; overflow: hidden;
+                 display: grid; place-items: center; font-size: 10px; color: var(--text-4); }
+  .obra__lado { display: grid; grid-template-rows: 1fr 1fr; gap: 8px; min-width: 0; }
+  .obra__lado > * { background: var(--border-3); min-width: 0; overflow: hidden;
+                    display: grid; place-items: center; font-size: 10px; color: var(--text-4); }
+  .obra img { width: 100%; height: 100%; object-fit: cover; }
+
+  .grupo-num { border: 1px solid var(--border-1); background: var(--surface); margin-bottom: 10px; }
+  .grupo-num__cab { background: var(--surface-alt); padding: 9px 14px;
+                    border-bottom: 1px solid var(--border-1); font-size: 9px;
+                    letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-3); }
+  .grupo-num__cuerpo { padding: 14px; display: flex; gap: 32px; flex-wrap: wrap; }
+  .num-grande { font-family: var(--mono-t); font-weight: 800; font-size: 22px; letter-spacing: -1.2px; }
+  .num-medio { font-family: var(--mono-t); font-weight: 800; font-size: 16px; letter-spacing: -0.7px; }
+
+  .tarifa-op { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+               padding: 12px 15px; border-bottom: 1px solid var(--border-3); cursor: pointer;
+               background: var(--surface); border-left: 4px solid transparent; width: 100%;
+               text-align: left; border-top: none; border-right: none; }
+  .tarifa-op:hover { background: var(--surface-alt); }
+  .tarifa-op.on { background: var(--canvas); border-left-color: var(--ink); }
+  .tarifa-op.off { opacity: .45; cursor: not-allowed; }
+  .tarifa-op__nom { font-family: var(--mono-t); font-weight: 700; font-size: 11.5px;
+                    letter-spacing: -0.2px; text-transform: uppercase; }
+  .tarifa-op__det { font-size: 9px; letter-spacing: 0.9px; color: var(--text-4);
+                    text-transform: uppercase; margin-top: 4px; }
+  .tarifa-op__monto { font-family: var(--mono-t); font-weight: 800; font-size: 13px;
+                      letter-spacing: -0.5px; white-space: nowrap; }
+
+  .panel-pie { background: var(--ink); color: #fff; padding: 16px; }
+  .panel-pie__total { font-family: var(--mono-t); font-weight: 800; font-size: 30px;
+                      letter-spacing: -1.8px; color: var(--lima); margin: 6px 0 4px; }
+  .panel-pie__nota { font-size: 9px; letter-spacing: 0.8px; color: var(--chip-dark-text);
+                     text-transform: uppercase; margin-top: 10px; }
+
+  /* ── Modales ────────────────────────────────────────────────────────── */
+  .telon { position: fixed; inset: 0; background: rgba(14,14,14,.6); z-index: 60;
+           display: none; overflow-y: auto; padding: 20px; }
+  .telon.abierto { display: block; }
+  .modal { max-width: 960px; margin: 0 auto; background: var(--surface);
+           border: 2px solid var(--ink); }
+  .modal__cab { display: flex; justify-content: space-between; align-items: flex-start;
+                gap: 14px; padding: 18px 20px; border-bottom: 2px solid var(--ink); }
+  .modal__cuerpo { display: flex; align-items: stretch; }
+  .modal__form { flex: 1; min-width: 0; padding: 20px; }
+  .modal__dinero { width: 352px; flex: none; border-left: 2px solid var(--ink);
+                   padding: 20px; background: var(--surface); }
+  .cerrar { width: 32px; height: 32px; flex: none; border: 1px solid var(--border-2);
+            background: var(--surface); cursor: pointer; font-size: 15px; line-height: 1; }
+  .cerrar:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .campo { margin-bottom: 15px; }
+  .campo label { display: block; font-size: 9.5px; letter-spacing: 1.1px; font-weight: 700;
+                 text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+  .campo input, .campo select, .campo textarea {
+    width: 100%; background: var(--surface); border: 1px solid var(--border-2);
+    color: var(--ink); font-family: var(--mono-b); font-size: 12px; padding: 10px 11px;
+  }
+  .campo input:focus, .campo select:focus, .campo textarea:focus {
+    outline: none; border-color: var(--ink); }
+  .campos-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+
+  .origen { display: flex; gap: 6px; margin-bottom: 16px; }
+  .origen button { flex: 1; }
+  .plantilla { border: 1px solid var(--border-2); background: var(--surface); padding: 12px 14px;
+               cursor: pointer; margin-bottom: 8px; width: 100%; text-align: left;
+               border-left: 4px solid transparent; }
+  .plantilla:hover { background: var(--surface-alt); }
+  .plantilla.on { border-left-color: var(--ink); background: var(--canvas); }
+  .plantilla__nom { font-family: var(--mono-t); font-weight: 700; font-size: 11.5px;
+                    text-transform: uppercase; letter-spacing: -0.2px; }
+  .plantilla__meta { font-size: 9.5px; color: var(--text-3); margin-top: 5px; letter-spacing: 0.6px; }
+
+  .dinero-fila { display: flex; justify-content: space-between; align-items: baseline;
+                 gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border-3); }
+  .dinero-fila__label { font-size: 10px; letter-spacing: 1px; color: var(--text-3);
+                        text-transform: uppercase; }
+  .dinero-fila__valor { font-family: var(--mono-t); font-weight: 700; font-size: 13px; }
+  .dinero-total { background: var(--ink); color: #fff; padding: 16px; margin-top: 14px; }
+  .dinero-total__valor { font-family: var(--mono-t); font-weight: 800; font-size: 36px;
+                         letter-spacing: -2.2px; color: var(--lima); margin: 6px 0; }
+  .dinero-total__nota { font-size: 10px; line-height: 1.6; color: var(--chip-dark-text); }
+  .alerta-tarifa { background: var(--magenta); color: var(--ink); font-size: 9.5px;
+                   font-weight: 700; letter-spacing: 0.6px; padding: 5px 8px;
+                   text-transform: uppercase; display: inline-block; margin-top: 6px; }
+
+  /* ── Campañas y trato ───────────────────────────────────────────────── */
+  .tabla { width: 100%; border-collapse: collapse; background: var(--surface);
+           border: 1px solid var(--border-1); }
+  .tabla th { text-align: left; font-family: var(--mono-b); font-size: 9.5px; letter-spacing: 1.1px;
+              text-transform: uppercase; color: var(--text-3); padding: 11px 14px;
+              border-bottom: 2px solid var(--ink); font-weight: 700; }
+  .tabla td { padding: 14px; border-bottom: 1px solid var(--border-3); font-size: 12px; }
+  .tabla tr.alerta { background: var(--fila-alerta); }
+  .pastilla { display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: 0.5px;
+              text-transform: uppercase; padding: 4px 8px; border: 1px solid var(--ink); }
+  .pastilla--alerta { background: var(--magenta); border-color: var(--magenta); color: var(--ink); }
+  .pastilla--cerrado { color: var(--text-3); border-color: var(--border-2); }
+  .money { border-right: 4px solid var(--lima); padding-right: 10px; text-align: right;
+           font-family: var(--mono-t); font-weight: 800; letter-spacing: -0.5px; }
+
+  .trato { display: flex; gap: 24px; align-items: flex-start; }
+  .trato__col { flex: 1; min-width: 0; }
+  .trato__lado { width: 392px; flex: none; }
+  .pasos { list-style: none; margin: 0; padding: 0; }
+  .paso { display: flex; gap: 14px; align-items: flex-start; padding-bottom: 22px; position: relative; }
+  .paso:not(:last-child)::before { content: ''; position: absolute; left: 8px; top: 20px;
+                                    bottom: 0; width: 2px; background: var(--border-2); }
+  .paso.hecho:not(:last-child)::before { background: var(--ink); }
+  .paso__caja { width: 18px; height: 18px; flex: none; border: 2px solid var(--border-2);
+                background: var(--surface); position: relative; z-index: 1; }
+  .paso.hecho .paso__caja { background: var(--ink); border-color: var(--ink); }
+  .paso.actual .paso__caja { background: var(--lima); border-color: var(--ink); }
+  .paso__nom { font-family: var(--mono-t); font-weight: 800; font-size: 11.5px;
+               letter-spacing: -0.2px; text-transform: uppercase; }
+  .paso.pendiente .paso__nom { color: var(--text-4); }
+  .paso__desc { font-size: 11.5px; line-height: 1.6; color: var(--text-2); margin-top: 6px; }
+  .paso__fecha { font-size: 9px; letter-spacing: 0.9px; color: var(--text-4);
+                 text-transform: uppercase; margin-top: 5px; }
+
+  .bloque { background: var(--surface); border: 1px solid var(--border-1); margin-bottom: 14px; }
+  .bloque__cab { padding: 11px 14px; border-bottom: 1px solid var(--border-1);
+                 font-size: 9.5px; letter-spacing: 1.1px; text-transform: uppercase;
+                 color: var(--text-3); font-weight: 700; }
+  .bloque__cuerpo { padding: 14px; }
+
+  .contacto--bloqueado { border: 2px solid var(--magenta); }
+  .contacto--bloqueado .bloque__cab { background: var(--magenta); color: var(--ink);
+                                       border-bottom-color: var(--magenta);
+                                       display: flex; align-items: center; gap: 9px; }
+  .contacto--abierto { border: 2px solid var(--ink); }
+  .contacto--abierto .bloque__cab { background: var(--ink); color: #fff;
+                                     border-bottom-color: var(--ink);
+                                     display: flex; align-items: center; gap: 9px; }
+  .cuadrito { width: 11px; height: 11px; border: 2px solid var(--ink); }
+  .cuadrito--lima { background: var(--lima); border-color: var(--lima); }
+  .barra-oculta { height: 11px; background: var(--border-2); margin: 9px 0; }
+  .dato-fila { display: flex; justify-content: space-between; gap: 12px;
+               padding: 7px 0; font-size: 12px; }
+  .dato-fila span:first-child { color: var(--text-3); }
+
+  /* ── Perfil de la marca ─────────────────────────────────────────────── */
+  .perfil { display: flex; gap: 24px; align-items: flex-start; }
+  .perfil__col { flex: 1; min-width: 0; }
+  .perfil__lado { width: 360px; flex: none; position: sticky; top: 76px; }
+  .contador { font-size: 9.5px; letter-spacing: 0.8px; color: var(--text-4); margin-top: 5px; }
+  .contador.pasado { color: var(--magenta); font-weight: 700; }
+  .productos { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+  .producto { aspect-ratio: 1; background: var(--border-3); min-width: 0; overflow: hidden;
+              position: relative; display: grid; place-items: center;
+              font-size: 9px; color: var(--text-4); }
+  .producto img { width: 100%; height: 100%; object-fit: cover; }
+  .producto__x { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px;
+                 background: var(--surface); border: 1px solid var(--border-2);
+                 cursor: pointer; font-size: 11px; line-height: 1; }
+  .producto__x:hover { background: var(--magenta); border-color: var(--ink); }
+  .anadir { border: 2px dashed var(--border-2); background: var(--surface-alt); cursor: pointer;
+            display: grid; place-items: center; font-size: 10px; letter-spacing: 0.8px;
+            color: var(--text-3); text-transform: uppercase; }
+  .anadir:hover { border-color: var(--ink); color: var(--ink); }
+  .anadir input { display: none; }
+  .checklist-item { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; font-size: 11.5px; }
+  .check-c { width: 16px; height: 16px; flex: none; border: 2px solid var(--border-2);
+             display: grid; place-items: center; font-size: 10px; }
+  .check-c.ok { background: var(--lima); border-color: var(--ink); }
+
+  @media (max-width: 1200px) {
+    .ficha, .trato, .perfil { flex-direction: column; }
+    .ficha__panel, .trato__lado, .perfil__lado { width: 100%; position: static; }
+  }
+  @media (max-width: 1000px) {
+    .modal__cuerpo { flex-direction: column; }
+    /* El dinero va arriba en la propuesta: es lo que el usuario necesita ver. */
+    .modal__dinero { width: 100%; border-left: none; border-bottom: 2px solid var(--ink); order: -1; }
+    .modal--campana .modal__dinero { order: 1; border-bottom: none; border-top: 2px solid var(--ink); }
+  }
+  @media (max-width: 700px) {
+    .tabla thead { display: none; }
+    .tabla, .tabla tbody, .tabla tr, .tabla td { display: block; width: 100%; }
+    .tabla tr { border-bottom: 2px solid var(--ink); padding: 6px 0; }
+    .tabla td { border: none; padding: 6px 14px; }
+    .money { border-right: none; border-left: 4px solid var(--lima); padding-left: 10px;
+             text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Cabecera ─────────────────────────────────────────────────────────── -->
+<header class="cab">
+  <div class="cab__logo">
+    <div class="cab__marca">C</div>
+    <span class="cab__texto">CREADORES.APP</span>
+    <span class="cab__sello">Marcas</span>
+  </div>
+
+  <button class="abrir-nav" id="abrir-nav">MENÚ</button>
+
+  <nav class="nav" id="nav">
+    <div class="menu">
+      <button class="nav__item activo" data-vista="catalogo" id="btn-creadoras">
+        Creadoras <span style="font-size:8px">▼</span>
+      </button>
+      <div class="menu__lista" id="menu-bandejas">
+        <button class="menu__op activo" data-bandeja="todas">
+          <span>Catálogo completo</span><span class="menu__conteo" id="c-todas">0</span>
+        </button>
+        <button class="menu__op" data-bandeja="pendientes">
+          <span>Por revisar</span><span class="menu__conteo" id="c-pendientes">0</span>
+        </button>
+        <button class="menu__op" data-bandeja="pre">
+          <span>Preseleccionadas</span><span class="menu__conteo" id="c-pre">0</span>
+        </button>
+        <button class="menu__op" data-bandeja="desc">
+          <span>Descartadas</span><span class="menu__conteo" id="c-desc">0</span>
+        </button>
+      </div>
+    </div>
+    <button class="nav__item" data-vista="campanas">
+      Mis campañas <span class="nav__badge oculto" id="badge-campanas"></span>
+    </button>
+    <button class="nav__item" data-vista="perfil">Mi perfil</button>
+  </nav>
+
+  <div class="cab__marca-info">
+    <div>
+      <div class="cab__marca-nombre" id="nombre-marca">—</div>
+      <div class="cab__marca-sub" id="sub-marca"></div>
+    </div>
+    <div class="cab__avatar" id="iniciales">·</div>
+  </div>
+</header>
+
+<!-- ── Cuerpo ───────────────────────────────────────────────────────────── -->
+<div class="layout">
+  <aside class="filtros" id="filtros">
+    <div class="filtros__cab">
+      <span class="filtros__titulo">Filtros</span>
+      <button class="filtros__limpiar" id="limpiar">Limpiar</button>
+    </div>
+    <div id="grupos-filtro"></div>
+  </aside>
+
+  <main class="contenido" id="contenido"></main>
+</div>
+
+<!-- Barra de comparación -->
+<div class="barra-comp" id="barra-comp">
+  <span class="barra-comp__conteo" id="comp-conteo"></span>
+  <span class="barra-comp__codigos" id="comp-codigos"></span>
+  <button class="btn-oscuro" id="comp-quitar">Quitar selección</button>
+  <button class="btn btn--lima" id="comp-comparar">Comparar lado a lado</button>
+</div>
+
+<div class="telon" id="telon"><div id="modal-hueco"></div></div>
+
+<script>
+// ── Sesión ──────────────────────────────────────────────────────────────────
+
+const TOKEN = sessionStorage.getItem('mk_marca');
+if (!TOKEN) location.href = '/registro.html';
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const COP = (v) => '$' + Math.round(Number(v) || 0).toLocaleString('es-CO');
+const fecha = (f) => f ? new Date(f).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }).toUpperCase() : '—';
+
+async function api(ruta, opciones = {}) {
+  const res = await fetch('/api/marcas' + ruta, {
+    ...opciones,
+    headers: {
+      'Authorization': 'Bearer ' + TOKEN,
+      'Content-Type': 'application/json',
+      ...(opciones.headers || {}),
+    },
+  });
+  if (res.status === 401) {
+    sessionStorage.removeItem('mk_marca');
+    location.href = '/registro.html';
+    throw new Error('Sesión vencida');
+  }
+  const texto = await res.text();
+  const datos = texto ? JSON.parse(texto) : null;
+  if (!res.ok) throw new Error((datos && datos.error) || 'Error ' + res.status);
+  return datos;
+}
+
+async function apiCatalogo(query = '') {
+  const res = await fetch('/api/catalogo' + query, {
+    headers: { 'Authorization': 'Bearer ' + TOKEN },
+  });
+  if (!res.ok) throw new Error('No pudimos cargar el catálogo');
+  return res.json();
+}
+
+// ── Estado ──────────────────────────────────────────────────────────────────
+
+const E = {
+  vista: 'catalogo',
+  layout: localStorage.getItem('mk_layout') || 'filas',
+  bandeja: 'todas',
+  filtros: { nicho: '', ciudad: '', rango_alcance: '', entregable: '', presupuesto: null },
+  cfg: null,
+  catalogo: [],
+  triage: { preseleccionadas: [], descartadas: [] },
+  campanas: [],
+  tratos: [],
+  marca: null,
+  fichaId: null,
+  tratoId: null,
+  cargando: false,
+  error: null,
+};
+
+const esPre  = (id) => E.triage.preseleccionadas.includes(id);
+const esDesc = (id) => E.triage.descartadas.includes(id);
+
+/** Los perfiles que quedan tras aplicar la bandeja elegida. */
+function visibles() {
+  if (E.bandeja === 'pre')  return E.catalogo.filter(c => esPre(c.id));
+  if (E.bandeja === 'desc') return E.catalogo.filter(c => esDesc(c.id));
+  if (E.bandeja === 'pendientes') return E.catalogo.filter(c => !esPre(c.id) && !esDesc(c.id));
+  return E.catalogo;
+}
+
+// ── Navegación ──────────────────────────────────────────────────────────────
+
+$('abrir-nav').addEventListener('click', () => $('nav').classList.toggle('abierto'));
+
+document.querySelectorAll('.nav__item[data-vista]').forEach(b => {
+  b.addEventListener('click', (ev) => {
+    if (b.id === 'btn-creadoras' && E.vista === 'catalogo') {
+      $('menu-bandejas').classList.toggle('abierto');
+      ev.stopPropagation();
+      return;
+    }
+    ir(b.dataset.vista);
+  });
+});
+
+document.addEventListener('click', (ev) => {
+  if (!ev.target.closest('.menu')) $('menu-bandejas').classList.remove('abierto');
+});
+
+document.querySelectorAll('.menu__op').forEach(b => {
+  b.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    E.bandeja = b.dataset.bandeja;
+    document.querySelectorAll('.menu__op').forEach(o => o.classList.toggle('activo', o === b));
+    $('menu-bandejas').classList.remove('abierto');
+    ir('catalogo');
+  });
+});
+
+function ir(vista, id) {
+  E.vista = vista;
+  if (vista === 'ficha') E.fichaId = id;
+  if (vista === 'trato') E.tratoId = id;
+  document.querySelectorAll('.nav__item[data-vista]').forEach(b => {
+    const activo = b.dataset.vista === vista
+      || (vista === 'ficha' && b.dataset.vista === 'catalogo')
+      || (vista === 'trato' && b.dataset.vista === 'campanas');
+    b.classList.toggle('activo', activo);
+  });
+  $('nav').classList.remove('abierto');
+  $('filtros').style.display = vista === 'catalogo' ? '' : 'none';
+  render();
+}
+
+// ── Filtros ─────────────────────────────────────────────────────────────────
+
+function pintarFiltros() {
+  const cfg = E.cfg || {};
+  const nichos = (cfg.categorias || []).map(c => ({ v: c.clave, t: c.nombre }));
+  const rangos = (cfg.rangos_alcance || []).map(r => ({ v: r, t: r }));
+  const entregables = (cfg.entregables || []).map(e => ({ v: e.clave, t: e.nombre }));
+
+  // Solo se ofrecen las ciudades donde de verdad hay creadoras: una lista de
+  // 32 departamentos con la mayoría vacíos no ayuda a nadie.
+  const ciudades = [...new Set(E.catalogo.map(c => c.ciudad).filter(Boolean))].sort();
+
+  const grupo = (label, clave, opciones, todos) => `
+    <div class="filtros__grupo">
+      <div class="filtros__label">${label}</div>
+      <div class="chips">
+        <button class="chip ${!E.filtros[clave] ? 'on' : ''}" data-f="${clave}" data-v="">${todos}</button>
+        ${opciones.map(o => `
+          <button class="chip ${E.filtros[clave] === o.v ? 'on' : ''}"
+                  data-f="${clave}" data-v="${esc(o.v)}">${esc(o.t)}</button>`).join('')}
+      </div>
+    </div>`;
+
+  const rp = cfg.rango_presupuesto || { min: 200000, max: 5000000, paso: 50000 };
+  const valor = E.filtros.presupuesto ?? rp.max;
+
+  $('grupos-filtro').innerHTML =
+    grupo('Nicho', 'nicho', nichos, 'Todos') +
+    grupo('Alcance por red', 'rango_alcance', rangos, 'Todo') +
+    grupo('Ciudad', 'ciudad', ciudades.map(c => ({ v: c, t: c })), 'Todas') + `
+    <div class="filtros__grupo">
+      <div class="filtros__label">Presupuesto máximo</div>
+      <div class="presupuesto__valor" id="pres-valor">${COP(valor)}</div>
+      <input type="range" id="pres" min="${rp.min}" max="${rp.max}" step="${rp.paso}"
+             value="${valor}" aria-label="Presupuesto máximo" aria-valuetext="${COP(valor)}">
+      <div class="rango-extremos"><span>${COP(rp.min)}</span><span>${COP(rp.max)}</span></div>
+      <div class="filtros__nota">Filtra por la tarifa más baja de cada perfil</div>
+    </div>` +
+    grupo('Tipo de entregable', 'entregable', entregables, 'Todos');
+
+  $('grupos-filtro').querySelectorAll('[data-f]').forEach(b => {
+    b.addEventListener('click', () => {
+      E.filtros[b.dataset.f] = b.dataset.v || '';
+      cargarCatalogo();
+    });
+  });
+
+  const slider = $('pres');
+  slider.addEventListener('input', () => {
+    $('pres-valor').textContent = COP(slider.value);
+    slider.setAttribute('aria-valuetext', COP(slider.value));
+  });
+  slider.addEventListener('change', () => {
+    E.filtros.presupuesto = Number(slider.value);
+    cargarCatalogo();
+  });
+}
+
+$('limpiar').addEventListener('click', () => {
+  E.filtros = { nicho: '', ciudad: '', rango_alcance: '', entregable: '', presupuesto: null };
+  cargarCatalogo();
+});
+
+// ── Carga ───────────────────────────────────────────────────────────────────
+
+async function cargarCatalogo() {
+  E.cargando = true;
+  E.error = null;
+  render();
+  try {
+    const q = new URLSearchParams();
+    if (E.filtros.nicho)         q.set('categoria', E.filtros.nicho);
+    if (E.filtros.ciudad)        q.set('ciudad', E.filtros.ciudad);
+    if (E.filtros.rango_alcance) q.set('rango_alcance', E.filtros.rango_alcance);
+    if (E.filtros.entregable)    q.set('entregable', E.filtros.entregable);
+    if (E.filtros.presupuesto)   q.set('presupuesto_max', E.filtros.presupuesto);
+
+    const d = await apiCatalogo(q.toString() ? '?' + q : '');
+    E.catalogo = d.creadoras || [];
+    E.cargando = false;
+    pintarFiltros();
+    render();
+  } catch (e) {
+    E.cargando = false;
+    E.error = e.message;
+    render();
+  }
+}
+
+async function arrancar() {
+  try {
+    // Las campañas se cargan de una: el modal de propuesta las necesita para
+    // ofrecer "de una campaña", y ese modal se abre desde la ficha, no desde
+    // la vista de campañas.
+    const [marca, cfg, triage, campanas] = await Promise.all([
+      api('/me'),
+      apiCatalogo('/filtros').catch(() => ({})),
+      api('/triage').catch(() => ({ preseleccionadas: [], descartadas: [] })),
+      api('/campanas').catch(() => []),
+    ]);
+    E.marca = marca;
+    E.cfg = cfg;
+    E.triage = triage;
+    E.campanas = campanas;
+
+    $('nombre-marca').textContent = marca.nombre_empresa || '—';
+    $('sub-marca').textContent = [marca.ciudad, marca.pais].filter(Boolean).join(' · ');
+    $('iniciales').textContent = (marca.nombre_empresa || 'M')
+      .split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+
+    await cargarCatalogo();
+    cargarTratos();
+  } catch (e) {
+    E.error = e.message;
+    render();
+  }
+}
+
+async function cargarTratos() {
+  try {
+    E.tratos = await api('/tratos');
+    const urgentes = E.tratos.filter(t => t.estado === 'entregado').length;
+    $('badge-campanas').textContent = urgentes;
+    $('badge-campanas').classList.toggle('oculto', !urgentes);
+  } catch (e) { /* el badge no es crítico */ }
+}
+
+// ── Render ──────────────────────────────────────────────────────────────────
+
+function render() {
+  actualizarConteos();
+  const c = $('contenido');
+  if (E.vista === 'catalogo') return vistaCatalogo(c);
+  if (E.vista === 'ficha')    return vistaFicha(c);
+  if (E.vista === 'campanas') return vistaCampanas(c);
+  if (E.vista === 'trato')    return vistaTrato(c);
+  if (E.vista === 'perfil')   return vistaPerfil(c);
+}
+
+function actualizarConteos() {
+  const pre = E.catalogo.filter(c => esPre(c.id)).length;
+  const desc = E.catalogo.filter(c => esDesc(c.id)).length;
+  $('c-todas').textContent = E.catalogo.length;
+  $('c-pendientes').textContent = E.catalogo.length - pre - desc;
+  $('c-pre').textContent = pre;
+  $('c-desc').textContent = desc;
+
+  const sel = E.catalogo.filter(c => esPre(c.id));
+  $('barra-comp').classList.toggle('visible', sel.length > 0 && E.vista === 'catalogo');
+  $('comp-conteo').textContent = `${sel.length} PRESELECCIONADA${sel.length === 1 ? '' : 'S'}`;
+  $('comp-codigos').textContent = sel.map(c => c.codigo).filter(Boolean).join(' · ');
+}
+
+const TITULOS = {
+  todas: 'Catálogo completo',
+  pendientes: 'Creadoras por revisar',
+  pre: 'Preseleccionadas',
+  desc: 'Descartadas',
+};
+
+function vistaCatalogo(c) {
+  if (E.cargando) return pintarCargando(c);
+  if (E.error)    return pintarError(c);
+
+  const lista = visibles();
+
+  c.innerHTML = `
+    <div class="vista-cab">
+      <div class="vista-cab__texto">
+        <h1 class="h1">${TITULOS[E.bandeja]}</h1>
+        <p class="p">Perfiles verificados con métricas conectadas. La identidad se revela
+        cuando el pago queda retenido: hasta entonces contratas por trabajo y datos,
+        no por nombre.</p>
+      </div>
+      <div class="vista-cab__acciones">
+        <button class="btn btn--linea btn--sm abrir-filtros" id="abrir-filtros">Filtros</button>
+        <span class="conteo">${lista.length} de ${E.catalogo.length} perfiles</span>
+        <div class="toggle">
+          <button class="${E.layout === 'filas' ? 'on' : ''}" data-layout="filas">Filas</button>
+          <button class="${E.layout === 'grid' ? 'on' : ''}" data-layout="grid">Tarjetas</button>
+        </div>
+      </div>
+    </div>
+    <div id="lista"></div>`;
+
+  c.querySelectorAll('[data-layout]').forEach(b => {
+    b.addEventListener('click', () => {
+      E.layout = b.dataset.layout;
+      localStorage.setItem('mk_layout', E.layout);
+      render();
+    });
+  });
+  $('abrir-filtros')?.addEventListener('click', () => $('filtros').classList.toggle('abierto'));
+
+  if (!lista.length) return pintarVacio($('lista'));
+
+  $('lista').innerHTML = E.layout === 'filas'
+    ? lista.map(filaHTML).join('')
+    : `<div class="grilla">${lista.map(tarjetaHTML).join('')}</div>`;
+
+  conectarTriage($('lista'));
+  $('lista').querySelectorAll('[data-ficha]').forEach(b => {
+    b.addEventListener('click', () => ir('ficha', b.dataset.ficha));
+  });
+}
+
+const pieza = (m) => m
+  ? `<img src="/media/${m.id}?t=${TOKEN}" alt="Pieza de trabajo" loading="lazy">`
+  : '<span>pieza</span>';
+
+function filaHTML(c) {
+  const ms = c.muestras || [];
+  return `
+  <article class="fila">
+    <div class="fila__cab">
+      <div class="avatar">${ms[0] ? pieza(ms[0]) : 'foto'}</div>
+      <div class="fila__id">
+        <div class="alias">${esc(c.nombre_publico)}</div>
+        <div class="sub-id">${esc([c.codigo, (c.nicho || [])[0], c.ciudad].filter(Boolean).join(' · '))}</div>
+      </div>
+      <div class="metricas">
+        <div class="metrica">
+          <div class="metrica__valor">${esc(c.rango_instagram || '—')}</div>
+          <div class="metrica__label">Instagram</div>
+        </div>
+        <div class="metrica">
+          <div class="metrica__valor">${esc(c.rango_tiktok || '—')}</div>
+          <div class="metrica__label">TikTok</div>
+        </div>
+        <div class="metrica">
+          <div class="metrica__valor">${c.engagement_pct != null ? c.engagement_pct + '%' : '—'}</div>
+          <div class="metrica__label">Engagement</div>
+        </div>
+      </div>
+      <div class="desde">
+        <div class="desde__valor">${c.tarifa_min ? COP(c.tarifa_min) : '—'}</div>
+        <div class="desde__label">Desde</div>
+      </div>
+      <div class="triage">
+        <button class="tri ${esPre(c.id) ? 'on-si' : ''}" data-si="${c.id}"
+                aria-label="Preseleccionar ${esc(c.nombre_publico)}">✓</button>
+        <button class="tri ${esDesc(c.id) ? 'on-no' : ''}" data-no="${c.id}"
+                aria-label="Descartar ${esc(c.nombre_publico)}">✕</button>
+      </div>
+      <button class="btn btn--sm" data-ficha="${c.id}">Ver ficha →</button>
+    </div>
+    <div class="tira">
+      ${[0,1,2,3].map(i => `<div>${pieza(ms[i])}</div>`).join('')}
+    </div>
+  </article>`;
+}
+
+function tarjetaHTML(c) {
+  const ms = c.muestras || [];
+  return `
+  <article class="tarjeta">
+    <div class="tarjeta__foto">
+      ${pieza(ms[0])}
+      ${c.codigo ? `<span class="tarjeta__codigo">${esc(c.codigo)}</span>` : ''}
+      <div class="tarjeta__triage">
+        <button class="tri ${esPre(c.id) ? 'on-si' : ''}" data-si="${c.id}"
+                aria-label="Preseleccionar ${esc(c.nombre_publico)}">✓</button>
+        <button class="tri ${esDesc(c.id) ? 'on-no' : ''}" data-no="${c.id}"
+                aria-label="Descartar ${esc(c.nombre_publico)}">✕</button>
+      </div>
+    </div>
+    <div class="tarjeta__cuerpo">
+      <div class="alias">${esc(c.nombre_publico)}</div>
+      <div class="tarjeta__chips">
+        ${(c.nicho || []).slice(0, 1).map(n => `<span class="chip-claro chip-nicho">${esc(n)}</span>`).join('')}
+        ${c.ciudad ? `<span class="chip-claro">${esc(c.ciudad)}</span>` : ''}
+      </div>
+      <div class="tarjeta__metricas">
+        <div><div class="metrica__valor">${esc(c.rango_instagram || '—')}</div>
+             <div class="metrica__label">Instagram</div></div>
+        <div><div class="metrica__valor">${esc(c.rango_tiktok || '—')}</div>
+             <div class="metrica__label">TikTok</div></div>
+        <div><div class="metrica__valor">${c.engagement_pct != null ? c.engagement_pct + '%' : '—'}</div>
+             <div class="metrica__label">Engagement</div></div>
+        <div><div class="metrica__valor">${c.dias_entrega ? c.dias_entrega + ' días' : '—'}</div>
+             <div class="metrica__label">Entrega</div></div>
+      </div>
+      <div class="tarjeta__pie">
+        <div class="desde">
+          <div class="desde__valor">${c.tarifa_min ? COP(c.tarifa_min) : '—'}</div>
+          <div class="desde__label">Desde</div>
+        </div>
+        <button class="btn btn--sm" data-ficha="${c.id}">Ver ficha →</button>
+      </div>
+    </div>
+  </article>`;
+}
+
+function conectarTriage(raiz) {
+  const marcar = async (id, decision) => {
+    try {
+      E.triage = await api('/triage', {
+        method: 'POST',
+        body: JSON.stringify({ creadora_id: id, decision }),
+      });
+      render();
+    } catch (e) { alert('No se pudo: ' + e.message); }
+  };
+  raiz.querySelectorAll('[data-si]').forEach(b =>
+    b.addEventListener('click', () => marcar(b.dataset.si, 'preseleccionada')));
+  raiz.querySelectorAll('[data-no]').forEach(b =>
+    b.addEventListener('click', () => marcar(b.dataset.no, 'descartada')));
+}
+
+$('comp-quitar').addEventListener('click', async () => {
+  const sel = E.catalogo.filter(c => esPre(c.id));
+  for (const c of sel) {
+    E.triage = await api('/triage', {
+      method: 'POST', body: JSON.stringify({ creadora_id: c.id, decision: 'preseleccionada' }),
+    });
+  }
+  render();
+});
+
+$('comp-comparar').addEventListener('click', () => {
+  E.bandeja = 'pre';
+  document.querySelectorAll('.menu__op').forEach(o =>
+    o.classList.toggle('activo', o.dataset.bandeja === 'pre'));
+  ir('catalogo');
+});
+
+// ── Estados ─────────────────────────────────────────────────────────────────
+
+function pintarCargando(c) {
+  c.innerHTML = `
+    <div class="vista-cab"><div><h1 class="h1">Catálogo</h1></div></div>
+    ${[1,2].map(() => `
+      <div class="fila">
+        <div class="fila__cab">
+          <div class="hueso" style="width:42px;height:42px"></div>
+          <div style="flex:1">
+            <div class="hueso" style="height:14px;width:180px;margin-bottom:8px"></div>
+            <div class="hueso" style="height:10px;width:120px"></div>
+          </div>
+          <div class="hueso" style="height:30px;width:90px"></div>
+        </div>
+        <div class="tira">${[1,2,3,4].map(() => '<div class="hueso"></div>').join('')}</div>
+      </div>`).join('')}
+    <p class="p" style="margin-top:14px">Cargando perfiles verificados…</p>`;
+}
+
+function pintarError(c) {
+  c.innerHTML = `
+    <div class="estado estado--error">
+      <div class="estado__cuadro">!</div>
+      <div class="estado__titulo">No pudimos cargar el catálogo</div>
+      <p class="estado__texto">Se perdió la conexión con el servidor. Tus filtros y tu
+      selección siguen guardados: nada de lo que hiciste se perdió.</p>
+      <div class="estado__acciones">
+        <button class="btn" id="reintentar">Reintentar</button>
+      </div>
+      <div class="estado__meta">${esc(E.error || '')} · ${new Date().toLocaleString('es-CO')}</div>
+    </div>`;
+  $('reintentar').addEventListener('click', cargarCatalogo);
+}
+
+/**
+ * Vacío diagnóstico, no genérico. Decir "no hay resultados" no ayuda; decir
+ * cuántos perfiles hay en ese nicho y por qué no califican, sí.
+ */
+function pintarVacio(c) {
+  if (E.bandeja === 'pre' || E.bandeja === 'desc') {
+    const cual = E.bandeja === 'pre' ? 'preseleccionadas' : 'descartadas';
+    c.innerHTML = `
+      <div class="estado">
+        <div class="estado__cuadro">0</div>
+        <div class="estado__titulo">Aún no hay ${cual}</div>
+        <p class="estado__texto">Marca perfiles con ✓ para preseleccionarlos o con ✕ para
+        descartarlos. Lo que decidas se guarda y lo puedes cambiar cuando quieras.</p>
+        <div class="estado__acciones">
+          <button class="btn" id="a-revisar">Volver a por revisar →</button>
+        </div>
+      </div>`;
+    $('a-revisar').addEventListener('click', () => {
+      E.bandeja = 'pendientes';
+      document.querySelectorAll('.menu__op').forEach(o =>
+        o.classList.toggle('activo', o.dataset.bandeja === 'pendientes'));
+      render();
+    });
+    return;
+  }
+
+  // Diagnóstico: qué filtro es el que está dejando todo por fuera.
+  const f = E.filtros;
+  let diagnostico = 'Ningún perfil publicado cumple esa combinación de filtros.';
+  if (f.presupuesto) {
+    diagnostico = `Con un presupuesto de ${COP(f.presupuesto)} no califica ningún perfil de
+      los que quedan. Sube el presupuesto o quita alguno de los otros filtros.`;
+  } else if (f.ciudad) {
+    diagnostico = `No hay perfiles publicados en ${f.ciudad} con esos filtros. Prueba
+      quitando la ciudad: muchas creadoras trabajan en varias.`;
+  } else if (f.entregable) {
+    diagnostico = 'Ningún perfil ofrece ese entregable con los demás filtros puestos.';
+  }
+
+  c.innerHTML = `
+    <div class="estado">
+      <div class="estado__cuadro">0</div>
+      <div class="estado__titulo">Ningún perfil cumple ese filtro</div>
+      <p class="estado__texto">${diagnostico}</p>
+      <div class="estado__acciones">
+        <button class="btn" id="quitar-filtros">Quitar todos los filtros</button>
+        ${f.presupuesto ? '<button class="btn btn--linea" id="subir-pres">Subir presupuesto</button>' : ''}
+      </div>
+    </div>`;
+  $('quitar-filtros').addEventListener('click', () => $('limpiar').click());
+  $('subir-pres')?.addEventListener('click', () => {
+    E.filtros.presupuesto = null;
+    cargarCatalogo();
+  });
+}
+
+// ── Resto de vistas (en archivos aparte por tamaño) ─────────────────────────
+</script>
+<script src="/js/panel-ficha.js"></script>
+<script src="/js/panel-campanas.js"></script>
+<script>
+  arrancar();
+</script>
+</body>
+</html>

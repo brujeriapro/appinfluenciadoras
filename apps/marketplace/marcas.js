@@ -150,6 +150,152 @@ router.get('/me', async (req, res) => {
   }
 });
 
+/** Perfil editable de la marca: lo que ve la creadora antes de decidir. */
+router.put('/me', async (req, res) => {
+  try {
+    const permitidos = [
+      'nombre_empresa', 'nombre_contacto', 'whatsapp', 'nit', 'sitio_web',
+      'pais', 'departamento', 'ciudad', 'bio', 'categoria', 'instagram', 'tiktok',
+      'que_espera', 'libertad_creativa', 'contacto_creadoras',
+    ];
+    const data = {};
+    permitidos.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
+
+    // La bio se corta en el servidor, no solo en el contador del formulario.
+    if (data.bio) data.bio = String(data.bio).slice(0, 400);
+
+    const limpio = (h) => h ? String(h).replace('@', '').toLowerCase().trim() : null;
+    if (data.instagram !== undefined) data.instagram = limpio(data.instagram);
+    if (data.tiktok !== undefined)    data.tiktok = limpio(data.tiktok);
+
+    res.json({ ok: true, marca: await db.updateMarca(req.usuarioId, data) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Reputación de la marca: lo que le da confianza a la creadora.
+ * Se calcula, no se edita — por eso vive acá y no en el PUT de arriba.
+ */
+router.get('/reputacion', async (req, res) => {
+  try {
+    const tratos = await db.getTratosDeMarca(req.usuarioId);
+    const cerrados = tratos.filter(t => ['pagado', 'cerrado'].includes(t.estado));
+
+    // Cuánto tarda en aprobar, en horas. Es el número que más le importa a una
+    // creadora: si la marca se demora, ella cobra tarde.
+    const conAprobacion = cerrados.filter(t => t.fecha_entrega && t.fecha_aprobacion);
+    const horas = conAprobacion.map(t =>
+      (new Date(t.fecha_aprobacion) - new Date(t.fecha_entrega)) / 3600_000
+    );
+    const promedio = horas.length
+      ? Math.round(horas.reduce((a, b) => a + b, 0) / horas.length)
+      : null;
+
+    res.json({
+      tratos_cerrados: cerrados.length,
+      horas_aprobacion_promedio: promedio,
+      pagado_en_plataforma: cerrados.reduce((s, t) => s + Number(t.total_a_pagar_marca || 0), 0),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Triage: preseleccionar y descartar ──────────────────────────────────────
+
+router.get('/triage', async (req, res) => {
+  try {
+    const filas = await db.getTriageDeMarca(req.usuarioId);
+    res.json({
+      preseleccionadas: filas.filter(f => f.decision === 'preseleccionada').map(f => f.creadora_id),
+      descartadas: filas.filter(f => f.decision === 'descartada').map(f => f.creadora_id),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** Volver a marcar lo mismo deshace la decisión: el triage es reversible. */
+router.post('/triage', async (req, res) => {
+  try {
+    const { creadora_id, decision } = req.body;
+    if (!['preseleccionada', 'descartada'].includes(decision)) {
+      return res.status(400).json({ error: 'Decisión no válida' });
+    }
+    await db.guardarTriage(req.usuarioId, creadora_id, decision);
+    const filas = await db.getTriageDeMarca(req.usuarioId);
+    res.json({
+      ok: true,
+      preseleccionadas: filas.filter(f => f.decision === 'preseleccionada').map(f => f.creadora_id),
+      descartadas: filas.filter(f => f.decision === 'descartada').map(f => f.creadora_id),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Campañas ────────────────────────────────────────────────────────────────
+
+router.get('/campanas', async (req, res) => {
+  try {
+    const [campanas, cuenta] = await Promise.all([
+      db.getCampanasDeMarca(req.usuarioId, { estado: req.query.estado }),
+      db.contarTratosPorCampana(req.usuarioId),
+    ]);
+    res.json(campanas.map(c => ({ ...c, propuestas_enviadas: cuenta[c.id] || 0 })));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/campanas', async (req, res) => {
+  try {
+    const { nombre, tope_total, tope_por_creadora, entregables } = req.body;
+    if (!nombre) return res.status(400).json({ error: 'La campaña necesita un nombre' });
+    if (!Array.isArray(entregables) || !entregables.length) {
+      return res.status(400).json({ error: 'Marca al menos un entregable que buscas' });
+    }
+    if (!tope_total || !tope_por_creadora) {
+      return res.status(400).json({ error: 'Faltan los topes de presupuesto' });
+    }
+    if (Number(tope_por_creadora) > Number(tope_total)) {
+      return res.status(400).json({ error: 'El tope por creadora no puede superar el total' });
+    }
+
+    const permitidos = [
+      'nombre', 'objetivo', 'brief_base', 'entregables', 'fecha_inicio', 'fecha_fin',
+      'producto', 'exclusividad', 'tope_total', 'tope_por_creadora',
+    ];
+    const data = { marca_id: req.usuarioId };
+    permitidos.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
+
+    res.json({ ok: true, campana: await db.insertCampana(data) });
+  } catch (e) {
+    console.error('[marcas/campanas]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.patch('/campanas/:id', async (req, res) => {
+  try {
+    const campana = await db.getCampana(req.params.id);
+    if (!campana || campana.marca_id !== req.usuarioId) {
+      return res.status(404).json({ error: 'Campaña no encontrada' });
+    }
+    const permitidos = [
+      'nombre', 'objetivo', 'brief_base', 'entregables', 'fecha_inicio', 'fecha_fin',
+      'producto', 'exclusividad', 'tope_total', 'tope_por_creadora', 'estado',
+    ];
+    const data = {};
+    permitidos.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
+    res.json({ ok: true, campana: await db.updateCampana(req.params.id, data) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Tratos ──────────────────────────────────────────────────────────────────
 
 router.get('/tratos', async (req, res) => {
@@ -163,16 +309,56 @@ router.get('/tratos', async (req, res) => {
 /** Crea una solicitud de colaboración. */
 router.post('/tratos', rateLimit({ max: 20 }), async (req, res) => {
   try {
-    const { creadora_id, brief, entregables, monto, fecha_entrega_esperada, producto, exclusividad } = req.body;
+    const { creadora_id, campana_id, brief, entregables, monto,
+            fecha_entrega_esperada, producto, exclusividad } = req.body;
 
-    if (!creadora_id || !brief || !monto) {
-      return res.status(400).json({ error: 'Faltan creadora, brief o monto' });
+    if (!creadora_id || !monto) {
+      return res.status(400).json({ error: 'Faltan la creadora o el monto' });
+    }
+
+    // Si la propuesta sale de una campaña, lo que no venga en el cuerpo se
+    // hereda de ella: el brief se escribe una vez y sirve para veinte
+    // propuestas. El monto nunca se hereda, porque cada creadora tiene su
+    // tarifa.
+    let base = { brief, entregables, fecha_entrega_esperada, producto, exclusividad };
+    if (campana_id) {
+      const campana = await db.getCampana(campana_id);
+      if (!campana || campana.marca_id !== req.usuarioId) {
+        return res.status(404).json({ error: 'Campaña no encontrada' });
+      }
+      base = {
+        brief: brief || campana.brief_base,
+        entregables: entregables || (campana.entregables || []).join(', '),
+        fecha_entrega_esperada: fecha_entrega_esperada || campana.fecha_fin,
+        producto: producto ?? campana.producto,
+        exclusividad: exclusividad ?? campana.exclusividad,
+      };
+      if (campana.tope_por_creadora && Number(monto) > Number(campana.tope_por_creadora)) {
+        return res.status(400).json({
+          error: `Ese monto supera el tope por creadora de la campaña (${Math.round(campana.tope_por_creadora).toLocaleString('es-CO')}).`,
+        });
+      }
+    }
+
+    if (!base.brief) {
+      return res.status(400).json({ error: 'Falta el brief' });
     }
 
     // Solo se puede contratar a una creadora que esté publicada en el catálogo.
     const creadoraPublica = await db.getCreadoraCatalogo(creadora_id);
     if (!creadoraPublica) {
       return res.status(404).json({ error: 'Creadora no disponible' });
+    }
+
+    // Dos propuestas abiertas a la misma creadora la confunden y hacen ver
+    // desordenada a la marca.
+    const abiertos = (await db.getTratosDeMarca(req.usuarioId))
+      .filter(t => t.creadora_id === creadora_id)
+      .filter(t => ['solicitado', 'aceptado', 'pago_retenido', 'entregado'].includes(t.estado));
+    if (abiertos.length) {
+      return res.status(409).json({
+        error: `Ya tienes una propuesta abierta con esa creadora (${abiertos[0].codigo}).`,
+      });
     }
 
     // El flag de comisión 0% vive en la fila completa, no en la vista pública.
@@ -193,11 +379,12 @@ router.post('/tratos', rateLimit({ max: 20 }), async (req, res) => {
       marca_id: req.usuarioId,
       creadora_id,
       estado: 'solicitado',
-      brief,
-      entregables: entregables || null,
-      fecha_entrega_esperada: fecha_entrega_esperada || null,
-      producto: producto || null,
-      exclusividad: exclusividad || null,
+      campana_id: campana_id || null,
+      brief: base.brief,
+      entregables: base.entregables || null,
+      fecha_entrega_esperada: base.fecha_entrega_esperada || null,
+      producto: base.producto || null,
+      exclusividad: base.exclusividad || null,
       ...calculo,
     });
 

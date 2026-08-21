@@ -1,0 +1,356 @@
+/* ==========================================================================
+   Panel de marca — sistema visual recalibrado a fondo claro.
+
+   Mismo sistema que la landing y el portal de la creadora, pero para alguien
+   que está decidiendo gastar entre $400.000 y $3.000.000 por colaboración.
+   Tiene que transmitir orden y control, no fiesta.
+
+   La regla de uso del color es lo que lo hace verse serio:
+
+     · El LIMA está reservado para el dinero. Una sola cosa por pantalla: el
+       "desde" en el catálogo, el total en el modal, el monto del trato. Nunca
+       en botones de navegación ni en decoración.
+     · El MAGENTA es solo alarma y bloqueo: identidad bloqueada, error, monto
+       por debajo de la tarifa, acción requerida, descartar.
+     · El AZUL es solo categoría de nicho y enlaces.
+     · El NEGRO carga toda la estructura: botones primarios, encabezados,
+       la columna de filtros, los bloques de dinero.
+   ========================================================================== */
+
+:root {
+  --canvas:      #F4F4F1;
+  --surface:     #FFFFFF;
+  --surface-alt: #FAFAF8;
+  --ink:         #0E0E0E;
+  --ink-soft:    #1A1A1A;
+  --lima:        #D6FF00;
+  --magenta:     #FF2E9A;
+  --azul:        #2323F0;
+
+  --text-2: #4A4A44;
+  --text-3: #6E6E68;
+  --text-4: #9A9A93;
+
+  --border-1: #D8D8D3;
+  --border-2: #C9C9C2;
+  --border-3: #EDEDE8;
+  --border-dark: #262626;
+  --chip-dark-border: #3A3A34;
+  --chip-dark-text: #B4B4AE;
+  --fila-alerta: #FFFBFD;
+
+  --mono-t: 'Martian Mono', ui-monospace, Menlo, monospace;
+  --mono-b: 'Space Mono', ui-monospace, Menlo, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; border-radius: 0; }
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--mono-b);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--azul); text-decoration: none; }
+img { max-width: 100%; display: block; }
+button { font-family: inherit; }
+
+/* ── Tipografía ─────────────────────────────────────────────────────────── */
+
+.h1 { font-family: var(--mono-t); font-weight: 800; font-size: clamp(22px, 2.4vw, 32px);
+      letter-spacing: -1.6px; text-transform: uppercase; margin: 0; }
+.h-sec { font-family: var(--mono-t); font-weight: 800; font-size: 13px;
+         letter-spacing: -0.3px; text-transform: uppercase; margin: 0; }
+.p { font-size: 12.5px; line-height: 1.7; margin: 0; color: var(--text-2); }
+.etiqueta { font-family: var(--mono-b); font-size: 9.5px; letter-spacing: 1.2px;
+            text-transform: uppercase; color: var(--text-3); }
+.dato-num { font-family: var(--mono-t); font-weight: 800; letter-spacing: -0.5px; }
+
+/* ── Cabecera ───────────────────────────────────────────────────────────── */
+
+.cab {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: clamp(14px, 2vw, 32px);
+  padding: 0 clamp(14px, 2vw, 26px);
+  background: var(--ink); height: 56px;
+  overflow: hidden;
+}
+.cab__logo { display: flex; align-items: center; gap: 9px; }
+.cab__marca { width: 26px; height: 26px; background: var(--lima); display: grid; place-items: center;
+              color: var(--ink); font-family: var(--mono-t); font-weight: 800; font-size: 13px; }
+.cab__texto { font-family: var(--mono-t); font-weight: 800; font-size: 13.5px;
+              letter-spacing: -0.5px; color: #fff; }
+.cab__sello { font-size: 9px; letter-spacing: 1px; border: 1px solid var(--chip-dark-border);
+              color: var(--chip-dark-text); padding: 3px 6px; text-transform: uppercase; }
+
+.nav { display: flex; align-items: center; gap: clamp(10px, 1.6vw, 26px); height: 100%; }
+.nav__item {
+  background: none; border: none; height: 100%; padding: 0 2px; cursor: pointer;
+  font-family: var(--mono-t); font-weight: 800; font-size: 11px; letter-spacing: 0.5px;
+  text-transform: uppercase; color: var(--chip-dark-text); display: flex; align-items: center; gap: 7px;
+}
+.nav__item:hover { color: #fff; }
+.nav__item.activo { color: #fff; box-shadow: inset 0 -4px 0 var(--lima); }
+.nav__badge { background: var(--magenta); color: var(--ink); font-size: 9.5px;
+              font-weight: 700; padding: 1px 5px; }
+
+.cab__marca-info { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.cab__marca-nombre { font-family: var(--mono-t); font-weight: 800; font-size: 11.5px;
+                     letter-spacing: -0.2px; color: #fff; text-align: right; }
+.cab__marca-sub { font-size: 9px; letter-spacing: 0.8px; color: var(--chip-dark-text);
+                  text-transform: uppercase; text-align: right; }
+.cab__avatar { width: 30px; height: 30px; background: var(--surface); color: var(--ink);
+               display: grid; place-items: center; font-family: var(--mono-t);
+               font-weight: 800; font-size: 11px; }
+
+/* Menú desplegable de bandejas */
+.menu { position: relative; }
+.menu__lista {
+  position: absolute; top: 100%; left: 0; min-width: 250px; z-index: 50;
+  background: var(--ink); border: 1px solid var(--border-dark); display: none;
+}
+.menu__lista.abierto { display: block; }
+.menu__op {
+  display: flex; justify-content: space-between; align-items: center; gap: 14px;
+  width: 100%; background: none; border: none; border-bottom: 1px solid var(--border-dark);
+  padding: 12px 14px; cursor: pointer; text-align: left;
+  font-family: var(--mono-t); font-weight: 700; font-size: 10.5px; letter-spacing: 0.5px;
+  text-transform: uppercase; color: var(--chip-dark-text);
+}
+.menu__op:last-child { border-bottom: none; }
+.menu__op:hover { background: var(--ink-soft); color: #fff; }
+.menu__op.activo { background: var(--ink-soft); color: #fff; }
+.menu__op.activo[data-bandeja="pre"] { color: var(--lima); }
+.menu__op.activo[data-bandeja="desc"] { color: var(--magenta); }
+.menu__conteo { font-size: 10px; color: var(--text-4); }
+
+/* ── Estructura de la vista ─────────────────────────────────────────────── */
+
+.layout { display: flex; align-items: flex-start; min-height: calc(100vh - 56px); }
+.filtros {
+  width: 262px; flex: none; background: var(--ink); color: #fff;
+  position: sticky; top: 56px; max-height: calc(100vh - 56px); overflow-y: auto;
+}
+.contenido { flex: 1; min-width: 0; padding: clamp(18px, 2.4vw, 34px); }
+
+.filtros__cab { display: flex; justify-content: space-between; align-items: center;
+                padding: 16px 18px; border-bottom: 1px solid var(--border-dark); }
+.filtros__titulo { font-family: var(--mono-t); font-weight: 800; font-size: 11.5px;
+                   letter-spacing: 0.6px; text-transform: uppercase; }
+.filtros__limpiar { background: none; border: none; color: var(--lima); cursor: pointer;
+                    font-family: var(--mono-b); font-size: 10px; letter-spacing: 0.8px;
+                    text-transform: uppercase; padding: 0; }
+.filtros__grupo { padding: 16px 18px; border-bottom: 1px solid var(--border-dark); }
+.filtros__label { font-size: 9px; letter-spacing: 1.2px; color: var(--text-4);
+                  text-transform: uppercase; margin-bottom: 10px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  font-family: var(--mono-b); font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  text-transform: uppercase; padding: 6px 9px; cursor: pointer;
+  border: 1px solid var(--chip-dark-border); background: transparent; color: var(--chip-dark-text);
+}
+.chip:hover { border-color: var(--chip-dark-text); color: #fff; }
+.chip.on { background: var(--lima); border-color: var(--lima); color: var(--ink); }
+
+.presupuesto__valor { font-family: var(--mono-t); font-weight: 800; font-size: 20px;
+                      letter-spacing: -1.1px; color: var(--lima); margin-bottom: 8px; }
+input[type=range] {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 4px;
+  background: var(--chip-dark-border); border: none; padding: 0; cursor: pointer; margin: 4px 0;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 14px; height: 14px;
+  background: var(--lima); border: none; cursor: pointer;
+}
+input[type=range]::-moz-range-thumb {
+  width: 14px; height: 14px; background: var(--lima); border: none; border-radius: 0; cursor: pointer;
+}
+.rango-extremos { display: flex; justify-content: space-between; font-size: 9px;
+                  color: var(--text-4); letter-spacing: 0.6px; }
+.filtros__nota { font-size: 9px; line-height: 1.5; color: var(--text-4);
+                 letter-spacing: 0.6px; text-transform: uppercase; margin-top: 8px; }
+
+/* ── Encabezado de la vista ─────────────────────────────────────────────── */
+
+.vista-cab { display: flex; justify-content: space-between; align-items: flex-start;
+             gap: 20px; flex-wrap: wrap; margin-bottom: 22px; }
+.vista-cab__texto { max-width: 52ch; }
+.vista-cab .p { margin-top: 10px; }
+.vista-cab__acciones { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.conteo { font-family: var(--mono-t); font-weight: 800; font-size: 10.5px;
+          letter-spacing: 0.5px; border: 2px solid var(--ink); padding: 8px 11px;
+          text-transform: uppercase; background: var(--surface); }
+.toggle { display: flex; border: 2px solid var(--ink); }
+.toggle button {
+  background: var(--surface); border: none; padding: 8px 13px; cursor: pointer;
+  font-family: var(--mono-t); font-weight: 800; font-size: 10.5px; letter-spacing: 0.5px;
+  text-transform: uppercase; color: var(--ink);
+}
+.toggle button.on { background: var(--ink); color: #fff; }
+
+/* ── Botones ────────────────────────────────────────────────────────────── */
+
+.btn {
+  font-family: var(--mono-t); font-weight: 800; font-size: 11px; letter-spacing: 0.5px;
+  text-transform: uppercase; padding: 11px 15px; cursor: pointer;
+  background: var(--ink); color: #fff; border: 2px solid var(--ink);
+}
+.btn:hover { background: var(--azul); border-color: var(--azul); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn--lima { background: var(--lima); color: var(--ink); border-color: var(--lima); }
+.btn--lima:hover { background: var(--ink); color: var(--lima); border-color: var(--ink); }
+.btn--linea { background: transparent; color: var(--ink); }
+.btn--linea:hover { background: var(--border-3); color: var(--ink); border-color: var(--ink); }
+.btn--sm { padding: 8px 11px; font-size: 10px; }
+
+/* ── Fila de creadora ───────────────────────────────────────────────────── */
+
+.fila { background: var(--surface); border: 1px solid var(--border-1); margin-bottom: 14px; }
+.fila:hover { border-color: var(--ink); }
+.fila__cab { display: flex; align-items: center; gap: 16px; padding: 13px 15px; flex-wrap: wrap; }
+.avatar { width: 42px; height: 42px; flex: none; background: var(--border-3);
+          display: grid; place-items: center; font-size: 8.5px; color: var(--text-4);
+          letter-spacing: 0.6px; overflow: hidden; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.fila__id { flex: 1; min-width: 190px; }
+.alias { font-family: var(--mono-t); font-weight: 800; font-size: 14px;
+         letter-spacing: -0.4px; text-transform: uppercase; }
+.sub-id { font-size: 10px; letter-spacing: 0.8px; color: var(--text-3);
+          text-transform: uppercase; margin-top: 5px; }
+
+/* Las métricas se alinean en columnas fijas para poder compararlas de arriba
+   abajo entre filas. Es la razón de ser de este layout. */
+.metricas { display: flex; gap: clamp(14px, 2vw, 30px); align-items: flex-start; }
+.metrica { min-width: 62px; }
+.metrica__valor { font-family: var(--mono-t); font-weight: 800; font-size: 13px; letter-spacing: -0.5px; }
+.metrica__label { font-size: 8.5px; letter-spacing: 1px; color: var(--text-4);
+                  text-transform: uppercase; margin-top: 4px; }
+
+.desde { border-left: 4px solid var(--lima); padding-left: 10px; min-width: 106px; }
+.desde__valor { font-family: var(--mono-t); font-weight: 800; font-size: 16px; letter-spacing: -0.9px; }
+.desde__label { font-size: 8.5px; letter-spacing: 1px; color: var(--text-4);
+                text-transform: uppercase; margin-top: 4px; }
+
+.triage { display: flex; gap: 6px; }
+.tri {
+  width: 34px; height: 34px; border: 2px solid var(--border-2); background: var(--surface);
+  cursor: pointer; font-size: 13px; line-height: 1; color: var(--text-3);
+  display: grid; place-items: center;
+}
+.tri:hover { border-color: var(--ink); color: var(--ink); }
+.tri.on-si { background: var(--lima); border-color: var(--ink); color: var(--ink); }
+.tri.on-no { background: var(--magenta); border-color: var(--ink); color: var(--ink); }
+
+/* La tira de trabajo es lo que hace que este layout funcione: se juzga el
+   trabajo real, no solo los números. */
+.tira { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px;
+        background: var(--border-1); border-top: 1px solid var(--border-1); }
+.tira > * { aspect-ratio: 1; background: var(--border-3); min-width: 0; overflow: hidden;
+            display: grid; place-items: center; font-size: 9px; color: var(--text-4);
+            letter-spacing: 0.8px; }
+.tira img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ── Tarjeta de creadora ────────────────────────────────────────────────── */
+
+.grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(272px, 1fr)); gap: 16px; }
+.tarjeta { background: var(--surface); border: 1px solid var(--border-1); min-width: 0; }
+.tarjeta:hover { border-color: var(--ink); }
+.tarjeta__foto { position: relative; height: 196px; background: var(--border-3);
+                 display: grid; place-items: center; font-size: 10px; color: var(--text-4);
+                 overflow: hidden; }
+.tarjeta__foto img { width: 100%; height: 100%; object-fit: cover; }
+.tarjeta__codigo { position: absolute; top: 0; left: 0; background: var(--ink); color: #fff;
+                   font-family: var(--mono-t); font-weight: 700; font-size: 9.5px;
+                   letter-spacing: 0.5px; padding: 5px 8px; }
+.tarjeta__triage { position: absolute; top: 6px; right: 6px; display: flex;
+                   flex-direction: column; gap: 4px; }
+.tarjeta__cuerpo { padding: 13px 14px; }
+.tarjeta__chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+.chip-claro { font-size: 9.5px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+              padding: 4px 7px; border: 1px solid var(--border-2); color: var(--text-2); }
+.chip-nicho { background: var(--azul); border-color: var(--azul); color: #fff; }
+.tarjeta__metricas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 13px;
+                     padding-top: 13px; border-top: 1px solid var(--border-3); }
+.tarjeta__pie { display: flex; justify-content: space-between; align-items: center; gap: 10px;
+                margin-top: 13px; padding-top: 13px; border-top: 1px solid var(--border-3); }
+
+/* ── Barra de comparación ───────────────────────────────────────────────── */
+
+.barra-comp {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+  background: var(--ink); color: #fff; padding: 12px clamp(14px, 2vw, 26px);
+  display: none; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.barra-comp.visible { display: flex; }
+.barra-comp__conteo { font-family: var(--mono-t); font-weight: 800; font-size: 12px;
+                      letter-spacing: -0.2px; }
+.barra-comp__codigos { font-size: 10px; letter-spacing: 0.8px; color: var(--chip-dark-text);
+                       flex: 1; min-width: 120px; }
+.barra-comp button { margin-left: 0; }
+.btn-oscuro { background: transparent; border: 2px solid var(--chip-dark-border);
+              color: var(--chip-dark-text); font-family: var(--mono-t); font-weight: 800;
+              font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase;
+              padding: 9px 12px; cursor: pointer; }
+.btn-oscuro:hover { border-color: #fff; color: #fff; }
+
+/* ── Estados vacíos, carga y error ──────────────────────────────────────── */
+
+.estado { background: var(--surface); border: 1px solid var(--border-1); padding: 40px 32px; }
+.estado__cuadro { width: 44px; height: 44px; border: 2px solid var(--ink); display: grid;
+                  place-items: center; font-family: var(--mono-t); font-weight: 800;
+                  font-size: 16px; margin-bottom: 18px; }
+.estado__titulo { font-family: var(--mono-t); font-weight: 800; font-size: 15px;
+                  letter-spacing: -0.4px; text-transform: uppercase; margin-bottom: 10px; }
+.estado__texto { font-size: 12.5px; line-height: 1.7; color: var(--text-2); max-width: 46ch; }
+.estado__acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
+.estado--error { border: 2px solid var(--magenta); }
+.estado--error .estado__cuadro { background: var(--magenta); border-color: var(--magenta); }
+.estado__meta { font-size: 9.5px; letter-spacing: 0.8px; color: var(--text-4);
+                margin-top: 16px; text-transform: uppercase; }
+
+@keyframes pulso { 0%, 100% { opacity: .5 } 50% { opacity: .16 } }
+.hueso { background: var(--border-3); animation: pulso 1.4s ease-in-out infinite; }
+.hueso:nth-child(2) { animation-delay: .1s }
+.hueso:nth-child(3) { animation-delay: .2s }
+.hueso:nth-child(4) { animation-delay: .3s }
+.hueso:nth-child(5) { animation-delay: .45s }
+@media (prefers-reduced-motion: reduce) {
+  .hueso { animation: none; opacity: .4; }
+}
+
+.oculto { display: none !important; }
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+/* Bajo 900px la columna de filtros se vuelve un panel desplegable. */
+@media (max-width: 900px) {
+  .filtros { position: fixed; inset: 56px 0 0 0; width: 100%; max-height: none;
+             z-index: 44; display: none; overflow-y: auto; }
+  .filtros.abierto { display: block; }
+  .abrir-filtros { display: inline-flex !important; }
+  .fila__cab { gap: 12px; }
+  .metricas { width: 100%; order: 3; }
+  .triage { order: 2; margin-left: auto; }
+}
+.abrir-filtros { display: none; }
+
+@media (max-width: 1100px) {
+  .nav { display: none; }
+  /* En pantallas angostas el nombre de la marca empuja la cabecera fuera del
+     viewport. Se deja solo el avatar, que es suficiente para saber con qué
+     cuenta se está trabajando. */
+  .cab__marca-info > div:first-child { display: none; }
+  .cab__marca-info { min-width: 0; }
+  .nav.abierto { display: flex; position: absolute; top: 56px; left: 0; right: 0;
+                 background: var(--ink); flex-direction: column; align-items: stretch;
+                 height: auto; padding: 8px 0; z-index: 46; }
+  .nav.abierto .nav__item { height: auto; padding: 12px 18px; }
+  .abrir-nav { display: block !important; }
+}
+.abrir-nav { display: none; background: none; border: 2px solid var(--border-dark);
+             color: #fff; font-family: var(--mono-t); font-weight: 800; font-size: 10.5px;
+             padding: 7px 10px; cursor: pointer; }

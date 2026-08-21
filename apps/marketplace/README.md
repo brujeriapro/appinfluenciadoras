@@ -8,7 +8,7 @@ Marketplace de dos lados: marcas colombianas contratan colaboraciones pagas con 
 
 ## Estado
 
-**Fase 1 — backend completo, landing pública, panel admin y portal de la creadora listos.** Con eso el marketplace ya se puede operar a mano. Del lado marca ya existe el acceso (`/registro.html`). Faltan el catálogo, el modal de propuesta y la línea de tiempo del trato, que esperan sus mockups.
+**Fase 1 — backend completo, landing pública, panel admin y portal de la creadora listos.** Con eso el marketplace ya se puede operar a mano. El lado marca ya está: acceso en `/registro.html` y panel completo en `/panel.html` — catálogo con cinco filtros y triage, ficha con panel de tarifas, modal de propuesta con el dinero en vivo, campañas, línea de tiempo del trato y perfil de marca.
 
 El panel vive en `/admin.html`. Se sirve sin auth a propósito —es una cáscara vacía— y pide usuario y clave con su propio formulario; la puerta real está en `/api/admin/*`.
 
@@ -56,6 +56,7 @@ Se corren a mano en el SQL Editor de Supabase, en orden:
 7. `migrations/mk_007_paises.sql` — país en creadoras y marcas
 8. `migrations/mk_008_seguidores_por_red.sql` — seguidores de Instagram y TikTok por separado
 9. `migrations/mk_009_departamentos.sql` — departamentos y ciudades de Colombia
+10. `migrations/mk_010_panel_marca.sql` — código de creadora, triage, campañas y perfil de marca
 
 Además hay que crear el bucket **privado** `mk-muestras` en Supabase Storage, con límite de 10 MB y estos tipos permitidos (sin espacios entre las comas):
 
@@ -98,6 +99,8 @@ notificaciones.js Correos transaccionales
 public/admin.html  Panel de operación: tratos, pagos, curaduría, ajustes, export
 public/creadora.html Portal de la creadora: perfil, tarifas, propuestas, entrega
 public/registro.html Acceso de marcas: registro por invitación, login, recuperar clave
+public/panel.html    Panel de marca: catálogo, ficha, campañas, trato, perfil
+public/js/panel-*.js Vistas del panel, separadas por tamaño
 ```
 
 ### Los estados de un trato
@@ -135,6 +138,14 @@ Su @usuario, nombre real y datos bancarios están en una tabla aparte, nunca en 
 `mk_tarifas` guarda un precio por creadora y tipo de entregable; ella lo define con un control deslizante. `tarifa_min`, `tarifa_max` y `nivel_tarifa` en `mk_creadoras` son **derivados** — se recalculan al guardar y el admin no puede editarlos. Los niveles `inicial`/`medio`/`top` ya no asignan precio: son rangos de presupuesto para que la marca filtre. Y un perfil sin tarifas no se publica: el producto promete "precio publicado".
 
 ---
+
+## El alias, no el nombre
+
+En el catálogo una creadora se identifica con un **alias descriptivo más un código**: `RIZOS DE MEDELLÍN · C-0412`. No con un nombre de persona abreviado.
+
+No es cosmético. "Valeria R." insinúa una persona: con la ciudad y el nicho al lado, alguien decidido la encuentra. "RIZOS DE MEDELLÍN" no apunta a nadie, y el código da algo concreto que decir en una conversación —"me interesa la C-0412"— sin nombrar a nadie. El anonimato deja de depender de que el alias esté bien escogido.
+
+Los perfiles importados del Programa Creadoras traen alias de persona: **hay que revisarlos a mano** desde el panel admin. Convertir "Valeria R." en algo descriptivo es trabajo de criterio, no de SQL.
 
 ## El camino de una creadora
 
