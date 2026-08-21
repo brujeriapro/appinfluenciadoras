@@ -2,6 +2,7 @@
 
 const express = require('express');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const db = require('./db');
 const config = require('./config');
 const { calcularTrato } = require('./comisiones');
@@ -81,6 +82,55 @@ router.post('/login', rateLimit({ max: 10 }), async (req, res) => {
       return res.status(403).json({ error: 'Cuenta suspendida. Escríbenos para reactivarla.' });
     }
     res.json({ ok: true, token: firmarToken(marca.id, 'marca') });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Recuperar contraseña ────────────────────────────────────────────────────
+
+/**
+ * Igual que del lado creadora: responde ok aunque el correo no exista. Decir
+ * "ese correo no está registrado" le confirmaría a un competidor qué marcas
+ * están usando la plataforma.
+ */
+router.post('/olvide-clave', rateLimit({ windowMs: 600_000, max: 5 }), async (req, res) => {
+  try {
+    const marca = await db.getMarcaPorEmail(req.body.email || '');
+    if (marca) {
+      const token = crypto.randomBytes(32).toString('hex');
+      await db.crearTokenReset({
+        token,
+        tipo: 'marca',
+        usuario_id: marca.id,
+        expira_at: new Date(Date.now() + 60 * 60_000).toISOString(),
+      });
+      notificaciones.resetClave({ email: marca.email, token, lado: 'marca' })
+        .catch(e => console.error('[notif] resetClave:', e.message));
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/nueva-clave', rateLimit({ max: 10 }), async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) return res.status(400).json({ error: 'Faltan datos' });
+    if (String(password).length < 8) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+
+    const t = await db.getTokenReset(token);
+    if (!t || t.tipo !== 'marca' || t.usado_at || new Date(t.expira_at) < new Date()) {
+      return res.status(400).json({ error: 'Ese enlace ya no sirve. Pide uno nuevo.' });
+    }
+
+    await db.updateMarca(t.usuario_id, { password_hash: await bcrypt.hash(String(password), 10) });
+    await db.marcarTokenUsado(token);
+
+    res.json({ ok: true, token: firmarToken(t.usuario_id, 'marca') });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

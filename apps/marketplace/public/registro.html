@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entrar · Creadores.app</title>
+<meta name="robots" content="noindex, nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/tokens.css">
+<style>
+  /* Acceso de marcas. Misma estructura que el portal de la creadora: un bloque
+     claro sobre el negro de la página, porque son formularios largos. */
+
+  body { background: var(--ink); }
+
+  .marco { display: grid; place-items: center; min-height: 100vh; padding: 20px; }
+  .caja { width: min(440px, 100%); }
+
+  .logo { display: flex; align-items: center; gap: 9px; justify-content: center; margin-bottom: 18px; }
+  .logo__marca { width: 26px; height: 26px; background: var(--lime); display: grid; place-items: center;
+                 color: var(--ink); font-family: var(--mono-title); font-weight: 800; font-size: 13px; }
+  .logo__texto { font-family: var(--mono-title); font-weight: 800; font-size: 14.5px;
+                 letter-spacing: -0.5px; color: var(--off-white); }
+
+  .tarjeta {
+    background: var(--off-white); color: var(--ink);
+    border: 2px solid var(--ink); padding: 28px 26px;
+  }
+  .tarjeta h1 { font-family: var(--mono-title); font-weight: 800; font-size: 22px;
+                letter-spacing: -1.2px; margin: 0 0 4px; text-transform: uppercase; }
+  .tarjeta .sub { font-size: 10.5px; color: #6A6A6A; margin: 0 0 22px;
+                  letter-spacing: 1px; text-transform: uppercase; }
+
+  .campo { margin-bottom: 14px; }
+  .campo label { display: block; font-size: 9.5px; letter-spacing: 1.2px; font-weight: 700;
+                 text-transform: uppercase; color: #5A5A5A; margin-bottom: 6px; }
+  .campo input, .campo select {
+    width: 100%; background: #fff; border: 2px solid var(--ink); color: var(--ink);
+    font-family: var(--mono-body); font-size: 12.5px; padding: 11px 12px;
+  }
+  .campo input:focus, .campo select:focus { outline: none; border-color: var(--blue); }
+  .campo input::placeholder { color: #9A9A9A; }
+  .campos-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .pista { font-size: 10px; line-height: 1.5; color: #6A6A6A; margin-top: 6px; }
+
+  .acepta { display: flex; gap: 9px; align-items: flex-start; font-size: 11.5px;
+            line-height: 1.5; color: #3A3A3A; margin: 18px 0 16px; cursor: pointer; }
+  .acepta input { width: 16px; height: 16px; flex: none; margin-top: 1px; accent-color: var(--ink); }
+  .acepta a { color: var(--blue); text-decoration: underline; }
+
+  .btn {
+    width: 100%; font-family: var(--mono-title); font-weight: 800; font-size: 12.5px;
+    letter-spacing: 0.6px; padding: 15px 22px; border: 2px solid var(--ink);
+    background: var(--ink); color: var(--lime); cursor: pointer; text-transform: uppercase;
+  }
+  .btn:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  .error { color: #C4106F; font-size: 11.5px; margin-top: 12px; font-weight: 700; line-height: 1.5; }
+  .ok { border: 2px solid var(--ink); background: var(--lime); padding: 12px 14px;
+        font-size: 12.5px; margin-top: 12px; line-height: 1.6; }
+
+  .enlaces { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 18px; }
+  .enlaces button { background: none; border: none; color: #5A5A5A; font-size: 10.5px;
+                    text-decoration: underline; cursor: pointer; padding: 0; letter-spacing: 0.6px;
+                    font-family: var(--mono-body); }
+  .enlaces button:hover { color: var(--blue); }
+
+  .volver { display: block; text-align: center; margin-top: 18px; font-size: 10.5px;
+            letter-spacing: 1px; color: var(--grey-700); text-transform: uppercase; }
+  .volver:hover { color: var(--lime); }
+
+  /* Panel mínimo tras entrar: mientras el catálogo no exista, al menos ve sus
+     tratos y sabe que su cuenta quedó creada. */
+  .panel { width: min(760px, 100%); }
+  .panel__barra { display: flex; justify-content: space-between; align-items: center;
+                  gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .panel__nombre { font-family: var(--mono-title); font-weight: 800; font-size: 15px;
+                   letter-spacing: -0.5px; color: var(--off-white); }
+  .salir { background: none; border: 2px solid var(--border-dark); color: var(--grey-600);
+           font-family: var(--mono-title); font-weight: 800; font-size: 10.5px;
+           padding: 8px 12px; cursor: pointer; text-transform: uppercase; }
+  .salir:hover { border-color: var(--magenta); color: var(--magenta); }
+
+  .aviso-catalogo { background: var(--off-white); color: var(--ink); border: 2px solid var(--ink);
+                    border-left-width: 6px; border-left-color: var(--blue); padding: 18px;
+                    font-size: 12.5px; line-height: 1.7; margin-bottom: 16px; }
+  .aviso-catalogo strong { background: var(--lime); padding: 1px 5px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px;
+          background: var(--off-white); color: var(--ink); }
+  th { text-align: left; font-size: 10px; letter-spacing: 1.1px; text-transform: uppercase;
+       padding: 10px; background: var(--ink); color: var(--off-white); font-weight: 700; }
+  td { padding: 11px 10px; border-bottom: 1px solid #D8D8D8; }
+  .num { font-family: var(--mono-title); font-weight: 700; text-align: right; }
+  .pill { display: inline-block; padding: 3px 7px; font-size: 9.5px; font-weight: 700;
+          letter-spacing: 0.6px; text-transform: uppercase; border: 2px solid var(--ink); }
+  .vacio { background: var(--off-white); color: #5A5A5A; border: 2px solid var(--ink);
+           padding: 40px 20px; text-align: center; font-size: 12.5px; line-height: 1.7; }
+
+  .oculto { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="marco">
+  <!-- ── Acceso ─────────────────────────────────────────────────────────── -->
+  <div class="caja" id="caja-acceso">
+    <div class="logo">
+      <div class="logo__marca">C</div>
+      <span class="logo__texto">CREADORES.APP</span>
+    </div>
+
+    <form class="tarjeta" id="formulario">
+      <h1 id="titulo">Publicar campaña</h1>
+      <p class="sub" id="subtitulo">Acceso para marcas</p>
+
+      <div id="campos-registro">
+        <div class="campo">
+          <label for="empresa">Nombre de tu marca</label>
+          <input id="empresa" placeholder="Cosmética Andina">
+        </div>
+        <div class="campo">
+          <label for="contacto">¿Con quién hablamos?</label>
+          <input id="contacto" placeholder="Nombre y apellido">
+        </div>
+        <div class="campos-2">
+          <div class="campo">
+            <label for="nit">NIT</label>
+            <input id="nit" placeholder="900123456-7">
+          </div>
+          <div class="campo">
+            <label for="whatsapp">WhatsApp</label>
+            <input id="whatsapp" inputmode="tel" placeholder="300 000 0000">
+          </div>
+        </div>
+        <div class="campo">
+          <label for="pais">País</label>
+          <select id="pais"></select>
+        </div>
+        <div class="campo oculto" id="campo-depto">
+          <label for="departamento">Departamento</label>
+          <select id="departamento"></select>
+        </div>
+        <div class="campo">
+          <label for="ciudad">Ciudad</label>
+          <select id="ciudad-sel"></select>
+          <input id="ciudad" placeholder="Ciudad">
+        </div>
+        <div class="campo">
+          <label for="codigo">Código de invitación</label>
+          <input id="codigo" placeholder="Te lo dimos por WhatsApp o correo">
+          <div class="pista">Por ahora el acceso es por invitación. Si no tienes código, escríbenos.</div>
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="email">Correo</label>
+        <input id="email" type="email" autocomplete="username" required>
+      </div>
+      <div class="campo" id="campo-clave">
+        <label for="clave" id="label-clave">Contraseña</label>
+        <input id="clave" type="password" autocomplete="current-password" minlength="8">
+      </div>
+
+      <label class="acepta" id="acepta-wrap">
+        <input type="checkbox" id="acepta">
+        <span>Acepto los <a href="/terminos" target="_blank">términos y condiciones</a>, incluida la cláusula de no-circunvalación</span>
+      </label>
+
+      <button class="btn" type="submit" id="btn">CREAR CUENTA →</button>
+      <div class="error oculto" id="error"></div>
+
+      <div class="enlaces">
+        <button type="button" data-modo="registro">Quiero crear una cuenta</button>
+        <button type="button" data-modo="login">Ya tengo cuenta, quiero entrar</button>
+        <button type="button" data-modo="olvide">Olvidé mi contraseña</button>
+      </div>
+    </form>
+
+    <a href="/" class="volver">← Volver al inicio</a>
+  </div>
+
+  <!-- ── Ya dentro ──────────────────────────────────────────────────────── -->
+  <div class="panel oculto" id="panel">
+    <div class="panel__barra">
+      <div class="logo" style="margin:0">
+        <div class="logo__marca">C</div>
+        <span class="panel__nombre" id="nombre-marca"></span>
+      </div>
+      <button class="salir" id="salir">Salir</button>
+    </div>
+
+    <div class="aviso-catalogo">
+      Tu cuenta quedó lista. El <strong>catálogo de creadoras</strong> está en construcción:
+      te avisamos por correo apenas puedas navegarlo y mandar propuestas.
+      <br><br>
+      Mientras tanto, escríbenos y te armamos la primera campaña a mano.
+    </div>
+
+    <div id="tratos"></div>
+  </div>
+</div>
+
+<script>
+// ── Sesión ──────────────────────────────────────────────────────────────────
+
+let TOKEN = sessionStorage.getItem('mk_marca') || null;
+let modo = 'registro';
+let PAISES = [], DEPTOS_CO = [];
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const COP = (v) => '$' + Math.round(Number(v) || 0).toLocaleString('es-CO');
+
+async function publico(ruta, cuerpo) {
+  const res = await fetch('/api/marcas' + ruta, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cuerpo),
+  });
+  const datos = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(datos.error || 'Algo salió mal');
+  return datos;
+}
+
+async function api(ruta) {
+  const res = await fetch('/api/marcas' + ruta, {
+    headers: { 'Authorization': 'Bearer ' + TOKEN },
+  });
+  if (res.status === 401) {
+    sessionStorage.removeItem('mk_marca');
+    location.reload();
+    throw new Error('Sesión vencida');
+  }
+  const datos = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(datos.error || 'Error');
+  return datos;
+}
+
+// ── Los tres modos del formulario ───────────────────────────────────────────
+
+const TEXTOS = {
+  registro: { titulo: 'Publicar campaña', sub: 'Acceso para marcas',   btn: 'CREAR CUENTA →' },
+  login:    { titulo: 'Entrar',           sub: 'Ya tienes cuenta',      btn: 'ENTRAR →' },
+  olvide:   { titulo: 'Recuperar acceso', sub: 'Te mandamos un enlace', btn: 'ENVIARME EL ENLACE →' },
+};
+
+function pintarModo() {
+  const t = TEXTOS[modo];
+  $('titulo').textContent = t.titulo;
+  $('subtitulo').textContent = t.sub;
+  $('btn').textContent = t.btn;
+  $('campos-registro').classList.toggle('oculto', modo !== 'registro');
+  $('acepta-wrap').classList.toggle('oculto', modo !== 'registro');
+  $('campo-clave').classList.toggle('oculto', modo === 'olvide');
+  $('clave').required = modo !== 'olvide';
+  $('label-clave').textContent = modo === 'registro' ? 'Escoge tu contraseña (mínimo 8)' : 'Contraseña';
+  $('error').classList.add('oculto');
+  document.querySelectorAll('.enlaces button').forEach(b => {
+    b.classList.toggle('oculto', b.dataset.modo === modo);
+  });
+}
+
+document.querySelectorAll('.enlaces button').forEach(b => {
+  b.addEventListener('click', () => { modo = b.dataset.modo; pintarModo(); });
+});
+
+// ── Ubicación: lista cerrada en Colombia, texto libre fuera ─────────────────
+
+function ciudadElegida() {
+  const sel = $('ciudad-sel');
+  if (sel && !sel.classList.contains('oculto') && sel.value && sel.value !== 'Otra') return sel.value;
+  return $('ciudad').value;
+}
+
+function pintarUbicacion() {
+  const esCO = $('pais').value === 'CO';
+  $('campo-depto').classList.toggle('oculto', !esCO);
+  $('ciudad-sel').classList.toggle('oculto', !esCO);
+  $('ciudad').classList.toggle('oculto', esCO);
+  if (!esCO) return;
+
+  if (!$('departamento').options.length) {
+    $('departamento').innerHTML = '<option value="">Elige el departamento</option>' +
+      DEPTOS_CO.map(d => `<option value="${esc(d.nombre)}">${esc(d.nombre)}</option>`).join('');
+  }
+  pintarCiudades();
+}
+
+function pintarCiudades() {
+  const depto = DEPTOS_CO.find(d => d.nombre === $('departamento').value);
+  const sel = $('ciudad-sel');
+  if (!depto) {
+    sel.innerHTML = '<option value="">Elige primero el departamento</option>';
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  sel.innerHTML = (depto.ciudades || []).map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  sel.onchange = () => $('ciudad').classList.toggle('oculto', sel.value !== 'Otra');
+  $('ciudad').classList.add('oculto');
+}
+
+// La lista de países la sirve el mismo endpoint público que usa el portal de
+// creadoras: una sola fuente para los dos lados.
+fetch('/api/creadoras/paises')
+  .then(r => r.json())
+  .then(d => {
+    PAISES = d.paises || [];
+    DEPTOS_CO = d.departamentos_co || [];
+    $('pais').innerHTML = PAISES.map(p => `<option value="${p.codigo}">${esc(p.nombre)}</option>`).join('');
+    $('pais').addEventListener('change', pintarUbicacion);
+    $('departamento').addEventListener('change', pintarCiudades);
+    pintarUbicacion();
+  })
+  .catch(() => {});
+
+// ── Envío ───────────────────────────────────────────────────────────────────
+
+$('formulario').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = $('error');
+  err.classList.add('oculto');
+  const btn = $('btn');
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'UN MOMENTO…';
+
+  try {
+    if (modo === 'registro') {
+      if (!$('acepta').checked) throw new Error('Necesitas aceptar los términos');
+      const r = await publico('/registro', {
+        nombre_empresa: $('empresa').value,
+        nombre_contacto: $('contacto').value,
+        email: $('email').value,
+        password: $('clave').value,
+        whatsapp: $('whatsapp').value,
+        nit: $('nit').value,
+        pais: $('pais').value,
+        departamento: $('campo-depto').classList.contains('oculto') ? null : $('departamento').value,
+        ciudad: ciudadElegida(),
+        codigo_invitacion: $('codigo').value,
+        acepta_terminos: true,
+      });
+      TOKEN = r.token;
+    } else if (modo === 'olvide') {
+      // El backend responde ok aunque el correo no exista, para no revelar qué
+      // marcas están registradas. El mensaje acompaña esa decisión.
+      await publico('/olvide-clave', { email: $('email').value }).catch(() => {});
+      err.className = 'ok';
+      err.textContent = 'Si ese correo tiene cuenta, te llega el enlace en un momento. Revisa también el spam.';
+      err.classList.remove('oculto');
+      return;
+    } else {
+      const r = await publico('/login', { email: $('email').value, password: $('clave').value });
+      TOKEN = r.token;
+    }
+
+    sessionStorage.setItem('mk_marca', TOKEN);
+    await entrar();
+  } catch (e) {
+    err.className = 'error';
+    err.textContent = e.message;
+    err.classList.remove('oculto');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+});
+
+// ── Panel ───────────────────────────────────────────────────────────────────
+
+const ETIQUETAS = {
+  solicitado: 'Enviada', aceptado: 'Aceptada', pago_retenido: 'Pago retenido',
+  entregado: 'Contenido entregado', aprobado: 'Aprobada', pagado: 'Pagada',
+  cerrado: 'Cerrada', rechazado: 'Rechazada', cancelado: 'Cancelada',
+};
+
+async function entrar() {
+  $('caja-acceso').classList.add('oculto');
+  $('panel').classList.remove('oculto');
+
+  try {
+    const marca = await api('/me');
+    $('nombre-marca').textContent = marca.nombre_empresa || 'Mi marca';
+  } catch (e) { /* el nombre no es crítico */ }
+
+  try {
+    const tratos = await api('/tratos');
+    $('tratos').innerHTML = tratos.length ? `
+      <table>
+        <thead><tr><th>Código</th><th>Creadora</th><th>Estado</th><th style="text-align:right">Total</th></tr></thead>
+        <tbody>${tratos.map(t => `
+          <tr>
+            <td class="num">${esc(t.codigo || '')}</td>
+            <td>${esc(t.mk_creadoras?.nombre_publico || '—')}</td>
+            <td><span class="pill">${ETIQUETAS[t.estado] || t.estado}</span></td>
+            <td class="num">${COP(t.total_a_pagar_marca)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>` : `
+      <div class="vacio">
+        Todavía no tienes campañas.<br>
+        Cuando el catálogo esté listo, las vas a poder crear desde aquí.
+      </div>`;
+  } catch (e) {
+    $('tratos').innerHTML = `<div class="vacio">No pudimos cargar tus campañas: ${esc(e.message)}</div>`;
+  }
+}
+
+$('salir').addEventListener('click', () => {
+  sessionStorage.removeItem('mk_marca');
+  location.reload();
+});
+
+// ── Arranque ────────────────────────────────────────────────────────────────
+
+pintarModo();
+if (TOKEN) entrar();
+</script>
+</body>
+</html>

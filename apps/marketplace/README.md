@@ -8,7 +8,7 @@ Marketplace de dos lados: marcas colombianas contratan colaboraciones pagas con 
 
 ## Estado
 
-**Fase 1 — backend completo, landing pública, panel admin y portal de la creadora listos.** Con eso el marketplace ya se puede operar a mano. Faltan las pantallas del lado marca (catálogo, registro, línea de tiempo), que esperan sus mockups.
+**Fase 1 — backend completo, landing pública, panel admin y portal de la creadora listos.** Con eso el marketplace ya se puede operar a mano. Del lado marca ya existe el acceso (`/registro.html`). Faltan el catálogo, el modal de propuesta y la línea de tiempo del trato, que esperan sus mockups.
 
 El panel vive en `/admin.html`. Se sirve sin auth a propósito —es una cáscara vacía— y pide usuario y clave con su propio formulario; la puerta real está en `/api/admin/*`.
 
@@ -96,7 +96,8 @@ landing.js       GET /api/landing — datos de la landing pública
 terminos.js      Texto legal versionado
 notificaciones.js Correos transaccionales
 public/admin.html  Panel de operación: tratos, pagos, curaduría, ajustes, export
-public/creadora.html Portal de la creadora: tarifas, propuestas, entrega
+public/creadora.html Portal de la creadora: perfil, tarifas, propuestas, entrega
+public/registro.html Acceso de marcas: registro por invitación, login, recuperar clave
 ```
 
 ### Los estados de un trato
