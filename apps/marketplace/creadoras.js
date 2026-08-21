@@ -5,13 +5,106 @@
 
 const express = require('express');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const db = require('./db');
 const maquina = require('./tratos');
-const { resumirTarifas } = require('./comisiones');
+const { resumirTarifas, rangoAlcance } = require('./comisiones');
 const { creadoraAuth, firmarToken, rateLimit } = require('./auth');
 const notificaciones = require('./notificaciones');
 
 const router = express.Router();
+
+// ── Registro ────────────────────────────────────────────────────────────────
+
+/**
+ * Registro abierto de creadoras.
+ *
+ * Nadie entra al catálogo por registrarse: el perfil nace con visible=false y
+ * estado 'nueva'. Primero pone sus tarifas, luego el equipo lo revisa. Ese
+ * filtro humano es lo que sostiene la promesa de "banco curado" — sin él, el
+ * catálogo se llena de perfiles sin verificar y deja de valer para las marcas.
+ */
+router.post('/registro', rateLimit({ windowMs: 600_000, max: 5 }), async (req, res) => {
+  try {
+    const {
+      nombre_publico, nombre_real, email, password, whatsapp, ciudad,
+      instagram, tiktok, seguidores, acepta_terminos,
+    } = req.body;
+
+    if (!nombre_publico || !email || !password) {
+      return res.status(400).json({ error: 'Faltan tu nombre, correo o contraseña' });
+    }
+    if (String(password).length < 8) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+    if (!instagram && !tiktok) {
+      return res.status(400).json({ error: 'Necesitamos al menos una red para poder verificarte' });
+    }
+    if (acepta_terminos !== true) {
+      return res.status(400).json({ error: 'Debes aceptar los términos' });
+    }
+
+    const cfg = await db.getConfig();
+    if (cfg.registro_creadoras_abierto === false) {
+      return res.status(403).json({
+        error: 'El registro está cerrado por ahora. Escríbenos y te avisamos cuando abra.',
+      });
+    }
+
+    const alcance = Number(seguidores) || 0;
+    const minimo = Number(cfg.alcance_minimo_registro ?? 1000);
+    if (alcance < minimo) {
+      return res.status(400).json({
+        error: `Por ahora trabajamos con cuentas desde ${minimo.toLocaleString('es-CO')} seguidores.`,
+      });
+    }
+
+    const emailNorm = String(email).toLowerCase().trim();
+    if (await db.getCreadoraPorEmail(emailNorm)) {
+      return res.status(409).json({ error: 'Ya existe una cuenta con ese correo. Inicia sesión.' });
+    }
+
+    // Dos personas no pueden reclamar el mismo @usuario.
+    const limpio = (h) => h ? String(h).replace('@', '').toLowerCase().trim() : null;
+    const ig = limpio(instagram);
+    const tk = limpio(tiktok);
+    if (ig && await db.getCreadoraPorHandle(ig)) {
+      return res.status(409).json({ error: 'Ese usuario de Instagram ya está registrado.' });
+    }
+
+    const creadora = await db.insertCreadora({
+      nombre_publico: String(nombre_publico).trim(),
+      email: emailNorm,
+      password_hash: await bcrypt.hash(String(password), 10),
+      whatsapp: whatsapp || null,
+      ciudad: ciudad || null,
+      alcance_total: alcance,
+      rango_alcance: rangoAlcance(alcance, cfg.rangos_alcance || []),
+      visible: false,
+      estado_perfil: 'nueva',
+      origen: 'registro',
+    });
+
+    // Lo sensible va a la tabla aparte: el catálogo consulta mk_creadoras y ahí
+    // no hay nada que pueda filtrar por accidente.
+    await db.guardarPrivadoDeCreadora(creadora.id, {
+      nombre_real: nombre_real || null,
+      instagram_handle: ig,
+      tiktok_handle: tk,
+    });
+
+    notificaciones.bienvenidaCreadora({ creadora }).catch(e =>
+      console.error('[notif] bienvenidaCreadora:', e.message));
+    notificaciones.avisoPerfilNuevo({ creadora, instagram: ig, tiktok: tk, alcance }).catch(e =>
+      console.error('[notif] avisoPerfilNuevo:', e.message));
+
+    console.log(`[registro] Nueva creadora: ${creadora.nombre_publico} (${ig || tk}) — pendiente de revisión`);
+    res.json({ ok: true, token: firmarToken(creadora.id, 'creadora') });
+  } catch (e) {
+    console.error('[creadoras/registro]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // ── Sesión ──────────────────────────────────────────────────────────────────
 
@@ -55,9 +148,108 @@ router.post('/login', rateLimit({ max: 10 }), async (req, res) => {
   }
 });
 
+// ── Recuperar contraseña ────────────────────────────────────────────────────
+
+/**
+ * Pide el enlace de recuperación.
+ *
+ * Responde ok aunque el correo no exista: decir "ese correo no está registrado"
+ * le confirmaría a un extraño qué creadoras hay en la plataforma.
+ */
+router.post('/olvide-clave', rateLimit({ windowMs: 600_000, max: 5 }), async (req, res) => {
+  try {
+    const creadora = await db.getCreadoraPorEmail(req.body.email || '');
+    if (creadora) {
+      const token = crypto.randomBytes(32).toString('hex');
+      await db.crearTokenReset({
+        token,
+        tipo: 'creadora',
+        usuario_id: creadora.id,
+        expira_at: new Date(Date.now() + 60 * 60_000).toISOString(),   // una hora
+      });
+      notificaciones.resetClave({ email: creadora.email, token, lado: 'creadora' })
+        .catch(e => console.error('[notif] resetClave:', e.message));
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/nueva-clave', rateLimit({ max: 10 }), async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) return res.status(400).json({ error: 'Faltan datos' });
+    if (String(password).length < 8) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+
+    const t = await db.getTokenReset(token);
+    if (!t || t.tipo !== 'creadora' || t.usado_at || new Date(t.expira_at) < new Date()) {
+      return res.status(400).json({ error: 'Ese enlace ya no sirve. Pide uno nuevo.' });
+    }
+
+    await db.updateCreadora(t.usuario_id, { password_hash: await bcrypt.hash(String(password), 10) });
+    await db.marcarTokenUsado(token);
+
+    res.json({ ok: true, token: firmarToken(t.usuario_id, 'creadora') });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── A partir de aquí, todo exige sesión de creadora ─────────────────────────
 
 router.use(creadoraAuth);
+
+/**
+ * En qué punto va su perfil y qué le falta para salir en el catálogo.
+ *
+ * Existe para que nadie quede esperando sin saber por qué no le llegan
+ * propuestas: el portal se lo dice con todas las letras.
+ */
+router.get('/estado', async (req, res) => {
+  try {
+    const [c, tarifas] = await Promise.all([
+      db.getCreadoraCompleta(req.usuarioId),
+      db.getTarifasDeCreadora(req.usuarioId),
+    ]);
+    if (!c) return res.status(404).json({ error: 'Perfil no encontrado' });
+
+    const conTarifas = tarifas.some(t => t.activo !== false);
+    const faltantes = [];
+    if (!conTarifas) faltantes.push('tarifas');
+    if (!(c.nicho || []).length) faltantes.push('nicho');
+
+    let mensaje, tono;
+    if (c.estado_perfil === 'rechazada') {
+      tono = 'malo';
+      mensaje = c.motivo_rechazo
+        ? `Tu perfil no fue aprobado: ${c.motivo_rechazo}`
+        : 'Tu perfil no fue aprobado. Escríbenos si quieres saber más.';
+    } else if (c.visible) {
+      tono = 'bueno';
+      mensaje = 'Tu perfil está publicado. Las marcas ya te pueden encontrar.';
+    } else if (!conTarifas) {
+      tono = 'accion';
+      mensaje = 'Pon tus tarifas para que revisemos tu perfil. Sin precio no podemos publicarte.';
+    } else {
+      tono = 'espera';
+      mensaje = 'Ya tenemos todo. Estamos revisando tu perfil y te avisamos por correo.';
+    }
+
+    res.json({
+      estado_perfil: c.estado_perfil,
+      visible: c.visible,
+      nicho: c.nicho || [],
+      faltantes,
+      mensaje,
+      tono,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 /** Perfil propio: la creadora ve exactamente cómo la están mostrando. */
 router.get('/me', async (req, res) => {
@@ -134,9 +326,19 @@ router.put('/tarifas', async (req, res) => {
     // El catálogo filtra por tarifa sin cruzar tablas, así que el resumen se
     // recalcula cada vez que ella cambia sus precios.
     const resumen = resumirTarifas(guardadas, cfg.niveles_tarifa || {});
-    await db.updateCreadora(req.usuarioId, resumen);
 
-    res.json({ ok: true, tarifas: guardadas, ...resumen });
+    // Poner tarifas es lo que la mueve de "recién registrada" a la cola de
+    // revisión. Si ya está aprobada, no se toca su estado.
+    const actual = await db.getCreadoraCompleta(req.usuarioId);
+    const cambios = { ...resumen };
+    if (actual?.estado_perfil === 'nueva' && resumen.tarifa_min) {
+      cambios.estado_perfil = 'en_revision';
+      notificaciones.avisoListaParaRevisar({ creadora: actual }).catch(e =>
+        console.error('[notif] avisoListaParaRevisar:', e.message));
+    }
+    await db.updateCreadora(req.usuarioId, cambios);
+
+    res.json({ ok: true, tarifas: guardadas, ...resumen, estado_perfil: cambios.estado_perfil || actual?.estado_perfil });
   } catch (e) {
     console.error('[creadoras/tarifas]', e.message);
     res.status(500).json({ error: e.message });

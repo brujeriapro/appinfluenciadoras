@@ -171,6 +171,14 @@ const updateCreadora = (id, data) => patch('mk_creadoras', { id }, data);
 const getCreadorasAdmin = () =>
   get('mk_creadoras', { select: '*', order: 'created_at.desc' });
 
+/** Perfiles esperando revisión, los que llevan más tiempo esperando primero. */
+const getCreadorasPorRevisar = () =>
+  get('mk_creadoras', {
+    select: '*',
+    estado_perfil: 'in.(nueva,en_revision)',
+    order: 'created_at.asc',
+  });
+
 /**
  * Datos de contacto reales de una creadora.
  *
@@ -186,6 +194,10 @@ async function getContactoCreadora(creadora_id) {
   if (!c) return null;
 
   let handles = {};
+
+  // Dos orígenes posibles, según cómo entró la creadora al sistema:
+  //   - vino del Programa Creadoras  -> sus handles están en `influencers`
+  //   - se registró sola             -> están en mk_creadora_privado
   if (c.influencer_id) {
     const inf = await getUno('influencers', {
       id: `eq.${c.influencer_id}`,
@@ -200,7 +212,22 @@ async function getContactoCreadora(creadora_id) {
         email: c.email || inf.email,
       };
     }
+  } else {
+    const priv = await getUno('mk_creadora_privado', {
+      creadora_id: `eq.${creadora_id}`,
+      select: 'nombre_real,instagram_handle,tiktok_handle',
+    });
+    if (priv) {
+      handles = {
+        nombre_real: priv.nombre_real,
+        instagram: priv.instagram_handle,
+        tiktok: priv.tiktok_handle,
+        telefono: c.whatsapp,
+        email: c.email,
+      };
+    }
   }
+
   return {
     nombre_publico: c.nombre_publico,
     email: c.email,
@@ -209,6 +236,42 @@ async function getContactoCreadora(creadora_id) {
     ...handles,
   };
 }
+
+// ── Datos privados de la creadora ───────────────────────────────────────────
+// Tabla aparte a propósito: el catálogo consulta mk_creadoras y ahí no hay
+// nada sensible que pueda filtrarse por accidente.
+
+const getPrivadoDeCreadora = (creadora_id) =>
+  getUno('mk_creadora_privado', { creadora_id: `eq.${creadora_id}`, select: '*' });
+
+async function guardarPrivadoDeCreadora(creadora_id, datos) {
+  const existe = await getPrivadoDeCreadora(creadora_id);
+  const fila = { ...datos, updated_at: new Date().toISOString() };
+  return existe
+    ? patch('mk_creadora_privado', { creadora_id }, fila)
+    : post('mk_creadora_privado', { creadora_id, ...fila });
+}
+
+/** ¿Ya hay alguien con ese @usuario? Evita perfiles duplicados. */
+async function getCreadoraPorHandle(handle) {
+  if (!handle) return null;
+  const limpio = String(handle).replace('@', '').toLowerCase().trim();
+  const r = await getUno('mk_creadora_privado', {
+    instagram_handle: `eq.${limpio}`,
+    select: 'creadora_id',
+  });
+  return r ? r.creadora_id : null;
+}
+
+// ── Tokens de recuperación de contraseña ────────────────────────────────────
+
+const crearTokenReset = (data) => post('mk_tokens_reset', data);
+
+const getTokenReset = (token) =>
+  getUno('mk_tokens_reset', { token: `eq.${token}`, select: '*' });
+
+const marcarTokenUsado = (token) =>
+  patch('mk_tokens_reset', { token }, { usado_at: new Date().toISOString() });
 
 // ── Tarifas ─────────────────────────────────────────────────────────────────
 // Cada creadora publica cuánto cobra por cada tipo de entregable. La plataforma
@@ -424,7 +487,9 @@ module.exports = {
   getMarcaPorEmail, getMarcaById, insertMarca, updateMarca, getMarcas,
   getCatalogo, getCreadoraCatalogo, getCreadoraCompleta, getCreadoraPorEmail,
   getCreadoraPorInfluencer, insertCreadora, updateCreadora, getCreadorasAdmin,
-  getContactoCreadora,
+  getCreadorasPorRevisar,
+  getContactoCreadora, getPrivadoDeCreadora, guardarPrivadoDeCreadora, getCreadoraPorHandle,
+  crearTokenReset, getTokenReset, marcarTokenUsado,
   getTarifasDeCreadora, getTarifasDeVarias, guardarTarifas,
   getMuestrasDeCreadora, getMuestra, insertMuestra, getMuestrasDeVarias,
   insertTrato, getTratoById, updateTrato, getTratosDeMarca, getTratosDeCreadora,

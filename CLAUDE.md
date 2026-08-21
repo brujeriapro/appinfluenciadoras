@@ -270,7 +270,8 @@ La marca envía brief + monto; la creadora acepta viendo su neto; el admin regis
 2. **Los porcentajes de comisión se congelan dentro de cada trato.** Cambiar la comisión en `mk_config` no altera tratos ya creados.
 3. **El contacto se revela con el pago retenido, no al aceptar.** Es lo que hace exigible la cláusula de no-circunvalación de los términos.
 4. **Las muestras se sirven por proxy** (`/media/:id`) desde un bucket privado, nunca con la URL del CDN de Instagram, que delataría el perfil.
-5. **La tarifa la pone la creadora**, no la plataforma: `mk_tarifas` guarda su precio por tipo de entregable y `tarifa_min`/`tarifa_max`/`nivel_tarifa` son derivados que el admin no edita. Un perfil sin tarifas no se puede publicar.
+5. **Registrarse no es entrar al catálogo.** Las creadoras se registran solas, pero el perfil nace oculto: sale publicado solo cuando ella pone tarifas y una persona del equipo verifica sus cuentas y aprueba. Los datos sensibles (handle, nombre real, cuenta bancaria) viven en `mk_creadora_privado`, nunca en `mk_creadoras`.
+6. **La tarifa la pone la creadora**, no la plataforma: `mk_tarifas` guarda su precio por tipo de entregable y `tarifa_min`/`tarifa_max`/`nivel_tarifa` son derivados que el admin no edita. Un perfil sin tarifas no se puede publicar.
 
 ### Nichos
 
@@ -285,7 +286,7 @@ node index.js       # http://localhost:3040
 npm test            # 34 pruebas: comisiones, máquina de estados y tarifas
 ```
 
-Migraciones (a mano en el SQL Editor de Supabase, en orden): `mk_001_init.sql`, `mk_002_seed_config.sql`, `mk_003_nichos_y_tarifas.sql`, `mk_004_portal_creadora.sql`. Además, crear el bucket privado `mk-muestras` en Storage.
+Migraciones (a mano en el SQL Editor de Supabase, en orden): `mk_001_init.sql`, `mk_002_seed_config.sql`, `mk_003_nichos_y_tarifas.sql`, `mk_004_portal_creadora.sql`, `mk_005_registro_creadoras.sql`. Además, crear el bucket privado `mk-muestras` en Storage.
 
 ### Identidad visual
 

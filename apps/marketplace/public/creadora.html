@@ -323,6 +323,22 @@
                   text-decoration: underline; cursor: pointer; margin-top: 14px; padding: 0;
                   letter-spacing: 0.6px; }
   .cambiar-modo:hover { color: var(--lime); }
+  .enlaces-login { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 16px; }
+  .enlaces-login .cambiar-modo { margin-top: 0; }
+  .pista { font-size: 10px; line-height: 1.5; color: var(--text-6); margin-top: 6px; }
+  .acepta { display: flex; gap: 9px; align-items: flex-start; font-size: 11.5px;
+            line-height: 1.5; color: var(--text-4); margin-bottom: 16px; cursor: pointer; }
+  .acepta input { width: 16px; height: 16px; flex: none; margin-top: 1px; accent-color: var(--lime); }
+
+  /* Aviso de en qué punto va el perfil. Es lo primero que ve al entrar. */
+  .estado-perfil { border-left: 4px solid; padding: 14px 16px; margin-bottom: 20px;
+                   background: var(--surface-2); font-size: 12.5px; line-height: 1.6; }
+  .estado-perfil--bueno  { border-color: var(--lime); }
+  .estado-perfil--accion { border-color: var(--magenta); }
+  .estado-perfil--espera { border-color: var(--blue); }
+  .estado-perfil--malo   { border-color: var(--magenta); background: #1a0a12; }
+  .estado-perfil__titulo { font-family: var(--mono-title); font-weight: 800; font-size: 11.5px;
+                           letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 6px; }
 
   /* ── Responsive ─────────────────────────────────────────────────────────── */
 
@@ -379,18 +395,63 @@
 <div class="login-wrap" id="login-wrap">
   <form class="login" id="login-form">
     <h1 id="login-titulo">Mi portal</h1>
-    <p>CREADORES.APP</p>
+    <p id="login-sub">CREADORES.APP</p>
+
+    <!-- Campos que solo pide el registro -->
+    <div id="campos-registro" class="oculto">
+      <div class="campo">
+        <label for="nombre">¿Cómo te llamas?</label>
+        <input id="nombre" autocomplete="name" placeholder="Nombre y apellido">
+      </div>
+      <div class="campo">
+        <label for="nombre_publico">Nombre para el catálogo</label>
+        <input id="nombre_publico" placeholder="Valeria R.">
+        <div class="pista">Así te ven las marcas. No pongas tu @usuario: tu identidad se revela solo cuando cierras un trato.</div>
+      </div>
+      <div class="campo">
+        <label for="instagram">Tu Instagram</label>
+        <input id="instagram" placeholder="@tucuenta">
+      </div>
+      <div class="campo">
+        <label for="tiktok">Tu TikTok (opcional)</label>
+        <input id="tiktok" placeholder="@tucuenta">
+      </div>
+      <div class="campo">
+        <label for="seguidores">¿Cuántos seguidores tienes en total?</label>
+        <input id="seguidores" type="number" inputmode="numeric" placeholder="48000">
+      </div>
+      <div class="campo">
+        <label for="ciudad">Tu ciudad</label>
+        <input id="ciudad" placeholder="Medellín">
+      </div>
+      <div class="campo">
+        <label for="whatsapp">Tu WhatsApp</label>
+        <input id="whatsapp" inputmode="tel" placeholder="300 000 0000">
+      </div>
+    </div>
+
     <div class="campo">
       <label for="email">Tu correo</label>
       <input id="email" type="email" autocomplete="username" required>
     </div>
-    <div class="campo">
+    <div class="campo" id="campo-clave">
       <label for="clave" id="label-clave">Tu contraseña</label>
       <input id="clave" type="password" autocomplete="current-password" required minlength="8">
     </div>
+
+    <label class="acepta oculto" id="acepta-wrap">
+      <input type="checkbox" id="acepta">
+      <span>Acepto los <a href="/terminos" target="_blank">términos y condiciones</a></span>
+    </label>
+
     <button class="btn-portal" style="width:100%" type="submit" id="login-btn">ENTRAR →</button>
     <div class="error oculto" id="login-error"></div>
-    <button type="button" class="cambiar-modo" id="cambiar-modo">Es mi primera vez, quiero crear mi contraseña</button>
+
+    <div class="enlaces-login">
+      <button type="button" class="cambiar-modo" data-modo="registro">Soy creadora y quiero registrarme</button>
+      <button type="button" class="cambiar-modo" data-modo="primera">Ya tengo perfil, es mi primera vez</button>
+      <button type="button" class="cambiar-modo" data-modo="olvide">Olvidé mi contraseña</button>
+    </div>
   </form>
 </div>
 
@@ -466,30 +527,101 @@ async function publico(ruta, cuerpo) {
 
 const $ = (id) => document.getElementById(id);
 
-$('cambiar-modo').addEventListener('click', () => {
-  modoPrimeraVez = !modoPrimeraVez;
-  $('login-titulo').textContent = modoPrimeraVez ? 'Crear contraseña' : 'Mi portal';
-  $('label-clave').textContent = modoPrimeraVez ? 'Escoge tu contraseña (mínimo 8)' : 'Tu contraseña';
-  $('login-btn').textContent = modoPrimeraVez ? 'CREAR Y ENTRAR →' : 'ENTRAR →';
-  $('cambiar-modo').textContent = modoPrimeraVez
-    ? 'Ya tengo contraseña, quiero entrar'
-    : 'Es mi primera vez, quiero crear mi contraseña';
+// Cuatro modos en una sola pantalla: entrar, registrarse, primera vez y
+// recuperar. Menos pantallas que mantener y menos formas de perderse.
+let modo = 'login';
+
+const TEXTOS = {
+  login:     { titulo: 'Mi portal',        sub: 'CREADORES.APP',              btn: 'ENTRAR →' },
+  registro:  { titulo: 'Crear mi perfil',  sub: 'GRATIS · SIN EXCLUSIVIDAD',  btn: 'CREAR MI PERFIL →' },
+  primera:   { titulo: 'Crear contraseña', sub: 'PARA QUIEN YA TIENE PERFIL', btn: 'CREAR Y ENTRAR →' },
+  olvide:    { titulo: 'Recuperar acceso', sub: 'TE MANDAMOS UN ENLACE',      btn: 'ENVIARME EL ENLACE →' },
+  recuperar: { titulo: 'Nueva contraseña', sub: 'ESCOGE UNA NUEVA',           btn: 'GUARDAR Y ENTRAR →' },
+};
+
+function pintarModo() {
+  const t = TEXTOS[modo];
+  $('login-titulo').textContent = t.titulo;
+  $('login-sub').textContent = t.sub;
+  $('login-btn').textContent = t.btn;
+  $('campos-registro').classList.toggle('oculto', modo !== 'registro');
+  $('acepta-wrap').classList.toggle('oculto', modo !== 'registro');
+  $('campo-clave').classList.toggle('oculto', modo === 'olvide');
+  $('email').closest('.campo').classList.toggle('oculto', modo === 'recuperar');
+  $('clave').required = modo !== 'olvide';
+  $('label-clave').textContent = ['registro', 'primera', 'recuperar'].includes(modo)
+    ? 'Escoge tu contraseña (mínimo 8)' : 'Tu contraseña';
   $('login-error').classList.add('oculto');
+  document.querySelectorAll('.enlaces-login .cambiar-modo').forEach(b => {
+    b.classList.toggle('oculto', b.dataset.modo === modo);
+  });
+}
+
+document.querySelectorAll('.enlaces-login .cambiar-modo').forEach(b => {
+  b.addEventListener('click', () => {
+    modo = b.dataset.modo === modo ? 'login' : b.dataset.modo;
+    pintarModo();
+  });
 });
+
+// El correo de recuperación trae el token en el ancla de la URL.
+let tokenReset = null;
+if (location.hash.startsWith('#recuperar=')) {
+  tokenReset = location.hash.slice('#recuperar='.length);
+  modo = 'recuperar';
+  pintarModo();
+}
 
 $('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const err = $('login-error');
   err.classList.add('oculto');
+  const btn = $('login-btn');
+  const textoOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'UN MOMENTO…';
+
   try {
-    const ruta = modoPrimeraVez ? '/set-password' : '/login';
-    const r = await publico(ruta, { email: $('email').value, password: $('clave').value });
-    TOKEN = r.token;
+    if (modo === 'registro') {
+      if (!$('acepta').checked) throw new Error('Necesitas aceptar los términos');
+      const r = await publico('/registro', {
+        nombre_real: $('nombre').value,
+        nombre_publico: $('nombre_publico').value || $('nombre').value,
+        email: $('email').value,
+        password: $('clave').value,
+        whatsapp: $('whatsapp').value,
+        ciudad: $('ciudad').value,
+        instagram: $('instagram').value,
+        tiktok: $('tiktok').value,
+        seguidores: $('seguidores').value,
+        acepta_terminos: true,
+      });
+      TOKEN = r.token;
+    } else if (modo === 'olvide') {
+      await publico('/olvide-clave', { email: $('email').value });
+      err.className = 'aviso aviso--ok';
+      err.textContent = 'Si ese correo tiene cuenta, te llega el enlace en un momento. Revisa también el spam.';
+      err.classList.remove('oculto');
+      return;
+    } else if (modo === 'recuperar') {
+      const r = await publico('/nueva-clave', { token: tokenReset, password: $('clave').value });
+      TOKEN = r.token;
+      history.replaceState(null, '', location.pathname);
+    } else {
+      const ruta = modo === 'primera' ? '/set-password' : '/login';
+      const r = await publico(ruta, { email: $('email').value, password: $('clave').value });
+      TOKEN = r.token;
+    }
+
     sessionStorage.setItem('mk_creadora', TOKEN);
     arrancar();
   } catch (e) {
+    err.className = 'error';
     err.textContent = e.message;
     err.classList.remove('oculto');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
   }
 });
 
@@ -552,12 +684,36 @@ async function ir(v) {
   marcarNav();
   $('principal').innerHTML = '<div class="vacio">Cargando…</div>';
   try {
+    ESTADO = await api('/estado').catch(() => null);
     if (v === 'tarifas') await vistaTarifas();
     else if (v === 'propuestas') await vistaPropuestas();
     else if (v === 'entregar') await vistaEntregar();
   } catch (e) {
     $('principal').innerHTML = `<div class="aviso">No se pudo cargar: ${esc(e.message)}</div>`;
   }
+}
+
+let ESTADO = null;
+
+/**
+ * Aviso de en qué punto va su perfil.
+ *
+ * Sin esto, una creadora recién registrada pone sus tarifas, no le llega nada,
+ * y se desconecta pensando que el programa no sirve. Es la diferencia entre
+ * esperar sabiendo y esperar a ciegas.
+ */
+function avisoEstado() {
+  if (!ESTADO || ESTADO.tono === 'bueno') return '';
+  const titulos = {
+    accion: 'Te falta un paso',
+    espera: 'Estamos revisando tu perfil',
+    malo:   'Tu perfil no fue aprobado',
+  };
+  return `
+    <div class="estado-perfil estado-perfil--${ESTADO.tono}">
+      <div class="estado-perfil__titulo">${titulos[ESTADO.tono] || ''}</div>
+      ${esc(ESTADO.mensaje)}
+    </div>`;
 }
 
 function cabecera(titulo, subtitulo, clase) {
@@ -569,7 +725,8 @@ function cabecera(titulo, subtitulo, clase) {
         <span class="chip-info">Comisión ${COMISION}%</span>
         <span class="chip-info">Retiro ${HORAS_PAGO}h</span>
       </div>
-    </div>`;
+    </div>
+    ${avisoEstado()}`;
 }
 
 // ── Vista: Mis tarifas ──────────────────────────────────────────────────────

@@ -15,6 +15,8 @@ const nodemailer = require('nodemailer');
 const config = require('./config');
 const { formatearCOP } = require('./comisiones');
 
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
 let _transporte = null;
 
 function transporte() {
@@ -74,6 +76,80 @@ const boton = (texto, url) =>
   `<a href="${url}" style="display:inline-block;background:#D6FF00;color:#0E0E0E;font-weight:700;text-decoration:none;padding:12px 20px;margin-top:12px;border:2px solid #0E0E0E">${texto} &rarr;</a>`;
 
 const urlTrato = (lado, id) => `${config.base_url}/${lado}.html#/trato/${id}`;
+
+// ── Alta de creadoras ───────────────────────────────────────────────────────
+
+/** A la creadora recién registrada: qué sigue, en concreto. */
+function bienvenidaCreadora({ creadora }) {
+  return enviar(
+    creadora.email,
+    'Ya tienes perfil en Creadores.app',
+    `<p>Hola ${esc(creadora.nombre_publico)}, tu perfil quedó creado.</p>
+     <p style="background:#D6FF00;padding:10px;border:2px solid #0E0E0E">
+       <strong>Lo que sigue:</strong> entra y pon tus tarifas.<br>
+       <span style="font-size:11px;color:#3A3A3A">Sin precio publicado no podemos mostrarte a las marcas.</span>
+     </p>
+     <p>Cuando las tengas, revisamos tu perfil y te avisamos por acá cuando esté publicado.</p>
+     ${boton('PONER MIS TARIFAS', `${config.base_url}/creadora.html`)}`
+  );
+}
+
+/** Al equipo: hay alguien nuevo esperando revisión. */
+function avisoPerfilNuevo({ creadora, instagram, tiktok, alcance }) {
+  if (!config.smtp.user) return Promise.resolve(false);
+  return enviar(
+    config.smtp.user,
+    `Nueva creadora registrada: ${creadora.nombre_publico}`,
+    `<p>Se registró una creadora nueva. Todavía no aparece en el catálogo.</p>
+     <p>
+       <strong>${esc(creadora.nombre_publico)}</strong><br>
+       ${instagram ? `Instagram: @${esc(instagram)}<br>` : ''}
+       ${tiktok ? `TikTok: @${esc(tiktok)}<br>` : ''}
+       Seguidores declarados: ${Number(alcance || 0).toLocaleString('es-CO')}<br>
+       ${creadora.ciudad ? `Ciudad: ${esc(creadora.ciudad)}` : ''}
+     </p>
+     <p style="font-size:11px;color:#7A7A7A">Verifica las cuentas antes de aprobarla.</p>
+     ${boton('REVISAR EN EL PANEL', `${config.base_url}/admin.html`)}`
+  );
+}
+
+/** Al equipo: ya puso tarifas, está lista para que la revisen. */
+function avisoListaParaRevisar({ creadora }) {
+  if (!config.smtp.user) return Promise.resolve(false);
+  return enviar(
+    config.smtp.user,
+    `Lista para revisar: ${creadora.nombre_publico}`,
+    `<p><strong>${esc(creadora.nombre_publico)}</strong> ya publicó sus tarifas y está esperando aprobación.</p>
+     ${boton('REVISAR', `${config.base_url}/admin.html`)}`
+  );
+}
+
+/** A la creadora: su perfil quedó publicado. */
+function perfilAprobado({ creadora }) {
+  return enviar(
+    creadora.email,
+    'Tu perfil ya está publicado',
+    `<p>Listo, ${esc(creadora.nombre_publico)}: las marcas ya te pueden encontrar en el banco.</p>
+     <p>Cuando alguna quiera trabajar contigo te llega la propuesta por acá, con el valor que recibirías.</p>
+     ${boton('VER MI PERFIL', `${config.base_url}/creadora.html`)}`
+  );
+}
+
+/** Enlace para volver a entrar. Sirve para creadoras y para marcas. */
+function resetClave({ email, token, lado }) {
+  const pagina = lado === 'marca' ? 'registro.html' : 'creadora.html';
+  const url = `${config.base_url}/${pagina}#recuperar=${token}`;
+  return enviar(
+    email,
+    'Recupera tu contraseña · Creadores.app',
+    `<p>Pediste volver a entrar a tu cuenta.</p>
+     <p>Este enlace sirve una sola vez y vence en una hora.</p>
+     ${boton('CREAR NUEVA CONTRASEÑA', url)}
+     <p style="font-size:11px;color:#7A7A7A;margin-top:14px">
+       Si no fuiste tú, ignora este correo: tu contraseña sigue igual.
+     </p>`
+  );
+}
 
 // ── Eventos del trato ───────────────────────────────────────────────────────
 
@@ -180,6 +256,7 @@ function pagoLiberado({ trato, creadora }) {
 
 module.exports = {
   enviar,
+  bienvenidaCreadora, avisoPerfilNuevo, avisoListaParaRevisar, perfilAprobado, resetClave,
   nuevaSolicitud, tratoAceptado, tratoRechazado,
   pagoRetenido, contenidoEntregado, contenidoAprobado, pagoLiberado,
 };

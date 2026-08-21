@@ -610,11 +610,42 @@ async function verTrato(id) {
 let CONFIG = null;
 
 VISTAS.creadoras = async () => {
-  const [creadoras, cfg] = await Promise.all([api('/creadoras'), api('/config')]);
+  const [creadoras, cfg, porRevisar] = await Promise.all([
+    api('/creadoras'), api('/config'), api('/por-revisar'),
+  ]);
   CONFIG = cfg;
 
   const listas = creadoras.filter(c => c.visible).length;
   const sinCurar = creadoras.filter(c => !c.visible).length;
+
+  // Cola de revisión: lo que exige acción hoy va primero, con los @usuarios a
+  // la vista para poder verificarlos antes de aprobar.
+  const cola = porRevisar.length ? `
+    <div class="seccion-titulo">Esperando revisión · ${porRevisar.length}</div>
+    <div class="tabla-wrap"><table>
+      <thead><tr><th>Nombre</th><th>Redes</th><th>Seguidores</th><th>Ciudad</th>
+        <th>Tarifas</th><th>Nicho</th><th>Origen</th><th></th></tr></thead>
+      <tbody>${porRevisar.map(c => {
+        const lista = c.tarifas_activas > 0 && (c.nicho || []).length > 0;
+        return `
+        <tr class="clicable" data-creadora="${c.id}">
+          <td>${esc(c.nombre_publico)}${c.nombre_real ? `<div style="font-size:10.5px;color:var(--grey-700)">${esc(c.nombre_real)}</div>` : ''}</td>
+          <td style="font-size:11px">
+            ${c.instagram ? `<a href="https://instagram.com/${esc(c.instagram)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">@${esc(c.instagram)}</a><br>` : ''}
+            ${c.tiktok ? `<a href="https://tiktok.com/@${esc(c.tiktok)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">TikTok</a>` : ''}
+          </td>
+          <td class="num">${(c.alcance_total || 0).toLocaleString('es-CO')}</td>
+          <td>${esc(c.ciudad || '—')}</td>
+          <td class="num">${c.tarifas_activas || '<span style="color:var(--magenta)">0</span>'}</td>
+          <td>${(c.nicho || []).length ? (c.nicho || []).map(n => `<span class="chip">${esc(n)}</span>`).join(' ') : '<span style="color:var(--magenta);font-size:11px">falta</span>'}</td>
+          <td style="font-size:10.5px;color:var(--grey-700)">${esc(c.origen || '—')}</td>
+          <td>
+            <button class="btn-mini" data-aprobar="${c.id}" ${lista ? '' : 'disabled title="Le falta tarifa o nicho"'}>APROBAR</button>
+            <button class="btn-mini btn-mini--peligro" data-rechazar="${c.id}">NO</button>
+          </td>
+        </tr>`;
+      }).join('')}
+      </tbody></table></div>` : '';
 
   const filas = creadoras.map(c => `
     <tr class="clicable" data-creadora="${c.id}">
@@ -630,10 +661,16 @@ VISTAS.creadoras = async () => {
   contenido().innerHTML = `
     <div class="grid-bordes kpis">
       <div class="kpi"><div class="kpi__label">En el catálogo</div><div class="kpi__valor kpi__valor--lime">${listas}</div></div>
-      <div class="kpi"><div class="kpi__label">Por curar</div><div class="kpi__valor">${sinCurar}</div>
-        <div class="kpi__nota">No aparecen hasta completarlas</div></div>
+      <div class="kpi"><div class="kpi__label">Esperando revisión</div>
+        <div class="kpi__valor ${porRevisar.length ? 'kpi__valor--magenta' : ''}">${porRevisar.length}</div>
+        <div class="kpi__nota">No aparecen hasta aprobarlas</div></div>
+      <div class="kpi"><div class="kpi__label">Sin publicar</div><div class="kpi__valor">${sinCurar}</div></div>
       <div class="kpi"><div class="kpi__label">Total</div><div class="kpi__valor">${creadoras.length}</div></div>
     </div>
+
+    ${cola}
+
+    <div class="seccion-titulo">Todas las creadoras</div>
     ${creadoras.length
       ? `<div class="tabla-wrap"><table>
           <thead><tr><th>Nombre en catálogo</th><th>Nicho</th><th>Alcance</th>
@@ -648,6 +685,35 @@ VISTAS.creadoras = async () => {
 
   contenido().querySelectorAll('[data-creadora]').forEach(tr => {
     tr.addEventListener('click', () => verCreadora(tr.dataset.creadora));
+  });
+
+  // Aprobar y rechazar desde la cola, sin abrir el detalle.
+  contenido().querySelectorAll('[data-aprobar]').forEach(b => {
+    b.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      b.disabled = true;
+      try {
+        await api('/creadoras/' + b.dataset.aprobar + '/aprobar', { method: 'POST', body: '{}' });
+        recargar();
+      } catch (err) {
+        alert('No se pudo aprobar: ' + err.message);
+        b.disabled = false;
+      }
+    });
+  });
+
+  contenido().querySelectorAll('[data-rechazar]').forEach(b => {
+    b.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const motivo = prompt('¿Por qué no entra al banco? (se lo mostramos a ella)');
+      if (motivo === null) return;
+      try {
+        await api('/creadoras/' + b.dataset.rechazar + '/rechazar', {
+          method: 'POST', body: JSON.stringify({ motivo }),
+        });
+        recargar();
+      } catch (err) { alert('No se pudo: ' + err.message); }
+    });
   });
 };
 

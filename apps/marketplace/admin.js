@@ -248,6 +248,73 @@ router.patch('/marcas/:id', async (req, res) => {
 
 // ── Curaduría del catálogo ──────────────────────────────────────────────────
 
+/** Cola de perfiles esperando revisión, con sus handles para poder verificar. */
+router.get('/por-revisar', async (req, res) => {
+  try {
+    const pendientes = await db.getCreadorasPorRevisar();
+    const conDatos = await Promise.all(pendientes.map(async c => {
+      const [priv, tarifas] = await Promise.all([
+        db.getPrivadoDeCreadora(c.id),
+        db.getTarifasDeCreadora(c.id),
+      ]);
+      const { password_hash, ...perfil } = c;
+      return {
+        ...perfil,
+        instagram: priv?.instagram_handle || null,
+        tiktok: priv?.tiktok_handle || null,
+        nombre_real: priv?.nombre_real || null,
+        tarifas_activas: tarifas.filter(t => t.activo !== false).length,
+      };
+    }));
+    res.json(conDatos);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** Publica el perfil en el catálogo y se lo avisa a ella. */
+router.post('/creadoras/:id/aprobar', async (req, res) => {
+  try {
+    const c = await db.getCreadoraCompleta(req.params.id);
+    if (!c) return res.status(404).json({ error: 'No encontrada' });
+
+    const tarifas = await db.getTarifasDeCreadora(c.id);
+    if (!tarifas.some(t => t.activo !== false)) {
+      return res.status(409).json({ error: 'No tiene tarifas. No se puede publicar sin precio.' });
+    }
+    if (!(c.nicho || []).length) {
+      return res.status(409).json({ error: 'Falta asignarle nicho antes de publicar.' });
+    }
+
+    const actualizada = await db.updateCreadora(c.id, {
+      visible: true,
+      estado_perfil: 'aprobada',
+      fecha_revision: new Date().toISOString(),
+      motivo_rechazo: null,
+    });
+    notificaciones.perfilAprobado({ creadora: c }).catch(e =>
+      console.error('[notif] perfilAprobado:', e.message));
+
+    res.json({ ok: true, creadora: actualizada });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/creadoras/:id/rechazar', async (req, res) => {
+  try {
+    const actualizada = await db.updateCreadora(req.params.id, {
+      visible: false,
+      estado_perfil: 'rechazada',
+      motivo_rechazo: req.body.motivo || null,
+      fecha_revision: new Date().toISOString(),
+    });
+    res.json({ ok: true, creadora: actualizada });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.get('/creadoras', async (req, res) => {
   try {
     const creadoras = await db.getCreadorasAdmin();
@@ -261,13 +328,14 @@ router.get('/creadoras/:id', async (req, res) => {
   try {
     const creadora = await db.getCreadoraCompleta(req.params.id);
     if (!creadora) return res.status(404).json({ error: 'No encontrada' });
-    const [muestras, contacto, tarifas] = await Promise.all([
+    const [muestras, contacto, tarifas, privado] = await Promise.all([
       db.getMuestrasDeCreadora(creadora.id),
       db.getContactoCreadora(creadora.id),
       db.getTarifasDeCreadora(creadora.id),
+      db.getPrivadoDeCreadora(creadora.id),
     ]);
     const { password_hash, ...perfil } = creadora;
-    res.json({ ...perfil, muestras, contacto, tarifas });
+    res.json({ ...perfil, muestras, contacto, tarifas, privado });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

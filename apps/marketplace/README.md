@@ -51,6 +51,7 @@ Se corren a mano en el SQL Editor de Supabase, en orden:
 2. `migrations/mk_002_seed_config.sql` — comisiones y configuración base
 3. `migrations/mk_003_nichos_y_tarifas.sql` — taxonomía amplia de nichos + tabla `mk_tarifas`
 4. `migrations/mk_004_portal_creadora.sql` — entregables con subtítulo, producto/exclusividad y plazos
+5. `migrations/mk_005_registro_creadoras.sql` — registro abierto, datos privados y recuperación de clave
 
 Además hay que crear el bucket **privado** `mk-muestras` en Supabase Storage.
 
@@ -97,7 +98,7 @@ Quién puede mover qué está en la tabla `TRANSICIONES` de `tratos.js`. Una tra
 
 ---
 
-## Las cinco reglas que no se rompen
+## Las siete reglas que no se rompen
 
 **1. El handle nunca vive en la tabla del catálogo.**
 `mk_creadoras` guarda `nombre_publico` (un alias). El `instagram_handle` está en `influencers` y solo lo lee `db.getContactoCreadora()`, que se llama desde el panel admin o desde un trato con `contacto_revelado_at` no nulo. Si un endpoint del catálogo tuviera un bug de `select *`, no habría nada sensible que filtrar. No agregar esa columna "por comodidad".
@@ -111,10 +112,29 @@ Es lo único que hace exigible la cláusula de no-circunvalación. El momento es
 **4. Las muestras se sirven por proxy, nunca con la URL de origen.**
 Las URLs del CDN de Instagram y TikTok llevan identificadores que permiten llegar al perfil. Se re-alojan en Storage privado con nombre aleatorio y se hace stream desde `/media/:id`.
 
-**5. La tarifa la pone la creadora, no la plataforma.**
+**5. Registrarse no es entrar al catálogo.**
+Cualquiera puede crear su perfil, pero nace con `visible = false` y estado `nueva`. Para salir publicada hacen falta dos cosas: que ella ponga tarifas y que una persona del equipo revise sus cuentas y la apruebe. Ese filtro humano es lo que sostiene la promesa de "banco curado" — sin él, el catálogo se llena de perfiles sin verificar y deja de valer para las marcas.
+
+**6. Los datos sensibles de una creadora viven en `mk_creadora_privado`.**
+Su @usuario, nombre real y datos bancarios están en una tabla aparte, nunca en `mk_creadoras`. El catálogo consulta `mk_creadoras`, así que no hay forma de que filtre lo que no está ahí. Las creadoras que vienen del Programa Creadoras tienen sus handles en `influencers`; las que se registran solas, en esta tabla. `getContactoCreadora()` resuelve los dos casos.
+
+**7. La tarifa la pone la creadora, no la plataforma.**
 `mk_tarifas` guarda un precio por creadora y tipo de entregable; ella lo define con un control deslizante. `tarifa_min`, `tarifa_max` y `nivel_tarifa` en `mk_creadoras` son **derivados** — se recalculan al guardar y el admin no puede editarlos. Los niveles `inicial`/`medio`/`top` ya no asignan precio: son rangos de presupuesto para que la marca filtre. Y un perfil sin tarifas no se publica: el producto promete "precio publicado".
 
 ---
+
+## El camino de una creadora
+
+```
+se registra sola (o la importas)
+   -> estado "nueva"       · le llega correo de bienvenida
+pone sus tarifas
+   -> estado "en_revision"  · te llega correo de que está lista
+revisas sus cuentas y le asignas nicho
+   -> apruebas              · le llega correo y entra al catálogo
+```
+
+En cada punto su portal le dice qué falta, con todas las letras. El registro se puede cerrar sin desplegar poniendo `registro_creadoras_abierto` en `false`, y el mínimo de seguidores se ajusta con `alcance_minimo_registro`.
 
 ## Nichos y tarifas
 
