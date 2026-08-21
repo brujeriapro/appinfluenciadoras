@@ -1,0 +1,689 @@
+<title>Lanzamiento de Creadores.app</title>
+<style>
+  /* Hereda la identidad del producto —negro, lima, magenta, azul, monoespaciada,
+     borde duro de 2px, radius 0— pero el cuerpo va en una sans de sistema:
+     tres mil palabras en Space Mono no se leen.
+
+     Las fuentes del producto viven en Google Fonts y el CSP de los artifacts
+     bloquea CDNs, así que aquí se usan pilas del sistema. */
+
+  :root {
+    --tinta:      #0E0E0E;
+    --papel:      #ECECE9;
+    --superficie: #FFFFFF;
+    --texto:      #1C1C1E;
+    --texto-2:    #4A4A50;
+    --texto-3:    #6E6E76;
+    --borde:      #0E0E0E;
+    --borde-2:    #C9C9C4;
+    --borde-3:    #E2E2DE;
+
+    /* Cada color tiene un solo trabajo, igual que en el producto */
+    --lima:    #D6FF00;   /* dinero */
+    --magenta: #FF2E9A;   /* alarma, bloqueo */
+    --azul:    #2323F0;   /* enlaces, referencias */
+    --lima-t:  #0E0E0E;
+
+    --mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --tinta:      #F2F2EF;
+      --papel:      #0B0B0C;
+      --superficie: #151517;
+      --texto:      #EDEDEA;
+      --texto-2:    #B4B4B0;
+      --texto-3:    #85858C;
+      --borde:      #3A3A3E;
+      --borde-2:    #2C2C30;
+      --borde-3:    #232326;
+      --azul:       #7B7BFF;
+      --lima-t:     #0E0E0E;
+    }
+  }
+  :root[data-theme="dark"] {
+    --tinta:      #F2F2EF;
+    --papel:      #0B0B0C;
+    --superficie: #151517;
+    --texto:      #EDEDEA;
+    --texto-2:    #B4B4B0;
+    --texto-3:    #85858C;
+    --borde:      #3A3A3E;
+    --borde-2:    #2C2C30;
+    --borde-3:    #232326;
+    --azul:       #7B7BFF;
+    --lima-t:     #0E0E0E;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--papel);
+    color: var(--texto);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.65;
+    margin: 0;
+    padding: 0 20px 100px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .hoja { max-width: 780px; margin: 0 auto; }
+
+  /* ── Portada ───────────────────────────────────────────────────────────── */
+
+  .portada {
+    border: 2px solid var(--borde);
+    background: var(--superficie);
+    padding: clamp(26px, 5vw, 48px);
+    margin: clamp(28px, 6vw, 64px) 0 44px;
+  }
+  .portada__eyebrow {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.6px;
+    text-transform: uppercase; color: var(--texto-3); margin-bottom: 18px;
+  }
+  h1 {
+    font-family: var(--mono); font-weight: 700;
+    font-size: clamp(28px, 5.4vw, 46px); line-height: 1.02;
+    letter-spacing: -2px; text-transform: uppercase;
+    margin: 0 0 20px; text-wrap: balance; color: var(--tinta);
+  }
+  .portada__bajada {
+    font-size: 17px; line-height: 1.6; color: var(--texto-2);
+    max-width: 56ch; margin: 0;
+  }
+  .portada__pie {
+    display: flex; flex-wrap: wrap; gap: 8px 26px;
+    margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--borde-3);
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.9px;
+    text-transform: uppercase; color: var(--texto-3);
+  }
+
+  /* ── Secciones ─────────────────────────────────────────────────────────── */
+
+  section { margin-bottom: 56px; }
+
+  h2 {
+    font-family: var(--mono); font-weight: 700;
+    font-size: clamp(19px, 3vw, 25px); line-height: 1.12; letter-spacing: -0.9px;
+    text-transform: uppercase; color: var(--tinta);
+    margin: 0 0 6px; text-wrap: balance;
+    padding-top: 16px; border-top: 2px solid var(--borde);
+  }
+  h2 .num {
+    display: block; font-size: 10.5px; letter-spacing: 1.6px;
+    color: var(--texto-3); margin-bottom: 9px; font-weight: 400;
+  }
+  h3 {
+    font-family: var(--mono); font-weight: 700; font-size: 14.5px;
+    letter-spacing: -0.2px; color: var(--tinta);
+    margin: 34px 0 10px; text-wrap: balance;
+  }
+
+  p { margin: 0 0 16px; max-width: 68ch; }
+  section > p:first-of-type { margin-top: 18px; }
+
+  strong { font-weight: 700; color: var(--tinta); }
+  em { font-style: italic; color: var(--texto-2); }
+
+  a { color: var(--azul); text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid var(--azul); outline-offset: 3px; }
+
+  ul, ol { margin: 0 0 18px; padding-left: 22px; max-width: 68ch; }
+  li { margin-bottom: 9px; }
+  li::marker { color: var(--texto-3); }
+
+  code {
+    font-family: var(--mono); font-size: 0.87em;
+    background: var(--borde-3); padding: 1px 5px; color: var(--texto);
+  }
+
+  /* ── Cifras del arranque ───────────────────────────────────────────────── */
+
+  .cifras {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+    gap: 2px; background: var(--borde); border: 2px solid var(--borde);
+    margin: 24px 0 26px;
+  }
+  .cifra { background: var(--superficie); padding: 17px 16px 15px; }
+  .cifra__v {
+    font-family: var(--mono); font-weight: 700; font-size: 30px;
+    letter-spacing: -1.6px; line-height: 1; color: var(--tinta);
+    font-variant-numeric: tabular-nums;
+  }
+  .cifra__l {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.1px;
+    text-transform: uppercase; color: var(--texto-3); margin-top: 9px;
+  }
+  .cifra__n { font-size: 12px; color: var(--texto-2); margin-top: 7px; line-height: 1.45; }
+
+  /* ── Bloques con carga semántica ───────────────────────────────────────── */
+
+  .bloque {
+    border: 2px solid var(--borde); background: var(--superficie);
+    padding: 20px 22px; margin: 24px 0;
+  }
+  .bloque__t {
+    font-family: var(--mono); font-weight: 700; font-size: 11px;
+    letter-spacing: 1.3px; text-transform: uppercase;
+    margin-bottom: 12px; color: var(--tinta);
+  }
+  .bloque p:last-child, .bloque ul:last-child, .bloque ol:last-child { margin-bottom: 0; }
+
+  /* Alarma: lo que bloquea o puede salir caro */
+  .bloque--alarma { border-color: var(--magenta); }
+  .bloque--alarma .bloque__t { color: var(--magenta); }
+
+  /* Dinero */
+  .bloque--plata { border-color: var(--borde); }
+  .bloque--plata .bloque__t {
+    background: var(--lima); color: var(--lima-t);
+    display: inline-block; padding: 4px 9px; margin: -4px 0 13px -4px;
+  }
+
+  /* ── Tablas ────────────────────────────────────────────────────────────── */
+
+  .tabla-wrap { overflow-x: auto; margin: 22px 0 26px; border: 2px solid var(--borde); }
+  table { width: 100%; border-collapse: collapse; background: var(--superficie); }
+  th {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.1px;
+    text-transform: uppercase; text-align: left; font-weight: 700;
+    padding: 11px 14px; border-bottom: 2px solid var(--borde);
+    color: var(--texto-3); white-space: nowrap;
+  }
+  td {
+    padding: 12px 14px; font-size: 14px; vertical-align: top;
+    border-bottom: 1px solid var(--borde-3); line-height: 1.5;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num {
+    font-family: var(--mono); font-variant-numeric: tabular-nums;
+    text-align: right; white-space: nowrap;
+  }
+  td.plata { font-family: var(--mono); font-variant-numeric: tabular-nums;
+             text-align: right; white-space: nowrap; font-weight: 700; }
+  .destacada td { background: var(--borde-3); }
+
+  /* ── Fases ─────────────────────────────────────────────────────────────── */
+
+  .fase {
+    border-left: 2px solid var(--borde); padding: 0 0 4px 22px;
+    margin: 0 0 34px; position: relative;
+  }
+  .fase::before {
+    content: ""; position: absolute; left: -7px; top: 7px;
+    width: 12px; height: 12px; background: var(--tinta);
+  }
+  .fase__cuando {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 1.4px;
+    text-transform: uppercase; color: var(--texto-3); margin-bottom: 6px;
+  }
+  .fase__t {
+    font-family: var(--mono); font-weight: 700; font-size: 16px;
+    letter-spacing: -0.4px; color: var(--tinta); margin-bottom: 10px;
+  }
+  .fase__meta {
+    font-family: var(--mono); font-size: 11.5px; color: var(--texto-2);
+    border-top: 1px solid var(--borde-3); padding-top: 11px; margin-top: 14px;
+  }
+  .fase__meta b { color: var(--tinta); }
+
+  /* ── Chips de estado ───────────────────────────────────────────────────── */
+
+  .chip {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.9px;
+    text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--borde-2);
+    color: var(--texto-2); white-space: nowrap; display: inline-block;
+  }
+  .chip--bloquea { border-color: var(--magenta); color: var(--magenta); font-weight: 700; }
+  .chip--listo { border-color: var(--borde); color: var(--tinta); }
+
+  .nota {
+    font-size: 13px; color: var(--texto-3); line-height: 1.55;
+    max-width: 68ch; margin: -6px 0 20px;
+  }
+
+  .cierre {
+    border: 2px solid var(--borde); background: var(--tinta);
+    color: var(--papel); padding: clamp(22px, 4vw, 34px); margin-top: 20px;
+  }
+  .cierre h2 { color: var(--papel); border-top: none; padding-top: 0; margin-bottom: 14px; }
+  .cierre p { color: var(--papel); opacity: 0.86; }
+  .cierre strong { color: var(--lima); }
+  .cierre ol { color: var(--papel); }
+  .cierre li::marker { color: var(--lima); }
+
+  @media (max-width: 560px) {
+    body { font-size: 15.5px; padding: 0 15px 70px; }
+    td, th { padding: 10px 11px; }
+  }
+</style>
+
+<div class="hoja">
+
+<div class="portada">
+  <div class="portada__eyebrow">Creadores.app · Plan de lanzamiento</div>
+  <h1>Cómo se abre un marketplace que ya tiene la mitad hecha</h1>
+  <p class="portada__bajada">La parte difícil de un marketplace es el arranque en frío: nadie llega si no hay
+  nadie. Brujería Capilar no arranca en frío — llega con 712 creadoras registradas y 113 que ya entregaron
+  contenido y cumplieron. Este documento es cómo se convierte eso en tratos pagos.</p>
+  <div class="portada__pie">
+    <span>21 de agosto de 2026</span>
+    <span>Colombia · Fase 1</span>
+    <span>Datos leídos de la base el 21-ago</span>
+  </div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+
+<section>
+<h2><span class="num">01 — Punto de partida</span>Lo que ya tienes, en números</h2>
+
+<p>Todo lo que sigue se apoya en esto, así que conviene mirarlo de frente. Son datos leídos hoy
+de la base, no estimaciones.</p>
+
+<div class="cifras">
+  <div class="cifra">
+    <div class="cifra__v">712</div>
+    <div class="cifra__l">Creadoras registradas</div>
+    <div class="cifra__n">En el Programa Creadoras, con correo</div>
+  </div>
+  <div class="cifra">
+    <div class="cifra__v">113</div>
+    <div class="cifra__l">Ya entregaron</div>
+    <div class="cifra__n">Contenido cumplido, últimos 6 meses</div>
+  </div>
+  <div class="cifra">
+    <div class="cifra__v">86</div>
+    <div class="cifra__l">Score promedio</div>
+    <div class="cifra__n">De esas 113. Y 55 pasan de 70</div>
+  </div>
+  <div class="cifra">
+    <div class="cifra__v">70</div>
+    <div class="cifra__l">Ciudades</div>
+    <div class="cifra__n">Cobertura real, no solo Bogotá</div>
+  </div>
+</div>
+
+<p><strong>Ese grupo de 113 es el activo.</strong> No es una lista de contactos: es un registro de gente que
+recibió un producto, se comprometió a publicar y publicó. Ninguna plataforma nueva en Colombia puede
+mostrar eso, porque para tenerlo hay que haber operado un programa de gifting durante meses. Tú lo hiciste
+sin saber que estabas construyendo el inventario de otra cosa.</p>
+
+<h3>Y ahora la parte incómoda</h3>
+
+<p>De las creadoras que tienen el dato de seguidores cargado, así se reparten:</p>
+
+<div class="tabla-wrap">
+<table>
+  <thead><tr><th>Seguidores en Instagram</th><th class="num">Cuántas</th><th>Qué significa</th></tr></thead>
+  <tbody>
+    <tr><td>Menos de 1.000</td><td class="num">154</td><td>Audiencia de círculo cercano</td></tr>
+    <tr><td>1.000 – 5.000</td><td class="num">88</td><td>Nano. El grueso del banco</td></tr>
+    <tr><td>5.000 – 20.000</td><td class="num">29</td><td>Micro. Aquí empieza a haber alcance vendible</td></tr>
+    <tr><td>Más de 20.000</td><td class="num">15</td><td>Lo más grande que tienes</td></tr>
+    <tr><td>Sin dato cargado</td><td class="num">357</td><td>Hay que preguntárselo o verificarlo</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Ocho de cada diez creadoras con dato están por debajo de 5.000 seguidores. Una sola pasa de 280.000.</p>
+
+<div class="bloque bloque--alarma">
+  <div class="bloque__t">Esto define el posicionamiento, te guste o no</div>
+  <p>Si vendes «encuentra las influencers más grandes de Colombia», la primera marca que entre va a abrir el
+  catálogo, ver puros perfiles de 2.000 seguidores y no volver. Habrás gastado tu único disparo de primera
+  impresión en una promesa que el inventario no sostiene.</p>
+</div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+
+<section>
+<h2><span class="num">02 — Posicionamiento</span>Véndelo por lo que de verdad tienes</h2>
+
+<p>El problema de una marca pequeña colombiana no es <em>encontrar</em> creadoras. Abre Instagram y encuentra
+mil. El problema es el que tú ya viviste 712 veces: <strong>que cumplan</strong>. Que respondan, que publiquen,
+que publiquen a tiempo, que el contenido sirva.</p>
+
+<p>Eso es exactamente lo único que tú puedes probar y nadie más. La frase que ordena todo el producto:</p>
+
+<div class="bloque">
+  <div class="bloque__t">La promesa</div>
+  <p style="font-size:19px;line-height:1.45;font-family:var(--mono);font-weight:700;letter-spacing:-0.5px">
+  Encontrar creadoras es fácil. Que cumplan, no.<br>Aquí solo entran las que ya cumplieron.</p>
+</div>
+
+<p>De ahí se desprenden las tres cosas que se comunican, en este orden:</p>
+
+<ol>
+  <li><strong>Historial, no seguidores.</strong> Cada ficha dice cuántas colaboraciones completó. Un perfil de
+  3.000 seguidores con cuatro entregas cumplidas vale más que uno de 50.000 sin historia.</li>
+  <li><strong>Tu plata está protegida.</strong> El dinero queda retenido y se libera cuando apruebas el contenido.
+  Si no cumple, no se paga. Esto vale más que cualquier catálogo, y es gratis de comunicar porque ya está construido.</li>
+  <li><strong>Precio a la vista.</strong> Cada entregable tiene su tarifa publicada. Sin cotizar por DM ni
+  negociar a ciegas.</li>
+</ol>
+
+<p>El alcance chico deja de ser un defecto y pasa a ser el argumento: nano y micro es lo que una marca
+pequeña <em>puede pagar</em>, convierte mejor por peso invertido, y con 70 ciudades cubiertas puedes ofrecer
+algo que una agencia de Bogotá no tiene — creadoras en Montería, en Pasto, en Villavicencio.</p>
+
+<h3>A quién le hablas primero</h3>
+
+<p>No a cualquier marca. A la que se parece a Brujería Capilar hace dos años: marca colombiana pequeña o
+mediana, vende por Shopify o por Instagram, ya intentó regalar producto a influencers y le fue regular,
+tiene entre $500.000 y $3.000.000 al mes para contenido. Belleza, cuidado personal, comida, mascotas,
+hogar, moda. <strong>Que ya haya intentado y le haya salido mal es el mejor filtro que hay</strong>: no tienes
+que explicarle el dolor.</p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+
+<section>
+<h2><span class="num">03 — Antes de abrir</span>Seis cosas que hoy están rotas o a medias</h2>
+
+<p>Nada de lo que sigue en este plan funciona si estas quedan pendientes. Las tres primeras impiden
+lanzar; las otras tres se pueden arrastrar unas semanas.</p>
+
+<div class="tabla-wrap">
+<table>
+  <thead><tr><th>Qué falta</th><th>Por qué importa</th><th>Estado</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Correo saliente</strong><br><code>MK_SMTP_USER</code> y <code>MK_SMTP_PASS</code></td>
+      <td>Sin esto no sale <em>ningún</em> correo. Quien olvide su contraseña queda por fuera para siempre,
+      y nadie se entera de que le llegó una propuesta.</td>
+      <td><span class="chip chip--bloquea">Bloquea</span></td>
+    </tr>
+    <tr>
+      <td><strong>El dominio</strong></td>
+      <td>Pedirle a una marca que meta tarjeta en una URL de Railway es pedirle demasiado.</td>
+      <td><span class="chip chip--bloquea">Bloquea</span></td>
+    </tr>
+    <tr>
+      <td><strong>Wompi encendido</strong><br><code>pagos_wompi_activos</code>, <code>planes_activos</code></td>
+      <td>Están en <code>false</code>. Las llaves de producción ya están cargadas, pero hoy nadie puede pagar
+      nada. Hay que prenderlo y hacer una compra real de punta a punta.</td>
+      <td><span class="chip chip--bloquea">Bloquea</span></td>
+    </tr>
+    <tr>
+      <td><strong>Los alias del catálogo</strong></td>
+      <td>Las creadoras importadas quedaron con nombre de persona. El modelo entero se apoya en que no se
+      pueda identificar a nadie desde el catálogo: hay que convertirlos a alias descriptivos
+      (<code>RIZOS DE MEDELLÍN</code>, no <code>Valeria R.</code>).</td>
+      <td><span class="chip">Curar a mano</span></td>
+    </tr>
+    <tr>
+      <td><strong>Los plazos que el portal promete</strong></td>
+      <td>Dice 72 h para responder, 48 h para aprobar, pago 48 h después. Hoy eso solo <em>se muestra</em>:
+      no hay nada que lo ejecute ni que avise. La primera vez que alguien lo reclame, quedas mal.</td>
+      <td><span class="chip">Falta el cron</span></td>
+    </tr>
+    <tr>
+      <td><strong>Fotos de perfil</strong></td>
+      <td>Un catálogo de iniciales grises no se ve como un producto. Es lo primero que ve una marca.</td>
+      <td><span class="chip">Pedirlas al invitar</span></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p class="nota">Las métricas de alcance siguen siendo declaradas por cada creadora, no verificadas. Eso no
+bloquea el lanzamiento, pero sí exige que en la revisión le pidas captura de sus estadísticas de Instagram
+antes de aprobarla. Ver el riesgo en la sección 08.</p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+
+<section>
+<h2><span class="num">04 — Secuencia</span>Cuatro fases, en este orden</h2>
+
+<p>El orden importa más que las fechas. <strong>Primero se llena el catálogo, después se invitan marcas.</strong>
+Al revés no funciona: una marca que entra a un catálogo vacío no vuelve, y no hay segunda primera impresión.
+Las semanas son relativas a cuando arranques.</p>
+
+<div class="fase">
+  <div class="fase__cuando">Semanas 1–2</div>
+  <div class="fase__t">Fase 0 · Destrabar</div>
+  <p>Las tres cosas que bloquean: correo, dominio, Wompi prendido y probado con una compra real tuya.
+  En paralelo, curar los alias del catálogo. Nada de esto se le muestra a nadie todavía.</p>
+  <div class="fase__meta"><b>Terminada cuando:</b> puedes registrarte como marca desde el dominio nuevo,
+  pagar un plan con tarjeta, y recibir el correo de confirmación.</div>
+</div>
+
+<div class="fase">
+  <div class="fase__cuando">Semanas 3–5</div>
+  <div class="fase__t">Fase 1 · Sembrar el catálogo</div>
+  <p>Invitar por correo y WhatsApp a las <strong>113 que ya entregaron</strong>. No es un correo masivo: es
+  una invitación que reconoce lo que ya hicieron. El mensaje es «te fue bien con nosotros, ahora te
+  presentamos a otras marcas — y esta vez te pagan».</p>
+  <p>Después, las 29 de 5K–20K y las 15 de más de 20K que no estén ya en el grupo. Esas son las fichas
+  que hacen que el catálogo se vea bien.</p>
+  <div class="fase__meta"><b>Meta:</b> <b>60 fichas publicadas</b> con tarifa, nicho y foto. Menos de 40 y
+  el catálogo se ve vacío; no abras la puerta a marcas antes de llegar.</div>
+</div>
+
+<div class="fase">
+  <div class="fase__cuando">Semanas 6–9</div>
+  <div class="fase__t">Fase 2 · Diez marcas fundadoras, a dedo</div>
+  <p>Nada de anuncios todavía. Diez marcas que tú o tu socia conozcan o puedan alcanzar por un contacto
+  directo, invitadas una por una. Brujería Capilar es la primera y publica campañas de verdad.</p>
+  <p>Con tan pocas, puedes acompañar cada trato a mano: escribirle a la marca, empujar a la creadora,
+  arreglar lo que se rompa. Ese acompañamiento es lo que produce los primeros casos que después vas a contar.</p>
+  <div class="fase__meta"><b>Meta:</b> <b>15 tratos cerrados y pagados</b>. Lo que importa no es cuántas
+  marcas se registran sino cuántas cierran algo — una marca que se registra y no contrata no probó nada.</div>
+</div>
+
+<div class="fase">
+  <div class="fase__cuando">Semana 10 en adelante</div>
+  <div class="fase__t">Fase 3 · Abrir</div>
+  <p>Con catálogo lleno, tratos reales y dos o tres historias que contar, ahí sí se abre: contenido en las
+  redes de Brujería Capilar, las mismas creadoras contándolo, y pauta en Meta hacia marcas pequeñas.</p>
+  <div class="fase__meta"><b>Meta del mes 6:</b> <b>35 marcas activas y 70 tratos al mes.</b></div>
+</div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+
+<section>
+<h2><span class="num">05 — Oferta</span>Cómo se llena el catálogo</h2>
+
+<p>Las 113 no van a llegar solas: hoy tienes <strong>2 registradas en el marketplace y ninguna publicada</strong>.
+Y de esas dos, una se quedó a medias sin poner tarifas. Eso va a pasar mucho, y es el cuello de botella real.</p>
+
+<h3>Por qué una creadora se registra pero no termina</h3>
+
+<p>Porque ponerse precio da miedo. No sabe cuánto cobrar, teme pedir de más y que nadie la contrate, o de menos
+y quedar mal parada. El deslizador de tarifas está bien construido pero no resuelve el miedo.</p>
+
+<div class="bloque">
+  <div class="bloque__t">Lo que sí lo resuelve</div>
+  <p>Mostrarle en el mismo deslizador qué está cobrando gente parecida a ella: <em>«creadoras con tu alcance
+  cobran entre $120.000 y $280.000 por un reel»</em>. Deja de ser una decisión en el vacío. Con 113 fichas ya
+  tienes con qué calcular ese rango, y es una mejora chica de producto con un efecto grande en cuántas terminan.</p>
+</div>
+
+<h3>Qué le dices en la invitación</h3>
+
+<ul>
+  <li><strong>Reconoce lo que hizo.</strong> «Trabajaste con nosotros y cumpliste» no es halago, es el motivo
+  por el que está invitada. Que se note que no es una lista comprada.</li>
+  <li><strong>Sé directo con la plata.</strong> Aquí le pagan. Ella pone su precio. La plataforma le descuenta
+  un 8% y a la marca le cobra 12%.</li>
+  <li><strong>Explica por qué no aparece su @usuario.</strong> Es una ventaja para ella —nadie le va a escribir
+  por fuera para regatearle— pero si no se lo explicas, suena a que le estás escondiendo el perfil.</li>
+  <li><strong>Un solo paso.</strong> El enlace la lleva a poner sus tarifas. Todo lo demás puede esperar.</li>
+</ul>
+
+<div class="bloque bloque--alarma">
+  <div class="bloque__t">Lo que puede envenenar el pozo</div>
+  <p>Que las creadoras sientan que Creadores.app es un truco de Brujería Capilar para conseguirse creadoras
+  más barato. Se evita con dos cosas: que la plataforma tenga <strong>identidad propia</strong> —otro nombre,
+  otra estética, otras cuentas, y eso ya está hecho— y que <strong>Brujería Capilar pague las mismas tarifas
+  y la misma comisión que cualquiera</strong>. El día que te des trato preferente y alguien lo note, perdiste
+  el lado de la oferta, que es la parte que no se puede reconstruir.</p>
+</div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+
+<section>
+<h2><span class="num">06 — Demanda</span>Las primeras diez marcas</h2>
+
+<p>Estas no llegan por anuncio. Llegan porque tú les escribes. Diez es el número correcto: suficiente para
+que haya movimiento, poco para acompañarlas a mano.</p>
+
+<p>De dónde salen, en orden de facilidad:</p>
+
+<ol>
+  <li><strong>Brujería Capilar.</strong> La primera. Publica campañas reales y paga de verdad.</li>
+  <li><strong>Marcas que ya conoces</strong> del gremio de belleza y consumo en Medellín y Bogotá — proveedores,
+  gente de ferias, marcas con las que has cruzado.</li>
+  <li><strong>Las mismas creadoras te las traen.</strong> Cada una de las 113 ha trabajado con otras marcas.
+  Preguntarles «¿con qué otra marca has colaborado?» te da una lista de marcas que ya invierten en esto y a
+  las que puedes llegar con una referencia real.</li>
+  <li><strong>Tus clientas mayoristas.</strong> Ya tienes un CRM con ellas. Muchas son tiendas y marcas
+  pequeñas con el mismo problema de contenido.</li>
+</ol>
+
+<p>El pitch de una línea: <em>«Tengo 60 creadoras que ya entregaron contenido y cumplieron. Escoge, pon tu
+presupuesto, y tu plata queda retenida hasta que apruebes lo que publicaron.»</em></p>
+
+<h3>Cobrar o no cobrar al principio</h3>
+
+<p>Tienes dos fuentes de ingreso y no conviene apretar las dos al mismo tiempo. La comisión es el negocio;
+la suscripción es lo que financia el mientras tanto. Compara lo que deja cada una:</p>
+
+<div class="tabla-wrap">
+<table>
+  <thead><tr><th>Una marca que cierra 3 tratos al mes</th><th class="num">Deja al mes</th></tr></thead>
+  <tbody>
+    <tr><td>Plan Emprende</td><td class="plata">$19.900</td></tr>
+    <tr class="destacada"><td>Comisión de esos 3 tratos <span class="nota" style="margin:0">(12% + 8% sobre $250.000)</span></td><td class="plata">$150.000</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>La comisión deja siete veces más. Por eso <strong>el plan nunca debe limitar cuántas propuestas envía una
+marca</strong> —cada propuesta es comisión potencial— y por eso el muro de suscripción se puso en cuántas fichas
+puede abrir, que es lo correcto.</p>
+
+<div class="bloque bloque--plata">
+  <div class="bloque__t">Recomendación</div>
+  <p><strong>Las primeras diez marcas entran con el plan Marca ($99.900) gratis por tres meses, como
+  fundadoras.</strong> Lo que quieres de ellas no son $19.900: es que cierren tratos, que te digan qué se rompe
+  y que te presten su nombre para contárselo a la siguiente. Cobrarles desde el día uno te consigue medio
+  millón de pesos y te cuesta el arranque.</p>
+  <p>La comisión sí se cobra desde el primer trato, sin excepción. Es lo que sostiene el negocio y es lo que
+  la marca acepta sin problema, porque solo la paga cuando algo salió bien.</p>
+</div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+
+<section>
+<h2><span class="num">07 — Números</span>A qué se parece esto si funciona</h2>
+
+<p>Supuestos: trato promedio de <strong>$250.000</strong> (tarifa realista de nano y micro en Colombia),
+comisión total del 20% — o sea <strong>$50.000 por trato cerrado</strong>. Suscripción promedio ponderada,
+contando que la mayoría estará en el plan barato y las fundadoras en cero.</p>
+
+<div class="tabla-wrap">
+<table>
+  <thead><tr>
+    <th></th><th class="num">Marcas activas</th><th class="num">Tratos/mes</th>
+    <th class="num">Comisión</th><th class="num">Suscripción</th><th class="num">Total mes</th>
+  </tr></thead>
+  <tbody>
+    <tr><td>Mes 1</td><td class="num">5</td><td class="num">8</td>
+        <td class="plata">$400.000</td><td class="plata">$0</td><td class="plata">$400.000</td></tr>
+    <tr><td>Mes 3</td><td class="num">15</td><td class="num">25</td>
+        <td class="plata">$1.250.000</td><td class="plata">$450.000</td><td class="plata">$1.700.000</td></tr>
+    <tr class="destacada"><td>Mes 6</td><td class="num">35</td><td class="num">70</td>
+        <td class="plata">$3.500.000</td><td class="plata">$1.750.000</td><td class="plata">$5.250.000</td></tr>
+    <tr><td>Mes 12</td><td class="num">80</td><td class="num">200</td>
+        <td class="plata">$10.000.000</td><td class="plata">$4.800.000</td><td class="plata">$14.800.000</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Esto no es una proyección financiera, es un orden de magnitud. Lo que revela es lo importante:</p>
+
+<ul>
+  <li><strong>El negocio vive del volumen de tratos, no de las suscripciones.</strong> Hasta el mes 12 la
+  comisión es dos tercios del ingreso. Todo el producto debe estar puesto al servicio de que se cierre
+  un trato más.</li>
+  <li><strong>Los primeros meses son chicos y eso está bien.</strong> $400.000 el primer mes no es fracaso;
+  es lo que se ve cuando un marketplace arranca. Lo que hay que vigilar no es el monto sino si crece.</li>
+  <li><strong>El cuello de botella son las marcas, no las creadoras.</strong> Tienes 712 creadoras y 1 marca.
+  Todo el esfuerzo del arranque va del lado de la demanda.</li>
+</ul>
+
+<h3>Qué medir cada semana, y qué ignorar</h3>
+
+<div class="tabla-wrap">
+<table>
+  <thead><tr><th>Mira esto</th><th>Ignora esto</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Tratos cerrados y pagados</strong></td><td>Marcas registradas</td></tr>
+    <tr><td><strong>Cuántas marcas contrataron dos veces</strong><br><span class="nota" style="margin:0">La segunda vez es la que dice si el producto sirve</span></td><td>Visitas a la landing</td></tr>
+    <tr><td><strong>Fichas publicadas con tarifa</strong></td><td>Creadoras registradas</td></tr>
+    <tr><td><strong>Propuestas aceptadas sobre enviadas</strong><br><span class="nota" style="margin:0">Si baja del 40%, o los montos están mal o el catálogo no corresponde</span></td><td>Seguidores sumados del catálogo</td></tr>
+  </tbody>
+</table>
+</div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+
+<section>
+<h2><span class="num">08 — Riesgos</span>Lo que puede salir mal</h2>
+
+<h3>Que se salten la plataforma</h3>
+<p>Se conocen en un trato, quedan en contacto y el siguiente lo cierran por WhatsApp. Es el riesgo estructural
+de todo marketplace de servicios y no se elimina, se hace poco atractivo. Ya tienes lo principal: el contacto
+solo se revela cuando el pago está retenido, y la cláusula de no-circunvalación está aceptada por ambas partes.
+Lo que falta es la parte positiva — que quedarse adentro sea cómodo: el escrow, el historial que le suma a
+ella, el respaldo si algo se cae. <strong>Una plataforma que solo castiga la salida pierde; una que hace que
+valga la pena quedarse, gana.</strong></p>
+
+<h3>Que alguien pague por seguidores comprados</h3>
+<p>Hoy las métricas las declara cada creadora. Si una marca paga por «50.000 seguidores» y resulta que son
+inflados, el que queda mal eres tú, no ella. Mientras no exista la conexión con Meta:
+<strong>pide captura de las estadísticas de Instagram en la revisión</strong> y aprueba solo con eso a la vista.
+Es manual y es lento, y con 60 fichas es perfectamente manejable.</p>
+
+<h3>Que el primer trato salga mal en público</h3>
+<p>Va a pasar: alguien no entrega, o entrega algo malo. Con diez marcas acompañadas a mano lo resuelves
+personalmente y hasta suma — una marca a la que le respondiste bien un problema es más leal que una a la que
+todo le salió liso. Con doscientas marcas y sin proceso, es una crisis. Por eso las fases van en ese orden.</p>
+
+<h3>Datos personales</h3>
+<p>Estás guardando nombres, cédulas, cuentas bancarias y direcciones de cientos de personas, y ahora en una
+plataforma que le muestra perfiles a terceros. La Ley 1581 aplica. Antes de abrir al público: política de
+tratamiento de datos publicada, y consentimiento explícito al registrarse. No es opcional y es barato hacerlo
+ahora, caro después.</p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────────────────── -->
+
+<div class="cierre">
+<h2>Lo que decides tú</h2>
+<p>Todo lo anterior lo puedo ejecutar. Estas tres no:</p>
+<ol>
+  <li><strong>La fecha.</strong> Las fases suman diez semanas hasta abrir al público. Si arrancas ya,
+  eso cae a finales de octubre.</li>
+  <li><strong>Si Brujería Capilar entra como marca ancla</strong> pagando tarifas y comisión completas.
+  Lo recomiendo — resuelve la demanda del día uno y te obliga a usar tu propio producto — pero es tu plata
+  saliendo de un bolsillo al otro y con una comisión real de por medio.</li>
+  <li><strong>Si las diez fundadoras entran gratis tres meses.</strong> Mi recomendación es que sí.
+  Renuncias a medio millón de pesos y compras el arranque.</li>
+</ol>
+<p style="margin-bottom:0">Con esas tres respuestas armo el cronograma con fechas, los correos de invitación
+a las creadoras, el guion para las marcas y la lista de tareas de la Fase 0.</p>
+</div>
+
+</div>
