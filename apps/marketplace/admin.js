@@ -87,6 +87,61 @@ router.get('/resumen', async (req, res) => {
   }
 });
 
+/**
+ * Diagnóstico de conexión, para no adivinar cuando algo falla.
+ *
+ * Nunca devuelve las credenciales: solo su forma —prefijo, largo, si tiene
+ * espacios— que es lo que hace falta para saber si la que llegó es la correcta.
+ */
+router.get('/diagnostico', async (req, res) => {
+  const llave = String(config.supabase.service_role_key || '');
+  const forma = {
+    empieza_con: llave.slice(0, 4) || '(vacía)',
+    largo: llave.length,
+    es_jwt: llave.startsWith('eyJ'),
+    tiene_espacios: /\s/.test(llave),
+    tiene_comillas: /["']/.test(llave),
+  };
+
+  // Tres pruebas, de la más simple a la más completa.
+  const pruebas = {};
+
+  try {
+    await db.getConfig({ forzar: true });
+    pruebas.base_de_datos = 'ok';
+  } catch (e) {
+    pruebas.base_de_datos = `falla: ${e.message}`;
+  }
+
+  try {
+    const url = `${String(config.supabase.url).replace(/\/$/, '')}/storage/v1/bucket/${config.supabase.bucket_muestras}`;
+    const r = await fetch(url, { headers: { 'Authorization': `Bearer ${llave}` } });
+    const cuerpo = await r.text();
+    pruebas.storage = r.ok
+      ? 'ok'
+      : `falla (${r.status}): ${cuerpo.slice(0, 200)}`;
+  } catch (e) {
+    pruebas.storage = `falla: ${e.message}`;
+  }
+
+  let recomendacion = null;
+  if (!forma.es_jwt) {
+    recomendacion = 'La llave no es un JWT. Storage exige la service_role clásica, que empieza por "eyJ".';
+  } else if (forma.tiene_espacios || forma.tiene_comillas) {
+    recomendacion = 'La llave llegó con espacios o comillas. Pégala limpia, sin comillas alrededor.';
+  } else if (pruebas.storage !== 'ok') {
+    recomendacion = 'La llave tiene forma correcta pero Storage la rechaza. Revisa que sea service_role y no anon.';
+  }
+
+  res.json({
+    url_supabase: config.supabase.url,
+    bucket: config.supabase.bucket_muestras,
+    llave: forma,
+    pruebas,
+    recomendacion,
+  });
+});
+
 // ── Tratos ──────────────────────────────────────────────────────────────────
 
 router.get('/tratos', async (req, res) => {
