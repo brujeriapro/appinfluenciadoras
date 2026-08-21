@@ -8,7 +8,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const db = require('./db');
 const maquina = require('./tratos');
-const { resumirTarifas, rangoAlcance } = require('./comisiones');
+const { resumirTarifas, rangoAlcance, resumirAlcance } = require('./comisiones');
 const { creadoraAuth, firmarToken, rateLimit } = require('./auth');
 const notificaciones = require('./notificaciones');
 const { subirMuestra, borrarMuestra } = require('./muestras');
@@ -28,8 +28,8 @@ const router = express.Router();
 router.post('/registro', rateLimit({ windowMs: 600_000, max: 5 }), async (req, res) => {
   try {
     const {
-      nombre_publico, nombre_real, email, password, whatsapp, pais, ciudad,
-      instagram, tiktok, seguidores, acepta_terminos,
+      nombre_publico, nombre_real, email, password, whatsapp, pais, departamento, ciudad,
+      instagram, tiktok, seguidores_instagram, seguidores_tiktok, acepta_terminos,
     } = req.body;
 
     if (!nombre_publico || !email || !password) {
@@ -52,11 +52,16 @@ router.post('/registro', rateLimit({ windowMs: 600_000, max: 5 }), async (req, r
       });
     }
 
-    const alcance = Number(seguidores) || 0;
+    const alcance = resumirAlcance(
+      { instagram: seguidores_instagram, tiktok: seguidores_tiktok },
+      cfg.rangos_alcance || []
+    );
+    // El minimo se mide sobre la suma: quien tiene 600 en cada red igual tiene
+    // 1.200 personas que la escuchan.
     const minimo = Number(cfg.alcance_minimo_registro ?? 1000);
-    if (alcance < minimo) {
+    if ((alcance.alcance_total || 0) < minimo) {
       return res.status(400).json({
-        error: `Por ahora trabajamos con cuentas desde ${minimo.toLocaleString('es-CO')} seguidores.`,
+        error: `Por ahora trabajamos con cuentas desde ${minimo.toLocaleString('es-CO')} seguidores entre tus redes.`,
       });
     }
 
@@ -79,9 +84,9 @@ router.post('/registro', rateLimit({ windowMs: 600_000, max: 5 }), async (req, r
       password_hash: await bcrypt.hash(String(password), 10),
       whatsapp: whatsapp || null,
       pais: (pais || 'CO').toUpperCase(),
+      departamento: departamento || null,
       ciudad: ciudad || null,
-      alcance_total: alcance,
-      rango_alcance: rangoAlcance(alcance, cfg.rangos_alcance || []),
+      ...alcance,
       visible: false,
       estado_perfil: 'nueva',
       origen: 'registro',
@@ -97,7 +102,7 @@ router.post('/registro', rateLimit({ windowMs: 600_000, max: 5 }), async (req, r
 
     notificaciones.bienvenidaCreadora({ creadora }).catch(e =>
       console.error('[notif] bienvenidaCreadora:', e.message));
-    notificaciones.avisoPerfilNuevo({ creadora, instagram: ig, tiktok: tk, alcance }).catch(e =>
+    notificaciones.avisoPerfilNuevo({ creadora, instagram: ig, tiktok: tk, alcance: alcance.alcance_total }).catch(e =>
       console.error('[notif] avisoPerfilNuevo:', e.message));
 
     console.log(`[registro] Nueva creadora: ${creadora.nombre_publico} (${ig || tk}) — pendiente de revisión`);
@@ -117,6 +122,9 @@ router.get('/paises', async (req, res) => {
     const cfg = await db.getConfig();
     res.json({
       paises: cfg.paises || [{ codigo: 'CO', nombre: 'Colombia' }],
+      // Solo Colombia tiene lista cerrada de departamentos y ciudades. En los
+      // demas paises el campo es libre: una lista incompleta seria peor.
+      departamentos_co: cfg.departamentos_co || [],
       // Todas las tarifas son en pesos colombianos, viva donde viva. La
       // interfaz tiene que decirlo: sin eso, alguien en México pone "500.000"
       // pensando en pesos mexicanos.
@@ -320,7 +328,8 @@ router.get('/me', async (req, res) => {
  */
 router.put('/perfil', async (req, res) => {
   try {
-    const { nombre_publico, bio_corta, pais, ciudad, whatsapp, instagram, tiktok, seguidores } = req.body;
+    const { nombre_publico, bio_corta, pais, departamento, ciudad, whatsapp,
+            instagram, tiktok, seguidores_instagram, seguidores_tiktok } = req.body;
 
     const datos = {};
     if (nombre_publico !== undefined) {
@@ -329,7 +338,8 @@ router.put('/perfil', async (req, res) => {
       datos.nombre_publico = n;
     }
     if (bio_corta !== undefined) datos.bio_corta = String(bio_corta).slice(0, 240);
-    if (pais !== undefined)      datos.pais = String(pais || 'CO').toUpperCase();
+    if (pais !== undefined)         datos.pais = String(pais || 'CO').toUpperCase();
+    if (departamento !== undefined) datos.departamento = departamento || null;
     if (ciudad !== undefined)    datos.ciudad = ciudad || null;
     if (whatsapp !== undefined)  datos.whatsapp = whatsapp || null;
 
@@ -340,11 +350,13 @@ router.put('/perfil', async (req, res) => {
     // Cuando vengan verificadas de Meta, el número lo manda la API y este
     // campo deja de aceptarse: sería absurdo dejarla sobrescribir un dato
     // verificado con uno inventado.
-    if (seguidores !== undefined && actual.fuente_metricas !== 'verificado') {
-      const alcance = Number(seguidores) || 0;
+    if ((seguidores_instagram !== undefined || seguidores_tiktok !== undefined)
+        && actual.fuente_metricas !== 'verificado') {
       const cfg = await db.getConfig();
-      datos.alcance_total = alcance;
-      datos.rango_alcance = rangoAlcance(alcance, cfg.rangos_alcance || []);
+      Object.assign(datos, resumirAlcance({
+        instagram: seguidores_instagram ?? actual.seguidores_instagram,
+        tiktok: seguidores_tiktok ?? actual.seguidores_tiktok,
+      }, cfg.rangos_alcance || []));
     }
 
     const actualizada = await db.updateCreadora(req.usuarioId, datos);
@@ -384,7 +396,9 @@ router.get('/redes', async (req, res) => {
       instagram: priv?.instagram_handle || null,
       tiktok: priv?.tiktok_handle || null,
       fuente_metricas: c?.fuente_metricas || 'declarado',
-      seguidores: c?.alcance_total || null,
+      seguidores_instagram: c?.seguidores_instagram || null,
+      seguidores_tiktok: c?.seguidores_tiktok || null,
+      alcance_total: c?.alcance_total || null,
       // La conexión con Meta todavía no existe: el portal usa esto para
       // mostrar el botón o un "próximamente".
       conexion_disponible: (await db.getConfig()).instagram_conexion_activa === true,
@@ -529,7 +543,12 @@ router.put('/tarifas', async (req, res) => {
 router.get('/nichos', async (req, res) => {
   try {
     const cfg = await db.getConfig();
-    res.json({ categorias: cfg.nichos || [], paises: cfg.paises || [], max_subnichos: 3 });
+    res.json({
+      categorias: cfg.nichos || [],
+      paises: cfg.paises || [],
+      departamentos_co: cfg.departamentos_co || [],
+      max_subnichos: 3,
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

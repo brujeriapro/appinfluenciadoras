@@ -467,16 +467,26 @@
         <input id="tiktok" placeholder="@tucuenta">
       </div>
       <div class="campo">
-        <label for="seguidores">¿Cuántos seguidores tienes en total?</label>
-        <input id="seguidores" type="number" inputmode="numeric" placeholder="48000">
+        <label for="seg-ig">Seguidores en Instagram</label>
+        <input id="seg-ig" type="number" inputmode="numeric" placeholder="48000">
+      </div>
+      <div class="campo">
+        <label for="seg-tk">Seguidores en TikTok</label>
+        <input id="seg-tk" type="number" inputmode="numeric" placeholder="12000">
+        <div class="pista">Si no tienes una de las dos, déjala vacía.</div>
       </div>
       <div class="campo">
         <label for="pais">Tu país</label>
         <select id="pais"></select>
       </div>
+      <div class="campo oculto" id="campo-depto">
+        <label for="departamento">Departamento</label>
+        <select id="departamento"></select>
+      </div>
       <div class="campo">
         <label for="ciudad">Tu ciudad</label>
-        <input id="ciudad" placeholder="Medellín">
+        <select id="ciudad-sel"></select>
+        <input id="ciudad" placeholder="Ciudad">
       </div>
       <div class="campo">
         <label for="whatsapp">Tu WhatsApp</label>
@@ -625,15 +635,79 @@ document.querySelectorAll('.enlaces-login .cambiar-modo').forEach(b => {
 // La lista de países vive en la configuración del servidor: si mañana se abre
 // otro país, no hay que tocar este archivo.
 let PAISES = [];
+let DEPTOS_CO = [];
+
+/**
+ * En Colombia, departamento y ciudad son listas cerradas; fuera, campo libre.
+ *
+ * Escrito a mano, la misma ciudad llega como "Medellin", "medellin", "Medellín"
+ * y "Medellin, Antioquia", y el filtro del catálogo deja de servir. Con lista,
+ * filtrar funciona. Para los otros 19 países no tenemos listas confiables, y
+ * una incompleta sería peor que un campo abierto.
+ */
+function ciudadElegida() {
+  const sel = $('ciudad-sel');
+  const libre = $('ciudad');
+  if (sel && !sel.classList.contains('oculto') && sel.value && sel.value !== 'Otra') {
+    return sel.value;
+  }
+  return libre ? libre.value : '';
+}
+
+function pintarUbicacion() {
+  const pais = $('pais')?.value;
+  const esCO = pais === 'CO';
+  const campoDepto = $('campo-depto');
+  const selCiudad = $('ciudad-sel');
+  const inputCiudad = $('ciudad');
+  if (!campoDepto || !selCiudad || !inputCiudad) return;
+
+  campoDepto.classList.toggle('oculto', !esCO);
+  selCiudad.classList.toggle('oculto', !esCO);
+  inputCiudad.classList.toggle('oculto', esCO);
+
+  if (!esCO) return;
+
+  if (!$('departamento').options.length) {
+    $('departamento').innerHTML = '<option value="">Elige tu departamento</option>' +
+      DEPTOS_CO.map(d => `<option value="${d.nombre}">${d.nombre}</option>`).join('');
+  }
+  pintarCiudades();
+}
+
+function pintarCiudades() {
+  const depto = DEPTOS_CO.find(d => d.nombre === $('departamento').value);
+  const sel = $('ciudad-sel');
+  if (!depto) {
+    sel.innerHTML = '<option value="">Elige primero el departamento</option>';
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  sel.innerHTML = (depto.ciudades || []).map(c => `<option value="${c}">${c}</option>`).join('');
+  // "Otra" abre el campo libre: hay más de mil municipios y la lista solo trae
+  // los principales.
+  sel.onchange = () => {
+    const otra = sel.value === 'Otra';
+    $('ciudad').classList.toggle('oculto', !otra);
+    if (otra) $('ciudad').focus();
+  };
+  $('ciudad').classList.add('oculto');
+}
+
 fetch('/api/creadoras/paises')
   .then(r => r.json())
   .then(d => {
     PAISES = d.paises || [];
+    DEPTOS_CO = d.departamentos_co || [];
     const sel = $('pais');
     if (sel) {
       sel.innerHTML = PAISES.map(p =>
         `<option value="${p.codigo}">${p.nombre}</option>`).join('');
+      sel.addEventListener('change', pintarUbicacion);
     }
+    $('departamento')?.addEventListener('change', pintarCiudades);
+    pintarUbicacion();
   })
   .catch(() => {});
 
@@ -664,10 +738,12 @@ $('login-form').addEventListener('submit', async (e) => {
         password: $('clave').value,
         whatsapp: $('whatsapp').value,
         pais: $('pais').value,
-        ciudad: $('ciudad').value,
         instagram: $('instagram').value,
         tiktok: $('tiktok').value,
-        seguidores: $('seguidores').value,
+        seguidores_instagram: $('seg-ig').value,
+        seguidores_tiktok: $('seg-tk').value,
+        departamento: $('campo-depto').classList.contains('oculto') ? null : $('departamento').value,
+        ciudad: ciudadElegida(),
         acepta_terminos: true,
       });
       TOKEN = r.token;
@@ -842,7 +918,13 @@ async function vistaPerfil() {
             ).join('')}
           </select>
         </div>
-        <div class="campo-p"><label>Ciudad</label><input id="p-ciudad" value="${esc(perfil.ciudad || '')}"></div>
+        <div class="campo-p" id="p-campo-depto"><label>Departamento</label>
+          <select id="p-depto"></select>
+        </div>
+        <div class="campo-p"><label>Ciudad</label>
+          <select id="p-ciudad-sel"></select>
+          <input id="p-ciudad" value="${esc(perfil.ciudad || '')}" placeholder="Ciudad">
+        </div>
         <div class="campo-p"><label>WhatsApp</label><input id="p-whatsapp" value="${esc(perfil.whatsapp || '')}"></div>
       </div>
     </div>
@@ -856,9 +938,15 @@ async function vistaPerfil() {
         <div class="campo-p"><label>TikTok</label>
           <input id="p-tk" value="${redes.tiktok ? '@' + esc(redes.tiktok) : ''}" placeholder="@tucuenta"></div>
       </div>
-      <div class="campo-p">
-        <label>Seguidores en total ${verificado ? '· verificados' : '· los declaras tú'}</label>
-        <input id="p-seguidores" type="number" value="${redes.seguidores || ''}" ${verificado ? 'disabled' : ''}>
+      <div class="campos-2">
+        <div class="campo-p">
+          <label>Seguidores en Instagram ${verificado ? '· verificados' : ''}</label>
+          <input id="p-seg-ig" type="number" value="${redes.seguidores_instagram || ''}" ${verificado ? 'disabled' : ''}>
+        </div>
+        <div class="campo-p">
+          <label>Seguidores en TikTok</label>
+          <input id="p-seg-tk" type="number" value="${redes.seguidores_tiktok || ''}" ${verificado ? 'disabled' : ''}>
+        </div>
       </div>
 
       <div class="verificacion">
@@ -898,6 +986,11 @@ async function vistaPerfil() {
     <div class="error oculto" id="perfil-msg"></div>
   `;
 
+  DEPTOS_CO = nichos.departamentos_co || DEPTOS_CO;
+  pintarUbicacionPerfil(perfil);
+  $('p-pais').addEventListener('change', () => pintarUbicacionPerfil(perfil));
+  $('p-depto').addEventListener('change', () => pintarCiudadesPerfil(perfil.ciudad));
+
   pintarNichos();
   pintarGaleria(muestras.muestras, muestras.maximo);
 
@@ -905,6 +998,46 @@ async function vistaPerfil() {
   $('btn-conectar-ig')?.addEventListener('click', () => {
     alert('La conexión con Instagram todavía no está activa. Te avisamos apenas esté.');
   });
+}
+
+function ciudadPerfil() {
+  const sel = $('p-ciudad-sel');
+  if (sel && !sel.classList.contains('oculto') && sel.value && sel.value !== 'Otra') return sel.value;
+  return $('p-ciudad').value;
+}
+
+function pintarUbicacionPerfil(perfil) {
+  const esCO = $('p-pais').value === 'CO';
+  $('p-campo-depto').classList.toggle('oculto', !esCO);
+  $('p-ciudad-sel').classList.toggle('oculto', !esCO);
+  $('p-ciudad').classList.toggle('oculto', esCO);
+  if (!esCO) return;
+
+  $('p-depto').innerHTML = '<option value="">Elige tu departamento</option>' +
+    DEPTOS_CO.map(d =>
+      `<option value="${d.nombre}" ${perfil.departamento === d.nombre ? 'selected' : ''}>${d.nombre}</option>`
+    ).join('');
+  pintarCiudadesPerfil(perfil.ciudad);
+}
+
+function pintarCiudadesPerfil(ciudadActual) {
+  const depto = DEPTOS_CO.find(d => d.nombre === $('p-depto').value);
+  const sel = $('p-ciudad-sel');
+  if (!depto) {
+    sel.innerHTML = '<option value="">Elige primero el departamento</option>';
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  sel.innerHTML = (depto.ciudades || []).map(c =>
+    `<option value="${c}" ${c === ciudadActual ? 'selected' : ''}>${c}</option>`).join('');
+  const enLista = (depto.ciudades || []).includes(ciudadActual);
+  $('p-ciudad').classList.toggle('oculto', enLista);
+  if (!enLista && ciudadActual) sel.value = 'Otra';
+  sel.onchange = () => {
+    const otra = sel.value === 'Otra';
+    $('p-ciudad').classList.toggle('oculto', !otra);
+  };
 }
 
 function pintarNichos() {
@@ -1016,11 +1149,13 @@ async function guardarPerfil() {
         nombre_publico: $('p-nombre').value,
         bio_corta: $('p-bio').value,
         pais: $('p-pais').value,
-        ciudad: $('p-ciudad').value,
         whatsapp: $('p-whatsapp').value,
         instagram: $('p-ig').value,
         tiktok: $('p-tk').value,
-        seguidores: $('p-seguidores').disabled ? undefined : $('p-seguidores').value,
+        departamento: $('p-campo-depto').classList.contains('oculto') ? null : $('p-depto').value,
+        ciudad: ciudadPerfil(),
+        seguidores_instagram: $('p-seg-ig').disabled ? undefined : $('p-seg-ig').value,
+        seguidores_tiktok: $('p-seg-tk').disabled ? undefined : $('p-seg-tk').value,
       }),
     });
     if (NICHO_SEL.length) {

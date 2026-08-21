@@ -118,10 +118,32 @@ function rangoAlcance(alcance, rangos = []) {
   return rangos.length ? rangos[rangos.length - 1].clave : null;
 }
 
+/**
+ * Resume los seguidores de cada red en los campos que usa el catalogo.
+ *
+ * Existe para que la conversion de cifras a rangos ocurra en un solo lugar: el
+ * registro, la edicion de perfil, el panel admin y el importador la comparten.
+ */
+function resumirAlcance({ instagram, tiktok }, rangos = []) {
+  const ig = Math.max(0, Number(instagram) || 0);
+  const tk = Math.max(0, Number(tiktok) || 0);
+  const total = ig + tk;
+  return {
+    seguidores_instagram: ig || null,
+    seguidores_tiktok: tk || null,
+    alcance_total: total || null,
+    // Solo hay rango donde de verdad hay cuenta: si no tiene TikTok, la marca
+    // no deberia ver un rango que sugiera lo contrario.
+    rango_instagram: ig ? rangoAlcance(ig, rangos) : null,
+    rango_tiktok: tk ? rangoAlcance(tk, rangos) : null,
+    rango_alcance: total ? rangoAlcance(total, rangos) : null,
+  };
+}
+
 /** Formatea un valor en pesos para mostrar: 1250000 -> "$1.250.000" */
 function formatearCOP(valor) {
   const n = Math.round(Number(valor) || 0);
   return '$' + n.toLocaleString('es-CO');
 }
 
-module.exports = { calcularTrato, nivelPorTarifa, resumirTarifas, rangoAlcance, formatearCOP };
+module.exports = { calcularTrato, nivelPorTarifa, resumirTarifas, rangoAlcance, resumirAlcance, formatearCOP };

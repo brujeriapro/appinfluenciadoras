@@ -13,7 +13,7 @@ const crypto = require('crypto');
 const db = require('./db');
 const config = require('./config');
 const maquina = require('./tratos');
-const { rangoAlcance } = require('./comisiones');
+const { rangoAlcance, resumirAlcance } = require('./comisiones');
 const { subirMuestra, borrarMuestra } = require('./muestras');
 const notificaciones = require('./notificaciones');
 
@@ -238,7 +238,7 @@ router.get('/marcas', async (req, res) => {
 
 router.patch('/marcas/:id', async (req, res) => {
   try {
-    const permitidos = ['nombre_empresa', 'nombre_contacto', 'whatsapp', 'nit', 'pais', 'ciudad', 'sitio_web', 'estado', 'notas_admin'];
+    const permitidos = ['nombre_empresa', 'nombre_contacto', 'whatsapp', 'nit', 'pais', 'departamento', 'ciudad', 'sitio_web', 'estado', 'notas_admin'];
     const data = {};
     permitidos.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
     res.json(await db.updateMarca(req.params.id, data));
@@ -371,8 +371,8 @@ router.patch('/creadoras/:id', async (req, res) => {
     // propósito: son derivados de mk_tarifas, que llena la creadora. El admin
     // no le pone precio a nadie.
     const permitidos = [
-      'nombre_publico', 'whatsapp', 'pais', 'ciudad', 'nicho', 'categorias',
-      'alcance_total', 'rango_alcance', 'engagement_pct',
+      'nombre_publico', 'whatsapp', 'pais', 'departamento', 'ciudad', 'nicho', 'categorias',
+      'seguidores_instagram', 'seguidores_tiktok', 'engagement_pct',
       'es_bruja_embajadora', 'visible', 'bio_corta', 'notas_admin',
     ];
     const data = {};
@@ -380,9 +380,13 @@ router.patch('/creadoras/:id', async (req, res) => {
 
     const cfg = await db.getConfig();
 
-    // Si cambia el alcance, el rango visible se recalcula solo.
-    if (data.alcance_total !== undefined) {
-      data.rango_alcance = rangoAlcance(data.alcance_total, cfg.rangos_alcance || []);
+    // Si cambia el alcance de alguna red, los tres rangos se recalculan solos.
+    if (data.seguidores_instagram !== undefined || data.seguidores_tiktok !== undefined) {
+      const previa = await db.getCreadoraCompleta(req.params.id);
+      Object.assign(data, resumirAlcance({
+        instagram: data.seguidores_instagram ?? previa?.seguidores_instagram,
+        tiktok: data.seguidores_tiktok ?? previa?.seguidores_tiktok,
+      }, cfg.rangos_alcance || []));
     }
 
     // La categoría madre se deduce de los subnichos elegidos.

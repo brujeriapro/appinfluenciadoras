@@ -286,7 +286,7 @@ node index.js       # http://localhost:3040
 npm test            # 34 pruebas: comisiones, máquina de estados y tarifas
 ```
 
-Migraciones (a mano en el SQL Editor de Supabase, en orden): `mk_001_init.sql`, `mk_002_seed_config.sql`, `mk_003_nichos_y_tarifas.sql`, `mk_004_portal_creadora.sql`, `mk_005_registro_creadoras.sql`, `mk_006_perfil_creadora.sql`, `mk_007_paises.sql`. Además, crear el bucket privado `mk-muestras` en Storage.
+Migraciones (a mano en el SQL Editor de Supabase, en orden): `mk_001_init.sql`, `mk_002_seed_config.sql`, `mk_003_nichos_y_tarifas.sql`, `mk_004_portal_creadora.sql`, `mk_005_registro_creadoras.sql`, `mk_006_perfil_creadora.sql`, `mk_007_paises.sql`, `mk_008_seguidores_por_red.sql`, `mk_009_departamentos.sql`. Además, crear el bucket privado `mk-muestras` en Storage.
 
 ### Identidad visual
 

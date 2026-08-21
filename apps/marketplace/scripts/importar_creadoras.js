@@ -21,7 +21,7 @@
 //   node scripts/importar_creadoras.js             (escribe)
 
 const db = require('../db');
-const { rangoAlcance } = require('../comisiones');
+const { resumirAlcance } = require('../comisiones');
 
 const DRY_RUN = process.argv.includes('--dry-run');
 
@@ -55,7 +55,10 @@ async function main() {
       continue;
     }
 
-    const alcance = (inf.seguidores_instagram || 0) + (inf.seguidores_tiktok || 0);
+    const alcance = resumirAlcance(
+      { instagram: inf.seguidores_instagram, tiktok: inf.seguidores_tiktok },
+      rangos
+    );
     const contenidos = await db.contarContenidosDeInfluencer(inf.id);
 
     const datos = {
@@ -64,8 +67,7 @@ async function main() {
       email: String(inf.email).toLowerCase().trim(),
       whatsapp: inf.telefono || null,
       ciudad: inf.ciudad || null,
-      alcance_total: alcance || null,
-      rango_alcance: alcance ? rangoAlcance(alcance, rangos) : null,
+      ...alcance,
       colaboraciones_completadas: contenidos,
       es_bruja_embajadora: true,   // comisión 0% en sus primeros tratos
       visible: false,              // pendiente de curaduría
@@ -77,13 +79,17 @@ async function main() {
       // Idempotente: se refrescan las cifras, se respeta lo que el admin curó
       // a mano (nicho, tarifa, visibilidad, alias editado).
       const cambios = {
+        seguidores_instagram: datos.seguidores_instagram,
+        seguidores_tiktok: datos.seguidores_tiktok,
         alcance_total: datos.alcance_total,
         rango_alcance: datos.rango_alcance,
+        rango_instagram: datos.rango_instagram,
+        rango_tiktok: datos.rango_tiktok,
         colaboraciones_completadas: datos.colaboraciones_completadas,
         whatsapp: existente.whatsapp || datos.whatsapp,
         ciudad: existente.ciudad || datos.ciudad,
       };
-      console.log(`  ↻ ${datos.nombre_publico}: actualizada (${alcance.toLocaleString('es-CO')} seguidores, ${contenidos} piezas)`);
+      console.log(`  ↻ ${datos.nombre_publico}: actualizada (${(alcance.alcance_total || 0).toLocaleString('es-CO')} seguidores, ${contenidos} piezas)`);
       if (!DRY_RUN) await db.updateCreadora(existente.id, cambios);
       actualizadas++;
       continue;
@@ -96,7 +102,7 @@ async function main() {
       continue;
     }
 
-    console.log(`  + ${datos.nombre_publico}: nueva (${alcance.toLocaleString('es-CO')} seguidores, ${contenidos} piezas, rango ${datos.rango_alcance || 'sin definir'})`);
+    console.log(`  + ${datos.nombre_publico}: nueva (IG ${(alcance.seguidores_instagram || 0).toLocaleString('es-CO')} - TT ${(alcance.seguidores_tiktok || 0).toLocaleString('es-CO')}, ${contenidos} piezas)`);
     if (!DRY_RUN) await db.insertCreadora(datos);
     creadas++;
   }

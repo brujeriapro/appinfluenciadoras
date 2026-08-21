@@ -54,6 +54,8 @@ Se corren a mano en el SQL Editor de Supabase, en orden:
 5. `migrations/mk_005_registro_creadoras.sql` — registro abierto, datos privados y recuperación de clave
 6. `migrations/mk_006_perfil_creadora.sql` — perfil autogestionado y campos de verificación
 7. `migrations/mk_007_paises.sql` — país en creadoras y marcas
+8. `migrations/mk_008_seguidores_por_red.sql` — seguidores de Instagram y TikTok por separado
+9. `migrations/mk_009_departamentos.sql` — departamentos y ciudades de Colombia
 
 Además hay que crear el bucket **privado** `mk-muestras` en Supabase Storage.
 
@@ -137,6 +139,12 @@ verificas sus cuentas y apruebas
 ```
 
 Ella llena todo; el equipo solo verifica y aprueba. En cada punto su portal le dice qué le falta, con todas las letras. El registro se puede cerrar sin desplegar poniendo `registro_creadoras_abierto` en `false`, y el mínimo de seguidores se ajusta con `alcance_minimo_registro`.
+
+## Ubicación y alcance
+
+**Seguidores por red, no un total.** Una marca que quiere TikTok necesita saber si la audiencia está ahí o en Instagram: un total de 60.000 puede ser 58.000 en Instagram y 2.000 en TikTok. `alcance_total` pasa a ser derivado, y hay rango visible por red — pero solo donde de verdad hay cuenta.
+
+**En Colombia, departamento y ciudad son listas cerradas** (`mk_config.departamentos_co`). Escrito a mano, la misma ciudad llega como "Medellin", "medellin", "Medellín" y "Medellin, Antioquia", y el filtro del catálogo deja de servir. Fuera de Colombia el campo es libre: no hay listas confiables de los otros 19 países, y una incompleta sería peor. La opción "Otra" cubre los municipios que no están entre los principales.
 
 ## Países y moneda
 
