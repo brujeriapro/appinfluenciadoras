@@ -31,6 +31,15 @@ const config = {
     .map(c => c.trim().toUpperCase())
     .filter(Boolean),
 
+  // Wompi. Sin llaves, el sistema sigue cobrando por transferencia manual:
+  // es preferible eso a un checkout roto.
+  wompi: {
+    llave_publica:       process.env.WOMPI_LLAVE_PUBLICA || '',
+    llave_privada:       process.env.WOMPI_LLAVE_PRIVADA || '',
+    secreto_eventos:     process.env.WOMPI_SECRETO_EVENTOS || '',
+    secreto_integridad:  process.env.WOMPI_SECRETO_INTEGRIDAD || '',
+  },
+
   smtp: {
     user: process.env.MK_SMTP_USER || '',
     pass: process.env.MK_SMTP_PASS || '',
@@ -48,6 +57,15 @@ if (!config.admin.password) faltantes.push('MK_ADMIN_PASS');
 
 if (faltantes.length && !process.env.MK_SKIP_CONFIG_CHECK) {
   throw new Error(`Faltan variables de entorno obligatorias: ${faltantes.join(', ')}`);
+}
+
+// Llaves de Wompi a medias: peor que no tenerlas, porque el checkout arranca
+// y falla al confirmar.
+if (config.wompi.llave_publica && !config.wompi.secreto_integridad && !process.env.MK_SKIP_CONFIG_CHECK) {
+  console.warn('[config] Falta WOMPI_SECRETO_INTEGRIDAD: el checkout se va a rechazar.');
+}
+if (config.wompi.llave_publica && !config.wompi.secreto_eventos && !process.env.MK_SKIP_CONFIG_CHECK) {
+  console.warn('[config] Falta WOMPI_SECRETO_EVENTOS: no se van a poder confirmar los pagos.');
 }
 
 if (!config.codigos_invitacion.length && !process.env.MK_SKIP_CONFIG_CHECK) {

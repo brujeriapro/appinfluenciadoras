@@ -546,6 +546,61 @@ const getPagosDeTrato = (trato_id) =>
 const getTodosLosPagos = () =>
   get('mk_pagos', { select: '*', order: 'created_at.desc' });
 
+// ── Transacciones de Wompi ──────────────────────────────────────────────────
+
+const insertTransaccion = (data) => post('mk_transacciones', data);
+
+const getTransaccionPorReferencia = (referencia) =>
+  getUno('mk_transacciones', { referencia: `eq.${referencia}`, select: '*' });
+
+const getTransaccionesDeTrato = (trato_id) =>
+  get('mk_transacciones', { trato_id: `eq.${trato_id}`, select: '*', order: 'created_at.desc' });
+
+const actualizarTransaccion = (referencia, data) =>
+  patch('mk_transacciones', { referencia }, data);
+
+// ── Planes y límites ────────────────────────────────────────────────────────
+
+const getPlanes = () =>
+  get('mk_planes', { select: '*', activo: 'eq.true', order: 'orden.asc' });
+
+const getPlan = (clave) =>
+  getUno('mk_planes', { clave: `eq.${clave}`, select: '*' });
+
+/**
+ * Registra que una marca abrió una ficha y devuelve cuántas lleva este mes.
+ *
+ * Se cuentan fichas DISTINTAS, no visitas: la llave primaria de la tabla es
+ * (marca, creadora, mes), así que volver a abrir la misma no suma. Si sumara,
+ * la marca navegaría con miedo justo cuando está por contratar.
+ */
+async function registrarFichaVista(marca_id, creadora_id) {
+  const mes = new Date().toISOString().slice(0, 7);
+  const yaVista = await getUno('mk_fichas_vistas', {
+    marca_id: `eq.${marca_id}`, creadora_id: `eq.${creadora_id}`, mes: `eq.${mes}`, select: 'mes',
+  });
+  if (!yaVista) {
+    try {
+      await post('mk_fichas_vistas', { marca_id, creadora_id, mes });
+    } catch (e) {
+      // Carrera entre dos pestañas: la llave primaria ya la protege.
+      if (!/duplicate|23505/.test(e.message)) throw e;
+    }
+  }
+  const todas = await get('mk_fichas_vistas', {
+    marca_id: `eq.${marca_id}`, mes: `eq.${mes}`, select: 'creadora_id',
+  });
+  return { vistas: todas.length, yaVista: Boolean(yaVista) };
+}
+
+const contarFichasDelMes = async (marca_id) => {
+  const mes = new Date().toISOString().slice(0, 7);
+  const filas = await get('mk_fichas_vistas', {
+    marca_id: `eq.${marca_id}`, mes: `eq.${mes}`, select: 'creadora_id',
+  });
+  return filas.length;
+};
+
 // ── Entregas ────────────────────────────────────────────────────────────────
 
 const insertEntrega = (data) => post('mk_entregas', data);
@@ -602,5 +657,7 @@ module.exports = {
   insertEvento, getEventosDeTrato,
   insertPago, getPagosDeTrato, getTodosLosPagos,
   insertEntrega, getEntregasDeTrato, updateEntrega,
+  insertTransaccion, getTransaccionPorReferencia, getTransaccionesDeTrato, actualizarTransaccion,
+  getPlanes, getPlan, registrarFichaVista, contarFichasDelMes,
   getInfluencersElegibles, contarContenidosDeInfluencer,
 };

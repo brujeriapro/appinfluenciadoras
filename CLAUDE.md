@@ -286,7 +286,7 @@ node index.js       # http://localhost:3040
 npm test            # 34 pruebas: comisiones, máquina de estados y tarifas
 ```
 
-Migraciones (a mano en el SQL Editor de Supabase, en orden): `mk_001_init.sql`, `mk_002_seed_config.sql`, `mk_003_nichos_y_tarifas.sql`, `mk_004_portal_creadora.sql`, `mk_005_registro_creadoras.sql`, `mk_006_perfil_creadora.sql`, `mk_007_paises.sql`, `mk_008_seguidores_por_red.sql`, `mk_009_departamentos.sql`, `mk_010_panel_marca.sql`. Además, crear el bucket privado `mk-muestras` en Storage.
+Migraciones (a mano en el SQL Editor de Supabase, en orden): `mk_001_init.sql`, `mk_002_seed_config.sql`, `mk_003_nichos_y_tarifas.sql`, `mk_004_portal_creadora.sql`, `mk_005_registro_creadoras.sql`, `mk_006_perfil_creadora.sql`, `mk_007_paises.sql`, `mk_008_seguidores_por_red.sql`, `mk_009_departamentos.sql`, `mk_010_panel_marca.sql`, `mk_011_wompi_y_planes.sql`. Además, crear el bucket privado `mk-muestras` en Storage.
 
 ### Identidad visual
 
@@ -301,7 +301,9 @@ Brutalismo digital / Y2K editorial, definido en el handoff de Claude Design y co
 - ⚠️ Las métricas de alcance son **declaradas** por la creadora, no verificadas. Los campos para verificarlas vía Instagram existen (`fuente_metricas`) pero la conexión con Meta no está construida. Al hacerla: nunca embeber el feed —muestra el @usuario— y recordar que la API exige cuenta Business o Creator.
 - ⚠️ El portal promete plazos (72h para responder, 48h para aprobar, pago 48h después) que **hoy solo se muestran**: no hay cron que los ejecute. Ver README de la app.
 - El dominio (`creadores.app`) aún no está comprado: corre sobre la URL de Railway.
-- Sin marca de agua y sin pasarela de pagos en esta fase, por decisión de producto.
+- **Pagos con Wompi**: la marca paga el trato con tarjeta y el webhook confirma el escrow. Sin llaves configuradas, sigue el registro manual desde el panel.
+- **Planes de suscripción**: demo (3 fichas), Emprende $19.900 (10), Marca $99.900 (60), Agencia $199.900 (sin límite). Se limita abrir fichas, **nunca** enviar propuestas: cada propuesta deja comisión.
+- Sin marca de agua en esta fase, por decisión de producto.
 
 ---
 

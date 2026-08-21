@@ -203,6 +203,34 @@ router.get('/reputacion', async (req, res) => {
   }
 });
 
+/** Su plan, lo que lleva consumido y qué otros planes hay. */
+router.get('/plan', async (req, res) => {
+  try {
+    const [marca, planes, vistas, cfg] = await Promise.all([
+      db.getMarcaById(req.usuarioId),
+      db.getPlanes(),
+      db.contarFichasDelMes(req.usuarioId),
+      db.getConfig(),
+    ]);
+
+    const vigente = marca?.plan_vence_at && new Date(marca.plan_vence_at) > new Date();
+    const clave = vigente ? (marca.plan || 'demo') : 'demo';
+    const actual = planes.find(p => p.clave === clave) || null;
+
+    res.json({
+      activo: cfg.planes_activos === true,
+      plan: clave,
+      nombre: actual?.nombre || 'Demo',
+      vence_at: vigente ? marca.plan_vence_at : null,
+      fichas_vistas: vistas,
+      fichas_tope: actual?.fichas_mes ?? null,
+      planes,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Triage: preseleccionar y descartar ──────────────────────────────────────
 
 router.get('/triage', async (req, res) => {

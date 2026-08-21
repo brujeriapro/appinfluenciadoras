@@ -155,7 +155,7 @@ async function vistaTrato(c) {
   // Qué le toca hacer a ella ahora. Solo aparece cuando hay algo que hacer.
   const TOCA = {
     solicitado: { t: 'Esperando su respuesta', d: 'Te avisamos por correo apenas responda.' },
-    aceptado: { t: 'Confirma el pago', d: 'Escríbenos para coordinar la transferencia. Apenas quede retenido, se abren sus datos.' },
+    aceptado: { t: 'Falta tu pago', d: 'Paga con tarjeta y el dinero queda retenido al instante. Ahí se abren sus datos de contacto.', boton: 'Pagar ahora' },
     entregado: { t: 'Revisa el contenido', d: 'Aprueba la pieza para liberar el pago.', boton: 'Aprobar contenido' },
   }[t.estado];
 
@@ -246,14 +246,30 @@ async function vistaTrato(c) {
   $('volver-camp').addEventListener('click', () => ir('campanas'));
   $('accion-trato')?.addEventListener('click', async () => {
     const b = $('accion-trato');
-    b.disabled = true; b.textContent = 'APROBANDO…';
+    const original = b.textContent;
+    b.disabled = true;
+
+    // En "aceptado" el botón cobra; en "entregado" aprueba.
+    if (t.estado === 'aceptado') {
+      b.textContent = 'ABRIENDO PAGO…';
+      try {
+        const r = await apiPagos('/trato/' + t.id, { method: 'POST' });
+        location.href = r.url;
+      } catch (e) {
+        alert(e.message);
+        b.disabled = false; b.textContent = original;
+      }
+      return;
+    }
+
+    b.textContent = 'APROBANDO…';
     try {
       await api('/tratos/' + t.id + '/aprobar', { method: 'POST', body: '{}' });
       await cargarTratos();
       vistaTrato(c);
     } catch (e) {
       alert('No se pudo: ' + e.message);
-      b.disabled = false; b.textContent = 'Aprobar contenido';
+      b.disabled = false; b.textContent = original;
     }
   });
 }

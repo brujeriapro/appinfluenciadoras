@@ -15,6 +15,63 @@ const router = express.Router();
 
 router.use(marcaAuth);
 
+/**
+ * ¿Puede esta marca abrir esta ficha?
+ *
+ * Devuelve el estado del plan y registra la vista si procede. Una ficha ya
+ * abierta este mes no vuelve a contar: la llave de mk_fichas_vistas es
+ * (marca, creadora, mes).
+ */
+async function limiteDeFichas(marca_id, creadora_id) {
+  const cfg = await db.getConfig();
+
+  // Mientras los planes estén apagados, nadie tiene tope.
+  if (cfg.planes_activos !== true) {
+    return { bloqueada: false, plan: null, vistas: 0, tope: null };
+  }
+
+  const marca = await db.getMarcaById(marca_id);
+  // Un plan vencido vuelve a los límites del demo, sin quitarle la cuenta.
+  const vigente = marca?.plan_vence_at && new Date(marca.plan_vence_at) > new Date();
+  const clave = vigente ? (marca.plan || 'demo') : 'demo';
+  const plan = await db.getPlan(clave);
+  const tope = plan?.fichas_mes ?? null;
+
+  if (tope === null) {
+    await db.registrarFichaVista(marca_id, creadora_id);
+    return { bloqueada: false, plan: clave, vistas: null, tope: null };
+  }
+
+  const yaVista = await db.getUno('mk_fichas_vistas', {
+    marca_id: `eq.${marca_id}`,
+    creadora_id: `eq.${creadora_id}`,
+    mes: `eq.${new Date().toISOString().slice(0, 7)}`,
+    select: 'mes',
+  });
+
+  // Volver a una ficha ya abierta nunca se bloquea, aunque el cupo esté lleno.
+  if (yaVista) {
+    const vistas = await db.contarFichasDelMes(marca_id);
+    return { bloqueada: false, plan: clave, vistas, tope };
+  }
+
+  const vistas = await db.contarFichasDelMes(marca_id);
+  if (vistas >= tope) {
+    return {
+      bloqueada: true,
+      plan: clave,
+      vistas,
+      tope,
+      mensaje: clave === 'demo'
+        ? `Con el demo puedes abrir ${tope} fichas. Escoge un plan para seguir viendo el banco completo.`
+        : `Llegaste a las ${tope} fichas de tu plan este mes. Sube de plan para ver más.`,
+    };
+  }
+
+  const r = await db.registrarFichaVista(marca_id, creadora_id);
+  return { bloqueada: false, plan: clave, vistas: r.vistas, tope };
+}
+
 /** Valores disponibles para poblar los selectores de filtro. */
 router.get('/filtros', async (req, res) => {
   try {
@@ -73,11 +130,29 @@ router.get('/', async (req, res) => {
   }
 });
 
-/** Detalle de una creadora. */
+/**
+ * Detalle de una creadora.
+ *
+ * Abrir una ficha es lo que consume el plan: el catálogo se ve completo en
+ * todos, lo que se limita es entrar a ver las piezas y las tarifas. Así el
+ * demo no parece pobre —la marca ve que el banco es grande— y el muro aparece
+ * justo cuando ya entendió el valor.
+ */
 router.get('/:id', async (req, res) => {
   try {
     const creadora = await db.getCreadoraCatalogo(req.params.id);
     if (!creadora) return res.status(404).json({ error: 'Creadora no encontrada' });
+
+    const limite = await limiteDeFichas(req.usuarioId, req.params.id);
+    if (limite.bloqueada) {
+      return res.status(402).json({
+        error: limite.mensaje,
+        muro: true,
+        plan: limite.plan,
+        vistas: limite.vistas,
+        tope: limite.tope,
+      });
+    }
 
     const [muestras, tarifas] = await Promise.all([
       db.getMuestrasDeCreadora(creadora.id),
@@ -91,6 +166,9 @@ router.get('/:id', async (req, res) => {
       tarifas: tarifas
         .filter(t => t.activo !== false)
         .map(t => ({ entregable: t.entregable, precio: t.precio })),
+      plan: limite.plan,
+      fichas_vistas: limite.vistas,
+      fichas_tope: limite.tope,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

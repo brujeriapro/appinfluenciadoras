@@ -49,6 +49,12 @@ app.get('/terminos', async (req, res) => {
 
 // ── API con sesión ──────────────────────────────────────────────────────────
 
+// El webhook de Wompi es público a propósito: la pasarela no puede
+// autenticarse con nuestra sesión. Su seguridad es la firma del evento, que se
+// verifica en pagos.js antes de mover nada.
+app.post('/webhook/wompi', require('./pagos').manejarEvento);
+
+app.use('/api/pagos', require('./pagos'));
 app.use('/api/marcas', require('./marcas'));
 app.use('/api/creadoras', require('./creadoras'));
 app.use('/api/catalogo', require('./catalogo'));

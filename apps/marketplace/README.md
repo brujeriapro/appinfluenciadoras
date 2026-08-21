@@ -39,6 +39,10 @@ npm test               # 34 pruebas: comisiones, máquina de estados y tarifas
 | `MK_SMTP_USER` / `MK_SMTP_PASS` | no | Gmail del remitente. **No usar el de Brujería** |
 | `MK_SMTP_FROM` | no | Por defecto `Creadores.app <no-reply@creadores.app>` |
 | `MK_BUCKET_MUESTRAS` | no | Bucket privado de Storage, por defecto `mk-muestras` |
+| `WOMPI_LLAVE_PUBLICA` | no | Sin ella el escrow sigue siendo transferencia manual |
+| `WOMPI_LLAVE_PRIVADA` | no | Para confirmar transacciones contra la API |
+| `WOMPI_SECRETO_INTEGRIDAD` | no | Firma del checkout |
+| `WOMPI_SECRETO_EVENTOS` | no | Verificación del webhook |
 | `PORT` | no | Por defecto 3040 |
 
 El arranque **falla** si falta alguna de las obligatorias: es preferible no levantar a levantar con un secreto por defecto que permita forjar tokens.
@@ -57,6 +61,7 @@ Se corren a mano en el SQL Editor de Supabase, en orden:
 8. `migrations/mk_008_seguidores_por_red.sql` — seguidores de Instagram y TikTok por separado
 9. `migrations/mk_009_departamentos.sql` — departamentos y ciudades de Colombia
 10. `migrations/mk_010_panel_marca.sql` — código de creadora, triage, campañas y perfil de marca
+11. `migrations/mk_011_wompi_y_planes.sql` — pagos con Wompi, planes y límite de fichas
 
 Además hay que crear el bucket **privado** `mk-muestras` en Supabase Storage, con límite de 10 MB y estos tipos permitidos (sin espacios entre las comas):
 
@@ -159,6 +164,22 @@ verificas sus cuentas y apruebas
 ```
 
 Ella llena todo; el equipo solo verifica y aprueba. En cada punto su portal le dice qué le falta, con todas las letras. El registro se puede cerrar sin desplegar poniendo `registro_creadoras_abierto` en `false`, y el mínimo de seguidores se ajusta con `alcance_minimo_registro`.
+
+## Pagos y planes
+
+**El escrow por Wompi.** La marca paga el trato con tarjeta desde la línea de tiempo, el webhook confirma y el trato pasa solo a "pago retenido" — con eso se revela el contacto. Sin llaves de Wompi el sistema sigue funcionando con transferencia registrada a mano desde el panel; se enciende con `pagos_wompi_activos`.
+
+Tres cosas que hace el webhook antes de mover un peso, y ninguna sobra:
+
+1. **Verifica la firma del evento.** Es la única ruta pública que mueve dinero: sin esto, cualquiera manda un POST diciendo que un trato quedó pagado.
+2. **Vuelve a consultar la transacción en Wompi.** El mensaje dice el estado, pero antes de mover plata se le pregunta a la fuente.
+3. **Compara el monto con lo que la base dice que se debía cobrar.** Un monto que viaja por el navegador es un monto que se puede editar.
+
+**Los planes** (`planes_activos`): demo gratis con 3 fichas, Emprende $19.900 con 10, Marca $99.900 con 60, y Agencia $199.900 sin límite.
+
+Lo que se limita es **abrir fichas**, nunca enviar propuestas: cada propuesta deja comisión, así que limitarlas sería limitar el propio ingreso. Se cobra por buscar y se gana por cerrar. El catálogo se ve completo en todos los planes —cuántas creadoras hay, sus nichos y rangos—; el muro aparece al abrir la ficha, que es donde están las piezas y las tarifas. Así el demo no parece pobre y el muro llega cuando la marca ya entendió el valor.
+
+Una ficha ya abierta este mes no vuelve a consumir cupo: si contara cada visita, la marca navegaría con miedo justo cuando está por contratar.
 
 ## Ubicación y alcance
 

@@ -322,8 +322,25 @@ async function apiCatalogo(query = '') {
   const res = await fetch('/api/catalogo' + query, {
     headers: { 'Authorization': 'Bearer ' + TOKEN },
   });
+  // 402 es el muro de suscripción: no es un error, es una decisión de producto.
+  if (res.status === 402) {
+    const d = await res.json();
+    const e = new Error(d.error);
+    e.muro = d;
+    throw e;
+  }
   if (!res.ok) throw new Error('No pudimos cargar el catálogo');
   return res.json();
+}
+
+async function apiPagos(ruta, opciones = {}) {
+  const res = await fetch('/api/pagos' + ruta, {
+    ...opciones,
+    headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+  });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(d.error || 'Error');
+  return d;
 }
 
 // ── Estado ──────────────────────────────────────────────────────────────────
@@ -335,6 +352,7 @@ const E = {
   filtros: { nicho: '', ciudad: '', rango_alcance: '', entregable: '', presupuesto: null },
   cfg: null,
   catalogo: [],
+  plan: null,
   triage: { preseleccionadas: [], descartadas: [] },
   campanas: [],
   tratos: [],
@@ -504,6 +522,8 @@ async function arrancar() {
     E.cfg = cfg;
     E.triage = triage;
     E.campanas = campanas;
+    E.plan = await api('/plan').catch(() => null);
+    pintarPlan();
 
     $('nombre-marca').textContent = marca.nombre_empresa || '—';
     $('sub-marca').textContent = [marca.ciudad, marca.pais].filter(Boolean).join(' · ');
@@ -516,6 +536,101 @@ async function arrancar() {
     E.error = e.message;
     render();
   }
+}
+
+/** El consumo del plan va en la cabecera: se ve sin tener que buscarlo. */
+function pintarPlan() {
+  if (!E.plan || !E.plan.activo) return;
+  const sub = $('sub-marca');
+  const tope = E.plan.fichas_tope;
+  sub.textContent = tope === null
+    ? `${E.plan.nombre} · fichas sin límite`
+    : `${E.plan.nombre} · ${E.plan.fichas_vistas}/${tope} fichas`;
+}
+
+/**
+ * Muro de suscripción.
+ *
+ * Aparece cuando se acaban las fichas del plan, que es justo cuando la marca
+ * ya entendió el valor: vio el catálogo completo y abrió las que le cupieron.
+ */
+function mostrarMuro(info) {
+  const planes = (E.plan?.planes || []).filter(p => Number(p.precio_mes) > 0);
+  $('modal-hueco').innerHTML = `
+    <div class="modal" style="max-width:640px">
+      <div class="modal__cab">
+        <div>
+          <h2 class="h-sec" style="font-size:15px">Se acabaron tus fichas de este mes</h2>
+          <div class="etiqueta" style="margin-top:6px">
+            Llevas ${info.vistas} de ${info.tope} con el plan ${esc(info.plan)}
+          </div>
+        </div>
+        <button class="cerrar" id="cerrar-muro" aria-label="Cerrar">×</button>
+      </div>
+      <div style="padding:20px">
+        <p class="p" style="margin-bottom:18px">
+          El catálogo lo sigues viendo completo. Lo que se acabó es abrir fichas nuevas:
+          las que ya abriste este mes las puedes volver a consultar sin gastar cupo.
+        </p>
+        <div class="grilla" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+          ${planes.map(p => `
+            <div class="tarjeta"><div class="tarjeta__cuerpo">
+              <div class="alias" style="font-size:13px">${esc(p.nombre)}</div>
+              <div class="dato-num" style="font-size:22px;margin:10px 0 4px">${COP(p.precio_mes)}</div>
+              <div class="etiqueta">al mes</div>
+              <div class="p" style="font-size:11.5px;margin-top:10px">
+                ${p.fichas_mes === null ? 'Fichas sin límite' : p.fichas_mes + ' fichas al mes'}<br>
+                Propuestas ilimitadas
+              </div>
+              <button class="btn" style="width:100%;margin-top:12px" data-plan="${p.clave}">
+                Elegir
+              </button>
+            </div></div>`).join('')}
+        </div>
+        <p class="p" style="font-size:11px;margin-top:16px">
+          La comisión del ${E.cfg.comision_marca_pct ?? 12}% por trato cerrado es la misma en
+          todos los planes: la suscripción paga el acceso al catálogo.
+        </p>
+        <div class="oculto" id="muro-error" style="color:var(--magenta);font-size:11.5px;margin-top:10px"></div>
+      </div>
+    </div>`;
+  $('telon').classList.add('abierto');
+  $('cerrar-muro').addEventListener('click', cerrarModal);
+
+  document.querySelectorAll('[data-plan]').forEach(b => {
+    b.addEventListener('click', async () => {
+      b.disabled = true;
+      b.textContent = 'ABRIENDO PAGO…';
+      try {
+        const r = await apiPagos('/plan/' + b.dataset.plan, { method: 'POST' });
+        location.href = r.url;
+      } catch (e) {
+        const err = $('muro-error');
+        err.textContent = e.message;
+        err.classList.remove('oculto');
+        b.disabled = false;
+        b.textContent = 'Elegir';
+      }
+    });
+  });
+}
+
+// Al volver del checkout, Wompi nos devuelve con la referencia en el ancla.
+// El webhook es quien confirma; esto solo le dice a la marca cómo va.
+async function revisarPagoDeVuelta() {
+  const m = location.hash.match(/#pago=([\w-]+)/);
+  if (!m) return;
+  history.replaceState(null, '', location.pathname);
+  try {
+    const r = await apiPagos('/estado/' + m[1]);
+    if (r.estado === 'aprobada') {
+      alert('Pago confirmado. El dinero quedó retenido y ya puedes ver sus datos de contacto.');
+    } else if (r.estado === 'pendiente') {
+      alert('Estamos confirmando tu pago con el banco. Te avisamos por correo apenas quede listo.');
+    } else {
+      alert('El pago no se completó (' + r.estado + '). Puedes intentarlo de nuevo desde el trato.');
+    }
+  } catch (e) { /* si falla la consulta, el webhook igual va a confirmar */ }
 }
 
 async function cargarTratos() {
@@ -822,7 +937,7 @@ function pintarVacio(c) {
 <script src="/js/panel-ficha.js"></script>
 <script src="/js/panel-campanas.js"></script>
 <script>
-  arrancar();
+  arrancar().then(revisarPagoDeVuelta);
 </script>
 </body>
 </html>

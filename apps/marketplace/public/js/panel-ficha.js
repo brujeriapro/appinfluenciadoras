@@ -14,9 +14,26 @@ async function vistaFicha(c) {
     const res = await fetch('/api/catalogo/' + E.fichaId, {
       headers: { 'Authorization': 'Bearer ' + TOKEN },
     });
+    if (res.status === 402) {
+      const d = await res.json();
+      const err = new Error(d.error);
+      err.muro = d;
+      throw err;
+    }
     if (!res.ok) throw new Error('No pudimos cargar esa ficha');
     FICHA = await res.json();
+    // El consumo pudo cambiar al abrir esta ficha.
+    if (FICHA.fichas_tope != null && E.plan) {
+      E.plan.fichas_vistas = FICHA.fichas_vistas;
+      pintarPlan();
+    }
   } catch (e) {
+    // El muro no es un error: la marca llegó al tope de su plan.
+    if (e.muro) {
+      ir('catalogo');
+      mostrarMuro(e.muro);
+      return;
+    }
     c.innerHTML = `<div class="estado estado--error">
       <div class="estado__cuadro">!</div>
       <div class="estado__titulo">No pudimos abrir la ficha</div>
