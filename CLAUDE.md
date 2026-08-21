@@ -303,7 +303,7 @@ Brutalismo digital / Y2K editorial, definido en el handoff de Claude Design y co
 - El dominio (`creadores.app`) aún no está comprado: corre sobre la URL de Railway.
 - **Pagos con Wompi**: la marca paga el trato con tarjeta y el webhook confirma el escrow. Sin llaves configuradas, sigue el registro manual desde el panel.
 - **Planes de suscripción**: demo (3 fichas), Emprende $19.900 (10), Marca $99.900 (60), Agencia $199.900 (sin límite). Se limita abrir fichas, **nunca** enviar propuestas: cada propuesta deja comisión.
-- **El registro de marcas es abierto**: no hace falta código de invitación. Lo que sostiene la calidad del banco es el plan — quien entra ve 3 fichas y para ver más tiene que poner tarjeta. El código sigue en el código y se reactiva apagando `registro_marcas_abierto` en `mk_config`, sin desplegar nada.
+- **El registro de marcas es abierto y mínimo**: cuatro campos — marca, teléfono, correo y clave. Ni código de invitación, ni NIT, ni ciudad, ni persona de contacto: eso se pide en el perfil del panel, cuando ya hay cuenta que perder. Lo que sostiene la calidad del banco es el plan — quien entra ve 3 fichas y para ver más tiene que poner tarjeta. El código sigue existiendo y se reactiva apagando `registro_marcas_abierto` en `mk_config`, sin desplegar nada.
 - Sin marca de agua en esta fase, por decisión de producto.
 
 ---

@@ -63,7 +63,7 @@ Se corren a mano en el SQL Editor de Supabase, en orden:
 10. `migrations/mk_010_panel_marca.sql` — código de creadora, triage, campañas y perfil de marca
 11. `migrations/mk_011_wompi_y_planes.sql` — pagos con Wompi, planes y límite de fichas
 12. `migrations/mk_012_foto_perfil.sql` — foto de perfil de la creadora
-13. `migrations/mk_013_registro_marcas_abierto.sql` — el registro de marcas deja de exigir código
+13. `migrations/mk_013_registro_marcas_abierto.sql` — registro de marcas sin código y con solo cuatro campos
 
 Además hay que crear el bucket **privado** `mk-muestras` en Supabase Storage, con límite de 10 MB y estos tipos permitidos (sin espacios entre las comas):
 

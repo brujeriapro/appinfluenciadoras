@@ -22,7 +22,10 @@ router.post('/registro', rateLimit({ max: 5 }), async (req, res) => {
       password, codigo_invitacion, nit, pais, departamento, ciudad, sitio_web, acepta_terminos,
     } = req.body;
 
-    if (!nombre_empresa || !nombre_contacto || !email || !password) {
+    // Solo cuatro campos. NIT, ciudad y persona de contacto se piden en el
+    // perfil, cuando ya hay una cuenta que perder: cada campo de más en el
+    // registro es gente que no termina de registrarse.
+    if (!nombre_empresa || !email || !password) {
       return res.status(400).json({ error: 'Faltan datos obligatorios' });
     }
     if (String(password).length < 8) {
@@ -56,7 +59,7 @@ router.post('/registro', rateLimit({ max: 5 }), async (req, res) => {
 
     const marca = await db.insertMarca({
       nombre_empresa,
-      nombre_contacto,
+      nombre_contacto: nombre_contacto || null,
       email: emailNorm,
       password_hash: await bcrypt.hash(String(password), 10),
       whatsapp: whatsapp || null,

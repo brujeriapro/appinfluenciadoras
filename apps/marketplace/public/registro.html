@@ -121,41 +121,22 @@
         <p class="subtitulo" id="subtitulo">Acceso para marcas</p>
 
         <div id="campos-registro">
-          <div class="fila-2">
-            <div class="campo">
-              <label for="empresa">Nombre de tu marca</label>
-              <input id="empresa" placeholder="Cosmética Andina">
-            </div>
-            <div class="campo">
-              <label for="contacto">¿Con quién hablamos?</label>
-              <input id="contacto" placeholder="Nombre y apellido">
-            </div>
+          <!-- Cuatro campos y ya. El NIT, la ciudad y la persona de contacto se
+               piden en el perfil, cuando la marca ya está adentro: cada campo
+               de más aquí es gente que abandona el formulario. -->
+          <div class="campo">
+            <label for="empresa">Nombre de tu marca</label>
+            <input id="empresa" placeholder="Cosmética Andina">
           </div>
 
           <div class="fila-2">
             <div class="campo">
-              <label for="nit">NIT</label>
-              <input id="nit" placeholder="900123456-7">
-            </div>
-            <div class="campo">
-              <label for="whatsapp">WhatsApp</label>
+              <label for="whatsapp">Teléfono</label>
               <input id="whatsapp" inputmode="tel" placeholder="300 000 0000">
             </div>
-          </div>
-
-          <div class="fila-2">
             <div class="campo">
               <label for="pais">País</label>
               <select id="pais"></select>
-            </div>
-            <div class="campo oculto" id="campo-depto">
-              <label for="departamento">Departamento</label>
-              <select id="departamento"></select>
-            </div>
-            <div class="campo">
-              <label for="ciudad-sel">Ciudad</label>
-              <select id="ciudad-sel"></select>
-              <input id="ciudad" placeholder="Ciudad">
             </div>
           </div>
 
@@ -242,7 +223,7 @@
 
 let TOKEN = sessionStorage.getItem('mk_marca') || null;
 let modo = 'registro';
-let PAISES = [], DEPTOS_CO = [];
+let PAISES = [];
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -298,40 +279,6 @@ if (location.hash.startsWith('#recuperar=')) {
 
 // ── Ubicación ───────────────────────────────────────────────────────────────
 
-function ciudadElegida() {
-  const sel = $('ciudad-sel');
-  if (sel && !sel.classList.contains('oculto') && sel.value && sel.value !== 'Otra') return sel.value;
-  return $('ciudad').value;
-}
-
-function pintarUbicacion() {
-  const esCO = $('pais').value === 'CO';
-  $('campo-depto').classList.toggle('oculto', !esCO);
-  $('ciudad-sel').classList.toggle('oculto', !esCO);
-  $('ciudad').classList.toggle('oculto', esCO);
-  if (!esCO) return;
-
-  if (!$('departamento').options.length) {
-    $('departamento').innerHTML = '<option value="">Elige el departamento</option>' +
-      DEPTOS_CO.map(d => `<option value="${esc(d.nombre)}">${esc(d.nombre)}</option>`).join('');
-  }
-  pintarCiudades();
-}
-
-function pintarCiudades() {
-  const depto = DEPTOS_CO.find(d => d.nombre === $('departamento').value);
-  const sel = $('ciudad-sel');
-  if (!depto) {
-    sel.innerHTML = '<option value="">Elige primero el departamento</option>';
-    sel.disabled = true;
-    return;
-  }
-  sel.disabled = false;
-  sel.innerHTML = (depto.ciudades || []).map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
-  sel.onchange = () => $('ciudad').classList.toggle('oculto', sel.value !== 'Otra');
-  $('ciudad').classList.add('oculto');
-}
-
 // Si el registro está abierto, el campo de código ni se muestra. Sigue en el
 // HTML porque el interruptor se puede cerrar sin desplegar.
 fetch('/api/marcas/registro-abierto')
@@ -343,11 +290,7 @@ fetch('/api/creadoras/paises')
   .then(r => r.json())
   .then(d => {
     PAISES = d.paises || [];
-    DEPTOS_CO = d.departamentos_co || [];
     $('pais').innerHTML = PAISES.map(p => `<option value="${p.codigo}">${esc(p.nombre)}</option>`).join('');
-    $('pais').addEventListener('change', pintarUbicacion);
-    $('departamento').addEventListener('change', pintarCiudades);
-    pintarUbicacion();
   })
   .catch(() => {});
 
@@ -367,14 +310,10 @@ $('formulario').addEventListener('submit', async (e) => {
       if (!$('acepta').checked) throw new Error('Necesitas aceptar los términos');
       const r = await publico('/registro', {
         nombre_empresa: $('empresa').value,
-        nombre_contacto: $('contacto').value,
         email: $('email').value,
         password: $('clave').value,
         whatsapp: $('whatsapp').value,
-        nit: $('nit').value,
         pais: $('pais').value,
-        departamento: $('campo-depto').classList.contains('oculto') ? null : $('departamento').value,
-        ciudad: ciudadElegida(),
         codigo_invitacion: $('codigo').value,
         acepta_terminos: true,
       });

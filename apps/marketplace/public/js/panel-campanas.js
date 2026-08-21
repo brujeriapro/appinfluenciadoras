@@ -522,6 +522,12 @@ async function vistaPerfil(c) {
             <div class="campo"><label>Ciudad base</label>
               <input id="m-ciudad" value="${esc(m.ciudad || '')}"></div>
           </div>
+          <div class="campos-2">
+            <div class="campo"><label>¿Con quién hablamos?</label>
+              <input id="m-persona" value="${esc(m.nombre_contacto || '')}" placeholder="Nombre y apellido"></div>
+            <div class="campo"><label>NIT</label>
+              <input id="m-nit" value="${esc(m.nit || '')}" placeholder="900123456-7"></div>
+          </div>
         </div>
       </div>
 
@@ -623,6 +629,8 @@ async function vistaPerfil(c) {
           bio: $('m-bio').value,
           categoria: $('m-categoria').value,
           ciudad: $('m-ciudad').value,
+          nombre_contacto: $('m-persona').value,
+          nit: $('m-nit').value,
           instagram: $('m-ig').value,
           tiktok: $('m-tk').value,
           que_espera: $('m-espera').value,
