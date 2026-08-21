@@ -125,6 +125,15 @@ async function subirMuestra(creadora_id, { archivo_base64, mime, titulo, origen_
     if (/size|large|exceed/i.test(mensaje)) {
       throw new ErrorMuestra('El archivo supera el límite del bucket.', 413);
     }
+    // Storage exige la llave service_role clásica, en formato JWT. Con la nueva
+    // (sb_secret_...) la base de datos funciona y solo fallan las subidas.
+    if (/jws|jwt|invalid.*token|signature/i.test(mensaje)) {
+      throw new ErrorMuestra(
+        'Storage rechazó las credenciales. Revisa que SUPABASE_SERVICE_ROLE_KEY ' +
+        'sea la llave clásica (empieza por "eyJ"), no la nueva sb_secret_.',
+        502
+      );
+    }
     throw new ErrorMuestra(`Storage rechazó el archivo (${subida.status}): ${mensaje}`, 502);
   }
 

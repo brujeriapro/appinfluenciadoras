@@ -54,4 +54,18 @@ if (!config.codigos_invitacion.length && !process.env.MK_SKIP_CONFIG_CHECK) {
   console.warn('[config] MK_CODIGOS_INVITACION vacío — ninguna marca podrá registrarse.');
 }
 
+// Supabase ofrece dos formatos de llave. Las nuevas (sb_secret_...) sirven para
+// la base de datos, pero Storage todavía exige la clásica, que es un JWT y
+// empieza por "eyJ". Con la nueva, todo funciona hasta que alguien intenta
+// subir una foto y recibe un "Invalid Compact JWS" sin contexto.
+const llave = String(config.supabase.service_role_key || '');
+if (llave && !llave.startsWith('eyJ') && !process.env.MK_SKIP_CONFIG_CHECK) {
+  console.warn(
+    '[config] SUPABASE_SERVICE_ROLE_KEY no parece un JWT (no empieza por "eyJ").\n' +
+    '         La base de datos va a funcionar, pero Storage va a rechazar cada\n' +
+    '         subida de archivos. Usa la llave service_role clásica (legacy),\n' +
+    '         que está en Supabase → Settings → API Keys.'
+  );
+}
+
 module.exports = config;
