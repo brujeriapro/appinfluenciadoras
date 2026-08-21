@@ -76,7 +76,34 @@ async function subirMuestra(creadora_id, { archivo_base64, mime, titulo, origen_
     body: buffer,
   });
   if (!subida.ok) {
-    throw new ErrorMuestra(`No se pudo guardar el archivo: ${subida.status}`, 502);
+    // Storage responde con un JSON que dice qué falló. Tragárselo y devolver
+    // solo el número deja a quien depura adivinando entre "no existe el
+    // bucket", "ese tipo no está permitido" y "pesa demasiado".
+    const detalle = await subida.text().catch(() => '');
+    console.error(`[muestras] Storage ${subida.status}: ${detalle}`);
+
+    let mensaje = detalle;
+    try {
+      const j = JSON.parse(detalle);
+      mensaje = j.message || j.error || detalle;
+    } catch (e) { /* no era JSON: se usa el texto crudo */ }
+
+    if (subida.status === 404 || /not found/i.test(mensaje)) {
+      throw new ErrorMuestra(
+        `No existe el bucket "${config.supabase.bucket_muestras}" en Supabase Storage. Hay que crearlo.`,
+        502
+      );
+    }
+    if (/mime|content.?type/i.test(mensaje)) {
+      throw new ErrorMuestra(
+        `El bucket no acepta archivos ${tipoMime}. Revisa los tipos permitidos en Supabase Storage.`,
+        400
+      );
+    }
+    if (/size|large|exceed/i.test(mensaje)) {
+      throw new ErrorMuestra('El archivo supera el límite del bucket.', 413);
+    }
+    throw new ErrorMuestra(`Storage rechazó el archivo (${subida.status}): ${mensaje}`, 502);
   }
 
   return db.insertMuestra({
