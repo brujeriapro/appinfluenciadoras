@@ -53,6 +53,7 @@ Se corren a mano en el SQL Editor de Supabase, en orden:
 4. `migrations/mk_004_portal_creadora.sql` — entregables con subtítulo, producto/exclusividad y plazos
 5. `migrations/mk_005_registro_creadoras.sql` — registro abierto, datos privados y recuperación de clave
 6. `migrations/mk_006_perfil_creadora.sql` — perfil autogestionado y campos de verificación
+7. `migrations/mk_007_paises.sql` — país en creadoras y marcas
 
 Además hay que crear el bucket **privado** `mk-muestras` en Supabase Storage.
 
@@ -136,6 +137,16 @@ verificas sus cuentas y apruebas
 ```
 
 Ella llena todo; el equipo solo verifica y aprueba. En cada punto su portal le dice qué le falta, con todas las letras. El registro se puede cerrar sin desplegar poniendo `registro_creadoras_abierto` en `false`, y el mínimo de seguidores se ajusta con `alcance_minimo_registro`.
+
+## Países y moneda
+
+Las creadoras eligen su país al registrarse (20 opciones: Latinoamérica hispanohablante, España y Estados Unidos), y la marca puede filtrar el catálogo por país. La lista vive en `mk_config.paises`, así que abrir otro país no exige tocar código.
+
+**Pero la moneda es COP para todo el mundo.** El deslizador de tarifas va de $50.000 a $8.000.000 pesos colombianos, la comisión se calcula en pesos y el escrow es transferencia local. Una creadora en México publica su tarifa en COP y se le paga en COP.
+
+Eso está dicho explícitamente en la interfaz (`moneda_unica`), y no es un detalle cosmético: sin esa aclaración, alguien en México pone "500.000" pensando en pesos mexicanos y termina en un reclamo por una diferencia de 20 a 1.
+
+Multi-moneda de verdad exige conversión, pagos internacionales y repensar el escrow. Es un proyecto aparte, no una columna más.
 
 ## Métricas declaradas y verificadas
 

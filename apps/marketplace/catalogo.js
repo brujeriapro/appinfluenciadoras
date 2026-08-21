@@ -23,6 +23,7 @@ router.get('/filtros', async (req, res) => {
       // Taxonomía de dos niveles: la marca filtra por categoría (amplio) o
       // afina por subnicho.
       categorias: cfg.nichos || [],
+      paises: cfg.paises || [],
       entregables: cfg.entregables || [],
       rangos_alcance: (cfg.rangos_alcance || []).map(r => r.clave),
       niveles_tarifa: Object.entries(cfg.niveles_tarifa || {}).map(([clave, n]) => ({
@@ -40,9 +41,9 @@ router.get('/filtros', async (req, res) => {
 /** Listado con filtros. */
 router.get('/', async (req, res) => {
   try {
-    const { categoria, nicho, rango_alcance, nivel_tarifa, ciudad, presupuesto_max, entregable } = req.query;
+    const { categoria, nicho, rango_alcance, nivel_tarifa, pais, ciudad, presupuesto_max, entregable } = req.query;
     let creadoras = await db.getCatalogo({
-      categoria, nicho, rango_alcance, nivel_tarifa, ciudad, presupuesto_max,
+      categoria, nicho, rango_alcance, nivel_tarifa, pais, ciudad, presupuesto_max,
     });
 
     const ids = creadoras.map(c => c.id);

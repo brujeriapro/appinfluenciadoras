@@ -292,11 +292,11 @@
   .campo-p { margin-bottom: 14px; }
   .campo-p label { display: block; font-size: 9.5px; letter-spacing: 1.2px;
                    text-transform: uppercase; color: var(--text-5); margin-bottom: 6px; }
-  .campo-p input, .campo-p textarea {
+  .campo-p input, .campo-p textarea, .campo-p select {
     width: 100%; background: var(--surface-2); border: 2px solid var(--border-input);
     color: var(--off-white); font-family: var(--mono-body); font-size: 12.5px; padding: 11px 12px;
   }
-  .campo-p input:focus, .campo-p textarea:focus { outline: none; border-color: var(--lime); }
+  .campo-p input:focus, .campo-p textarea:focus, .campo-p select:focus { outline: none; border-color: var(--lime); }
   .campos-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
 
   .grupo-nicho { margin-bottom: 14px; }
@@ -365,9 +365,9 @@
   .campo { margin-bottom: 14px; }
   .campo label { display: block; font-size: 9.5px; letter-spacing: 1.2px;
                  text-transform: uppercase; color: var(--text-5); margin-bottom: 6px; }
-  .campo input { width: 100%; background: var(--surface-2); border: 2px solid var(--border-input);
+  .campo input, .campo select { width: 100%; background: var(--surface-2); border: 2px solid var(--border-input);
                  color: var(--off-white); font-family: var(--mono-body); font-size: 12.5px; padding: 11px 12px; }
-  .campo input:focus { outline: none; border-color: var(--lime); }
+  .campo input:focus, .campo select:focus { outline: none; border-color: var(--lime); }
   .error { color: var(--magenta); font-size: 11.5px; margin-top: 10px; }
   .cambiar-modo { background: none; border: none; color: var(--text-5); font-size: 10.5px;
                   text-decoration: underline; cursor: pointer; margin-top: 14px; padding: 0;
@@ -469,6 +469,10 @@
       <div class="campo">
         <label for="seguidores">¿Cuántos seguidores tienes en total?</label>
         <input id="seguidores" type="number" inputmode="numeric" placeholder="48000">
+      </div>
+      <div class="campo">
+        <label for="pais">Tu país</label>
+        <select id="pais"></select>
       </div>
       <div class="campo">
         <label for="ciudad">Tu ciudad</label>
@@ -618,6 +622,21 @@ document.querySelectorAll('.enlaces-login .cambiar-modo').forEach(b => {
   });
 });
 
+// La lista de países vive en la configuración del servidor: si mañana se abre
+// otro país, no hay que tocar este archivo.
+let PAISES = [];
+fetch('/api/creadoras/paises')
+  .then(r => r.json())
+  .then(d => {
+    PAISES = d.paises || [];
+    const sel = $('pais');
+    if (sel) {
+      sel.innerHTML = PAISES.map(p =>
+        `<option value="${p.codigo}">${p.nombre}</option>`).join('');
+    }
+  })
+  .catch(() => {});
+
 // El correo de recuperación trae el token en el ancla de la URL.
 let tokenReset = null;
 if (location.hash.startsWith('#recuperar=')) {
@@ -644,6 +663,7 @@ $('login-form').addEventListener('submit', async (e) => {
         email: $('email').value,
         password: $('clave').value,
         whatsapp: $('whatsapp').value,
+        pais: $('pais').value,
         ciudad: $('ciudad').value,
         instagram: $('instagram').value,
         tiktok: $('tiktok').value,
@@ -693,6 +713,9 @@ const netoDe = (monto, pct) => Math.round(monto) - Math.round(monto * pct / 100)
 let COMISION = 8;
 let RANGO = { min: 50000, max: 8000000, paso: 10000 };
 let HORAS_PAGO = 48;
+// Todas las tarifas van en COP sin importar el país de la creadora. Mientras
+// esto sea así, la interfaz tiene que decirlo en cada pantalla de plata.
+let MONEDA_UNICA = true;
 
 // Estados del backend traducidos al vocabulario del portal.
 const PILL = {
@@ -812,6 +835,13 @@ async function vistaPerfil() {
         <textarea id="p-bio" rows="2" maxlength="240" placeholder="Rutinas de rizos sin frizz">${esc(perfil.bio_corta || '')}</textarea>
       </div>
       <div class="campos-2">
+        <div class="campo-p"><label>País</label>
+          <select id="p-pais">
+            ${(nichos.paises || []).map(pa =>
+              `<option value="${pa.codigo}" ${(perfil.pais || 'CO') === pa.codigo ? 'selected' : ''}>${esc(pa.nombre)}</option>`
+            ).join('')}
+          </select>
+        </div>
         <div class="campo-p"><label>Ciudad</label><input id="p-ciudad" value="${esc(perfil.ciudad || '')}"></div>
         <div class="campo-p"><label>WhatsApp</label><input id="p-whatsapp" value="${esc(perfil.whatsapp || '')}"></div>
       </div>
@@ -985,6 +1015,7 @@ async function guardarPerfil() {
       body: JSON.stringify({
         nombre_publico: $('p-nombre').value,
         bio_corta: $('p-bio').value,
+        pais: $('p-pais').value,
         ciudad: $('p-ciudad').value,
         whatsapp: $('p-whatsapp').value,
         instagram: $('p-ig').value,
@@ -1021,6 +1052,7 @@ async function vistaTarifas() {
   COMISION = d.comision_creadora_pct ?? 8;
   RANGO = d.rango || RANGO;
   HORAS_PAGO = d.horas_pago_tras_aprobar ?? 48;
+  MONEDA_UNICA = d.moneda_unica !== false;
 
   const guardadas = new Map((d.tarifas || []).map(t => [t.entregable, t]));
   ITEMS = (d.entregables || []).map(e => {
@@ -1042,6 +1074,7 @@ async function vistaTarifas() {
       <span class="chip-info chip-info--lime" id="chip-activos"></span>
       <span class="chip-info">Rango ${COP(RANGO.min)} – ${COP(RANGO.max)}</span>
       <span class="chip-info">El neto ya descuenta la comisión</span>
+      ${MONEDA_UNICA ? '<span class="chip-info">Todo en pesos colombianos (COP)</span>' : ''}
     </div>
 
     <div class="tabla-tarifas">

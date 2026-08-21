@@ -28,7 +28,7 @@ const router = express.Router();
 router.post('/registro', rateLimit({ windowMs: 600_000, max: 5 }), async (req, res) => {
   try {
     const {
-      nombre_publico, nombre_real, email, password, whatsapp, ciudad,
+      nombre_publico, nombre_real, email, password, whatsapp, pais, ciudad,
       instagram, tiktok, seguidores, acepta_terminos,
     } = req.body;
 
@@ -78,6 +78,7 @@ router.post('/registro', rateLimit({ windowMs: 600_000, max: 5 }), async (req, r
       email: emailNorm,
       password_hash: await bcrypt.hash(String(password), 10),
       whatsapp: whatsapp || null,
+      pais: (pais || 'CO').toUpperCase(),
       ciudad: ciudad || null,
       alcance_total: alcance,
       rango_alcance: rangoAlcance(alcance, cfg.rangos_alcance || []),
@@ -104,6 +105,26 @@ router.post('/registro', rateLimit({ windowMs: 600_000, max: 5 }), async (req, r
   } catch (e) {
     console.error('[creadoras/registro]', e.message);
     res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Países disponibles. Público, porque el formulario de registro lo necesita
+ * antes de que exista una sesión.
+ */
+router.get('/paises', async (req, res) => {
+  try {
+    const cfg = await db.getConfig();
+    res.json({
+      paises: cfg.paises || [{ codigo: 'CO', nombre: 'Colombia' }],
+      // Todas las tarifas son en pesos colombianos, viva donde viva. La
+      // interfaz tiene que decirlo: sin eso, alguien en México pone "500.000"
+      // pensando en pesos mexicanos.
+      moneda_unica: cfg.moneda_unica !== false,
+      moneda: cfg.moneda || 'COP',
+    });
+  } catch (e) {
+    res.json({ paises: [{ codigo: 'CO', nombre: 'Colombia' }], moneda_unica: true, moneda: 'COP' });
   }
 });
 
@@ -299,7 +320,7 @@ router.get('/me', async (req, res) => {
  */
 router.put('/perfil', async (req, res) => {
   try {
-    const { nombre_publico, bio_corta, ciudad, whatsapp, instagram, tiktok, seguidores } = req.body;
+    const { nombre_publico, bio_corta, pais, ciudad, whatsapp, instagram, tiktok, seguidores } = req.body;
 
     const datos = {};
     if (nombre_publico !== undefined) {
@@ -308,6 +329,7 @@ router.put('/perfil', async (req, res) => {
       datos.nombre_publico = n;
     }
     if (bio_corta !== undefined) datos.bio_corta = String(bio_corta).slice(0, 240);
+    if (pais !== undefined)      datos.pais = String(pais || 'CO').toUpperCase();
     if (ciudad !== undefined)    datos.ciudad = ciudad || null;
     if (whatsapp !== undefined)  datos.whatsapp = whatsapp || null;
 
@@ -423,6 +445,7 @@ router.get('/tarifas', async (req, res) => {
       db.getTarifasDeCreadora(req.usuarioId),
     ]);
     res.json({
+      moneda_unica: cfg.moneda_unica !== false,
       entregables: cfg.entregables || [],
       rango: cfg.rango_tarifa || { min: 50000, max: 8000000, paso: 10000 },
       // La comisión viaja al front para que el neto se actualice mientras ella
@@ -506,7 +529,7 @@ router.put('/tarifas', async (req, res) => {
 router.get('/nichos', async (req, res) => {
   try {
     const cfg = await db.getConfig();
-    res.json({ categorias: cfg.nichos || [], max_subnichos: 3 });
+    res.json({ categorias: cfg.nichos || [], paises: cfg.paises || [], max_subnichos: 3 });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -128,12 +128,12 @@ const getMarcas = () =>
 // Columnas que puede ver una marca. Sin influencer_id, sin email, sin whatsapp:
 // nada que permita contactar o identificar a la creadora por fuera del trato.
 const COLS_CATALOGO = [
-  'id', 'nombre_publico', 'ciudad', 'categorias', 'nicho', 'rango_alcance',
+  'id', 'nombre_publico', 'pais', 'ciudad', 'categorias', 'nicho', 'rango_alcance',
   'engagement_pct', 'nivel_tarifa', 'tarifa_min', 'tarifa_max',
   'entregable_tipico', 'bio_corta', 'colaboraciones_completadas',
 ].join(',');
 
-async function getCatalogo({ categoria, nicho, rango_alcance, nivel_tarifa, ciudad, presupuesto_max } = {}) {
+async function getCatalogo({ categoria, nicho, rango_alcance, nivel_tarifa, pais, ciudad, presupuesto_max } = {}) {
   const params = {
     select: COLS_CATALOGO,
     visible: 'eq.true',
@@ -144,6 +144,7 @@ async function getCatalogo({ categoria, nicho, rango_alcance, nivel_tarifa, ciud
   if (nicho)         params.nicho = `cs.{${nicho}}`;
   if (rango_alcance) params.rango_alcance = `eq.${rango_alcance}`;
   if (nivel_tarifa)  params.nivel_tarifa = `eq.${nivel_tarifa}`;
+  if (pais)          params.pais = `eq.${pais}`;
   if (ciudad)        params.ciudad = `eq.${ciudad}`;
   // "Muéstrame quién cabe en mi presupuesto": basta con que su entregable más
   // barato quepa, aunque tenga otros más caros.

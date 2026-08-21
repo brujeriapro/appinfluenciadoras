@@ -238,7 +238,7 @@ router.get('/marcas', async (req, res) => {
 
 router.patch('/marcas/:id', async (req, res) => {
   try {
-    const permitidos = ['nombre_empresa', 'nombre_contacto', 'whatsapp', 'nit', 'ciudad', 'sitio_web', 'estado', 'notas_admin'];
+    const permitidos = ['nombre_empresa', 'nombre_contacto', 'whatsapp', 'nit', 'pais', 'ciudad', 'sitio_web', 'estado', 'notas_admin'];
     const data = {};
     permitidos.forEach(k => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
     res.json(await db.updateMarca(req.params.id, data));
@@ -371,7 +371,7 @@ router.patch('/creadoras/:id', async (req, res) => {
     // propósito: son derivados de mk_tarifas, que llena la creadora. El admin
     // no le pone precio a nadie.
     const permitidos = [
-      'nombre_publico', 'whatsapp', 'ciudad', 'nicho', 'categorias',
+      'nombre_publico', 'whatsapp', 'pais', 'ciudad', 'nicho', 'categorias',
       'alcance_total', 'rango_alcance', 'engagement_pct',
       'es_bruja_embajadora', 'visible', 'bio_corta', 'notas_admin',
     ];

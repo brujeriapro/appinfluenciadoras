@@ -18,7 +18,7 @@ router.post('/registro', rateLimit({ max: 5 }), async (req, res) => {
   try {
     const {
       nombre_empresa, nombre_contacto, email, whatsapp,
-      password, codigo_invitacion, nit, ciudad, sitio_web, acepta_terminos,
+      password, codigo_invitacion, nit, pais, ciudad, sitio_web, acepta_terminos,
     } = req.body;
 
     if (!nombre_empresa || !nombre_contacto || !email || !password) {
@@ -50,6 +50,7 @@ router.post('/registro', rateLimit({ max: 5 }), async (req, res) => {
       password_hash: await bcrypt.hash(String(password), 10),
       whatsapp: whatsapp || null,
       nit: nit || null,
+      pais: (pais || 'CO').toUpperCase(),
       ciudad: ciudad || null,
       sitio_web: sitio_web || null,
       codigo_invitacion: codigo,

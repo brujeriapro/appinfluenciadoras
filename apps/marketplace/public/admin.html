@@ -635,7 +635,7 @@ VISTAS.creadoras = async () => {
             ${c.tiktok ? `<a href="https://tiktok.com/@${esc(c.tiktok)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">TikTok</a>` : ''}
           </td>
           <td class="num">${(c.alcance_total || 0).toLocaleString('es-CO')}</td>
-          <td>${esc(c.ciudad || '—')}</td>
+          <td>${esc([c.ciudad, c.pais].filter(Boolean).join(' · ') || '—')}</td>
           <td class="num">${c.tarifas_activas || '<span style="color:var(--magenta)">0</span>'}</td>
           <td>${(c.nicho || []).length ? (c.nicho || []).map(n => `<span class="chip">${esc(n)}</span>`).join(' ') : '<span style="color:var(--magenta);font-size:11px">falta</span>'}</td>
           <td style="font-size:10.5px;color:var(--grey-700)">${esc(c.origen || '—')}</td>
