@@ -358,27 +358,53 @@
   /* ── Login ──────────────────────────────────────────────────────────────── */
 
   .login-wrap { display: grid; place-items: center; min-height: 100vh; padding: 20px; }
-  .login { width: min(380px, 100%); border: 2px solid var(--lime); padding: 26px; }
+
+  /* Bloque claro sobre el negro de la pagina. El formulario de registro es
+     largo —doce campos— y leerlo en blanco sobre negro cansa. Mismo recurso
+     que la landing en la seccion "para creadoras". */
+  .login {
+    width: min(420px, 100%);
+    background: var(--off-white);
+    color: var(--ink);
+    border: 2px solid var(--ink);
+    padding: 28px 26px;
+  }
   .login h1 { font-family: var(--mono-title); font-weight: 800; font-size: 21px;
-              letter-spacing: -1.1px; margin: 0 0 4px; text-transform: uppercase; }
-  .login p { font-size: 10.5px; color: var(--text-5); margin: 0 0 22px; letter-spacing: 1px; text-transform: uppercase; }
+              letter-spacing: -1.1px; margin: 0 0 4px; text-transform: uppercase; color: var(--ink); }
+  .login p { font-size: 10.5px; color: #6A6A6A; margin: 0 0 22px; letter-spacing: 1px; text-transform: uppercase; }
+
   .campo { margin-bottom: 14px; }
   .campo label { display: block; font-size: 9.5px; letter-spacing: 1.2px;
-                 text-transform: uppercase; color: var(--text-5); margin-bottom: 6px; }
-  .campo input, .campo select { width: 100%; background: var(--surface-2); border: 2px solid var(--border-input);
-                 color: var(--off-white); font-family: var(--mono-body); font-size: 12.5px; padding: 11px 12px; }
-  .campo input:focus, .campo select:focus { outline: none; border-color: var(--lime); }
-  .error { color: var(--magenta); font-size: 11.5px; margin-top: 10px; }
-  .cambiar-modo { background: none; border: none; color: var(--text-5); font-size: 10.5px;
+                 text-transform: uppercase; color: #5A5A5A; margin-bottom: 6px; font-weight: 700; }
+  .campo input, .campo select {
+    width: 100%; background: #fff; border: 2px solid var(--ink);
+    color: var(--ink); font-family: var(--mono-body); font-size: 12.5px; padding: 11px 12px;
+  }
+  .campo input:focus, .campo select:focus { outline: none; border-color: var(--blue); }
+  .campo input::placeholder { color: #9A9A9A; }
+
+  /* Sobre fondo claro el boton se invierte: negro con texto lima, como el CTA
+     de la landing en su seccion clara. */
+  .login .btn-portal {
+    background: var(--ink); border-color: var(--ink); color: var(--lime);
+  }
+  .login .btn-portal:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+  .error { color: #C4106F; font-size: 11.5px; margin-top: 10px; font-weight: 700; }
+  .login .aviso { border-color: var(--ink); background: #fff; color: var(--ink); }
+  .login .aviso--ok { border-color: var(--blue); background: #F0F0FF; }
+
+  .cambiar-modo { background: none; border: none; color: #5A5A5A; font-size: 10.5px;
                   text-decoration: underline; cursor: pointer; margin-top: 14px; padding: 0;
                   letter-spacing: 0.6px; }
-  .cambiar-modo:hover { color: var(--lime); }
+  .cambiar-modo:hover { color: var(--blue); }
   .enlaces-login { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 16px; }
   .enlaces-login .cambiar-modo { margin-top: 0; }
-  .pista { font-size: 10px; line-height: 1.5; color: var(--text-6); margin-top: 6px; }
+  .pista { font-size: 10px; line-height: 1.5; color: #6A6A6A; margin-top: 6px; }
   .acepta { display: flex; gap: 9px; align-items: flex-start; font-size: 11.5px;
-            line-height: 1.5; color: var(--text-4); margin-bottom: 16px; cursor: pointer; }
-  .acepta input { width: 16px; height: 16px; flex: none; margin-top: 1px; accent-color: var(--lime); }
+            line-height: 1.5; color: #3A3A3A; margin-bottom: 16px; cursor: pointer; }
+  .acepta input { width: 16px; height: 16px; flex: none; margin-top: 1px; accent-color: var(--ink); }
+  .acepta a { color: var(--blue); text-decoration: underline; }
 
   /* Aviso de en qué punto va el perfil. Es lo primero que ve al entrar. */
   .estado-perfil { border-left: 4px solid; padding: 14px 16px; margin-bottom: 20px;
