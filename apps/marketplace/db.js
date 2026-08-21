@@ -331,6 +331,21 @@ function getTratosAdmin({ estado } = {}) {
   return get('mk_tratos', params);
 }
 
+/**
+ * Cuántas colaboraciones cerradas lleva esta marca con esta creadora.
+ * El portal lo muestra como "4 campañas previas" / "primera campaña": saber
+ * que la marca ya la contrató antes cambia la decisión de aceptar.
+ */
+async function contarTratosPrevios(marca_id, creadora_id) {
+  const filas = await get('mk_tratos', {
+    marca_id: `eq.${marca_id}`,
+    creadora_id: `eq.${creadora_id}`,
+    estado: 'in.(pagado,cerrado)',
+    select: 'id',
+  });
+  return filas.length;
+}
+
 /** Código legible incremental: CR-000001. Se apoya en una secuencia de Postgres. */
 async function siguienteCodigoTrato() {
   try {
@@ -413,7 +428,7 @@ module.exports = {
   getTarifasDeCreadora, getTarifasDeVarias, guardarTarifas,
   getMuestrasDeCreadora, getMuestra, insertMuestra, getMuestrasDeVarias,
   insertTrato, getTratoById, updateTrato, getTratosDeMarca, getTratosDeCreadora,
-  getTratosAdmin, siguienteCodigoTrato,
+  getTratosAdmin, siguienteCodigoTrato, contarTratosPrevios,
   insertEvento, getEventosDeTrato,
   insertPago, getPagosDeTrato, getTodosLosPagos,
   insertEntrega, getEntregasDeTrato, updateEntrega,

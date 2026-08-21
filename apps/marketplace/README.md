@@ -8,7 +8,7 @@ Marketplace de dos lados: marcas colombianas contratan colaboraciones pagas con 
 
 ## Estado
 
-**Fase 1 — backend completo, landing pública y panel admin listos.** Con eso el marketplace ya se puede operar a mano. Faltan las pantallas de cara al usuario (catálogo, registro de marca, portal de creadora, línea de tiempo), que esperan los mockups de Claude Design.
+**Fase 1 — backend completo, landing pública, panel admin y portal de la creadora listos.** Con eso el marketplace ya se puede operar a mano. Faltan las pantallas del lado marca (catálogo, registro, línea de tiempo), que esperan sus mockups.
 
 El panel vive en `/admin.html`. Se sirve sin auth a propósito —es una cáscara vacía— y pide usuario y clave con su propio formulario; la puerta real está en `/api/admin/*`.
 
@@ -50,6 +50,7 @@ Se corren a mano en el SQL Editor de Supabase, en orden:
 1. `migrations/mk_001_init.sql` — las 8 tablas `mk_*`
 2. `migrations/mk_002_seed_config.sql` — comisiones y configuración base
 3. `migrations/mk_003_nichos_y_tarifas.sql` — taxonomía amplia de nichos + tabla `mk_tarifas`
+4. `migrations/mk_004_portal_creadora.sql` — entregables con subtítulo, producto/exclusividad y plazos
 
 Además hay que crear el bucket **privado** `mk-muestras` en Supabase Storage.
 
@@ -82,6 +83,7 @@ landing.js       GET /api/landing — datos de la landing pública
 terminos.js      Texto legal versionado
 notificaciones.js Correos transaccionales
 public/admin.html  Panel de operación: tratos, pagos, curaduría, ajustes, export
+public/creadora.html Portal de la creadora: tarifas, propuestas, entrega
 ```
 
 ### Los estados de un trato
@@ -130,6 +132,18 @@ Las URLs del CDN de Instagram y TikTok llevan identificadores que permiten llega
 - **Sin pasarela de pagos** (decisión de producto). El escrow es un estado contable: `mk_pagos` registra entradas y salidas a mano. Si el volumen crece, la tabla ya tiene la forma que necesitaría una conciliación con Wompi.
 - **Sin bloqueo optimista en las transiciones.** Dos admins simultáneos podrían registrar dos pagos de salida sobre el mismo trato. Con un equipo de una o dos personas es aceptable.
 - **El texto de los términos está pendiente de revisión jurídica.** Sirve para los pilotos; debe pasar por abogada antes de operar con marcas externas en volumen.
+
+## Plazos que la interfaz promete y todavía no se cumplen solos
+
+El portal de la creadora muestra tres promesas que vienen del diseño y quedaron guardadas en `mk_config`, pero **hoy solo se muestran: no hay proceso que las ejecute**.
+
+| Promesa | Estado real |
+|---|---|
+| "Tienes 72 horas para responder" | La propuesta no expira sola |
+| "La marca tiene 48h para aprobar" | No hay auto-aprobación (`auto_aprobar_entrega` está en `false`) |
+| "A tu cuenta 48h después de aprobado" | El pago lo hace el equipo a mano desde el panel |
+
+Antes de abrir a creadoras que no sean del círculo cercano hay que implementar el proceso que las haga cumplir, o bajar ese texto de la interfaz. Prometer un plazo que no se cumple es peor que no prometerlo.
 
 ## Pendiente contable (no bloquea desarrollo)
 

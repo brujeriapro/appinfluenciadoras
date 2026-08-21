@@ -1,0 +1,1105 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi portal · Creadores.app</title>
+<meta name="robots" content="noindex, nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/tokens.css">
+<style>
+  /* Portal de la creadora. Un solo archivo para móvil y escritorio:
+     bajo 900px son pestañas al pie y vistas apiladas; por encima, barra lateral
+     fija y maestro-detalle. */
+
+  body { background: var(--ink); }
+
+  /* ── Estructura ─────────────────────────────────────────────────────────── */
+
+  .layout { display: flex; min-height: 100vh; }
+
+  .lateral {
+    width: 246px; flex: none;
+    border-right: 2px solid var(--border-dark);
+    display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .lateral__logo {
+    display: flex; align-items: center; gap: 9px;
+    padding: 18px 20px; border-bottom: 2px solid var(--border-dark);
+  }
+  .logo__marca { width: 24px; height: 24px; background: var(--lime); display: grid; place-items: center;
+                 color: var(--ink); font-family: var(--mono-title); font-weight: 800; font-size: 12px; }
+  .logo__texto { font-family: var(--mono-title); font-weight: 800; font-size: 13px; letter-spacing: -0.5px; }
+  .lateral__rotulo { font-size: 9.5px; letter-spacing: 1.2px; color: var(--text-5);
+                     padding: 16px 20px 8px; text-transform: uppercase; }
+
+  .nav-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    width: 100%; text-align: left; background: none; border: none;
+    border-left: 4px solid transparent;
+    padding: 13px 20px; cursor: pointer;
+    font-family: var(--mono-title); font-weight: 700; font-size: 11.5px;
+    letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-4);
+  }
+  .nav-item:hover { color: var(--off-white); }
+  .nav-item.activo { background: var(--surface-3); }
+  .nav-item.activo[data-vista="tarifas"]    { color: var(--lime);      border-left-color: var(--lime); }
+  .nav-item.activo[data-vista="propuestas"] { color: var(--magenta);   border-left-color: var(--magenta); }
+  .nav-item.activo[data-vista="entregar"]   { color: var(--off-white); border-left-color: var(--off-white); }
+  .nav-item[disabled] { color: var(--text-7); cursor: not-allowed; }
+  .nav-item[disabled]:hover { color: var(--text-7); }
+
+  .badge { font-size: 10px; font-weight: 700; padding: 1px 6px; }
+  .badge--magenta { background: var(--magenta); color: var(--ink); }
+  .badge--plano   { color: var(--text-5); }
+
+  .principal { flex: 1; min-width: 0; padding: 26px clamp(16px, 3vw, 34px) 60px; }
+
+  .encabezado { border-bottom: 2px solid var(--border-dark); padding-bottom: 18px; margin-bottom: 22px; }
+  .titulo {
+    font-family: var(--mono-title); font-weight: 800;
+    font-size: clamp(20px, 2.2vw, 30px); letter-spacing: -1.4px;
+    text-transform: uppercase; margin: 0;
+  }
+  .titulo--tarifas    { color: var(--lime); }
+  .titulo--propuestas { color: var(--magenta); }
+  .titulo--entregar   { color: var(--off-white); }
+  .subtitulo { font-size: 11.5px; letter-spacing: 0.6px; color: var(--text-5);
+               text-transform: uppercase; margin: 8px 0 0; }
+
+  .chips-info { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .chip-info {
+    font-size: 9.5px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    padding: 6px 10px; border: 2px solid var(--border-input); color: var(--text-4);
+  }
+  .chip-info--lime { background: var(--lime); border-color: var(--lime); color: var(--ink); }
+
+  /* ── Tarifas ────────────────────────────────────────────────────────────── */
+
+  .tabla-tarifas { border-top: 2px solid var(--border-dark); border-left: 2px solid var(--border-dark); }
+  .tarifa-cab, .tarifa-fila {
+    display: grid; grid-template-columns: 1.3fr 90px 2fr 1fr; align-items: center;
+  }
+  .tarifa-cab > *, .tarifa-fila > * {
+    border-right: 2px solid var(--border-dark); border-bottom: 2px solid var(--border-dark);
+    padding: 14px 16px; min-width: 0;
+  }
+  .tarifa-cab > * {
+    font-size: 9.5px; letter-spacing: 1.2px; color: var(--text-5);
+    text-transform: uppercase; font-weight: 700;
+  }
+  .tarifa-fila.apagada .col-nombre,
+  .tarifa-fila.apagada .col-tarifa,
+  .tarifa-fila.apagada .col-neto { opacity: .42; }
+
+  .ent-nombre { font-family: var(--mono-title); font-weight: 700; font-size: 12.5px;
+                letter-spacing: -0.2px; text-transform: uppercase; }
+  .ent-sub { font-size: 9.5px; letter-spacing: 1px; color: var(--text-5);
+             text-transform: uppercase; margin-top: 4px; }
+
+  .monto { font-family: var(--mono-title); font-weight: 800; font-size: 19px;
+           letter-spacing: -1px; color: var(--lime); }
+  .monto--off { color: var(--text-6); font-size: 12px; letter-spacing: 0.8px; }
+  .neto { font-family: var(--mono-title); font-weight: 800; font-size: 18px;
+          letter-spacing: -1px; color: var(--off-white); }
+  .neto-nota { font-size: 9.5px; letter-spacing: 1px; color: var(--text-5);
+               text-transform: uppercase; margin-top: 5px; }
+
+  /* Interruptor cuadrado. El cuadro interior se mueve con transform para que
+     tenga transición: animar justify-content no funciona. */
+  .switch {
+    width: 48px; height: 24px; border: 2px solid var(--border-input);
+    background: transparent; padding: 0; cursor: pointer; position: relative;
+    display: block;
+  }
+  .switch__cuadro {
+    position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+    background: var(--text-6); transition: transform 120ms ease-out, background-color 120ms ease-out;
+  }
+  .switch[aria-checked="true"] { background: var(--lime); border-color: var(--lime); }
+  .switch[aria-checked="true"] .switch__cuadro { background: var(--ink); transform: translateX(24px); }
+
+  /* Deslizador con pista y pulgar cuadrados: el nativo trae esquinas redondas. */
+  input[type=range].slider {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 6px; background: var(--border-input); padding: 0; border: none;
+    cursor: pointer; margin: 10px 0 6px;
+  }
+  input[type=range].slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px; background: var(--lime); border: none; cursor: pointer;
+  }
+  input[type=range].slider::-moz-range-thumb {
+    width: 16px; height: 16px; background: var(--lime); border: none; border-radius: 0; cursor: pointer;
+  }
+  input[type=range].slider:disabled { cursor: not-allowed; }
+  input[type=range].slider:disabled::-webkit-slider-thumb { background: var(--text-6); }
+  .extremos { display: flex; justify-content: space-between; font-size: 9.5px;
+              letter-spacing: 0.8px; color: var(--text-7); }
+
+  .fila-monto { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  /* El neto tiene columna propia en escritorio; en móvil se muestra esta
+     versión en línea, junto al monto, como define el handoff. */
+  .neto-inline { display: none; font-family: var(--mono-title); font-weight: 800;
+                 font-size: 13px; letter-spacing: -0.4px; color: var(--off-white); }
+
+  /* ── Propuestas ─────────────────────────────────────────────────────────── */
+
+  .maestro-detalle { display: flex; gap: 0; border-top: 2px solid var(--border-dark); }
+  .lista-propuestas { width: 396px; flex: none; border-right: 2px solid var(--border-dark); }
+  .detalle-propuesta { flex: 1; min-width: 0; padding: 22px clamp(16px, 2vw, 28px); }
+
+  .filtros { display: flex; gap: 6px; flex-wrap: wrap; padding: 14px 16px;
+             border-bottom: 2px solid var(--border-dark); }
+  .filtro {
+    font-size: 9.5px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+    padding: 7px 11px; border: 2px solid var(--border-input); background: transparent;
+    color: var(--text-4); cursor: pointer;
+  }
+  .filtro.activo { background: var(--magenta); border-color: var(--magenta); color: var(--ink); }
+
+  .fila-propuesta {
+    display: block; width: 100%; text-align: left; background: none;
+    border: none; border-bottom: 1px solid var(--border-1); border-left: 4px solid transparent;
+    padding: 16px; cursor: pointer; color: inherit;
+  }
+  .fila-propuesta:hover { background: var(--surface-2); }
+  .fila-propuesta.seleccionada { background: var(--surface-3); border-left-color: var(--lime); }
+  .fp-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .fp-marca { font-family: var(--mono-title); font-weight: 800; font-size: 14px;
+              letter-spacing: -0.5px; text-transform: uppercase; }
+  .fp-linea { font-size: 10.5px; letter-spacing: 0.8px; color: var(--text-5);
+              text-transform: uppercase; margin-top: 6px; }
+  .fp-neto { display: flex; align-items: baseline; justify-content: space-between;
+             gap: 10px; margin-top: 12px; }
+  .fp-neto__label { font-size: 9.5px; letter-spacing: 1.2px; color: var(--text-5); text-transform: uppercase; }
+  .fp-neto__valor { font-family: var(--mono-title); font-weight: 800; font-size: 17px;
+                    letter-spacing: -0.9px; color: var(--lime); }
+
+  /* Las propuestas nuevas gritan más: borde magenta y el neto en grande. */
+  .fila-propuesta.nueva { border: 2px solid var(--magenta); border-left-width: 4px; margin-bottom: -1px; }
+  .fila-propuesta.nueva .destacado {
+    background: var(--surface-2); border-left: 4px solid var(--lime);
+    padding: 12px 14px; margin-top: 12px;
+  }
+  .fila-propuesta.nueva .fp-neto__valor { font-size: 26px; letter-spacing: -1.6px; }
+  .fp-nota { font-size: 10px; letter-spacing: 0.6px; color: var(--text-5); margin-top: 5px; }
+
+  .pill {
+    display: inline-block; padding: 4px 8px; font-size: 9.5px; font-weight: 700;
+    letter-spacing: 0.6px; text-transform: uppercase; white-space: nowrap; border: 1px solid;
+  }
+  .pill--nueva    { background: var(--magenta); color: var(--ink); border-color: var(--magenta); }
+  .pill--aceptada { background: var(--lime);    color: var(--ink); border-color: var(--lime); }
+  .pill--neutra   { background: transparent; color: var(--text-4); border-color: var(--border-input); }
+
+  /* ── Detalle ────────────────────────────────────────────────────────────── */
+
+  .det-ref { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .det-ref__texto { font-size: 10px; letter-spacing: 1.2px; color: var(--text-5); text-transform: uppercase; }
+  .det-marca { font-family: var(--mono-title); font-weight: 800;
+               font-size: clamp(22px, 2.6vw, 34px); letter-spacing: -1.6px;
+               text-transform: uppercase; margin: 14px 0 0; line-height: 1.05; }
+  .det-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 12px; }
+  .det-chip { font-size: 9.5px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+              padding: 5px 9px; border: 1px solid var(--border-input); color: var(--text-4); }
+  .det-chip--blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+  .det-rotulo { font-size: 9.5px; letter-spacing: 1.2px; color: var(--text-5);
+                text-transform: uppercase; margin: 26px 0 10px; }
+  .det-brief { font-size: 13px; line-height: 1.7; color: var(--text-2); max-width: 60ch; }
+
+  .condiciones { display: grid; grid-template-columns: 1fr 1fr;
+                 border-top: 2px solid var(--border-dark); border-left: 2px solid var(--border-dark); }
+  .condiciones > div { border-right: 2px solid var(--border-dark);
+                       border-bottom: 2px solid var(--border-dark); padding: 13px 15px; }
+  .cond-label { font-size: 9.5px; letter-spacing: 1.1px; color: var(--text-5); text-transform: uppercase; }
+  .cond-valor { font-size: 12.5px; margin-top: 6px; }
+  .cond-valor--lime { color: var(--lime); font-family: var(--mono-title); font-weight: 700; }
+
+  .desglose { border: 2px solid var(--lime); margin-top: 26px; }
+  .desglose__fila { display: flex; justify-content: space-between; align-items: center;
+                    gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--border-1); }
+  .desglose__label { font-size: 10.5px; letter-spacing: 1px; color: var(--text-4); text-transform: uppercase; }
+  .desglose__valor { font-family: var(--mono-title); font-weight: 700; font-size: 14px; }
+  .desglose__valor--resta { color: var(--magenta); }
+  .desglose__neto { background: var(--lime); color: var(--ink); padding: 16px; }
+  .desglose__neto-label { font-size: 10.5px; letter-spacing: 1.2px; font-weight: 700; text-transform: uppercase; }
+  .desglose__neto-valor { font-family: var(--mono-title); font-weight: 800;
+                          font-size: 34px; letter-spacing: -2.2px; margin-top: 4px; }
+  .desglose__neto-nota { font-size: 9.5px; letter-spacing: 0.8px; margin-top: 6px; text-transform: uppercase; }
+
+  .nota-escrow { background: var(--surface-2); border-left: 4px solid var(--blue);
+                 padding: 14px 16px; margin-top: 20px; font-size: 12px; line-height: 1.65; color: var(--text-2); }
+
+  .acciones { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; align-items: center; }
+  .btn-portal {
+    font-family: var(--mono-title); font-weight: 800; font-size: 12.5px; letter-spacing: 0.6px;
+    padding: 15px 22px; border: 2px solid var(--lime); background: var(--lime);
+    color: var(--ink); cursor: pointer; text-transform: uppercase;
+  }
+  .btn-portal:hover { background: #fff; border-color: #fff; }
+  .btn-portal:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-portal--ghost { background: transparent; border-color: var(--border-input); color: var(--off-white); }
+  .btn-portal--ghost:hover { background: transparent; border-color: var(--magenta); color: var(--magenta); }
+  .btn-portal--sec { background: transparent; border-color: var(--border-input); color: var(--text-4);
+                     font-size: 10.5px; padding: 11px 14px; }
+  .btn-portal--sec:hover { background: transparent; border-color: var(--lime); color: var(--lime); }
+  .nota-pie { font-size: 9.5px; letter-spacing: 1px; color: var(--text-6); text-transform: uppercase; }
+
+  /* ── Entregar ───────────────────────────────────────────────────────────── */
+
+  .entregar-wrap { display: flex; gap: 26px; align-items: flex-start; }
+  .entregar-main { flex: 1; min-width: 0; }
+  .entregar-lado { width: 300px; flex: none; }
+
+  .caja-dato { border: 2px solid var(--border-dark); padding: 14px 16px; margin-bottom: 12px; }
+  .caja-dato__label { font-size: 9.5px; letter-spacing: 1.2px; color: var(--text-5); text-transform: uppercase; }
+  .caja-dato__valor { font-family: var(--mono-title); font-weight: 800; font-size: 22px;
+                      letter-spacing: -1.2px; color: var(--lime); margin-top: 6px; }
+
+  .input-link {
+    width: 100%; background: var(--surface-2); border: 2px solid var(--border-input);
+    color: var(--off-white); font-family: var(--mono-body); font-size: 12.5px; padding: 14px 15px;
+  }
+  .input-link:focus { outline: none; border-color: var(--lime); }
+  .input-link::placeholder { color: var(--text-6); }
+
+  .check-item { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; font-size: 12.5px; }
+  .check-caja { width: 18px; height: 18px; flex: none; border: 2px solid var(--border-input);
+                display: grid; place-items: center; font-size: 11px; cursor: pointer; }
+  .check-caja.ok { background: var(--lime); border-color: var(--lime); color: var(--ink); font-weight: 700; }
+  .check-item.pendiente { color: var(--text-4); }
+
+  .timeline { list-style: none; margin: 0; padding: 0; }
+  .timeline li { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0;
+                 font-size: 10.5px; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-5); }
+  .timeline li .caja { width: 14px; height: 14px; flex: none; border: 2px solid var(--border-input); }
+  .timeline li.hecho { color: var(--off-white); }
+  .timeline li.hecho .caja { background: var(--lime); border-color: var(--lime); }
+
+  /* ── Pestañas móviles ───────────────────────────────────────────────────── */
+
+  .tabs-movil {
+    position: sticky; bottom: 0; z-index: 20; display: none;
+    background: var(--surface-1); border-top: 2px solid var(--border-dark);
+  }
+  .tabs-movil__inner { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .tab-movil {
+    background: transparent; border: none; padding: 14px 6px; cursor: pointer;
+    font-family: var(--mono-body); font-size: 9.5px; font-weight: 700;
+    letter-spacing: 0.6px; text-transform: uppercase; color: var(--text-5);
+  }
+  .tab-movil.activo[data-vista="tarifas"]    { background: var(--lime);      color: var(--ink); }
+  .tab-movil.activo[data-vista="propuestas"] { background: var(--magenta);   color: var(--ink); }
+  .tab-movil.activo[data-vista="entregar"]   { background: var(--off-white); color: var(--ink); }
+
+  .volver { background: none; border: none; color: var(--text-4); font-size: 18px;
+            cursor: pointer; padding: 0 10px 0 0; line-height: 1; display: none; }
+  .volver:hover { color: var(--lime); }
+
+  .vacio { padding: 46px 16px; text-align: center; color: var(--text-5); font-size: 12.5px; line-height: 1.7; }
+  .aviso { border: 2px solid var(--magenta); background: #1a0a12; padding: 12px 14px;
+           font-size: 12.5px; margin-bottom: 16px; }
+  .aviso--ok { border-color: var(--lime); background: #12160a; }
+  .oculto { display: none !important; }
+
+  /* ── Login ──────────────────────────────────────────────────────────────── */
+
+  .login-wrap { display: grid; place-items: center; min-height: 100vh; padding: 20px; }
+  .login { width: min(380px, 100%); border: 2px solid var(--lime); padding: 26px; }
+  .login h1 { font-family: var(--mono-title); font-weight: 800; font-size: 21px;
+              letter-spacing: -1.1px; margin: 0 0 4px; text-transform: uppercase; }
+  .login p { font-size: 10.5px; color: var(--text-5); margin: 0 0 22px; letter-spacing: 1px; text-transform: uppercase; }
+  .campo { margin-bottom: 14px; }
+  .campo label { display: block; font-size: 9.5px; letter-spacing: 1.2px;
+                 text-transform: uppercase; color: var(--text-5); margin-bottom: 6px; }
+  .campo input { width: 100%; background: var(--surface-2); border: 2px solid var(--border-input);
+                 color: var(--off-white); font-family: var(--mono-body); font-size: 12.5px; padding: 11px 12px; }
+  .campo input:focus { outline: none; border-color: var(--lime); }
+  .error { color: var(--magenta); font-size: 11.5px; margin-top: 10px; }
+  .cambiar-modo { background: none; border: none; color: var(--text-5); font-size: 10.5px;
+                  text-decoration: underline; cursor: pointer; margin-top: 14px; padding: 0;
+                  letter-spacing: 0.6px; }
+  .cambiar-modo:hover { color: var(--lime); }
+
+  /* ── Responsive ─────────────────────────────────────────────────────────── */
+
+  /* Bajo 1100px el maestro-detalle no cabe: lista de 396px más un detalle
+     mínimo de 340px. Se apila. */
+  @media (max-width: 1100px) {
+    .maestro-detalle { flex-direction: column; }
+    .lista-propuestas { width: 100%; border-right: none; border-bottom: 2px solid var(--border-dark); }
+    .entregar-wrap { flex-direction: column; }
+    .entregar-lado { width: 100%; }
+  }
+
+  /* Bajo 900px: barra lateral fuera, pestañas al pie, y la tabla de tarifas se
+     vuelve lista de tarjetas. */
+  @media (max-width: 900px) {
+    .lateral { display: none; }
+    .tabs-movil { display: block; }
+    .principal { padding: 20px 16px 30px; }
+    .titulo { font-size: 21px; letter-spacing: -1.1px; }
+
+    .tarifa-cab { display: none; }
+    .tabla-tarifas { border: none; }
+    .tarifa-fila {
+      display: block; border: 2px solid var(--border-dark);
+      border-bottom-width: 2px; margin-bottom: 10px;
+    }
+    .tarifa-fila > * { border: none; padding: 0; }
+    .tarifa-fila .col-nombre { display: flex; justify-content: space-between;
+                               align-items: flex-start; gap: 12px; padding: 14px 15px 0; }
+    .tarifa-fila .col-switch { padding: 0 15px; margin-top: -34px;
+                               display: flex; justify-content: flex-end; }
+    .tarifa-fila .col-tarifa { padding: 10px 15px 0; }
+    .tarifa-fila .col-neto { display: none; }
+    .tarifa-fila .col-tarifa { padding: 10px 15px 14px; }
+    .neto-inline { display: block; }
+    .tarifa-fila.apagada .neto-inline { font-family: var(--mono-body); font-size: 9.5px;
+                                        font-weight: 400; letter-spacing: 1px; color: var(--text-5); }
+    .switch { width: 52px; height: 26px; }
+    .switch__cuadro { width: 18px; height: 18px; }
+    .switch[aria-checked="true"] .switch__cuadro { transform: translateX(26px); }
+    .condiciones { grid-template-columns: 1fr; }
+    .det-marca { font-size: 26px; }
+
+    /* El detalle no convive con la lista: la reemplaza, y se vuelve con ←. */
+    .maestro-detalle.viendo-detalle .lista-propuestas { display: none; }
+    .maestro-detalle:not(.viendo-detalle) .detalle-propuesta { display: none; }
+    .volver { display: inline-block; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Login ──────────────────────────────────────────────────────────────── -->
+<div class="login-wrap" id="login-wrap">
+  <form class="login" id="login-form">
+    <h1 id="login-titulo">Mi portal</h1>
+    <p>CREADORES.APP</p>
+    <div class="campo">
+      <label for="email">Tu correo</label>
+      <input id="email" type="email" autocomplete="username" required>
+    </div>
+    <div class="campo">
+      <label for="clave" id="label-clave">Tu contraseña</label>
+      <input id="clave" type="password" autocomplete="current-password" required minlength="8">
+    </div>
+    <button class="btn-portal" style="width:100%" type="submit" id="login-btn">ENTRAR →</button>
+    <div class="error oculto" id="login-error"></div>
+    <button type="button" class="cambiar-modo" id="cambiar-modo">Es mi primera vez, quiero crear mi contraseña</button>
+  </form>
+</div>
+
+<!-- ── Portal ─────────────────────────────────────────────────────────────── -->
+<div class="layout oculto" id="app">
+  <aside class="lateral">
+    <div class="lateral__logo">
+      <div class="logo__marca">C</div>
+      <span class="logo__texto">CREADORES.APP</span>
+    </div>
+    <div class="lateral__rotulo">Portal de creadora</div>
+    <button class="nav-item activo" data-vista="tarifas">
+      <span>Mis tarifas</span><span class="badge badge--plano" id="badge-tarifas"></span>
+    </button>
+    <button class="nav-item" data-vista="propuestas">
+      <span>Propuestas</span><span class="badge badge--magenta oculto" id="badge-propuestas"></span>
+    </button>
+    <button class="nav-item" data-vista="entregar">
+      <span>Entregar</span><span class="badge badge--plano" id="badge-entregar"></span>
+    </button>
+    <button class="nav-item" data-vista="pagos" disabled title="Próximamente">
+      <span>Pagos</span>
+    </button>
+  </aside>
+
+  <main class="principal" id="principal"></main>
+</div>
+
+<nav class="tabs-movil oculto" id="tabs-movil">
+  <div class="tabs-movil__inner">
+    <button class="tab-movil activo" data-vista="tarifas">Tarifas</button>
+    <button class="tab-movil" data-vista="propuestas">Propuestas</button>
+    <button class="tab-movil" data-vista="entregar">Entregar</button>
+  </div>
+</nav>
+
+<script>
+// ── Sesión ──────────────────────────────────────────────────────────────────
+
+let TOKEN = sessionStorage.getItem('mk_creadora') || null;
+let modoPrimeraVez = false;
+
+async function api(ruta, opciones = {}) {
+  const res = await fetch('/api/creadoras' + ruta, {
+    ...opciones,
+    headers: {
+      'Authorization': 'Bearer ' + TOKEN,
+      'Content-Type': 'application/json',
+      ...(opciones.headers || {}),
+    },
+  });
+  if (res.status === 401) {
+    sessionStorage.removeItem('mk_creadora');
+    location.reload();
+    throw new Error('Sesión vencida');
+  }
+  const texto = await res.text();
+  const datos = texto ? JSON.parse(texto) : null;
+  if (!res.ok) throw new Error((datos && datos.error) || 'Error ' + res.status);
+  return datos;
+}
+
+async function publico(ruta, cuerpo) {
+  const res = await fetch('/api/creadoras' + ruta, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(cuerpo),
+  });
+  const datos = await res.json();
+  if (!res.ok) throw new Error(datos.error || 'Error');
+  return datos;
+}
+
+const $ = (id) => document.getElementById(id);
+
+$('cambiar-modo').addEventListener('click', () => {
+  modoPrimeraVez = !modoPrimeraVez;
+  $('login-titulo').textContent = modoPrimeraVez ? 'Crear contraseña' : 'Mi portal';
+  $('label-clave').textContent = modoPrimeraVez ? 'Escoge tu contraseña (mínimo 8)' : 'Tu contraseña';
+  $('login-btn').textContent = modoPrimeraVez ? 'CREAR Y ENTRAR →' : 'ENTRAR →';
+  $('cambiar-modo').textContent = modoPrimeraVez
+    ? 'Ya tengo contraseña, quiero entrar'
+    : 'Es mi primera vez, quiero crear mi contraseña';
+  $('login-error').classList.add('oculto');
+});
+
+$('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = $('login-error');
+  err.classList.add('oculto');
+  try {
+    const ruta = modoPrimeraVez ? '/set-password' : '/login';
+    const r = await publico(ruta, { email: $('email').value, password: $('clave').value });
+    TOKEN = r.token;
+    sessionStorage.setItem('mk_creadora', TOKEN);
+    arrancar();
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.remove('oculto');
+  }
+});
+
+// ── Utilidades ──────────────────────────────────────────────────────────────
+
+const COP = (v) => '$' + Math.round(Number(v) || 0).toLocaleString('es-CO');
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fechaCorta = (f) => f ? new Date(f).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }).toUpperCase() : '—';
+
+// El neto se calcula igual que en el backend: se redondea la COMISIÓN y se
+// resta. Si aquí se redondeara el neto, el número bailaría un peso respecto al
+// que ella ve al aceptar, y eso destruye la confianza en una pantalla de plata.
+const netoDe = (monto, pct) => Math.round(monto) - Math.round(monto * pct / 100);
+
+let COMISION = 8;
+let RANGO = { min: 50000, max: 8000000, paso: 10000 };
+let HORAS_PAGO = 48;
+
+// Estados del backend traducidos al vocabulario del portal.
+const PILL = {
+  solicitado:    { texto: 'Nueva',       clase: 'nueva' },
+  aceptado:      { texto: 'Aceptada',    clase: 'aceptada' },
+  pago_retenido: { texto: 'En escrow',   clase: 'aceptada' },
+  entregado:     { texto: 'En revisión', clase: 'neutra' },
+  aprobado:      { texto: 'Aprobada',    clase: 'aceptada' },
+  pagado:        { texto: 'Pagada',      clase: 'neutra' },
+  cerrado:       { texto: 'Cerrada',     clase: 'neutra' },
+  rechazado:     { texto: 'Rechazada',   clase: 'neutra' },
+  cancelado:     { texto: 'Cancelada',   clase: 'neutra' },
+};
+const pill = (estado) => {
+  const p = PILL[estado] || { texto: estado, clase: 'neutra' };
+  return `<span class="pill pill--${p.clase}">${p.texto}</span>`;
+};
+
+const GRUPOS = {
+  nuevas:    ['solicitado'],
+  aceptadas: ['aceptado', 'pago_retenido', 'entregado', 'aprobado'],
+  pagadas:   ['pagado', 'cerrado'],
+};
+
+// ── Navegación ──────────────────────────────────────────────────────────────
+
+let vista = 'tarifas';
+let DATOS = { tarifas: null, tratos: [], perfil: null };
+
+function marcarNav() {
+  document.querySelectorAll('.nav-item, .tab-movil').forEach(b => {
+    b.classList.toggle('activo', b.dataset.vista === vista);
+  });
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('.nav-item, .tab-movil');
+  if (b && !b.disabled && b.dataset.vista !== 'pagos') ir(b.dataset.vista);
+});
+
+async function ir(v) {
+  vista = v;
+  marcarNav();
+  $('principal').innerHTML = '<div class="vacio">Cargando…</div>';
+  try {
+    if (v === 'tarifas') await vistaTarifas();
+    else if (v === 'propuestas') await vistaPropuestas();
+    else if (v === 'entregar') await vistaEntregar();
+  } catch (e) {
+    $('principal').innerHTML = `<div class="aviso">No se pudo cargar: ${esc(e.message)}</div>`;
+  }
+}
+
+function cabecera(titulo, subtitulo, clase) {
+  return `
+    <div class="encabezado">
+      <h1 class="titulo titulo--${clase}">${titulo}</h1>
+      <p class="subtitulo">${subtitulo}</p>
+      <div class="chips-info">
+        <span class="chip-info">Comisión ${COMISION}%</span>
+        <span class="chip-info">Retiro ${HORAS_PAGO}h</span>
+      </div>
+    </div>`;
+}
+
+// ── Vista: Mis tarifas ──────────────────────────────────────────────────────
+
+let ITEMS = [];
+
+async function vistaTarifas() {
+  const d = await api('/tarifas');
+  COMISION = d.comision_creadora_pct ?? 8;
+  RANGO = d.rango || RANGO;
+  HORAS_PAGO = d.horas_pago_tras_aprobar ?? 48;
+
+  const guardadas = new Map((d.tarifas || []).map(t => [t.entregable, t]));
+  ITEMS = (d.entregables || []).map(e => {
+    const g = guardadas.get(e.clave);
+    return {
+      clave: e.clave,
+      nombre: e.nombre || e.clave,
+      subtitulo: e.subtitulo || '',
+      // Sin tarifa guardada, arranca en un valor intermedio y apagada: nadie
+      // debe quedar publicada con un precio que no eligió.
+      valor: g ? Number(g.precio) : 500000,
+      on: g ? g.activo !== false : false,
+    };
+  });
+
+  $('principal').innerHTML =
+    cabecera('Mis tarifas', 'Tú pones el precio. Las marcas lo ven en tu perfil.', 'tarifas') + `
+    <div class="chips-info" style="margin-bottom:18px">
+      <span class="chip-info chip-info--lime" id="chip-activos"></span>
+      <span class="chip-info">Rango ${COP(RANGO.min)} – ${COP(RANGO.max)}</span>
+      <span class="chip-info">El neto ya descuenta la comisión</span>
+    </div>
+
+    <div class="tabla-tarifas">
+      <div class="tarifa-cab">
+        <div>Entregable</div><div>Ofrezco</div><div>Tarifa</div><div>Tu neto</div>
+      </div>
+      <div id="filas-tarifas"></div>
+    </div>
+
+    <div class="acciones">
+      <button class="btn-portal" id="btn-guardar">GUARDAR TARIFAS →</button>
+      <span class="nota-pie">Los cambios se ven en tu perfil público al guardar</span>
+    </div>
+    <div class="error oculto" id="tarifas-msg"></div>
+  `;
+
+  pintarFilas();
+  $('btn-guardar').addEventListener('click', guardarTarifas);
+}
+
+function pintarFilas() {
+  $('filas-tarifas').innerHTML = ITEMS.map((it, i) => `
+    <div class="tarifa-fila ${it.on ? '' : 'apagada'}" data-i="${i}">
+      <div class="col-nombre">
+        <div>
+          <div class="ent-nombre">${esc(it.nombre)}</div>
+          ${it.subtitulo ? `<div class="ent-sub">${esc(it.subtitulo)}</div>` : ''}
+        </div>
+      </div>
+      <div class="col-switch">
+        <button class="switch" role="switch" aria-checked="${it.on}"
+                aria-label="Ofrecer ${esc(it.nombre)}" data-switch="${i}">
+          <span class="switch__cuadro"></span>
+        </button>
+      </div>
+      <div class="col-tarifa">
+        <div class="fila-monto">
+          ${it.on
+            ? `<div class="monto" data-monto="${i}">${COP(it.valor)}</div>`
+            : `<div class="monto monto--off">No lo ofrezco</div>`}
+          <div class="neto-inline">
+            ${it.on
+              ? `NETO <span data-neto-inline="${i}">${COP(netoDe(it.valor, COMISION))}</span>`
+              : 'OCULTO PARA MARCAS'}
+          </div>
+        </div>
+        <input type="range" class="slider" data-slider="${i}"
+               min="${RANGO.min}" max="${RANGO.max}" step="${RANGO.paso}"
+               value="${it.valor}" ${it.on ? '' : 'disabled'}
+               aria-label="Tarifa de ${esc(it.nombre)}"
+               aria-valuetext="${COP(it.valor)}">
+        <div class="extremos"><span>${COP(RANGO.min)}</span><span>${COP(RANGO.max)}</span></div>
+      </div>
+      <div class="col-neto">
+        ${it.on
+          ? `<div><div class="neto" data-neto="${i}">${COP(netoDe(it.valor, COMISION))}</div>
+               <div class="neto-nota">Visible para marcas</div></div>`
+          : `<div><div class="neto" style="color:var(--text-6)">—</div>
+               <div class="neto-nota">Oculto para marcas</div></div>`}
+      </div>
+    </div>`).join('');
+
+  const activos = ITEMS.filter(i => i.on).length;
+  $('chip-activos').textContent = `${activos} de ${ITEMS.length} entregables activos`;
+  $('badge-tarifas').textContent = `${activos}/${ITEMS.length}`;
+
+  $('filas-tarifas').querySelectorAll('[data-slider]').forEach(sl => {
+    sl.addEventListener('input', () => {
+      const i = Number(sl.dataset.slider);
+      ITEMS[i].valor = Number(sl.value);
+      const m = $('filas-tarifas').querySelector(`[data-monto="${i}"]`);
+      const n = $('filas-tarifas').querySelector(`[data-neto="${i}"]`);
+      if (m) m.textContent = COP(ITEMS[i].valor);
+      if (n) n.textContent = COP(netoDe(ITEMS[i].valor, COMISION));
+      const ni = $('filas-tarifas').querySelector(`[data-neto-inline="${i}"]`);
+      if (ni) ni.textContent = COP(netoDe(ITEMS[i].valor, COMISION));
+      sl.setAttribute('aria-valuetext', COP(ITEMS[i].valor));
+    });
+  });
+
+  $('filas-tarifas').querySelectorAll('[data-switch]').forEach(sw => {
+    sw.addEventListener('click', () => {
+      const i = Number(sw.dataset.switch);
+      ITEMS[i].on = !ITEMS[i].on;
+      pintarFilas();
+    });
+  });
+}
+
+async function guardarTarifas() {
+  const msg = $('tarifas-msg');
+  msg.classList.add('oculto');
+  const btn = $('btn-guardar');
+  btn.disabled = true;
+  btn.textContent = 'GUARDANDO…';
+  try {
+    const r = await api('/tarifas', {
+      method: 'PUT',
+      body: JSON.stringify({
+        tarifas: ITEMS.map(i => ({ entregable: i.clave, precio: i.valor, activo: i.on })),
+      }),
+    });
+    msg.className = 'aviso aviso--ok';
+    msg.textContent = r.tarifa_min
+      ? `Listo. Las marcas te ven desde ${COP(r.tarifa_min)}.`
+      : 'Listo. Como no dejaste ningún entregable activo, tu perfil no aparece en el catálogo.';
+    msg.classList.remove('oculto');
+  } catch (e) {
+    msg.className = 'aviso';
+    msg.textContent = e.message;
+    msg.classList.remove('oculto');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'GUARDAR TARIFAS →';
+  }
+}
+
+// ── Vista: Propuestas ───────────────────────────────────────────────────────
+
+let filtro = 'nuevas';
+let seleccionada = null;
+
+async function vistaPropuestas() {
+  DATOS.tratos = await api('/tratos');
+  const cuenta = (g) => DATOS.tratos.filter(t => GRUPOS[g].includes(t.estado)).length;
+
+  const nuevas = cuenta('nuevas');
+  const badge = $('badge-propuestas');
+  badge.textContent = nuevas;
+  badge.classList.toggle('oculto', nuevas === 0);
+
+  $('principal').innerHTML =
+    cabecera('Mis propuestas', 'El neto es lo que te queda a ti. Nunca aceptes sin verlo.', 'propuestas') + `
+    <div class="maestro-detalle">
+      <div class="lista-propuestas">
+        <div class="filtros">
+          <button class="filtro ${filtro === 'nuevas' ? 'activo' : ''}" data-f="nuevas">Nuevas ${cuenta('nuevas')}</button>
+          <button class="filtro ${filtro === 'aceptadas' ? 'activo' : ''}" data-f="aceptadas">Aceptadas ${cuenta('aceptadas')}</button>
+          <button class="filtro ${filtro === 'pagadas' ? 'activo' : ''}" data-f="pagadas">Pagadas ${cuenta('pagadas')}</button>
+        </div>
+        <div id="lista"></div>
+      </div>
+      <div class="detalle-propuesta" id="detalle">
+        <div class="vacio">Escoge una propuesta para ver el detalle.</div>
+      </div>
+    </div>`;
+
+  $('principal').querySelectorAll('[data-f]').forEach(b => {
+    b.addEventListener('click', () => { filtro = b.dataset.f; seleccionada = null; ir('propuestas'); });
+  });
+
+  pintarLista();
+}
+
+function pintarLista() {
+  const lista = DATOS.tratos.filter(t => GRUPOS[filtro].includes(t.estado));
+  if (!lista.length) {
+    $('lista').innerHTML = `<div class="vacio">
+      ${filtro === 'nuevas'
+        ? 'No tienes propuestas nuevas.<br>Cuando una marca te escriba, aparece aquí.'
+        : 'Nada por aquí todavía.'}
+    </div>`;
+    return;
+  }
+
+  $('lista').innerHTML = lista.map(t => {
+    const esNueva = t.estado === 'solicitado';
+    const pagada = ['pagado', 'cerrado'].includes(t.estado);
+    const linea = [t.entregables, t.fecha_entrega_esperada ? 'Entrega ' + fechaCorta(t.fecha_entrega_esperada) : null]
+      .filter(Boolean).join(' · ');
+
+    return `
+      <button class="fila-propuesta ${esNueva ? 'nueva' : ''} ${seleccionada === t.id ? 'seleccionada' : ''}" data-t="${t.id}">
+        <div class="fp-cab">
+          <div>
+            <div class="fp-marca">${esc(t.mk_marcas?.nombre_empresa || 'Marca')}</div>
+            <div class="fp-linea">${esc(linea || '—')}</div>
+          </div>
+          ${pill(t.estado)}
+        </div>
+        <div class="${esNueva ? 'destacado' : ''}">
+          <div class="fp-neto">
+            <span class="fp-neto__label">${pagada ? 'Recibiste' : 'Tu neto'}</span>
+            <span class="fp-neto__valor" ${pagada ? 'style="color:var(--off-white)"' : ''}>${COP(t.neto_a_recibir_creadora)}</span>
+          </div>
+          ${esNueva ? `<div class="fp-nota">De ${COP(t.monto_creadora)} acordados · ${t.comision_creadora_pct}% comisión</div>` : ''}
+        </div>
+      </button>`;
+  }).join('');
+
+  $('lista').querySelectorAll('[data-t]').forEach(b => {
+    b.addEventListener('click', () => verPropuesta(b.dataset.t));
+  });
+
+  // En escritorio se abre la primera de una: el panel no debería quedar vacío.
+  if (!seleccionada && window.innerWidth > 900 && lista.length) {
+    verPropuesta(lista[0].id);
+    document.querySelector('.maestro-detalle')?.classList.remove('viendo-detalle');
+  }
+}
+
+async function verPropuesta(id) {
+  seleccionada = id;
+  pintarLista();
+  const cont = $('detalle');
+  document.querySelector('.maestro-detalle')?.classList.add('viendo-detalle');
+  cont.innerHTML = '<div class="vacio">Cargando…</div>';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  const t = await api('/tratos/' + id);
+  const esNueva = t.estado === 'solicitado';
+
+  const historial = t.campanas_previas > 0
+    ? `${t.campanas_previas} campaña${t.campanas_previas > 1 ? 's' : ''} previa${t.campanas_previas > 1 ? 's' : ''}`
+    : 'Primera campaña';
+
+  cont.innerHTML = `
+    <div class="det-ref">
+      <span style="display:flex;align-items:center">
+        <button class="volver" id="btn-volver" aria-label="Volver a la lista">←</button>
+        <span class="det-ref__texto">Propuesta ${esc(t.codigo || '')}</span>
+      </span>
+      ${pill(t.estado)}
+    </div>
+
+    <h2 class="det-marca">${esc(t.marca?.nombre_empresa || 'Marca')}</h2>
+
+    <div class="det-chips">
+      ${t.marca?.ciudad ? `<span class="det-chip det-chip--blue">${esc(t.marca.ciudad)}</span>` : ''}
+      <span class="det-chip">${esc(historial)}</span>
+      ${t.exclusividad ? '<span class="det-chip">Con exclusividad</span>' : ''}
+    </div>
+
+    <div class="det-rotulo">El brief</div>
+    <div class="det-brief">${esc(t.brief)}</div>
+
+    <div class="condiciones" style="margin-top:20px">
+      <div><div class="cond-label">Entregables</div><div class="cond-valor">${esc(t.entregables || '—')}</div></div>
+      <div><div class="cond-label">Fecha de entrega</div>
+        <div class="cond-valor cond-valor--lime">${t.fecha_entrega_esperada ? fechaCorta(t.fecha_entrega_esperada) : 'Sin fecha'}</div></div>
+      <div><div class="cond-label">Producto</div><div class="cond-valor">${esc(t.producto || 'No especificado')}</div></div>
+      <div><div class="cond-label">Exclusividad</div><div class="cond-valor">${esc(t.exclusividad || 'Sin exclusividad')}</div></div>
+    </div>
+
+    <div class="desglose">
+      <div class="desglose__fila">
+        <span class="desglose__label">Monto acordado</span>
+        <span class="desglose__valor">${COP(t.monto_creadora)}</span>
+      </div>
+      <div class="desglose__fila">
+        <span class="desglose__label">Comisión Creadores.app ${t.comision_creadora_pct}%</span>
+        <span class="desglose__valor desglose__valor--resta">−${COP(t.comision_creadora_valor)}</span>
+      </div>
+      <div class="desglose__neto">
+        <div class="desglose__neto-label">Tu neto</div>
+        <div class="desglose__neto-valor">${COP(t.neto_a_recibir_creadora)}</div>
+        <div class="desglose__neto-nota">A tu cuenta ${t.horas_pago_tras_aprobar || 48}h después de aprobado</div>
+      </div>
+    </div>
+
+    ${['pago_retenido','entregado','aprobado','pagado','cerrado'].includes(t.estado) ? `
+      <div class="nota-escrow">
+        El dinero ya está retenido. Si publicas lo acordado, te lo pagan. No depende de la marca.
+      </div>` : `
+      <div class="nota-escrow">
+        Cuando aceptes, la marca paga y el dinero queda retenido antes de que publiques.
+      </div>`}
+
+    ${esNueva ? `
+      <div class="acciones">
+        <button class="btn-portal" id="btn-aceptar">ACEPTAR PROPUESTA →</button>
+        <button class="btn-portal btn-portal--ghost" id="btn-rechazar">RECHAZAR</button>
+      </div>
+      ${t.responder_antes_de ? `<div class="nota-pie" style="margin-top:10px">
+        Tienes ${t.horas_responder || 72} horas para responder
+      </div>` : ''}
+    ` : ''}
+  `;
+
+  $('btn-volver')?.addEventListener('click', () => {
+    seleccionada = null;
+    document.querySelector('.maestro-detalle')?.classList.remove('viendo-detalle');
+    pintarLista();
+  });
+
+  $('btn-aceptar')?.addEventListener('click', async () => {
+    const b = $('btn-aceptar');
+    b.disabled = true; b.textContent = 'ACEPTANDO…';
+    try {
+      await api('/tratos/' + id + '/aceptar', { method: 'POST', body: '{}' });
+      // Aceptar lleva a Entregar, como define el diseño: es el siguiente paso real.
+      await ir('entregar');
+    } catch (e) {
+      alert('No se pudo aceptar: ' + e.message);
+      b.disabled = false; b.textContent = 'ACEPTAR PROPUESTA →';
+    }
+  });
+
+  $('btn-rechazar')?.addEventListener('click', async () => {
+    const motivo = prompt('¿Por qué la rechazas? (opcional, le llega a la marca)');
+    if (motivo === null) return;
+    try {
+      await api('/tratos/' + id + '/rechazar', { method: 'POST', body: JSON.stringify({ motivo }) });
+      seleccionada = null;
+      await ir('propuestas');
+    } catch (e) { alert('No se pudo: ' + e.message); }
+  });
+}
+
+// ── Vista: Entregar ─────────────────────────────────────────────────────────
+
+let links = [''];
+
+async function vistaEntregar() {
+  DATOS.tratos = await api('/tratos');
+  // Solo se puede entregar lo que ya tiene el pago retenido.
+  const pendientes = DATOS.tratos.filter(t => t.estado === 'pago_retenido');
+
+  $('badge-entregar').textContent = pendientes.length || '';
+
+  if (!pendientes.length) {
+    $('principal').innerHTML =
+      cabecera('Entregar contenido', 'Pega el link de lo publicado para liberar el pago.', 'entregar') + `
+      <div class="vacio">
+        No tienes nada pendiente por entregar.<br>
+        Cuando aceptes una propuesta y la marca pague, aparece aquí.
+      </div>`;
+    return;
+  }
+
+  const t = pendientes[0];
+  const contexto = [t.codigo, t.mk_marcas?.nombre_empresa, t.entregables].filter(Boolean).join(' · ');
+
+  // La lista de revisión sale del brief, no es fija: cada marca pide lo suyo.
+  const requisitos = (t.brief || '')
+    .split(/[.\n;]+/)
+    .map(s => s.trim())
+    .filter(s => s.length > 12)
+    .slice(0, 4);
+
+  $('principal').innerHTML =
+    cabecera('Entregar contenido', 'Pega el link de lo publicado para liberar el pago.', 'entregar') + `
+    ${pendientes.length > 1 ? `
+      <div class="campo" style="max-width:340px">
+        <label>¿Cuál vas a entregar?</label>
+        <select id="sel-trato" class="input-link">
+          ${pendientes.map((p, i) => `<option value="${p.id}">${esc(p.codigo)} · ${esc(p.mk_marcas?.nombre_empresa || '')}</option>`).join('')}
+        </select>
+      </div>` : ''}
+
+    <div class="entregar-wrap">
+      <div class="entregar-main">
+        <div class="det-ref__texto" style="margin-bottom:16px">Entrega ${esc(contexto)}</div>
+
+        <div class="det-rotulo" style="margin-top:0">Pega el link de lo publicado</div>
+        <div id="links"></div>
+        <div class="acciones" style="margin-top:12px">
+          <button class="btn-portal btn-portal--sec" id="btn-pegar">Pegar del portapapeles</button>
+          <button class="btn-portal btn-portal--sec" id="btn-otro">+ Otro link</button>
+        </div>
+
+        <div class="det-rotulo">Antes de enviar, revisa</div>
+        <div id="checklist">
+          ${requisitos.length ? requisitos.map((r, i) => `
+            <div class="check-item pendiente" data-check="${i}">
+              <span class="check-caja"></span>
+              <span>${esc(r)}</span>
+            </div>`).join('') : `
+            <div class="check-item pendiente" data-check="0">
+              <span class="check-caja"></span>
+              <span>El post está público, no en borrador ni archivado</span>
+            </div>`}
+        </div>
+
+        <div class="acciones">
+          <button class="btn-portal" id="btn-enviar" disabled>ENVIAR PARA APROBACIÓN →</button>
+        </div>
+        <div class="nota-pie" style="margin-top:10px">
+          La marca tiene ${t.horas_aprobar || 48}h para aprobar.
+        </div>
+        <div class="error oculto" id="entregar-msg"></div>
+      </div>
+
+      <div class="entregar-lado">
+        <div class="caja-dato">
+          <div class="caja-dato__label">Se libera al aprobar</div>
+          <div class="caja-dato__valor">${COP(t.neto_a_recibir_creadora)}</div>
+        </div>
+        <div class="caja-dato">
+          <div class="caja-dato__label">Fecha acordada</div>
+          <div class="caja-dato__valor" style="font-size:16px">${t.fecha_entrega_esperada ? fechaCorta(t.fecha_entrega_esperada) : 'Sin fecha'}</div>
+        </div>
+        <div class="det-rotulo">Tu progreso</div>
+        <ul class="timeline">
+          <li class="hecho"><span class="caja"></span>Propuesta aceptada</li>
+          <li class="hecho"><span class="caja"></span>Pago en escrow</li>
+          <li><span class="caja"></span>Contenido entregado</li>
+          <li><span class="caja"></span>Aprobado y pagado</li>
+        </ul>
+      </div>
+    </div>`;
+
+  links = [''];
+  pintarLinks();
+
+  $('sel-trato')?.addEventListener('change', () => vistaEntregar());
+
+  $('btn-otro').addEventListener('click', () => { links.push(''); pintarLinks(); });
+
+  $('btn-pegar').addEventListener('click', async () => {
+    try {
+      const texto = await navigator.clipboard.readText();
+      links[links.length - 1] = texto.trim();
+      pintarLinks();
+    } catch (e) {
+      alert('No pude leer el portapapeles. Pega el link a mano.');
+    }
+  });
+
+  $('checklist').querySelectorAll('[data-check]').forEach(item => {
+    item.addEventListener('click', () => {
+      const caja = item.querySelector('.check-caja');
+      const ok = caja.classList.toggle('ok');
+      caja.textContent = ok ? '✓' : '';
+      item.classList.toggle('pendiente', !ok);
+      revisarEnvio();
+    });
+  });
+
+  $('btn-enviar').addEventListener('click', async () => {
+    const idTrato = $('sel-trato')?.value || t.id;
+    const b = $('btn-enviar');
+    const msg = $('entregar-msg');
+    msg.classList.add('oculto');
+    b.disabled = true; b.textContent = 'ENVIANDO…';
+    try {
+      await api('/tratos/' + idTrato + '/entregar', {
+        method: 'POST',
+        body: JSON.stringify({ url_contenido: links.filter(Boolean).join('\n') }),
+      });
+      await ir('propuestas');
+    } catch (e) {
+      msg.className = 'aviso';
+      msg.textContent = e.message;
+      msg.classList.remove('oculto');
+      b.disabled = false; b.textContent = 'ENVIAR PARA APROBACIÓN →';
+    }
+  });
+}
+
+function pintarLinks() {
+  $('links').innerHTML = links.map((l, i) => `
+    <input class="input-link" data-link="${i}" style="margin-bottom:8px"
+           placeholder="https://instagram.com/reel/..." value="${esc(l)}">`).join('');
+  $('links').querySelectorAll('[data-link]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      links[Number(inp.dataset.link)] = inp.value.trim();
+      revisarEnvio();
+    });
+  });
+  revisarEnvio();
+}
+
+// El botón se habilita solo con un link que parezca URL y todo el checklist
+// marcado. Es fricción a propósito: una entrega mal hecha le cuesta a ella.
+function revisarEnvio() {
+  const btn = $('btn-enviar');
+  if (!btn) return;
+  const hayLink = links.some(l => /^https?:\/\/.+\..+/.test(l));
+  const items = [...document.querySelectorAll('#checklist [data-check]')];
+  const todoOk = items.length > 0 && items.every(i => i.querySelector('.check-caja').classList.contains('ok'));
+  btn.disabled = !(hayLink && todoOk);
+}
+
+// ── Arranque ────────────────────────────────────────────────────────────────
+
+async function arrancar() {
+  $('login-wrap').classList.add('oculto');
+  $('app').classList.remove('oculto');
+  $('tabs-movil').classList.remove('oculto');
+  try {
+    DATOS.perfil = await api('/me');
+    DATOS.tratos = await api('/tratos');
+    const nuevas = DATOS.tratos.filter(t => t.estado === 'solicitado').length;
+    const badge = $('badge-propuestas');
+    badge.textContent = nuevas;
+    badge.classList.toggle('oculto', nuevas === 0);
+    $('badge-entregar').textContent = DATOS.tratos.filter(t => t.estado === 'pago_retenido').length || '';
+  } catch (e) { /* el detalle se muestra en cada vista */ }
+  ir('tarifas');
+}
+
+if (TOKEN) {
+  api('/me').then(arrancar).catch(() => {
+    sessionStorage.removeItem('mk_creadora');
+    TOKEN = null;
+  });
+}
+</script>
+</body>
+</html>

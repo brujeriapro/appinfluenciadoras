@@ -111,7 +111,7 @@ router.get('/tratos', async (req, res) => {
 /** Crea una solicitud de colaboración. */
 router.post('/tratos', rateLimit({ max: 20 }), async (req, res) => {
   try {
-    const { creadora_id, brief, entregables, monto, fecha_entrega_esperada } = req.body;
+    const { creadora_id, brief, entregables, monto, fecha_entrega_esperada, producto, exclusividad } = req.body;
 
     if (!creadora_id || !brief || !monto) {
       return res.status(400).json({ error: 'Faltan creadora, brief o monto' });
@@ -144,6 +144,8 @@ router.post('/tratos', rateLimit({ max: 20 }), async (req, res) => {
       brief,
       entregables: entregables || null,
       fecha_entrega_esperada: fecha_entrega_esperada || null,
+      producto: producto || null,
+      exclusividad: exclusividad || null,
       ...calculo,
     });
 

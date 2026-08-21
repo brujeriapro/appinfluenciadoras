@@ -285,7 +285,7 @@ node index.js       # http://localhost:3040
 npm test            # 34 pruebas: comisiones, máquina de estados y tarifas
 ```
 
-Migraciones (a mano en el SQL Editor de Supabase, en orden): `mk_001_init.sql`, `mk_002_seed_config.sql`, `mk_003_nichos_y_tarifas.sql`. Además, crear el bucket privado `mk-muestras` en Storage.
+Migraciones (a mano en el SQL Editor de Supabase, en orden): `mk_001_init.sql`, `mk_002_seed_config.sql`, `mk_003_nichos_y_tarifas.sql`, `mk_004_portal_creadora.sql`. Además, crear el bucket privado `mk-muestras` en Storage.
 
 ### Identidad visual
 
@@ -293,8 +293,9 @@ Brutalismo digital / Y2K editorial, definido en el handoff de Claude Design y co
 
 ### Estado
 
-- Backend completo y probado; landing pública portada del handoff; **panel admin operativo** en `/admin.html` (tratos, registro de pagos, curaduría del catálogo, ajustes de comisión, export CSV).
-- Faltan las pantallas de cara al usuario (catálogo, registro de marca, portal de creadora, línea de tiempo) — esperan mockups.
+- Backend completo y probado; landing pública portada del handoff; **panel admin operativo** en `/admin.html` (tratos, registro de pagos, curaduría del catálogo, ajustes de comisión, export CSV) y **portal de la creadora** en `/creadora.html` (tarifas con deslizador, propuestas con el neto siempre visible, entrega de contenido).
+- Faltan las pantallas del lado marca (catálogo, registro, línea de tiempo) — esperan mockups.
+- ⚠️ El portal promete plazos (72h para responder, 48h para aprobar, pago 48h después) que **hoy solo se muestran**: no hay cron que los ejecute. Ver README de la app.
 - El dominio (`creadores.app`) aún no está comprado: corre sobre la URL de Railway.
 - Sin marca de agua y sin pasarela de pagos en esta fase, por decisión de producto.
 

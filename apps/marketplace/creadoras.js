@@ -90,6 +90,11 @@ router.get('/tarifas', async (req, res) => {
     res.json({
       entregables: cfg.entregables || [],
       rango: cfg.rango_tarifa || { min: 50000, max: 8000000, paso: 10000 },
+      // La comisión viaja al front para que el neto se actualice mientras ella
+      // mueve el deslizador. La fuente de verdad sigue siendo el backend: al
+      // crear un trato se congela el porcentaje y se recalcula allá.
+      comision_creadora_pct: Number(cfg.comision_creadora_pct ?? 8),
+      horas_pago_tras_aprobar: Number(cfg.horas_pago_tras_aprobar ?? 48),
       tarifas,
     });
   } catch (e) {
@@ -204,18 +209,39 @@ router.get('/tratos/:id', async (req, res) => {
     if (!trato || trato.creadora_id !== req.usuarioId) {
       return res.status(404).json({ error: 'Trato no encontrado' });
     }
-    const [eventos, entregas] = await Promise.all([
+    const [eventos, entregas, marcaCompleta, cfg, previos] = await Promise.all([
       db.getEventosDeTrato(trato.id),
       db.getEntregasDeTrato(trato.id),
+      db.getMarcaById(trato.marca_id),
+      db.getConfig(),
+      db.contarTratosPrevios(trato.marca_id, req.usuarioId),
     ]);
+
+    // Antes de que se revele el contacto, la creadora ve el nombre de la marca
+    // y su ciudad —lo necesita para decidir— pero no el correo ni el teléfono.
     const marca = maquina.contactoVisible(trato)
-      ? await db.getMarcaById(trato.marca_id)
-      : { nombre_empresa: (await db.getMarcaById(trato.marca_id))?.nombre_empresa };
+      ? marcaCompleta
+      : {
+          nombre_empresa: marcaCompleta?.nombre_empresa,
+          ciudad: marcaCompleta?.ciudad,
+        };
+
+    // Ventana para responder. Por ahora es informativa: se muestra, pero
+    // todavía no hay proceso que expire la propuesta al vencerse.
+    const horas = Number(cfg.horas_responder_propuesta ?? 72);
+    const vence = trato.fecha_solicitud
+      ? new Date(new Date(trato.fecha_solicitud).getTime() + horas * 3600_000).toISOString()
+      : null;
 
     res.json({
       ...trato,
       marca,
+      campanas_previas: previos,
       contacto_visible: maquina.contactoVisible(trato),
+      responder_antes_de: vence,
+      horas_responder: horas,
+      horas_aprobar: Number(cfg.horas_aprobar_entrega ?? 48),
+      horas_pago_tras_aprobar: Number(cfg.horas_pago_tras_aprobar ?? 48),
       eventos,
       entregas,
       acciones: maquina.transicionesDisponibles(trato.estado, 'creadora'),

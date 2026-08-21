@@ -24,6 +24,23 @@
   --blue-text-softest:#DADAFF;
   --off-white:        #F2F2F2;
 
+  /* Superficies y escala de grises del portal de la creadora. El handoff de la
+     landing solo necesitaba tres grises; el portal usa una escala más fina
+     porque tiene tablas, filas seleccionadas e inputs. */
+  --surface-1: #111111;   /* barra de acciones inferior en móvil */
+  --surface-2: #141414;   /* bloques de neto, inputs, nota de escrow */
+  --surface-3: #161616;   /* fila o pestaña seleccionada */
+
+  --text-2: #D8D8D8;      /* cuerpo del brief */
+  --text-3: #C8C8C8;      /* marca en propuestas inactivas */
+  --text-4: #9A9A9A;      /* etiquetas secundarias */
+  --text-5: #7A7A7A;      /* metadatos, encabezados de columna */
+  --text-6: #6A6A6A;      /* notas al pie, texto apagado */
+  --text-7: #5A5A5A;      /* extremos del deslizador, ítems deshabilitados */
+
+  --border-1: #1F1F1F;      /* separador de fila, 1px */
+  --border-input: #3A3A3A;  /* inputs, píldoras inactivas, casillas */
+
   --grey-300: #DEDEDE;
   --grey-500: #B4B4B4;
   --grey-600: #9A9A9A;
