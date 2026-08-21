@@ -14,6 +14,7 @@ const db = require('./db');
 const config = require('./config');
 const maquina = require('./tratos');
 const { rangoAlcance, resumirAlcance } = require('./comisiones');
+const wompi = require('./wompi');
 const { subirMuestra, borrarMuestra } = require('./muestras');
 const notificaciones = require('./notificaciones');
 
@@ -124,6 +125,31 @@ router.get('/diagnostico', async (req, res) => {
     pruebas.storage = `falla: ${e.message}`;
   }
 
+  // Wompi: se revisa la forma de cada llave, no su valor.
+  const w = config.wompi;
+  const wompiEstado = {
+    llave_publica: w.llave_publica
+      ? `${w.llave_publica.slice(0, 9)}… (${w.llave_publica.startsWith('pub_test') ? 'PRUEBAS' : 'PRODUCCIÓN'})`
+      : '(falta)',
+    llave_privada: w.llave_privada ? `${w.llave_privada.slice(0, 9)}…` : '(falta)',
+    secreto_integridad: w.secreto_integridad ? 'puesto' : '(falta)',
+    secreto_eventos: w.secreto_eventos ? 'puesto' : '(falta)',
+    listo_para_cobrar: wompi.disponible(),
+    url_webhook: `${config.base_url}/webhook/wompi`,
+  };
+
+  const cfg = await db.getConfig().catch(() => ({}));
+  wompiEstado.cobro_encendido = cfg.pagos_wompi_activos === true;
+  wompiEstado.planes_encendidos = cfg.planes_activos === true;
+
+  // Las llaves mezcladas son el error silencioso: el checkout abre y el pago
+  // se rechaza al confirmar, sin que nadie entienda por qué.
+  const publicaEsPrueba = String(w.llave_publica).startsWith('pub_test');
+  const privadaEsPrueba = String(w.llave_privada).startsWith('prv_test');
+  if (w.llave_publica && w.llave_privada && publicaEsPrueba !== privadaEsPrueba) {
+    wompiEstado.problema = 'Una llave es de pruebas y la otra de producción. Tienen que ser del mismo ambiente.';
+  }
+
   let recomendacion = null;
   if (!forma.es_jwt) {
     recomendacion = 'La llave no es un JWT. Storage exige la service_role clásica, que empieza por "eyJ".';
@@ -135,9 +161,11 @@ router.get('/diagnostico', async (req, res) => {
 
   res.json({
     url_supabase: config.supabase.url,
+    url_publica: config.base_url,
     bucket: config.supabase.bucket_muestras,
     llave: forma,
     pruebas,
+    wompi: wompiEstado,
     recomendacion,
   });
 });
