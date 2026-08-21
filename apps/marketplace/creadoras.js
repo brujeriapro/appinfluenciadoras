@@ -11,6 +11,7 @@ const maquina = require('./tratos');
 const { resumirTarifas, rangoAlcance } = require('./comisiones');
 const { creadoraAuth, firmarToken, rateLimit } = require('./auth');
 const notificaciones = require('./notificaciones');
+const { subirMuestra, borrarMuestra } = require('./muestras');
 
 const router = express.Router();
 
@@ -210,16 +211,32 @@ router.use(creadoraAuth);
  */
 router.get('/estado', async (req, res) => {
   try {
-    const [c, tarifas] = await Promise.all([
+    const [c, tarifas, muestras, priv] = await Promise.all([
       db.getCreadoraCompleta(req.usuarioId),
       db.getTarifasDeCreadora(req.usuarioId),
+      db.getMuestrasDeCreadora(req.usuarioId),
+      db.getPrivadoDeCreadora(req.usuarioId),
     ]);
     if (!c) return res.status(404).json({ error: 'Perfil no encontrado' });
 
     const conTarifas = tarifas.some(t => t.activo !== false);
+    const conRedes = Boolean(priv?.instagram_handle || priv?.tiktok_handle);
+
+    // Lo que le falta para poder ser revisada, en el orden en que lo va a hacer.
     const faltantes = [];
-    if (!conTarifas) faltantes.push('tarifas');
     if (!(c.nicho || []).length) faltantes.push('nicho');
+    if (!conRedes)               faltantes.push('redes');
+    if (!conTarifas)             faltantes.push('tarifas');
+    if (!muestras.length)        faltantes.push('trabajo');
+
+    // Lo que le decimos, según lo que le falte. Concreto y en su idioma: nadie
+    // debería quedarse esperando sin saber por qué no le llegan propuestas.
+    const QUE_FALTA = {
+      nicho:   'elegir tu nicho',
+      redes:   'poner tus redes',
+      tarifas: 'poner tus tarifas',
+      trabajo: 'subir al menos una pieza de tu trabajo',
+    };
 
     let mensaje, tono;
     if (c.estado_perfil === 'rechazada') {
@@ -230,9 +247,13 @@ router.get('/estado', async (req, res) => {
     } else if (c.visible) {
       tono = 'bueno';
       mensaje = 'Tu perfil está publicado. Las marcas ya te pueden encontrar.';
-    } else if (!conTarifas) {
+    } else if (faltantes.length) {
       tono = 'accion';
-      mensaje = 'Pon tus tarifas para que revisemos tu perfil. Sin precio no podemos publicarte.';
+      const lista = faltantes.map(f => QUE_FALTA[f]).filter(Boolean);
+      const texto = lista.length === 1
+        ? lista[0]
+        : lista.slice(0, -1).join(', ') + ' y ' + lista[lista.length - 1];
+      mensaje = `Para que revisemos tu perfil te falta ${texto}.`;
     } else {
       tono = 'espera';
       mensaje = 'Ya tenemos todo. Estamos revisando tu perfil y te avisamos por correo.';
@@ -242,6 +263,7 @@ router.get('/estado', async (req, res) => {
       estado_perfil: c.estado_perfil,
       visible: c.visible,
       nicho: c.nicho || [],
+      fuente_metricas: c.fuente_metricas || 'declarado',
       faltantes,
       mensaje,
       tono,
@@ -264,6 +286,127 @@ router.get('/me', async (req, res) => {
     res.json({ ...perfil, muestras, tarifas });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Su perfil: lo completa ella ─────────────────────────────────────────────
+
+/**
+ * Datos editables del perfil, incluidas sus redes.
+ *
+ * Las redes se guardan en mk_creadora_privado, nunca en mk_creadoras: el
+ * catálogo consulta esa segunda tabla y no debe tener por dónde filtrarlas.
+ */
+router.put('/perfil', async (req, res) => {
+  try {
+    const { nombre_publico, bio_corta, ciudad, whatsapp, instagram, tiktok, seguidores } = req.body;
+
+    const datos = {};
+    if (nombre_publico !== undefined) {
+      const n = String(nombre_publico).trim();
+      if (!n) return res.status(400).json({ error: 'El nombre no puede quedar vacío' });
+      datos.nombre_publico = n;
+    }
+    if (bio_corta !== undefined) datos.bio_corta = String(bio_corta).slice(0, 240);
+    if (ciudad !== undefined)    datos.ciudad = ciudad || null;
+    if (whatsapp !== undefined)  datos.whatsapp = whatsapp || null;
+
+    const actual = await db.getCreadoraCompleta(req.usuarioId);
+    if (!actual) return res.status(404).json({ error: 'Perfil no encontrado' });
+
+    // Mientras las métricas sean declaradas, ella puede corregir su alcance.
+    // Cuando vengan verificadas de Meta, el número lo manda la API y este
+    // campo deja de aceptarse: sería absurdo dejarla sobrescribir un dato
+    // verificado con uno inventado.
+    if (seguidores !== undefined && actual.fuente_metricas !== 'verificado') {
+      const alcance = Number(seguidores) || 0;
+      const cfg = await db.getConfig();
+      datos.alcance_total = alcance;
+      datos.rango_alcance = rangoAlcance(alcance, cfg.rangos_alcance || []);
+    }
+
+    const actualizada = await db.updateCreadora(req.usuarioId, datos);
+
+    if (instagram !== undefined || tiktok !== undefined) {
+      const limpio = (h) => h ? String(h).replace('@', '').toLowerCase().trim() : null;
+      const ig = limpio(instagram);
+
+      // Que no reclame un @usuario que ya tiene otra.
+      if (ig) {
+        const dueno = await db.getCreadoraPorHandle(ig);
+        if (dueno && dueno !== req.usuarioId) {
+          return res.status(409).json({ error: 'Ese usuario de Instagram ya está registrado por otra creadora.' });
+        }
+      }
+      const cambios = {};
+      if (instagram !== undefined) cambios.instagram_handle = ig;
+      if (tiktok !== undefined)    cambios.tiktok_handle = limpio(tiktok);
+      await db.guardarPrivadoDeCreadora(req.usuarioId, cambios);
+    }
+
+    res.json({ ok: true, creadora: actualizada });
+  } catch (e) {
+    console.error('[creadoras/perfil]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** Sus redes, para poder mostrárselas en el formulario. */
+router.get('/redes', async (req, res) => {
+  try {
+    const [priv, c] = await Promise.all([
+      db.getPrivadoDeCreadora(req.usuarioId),
+      db.getCreadoraCompleta(req.usuarioId),
+    ]);
+    res.json({
+      instagram: priv?.instagram_handle || null,
+      tiktok: priv?.tiktok_handle || null,
+      fuente_metricas: c?.fuente_metricas || 'declarado',
+      seguidores: c?.alcance_total || null,
+      // La conexión con Meta todavía no existe: el portal usa esto para
+      // mostrar el botón o un "próximamente".
+      conexion_disponible: (await db.getConfig()).instagram_conexion_activa === true,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Su trabajo ──────────────────────────────────────────────────────────────
+
+router.get('/muestras', async (req, res) => {
+  try {
+    const [muestras, cfg] = await Promise.all([
+      db.getMuestrasDeCreadora(req.usuarioId),
+      db.getConfig(),
+    ]);
+    res.json({ muestras, maximo: Number(cfg.max_muestras_por_creadora ?? 6) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/muestras', rateLimit({ windowMs: 300_000, max: 20 }), async (req, res) => {
+  try {
+    const muestra = await subirMuestra(req.usuarioId, { ...req.body, subida_por: 'creadora' });
+    res.json({ ok: true, muestra: { id: muestra.id, tipo: muestra.tipo, titulo: muestra.titulo } });
+  } catch (e) {
+    console.error('[creadoras/muestras]', e.message);
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.delete('/muestras/:id', async (req, res) => {
+  try {
+    // Solo puede borrar lo suyo.
+    const muestra = await db.getMuestra(req.params.id);
+    if (!muestra || muestra.creadora_id !== req.usuarioId) {
+      return res.status(404).json({ error: 'Pieza no encontrada' });
+    }
+    await borrarMuestra(req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
   }
 });
 
@@ -331,10 +474,24 @@ router.put('/tarifas', async (req, res) => {
     // revisión. Si ya está aprobada, no se toca su estado.
     const actual = await db.getCreadoraCompleta(req.usuarioId);
     const cambios = { ...resumen };
+
+    // El perfil entra a la cola de revisión cuando ya no le falta nada: nicho,
+    // redes, tarifas y al menos una pieza de trabajo. Antes de eso, revisarlo
+    // sería hacerle perder el tiempo al equipo.
     if (actual?.estado_perfil === 'nueva' && resumen.tarifa_min) {
-      cambios.estado_perfil = 'en_revision';
-      notificaciones.avisoListaParaRevisar({ creadora: actual }).catch(e =>
-        console.error('[notif] avisoListaParaRevisar:', e.message));
+      const [muestras, priv] = await Promise.all([
+        db.getMuestrasDeCreadora(req.usuarioId),
+        db.getPrivadoDeCreadora(req.usuarioId),
+      ]);
+      const completo = (actual.nicho || []).length
+        && (priv?.instagram_handle || priv?.tiktok_handle)
+        && muestras.length;
+      if (completo) {
+        cambios.estado_perfil = 'en_revision';
+        cambios.perfil_completo_at = new Date().toISOString();
+        notificaciones.avisoListaParaRevisar({ creadora: actual }).catch(e =>
+          console.error('[notif] avisoListaParaRevisar:', e.message));
+      }
     }
     await db.updateCreadora(req.usuarioId, cambios);
 

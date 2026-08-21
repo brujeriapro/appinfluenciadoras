@@ -44,6 +44,7 @@
   }
   .nav-item:hover { color: var(--off-white); }
   .nav-item.activo { background: var(--surface-3); }
+  .nav-item.activo[data-vista="perfil"]     { color: var(--blue-text-soft); border-left-color: var(--blue); }
   .nav-item.activo[data-vista="tarifas"]    { color: var(--lime);      border-left-color: var(--lime); }
   .nav-item.activo[data-vista="propuestas"] { color: var(--magenta);   border-left-color: var(--magenta); }
   .nav-item.activo[data-vista="entregar"]   { color: var(--off-white); border-left-color: var(--off-white); }
@@ -62,6 +63,7 @@
     font-size: clamp(20px, 2.2vw, 30px); letter-spacing: -1.4px;
     text-transform: uppercase; margin: 0;
   }
+  .titulo--perfil     { color: var(--blue-text-soft); }
   .titulo--tarifas    { color: var(--lime); }
   .titulo--propuestas { color: var(--magenta); }
   .titulo--entregar   { color: var(--off-white); }
@@ -279,18 +281,66 @@
   .timeline li.hecho { color: var(--off-white); }
   .timeline li.hecho .caja { background: var(--lime); border-color: var(--lime); }
 
+  /* ── Mi perfil ──────────────────────────────────────────────────────────── */
+
+  .bloque-perfil { border: 2px solid var(--border-dark); padding: 18px; margin-bottom: 16px; }
+  .bloque-perfil__titulo { font-family: var(--mono-title); font-weight: 800; font-size: 12.5px;
+                           letter-spacing: -0.2px; text-transform: uppercase; margin-bottom: 4px; }
+  .bloque-perfil__nota { font-size: 10.5px; letter-spacing: 0.6px; color: var(--text-5);
+                         text-transform: uppercase; margin-bottom: 16px; }
+
+  .campo-p { margin-bottom: 14px; }
+  .campo-p label { display: block; font-size: 9.5px; letter-spacing: 1.2px;
+                   text-transform: uppercase; color: var(--text-5); margin-bottom: 6px; }
+  .campo-p input, .campo-p textarea {
+    width: 100%; background: var(--surface-2); border: 2px solid var(--border-input);
+    color: var(--off-white); font-family: var(--mono-body); font-size: 12.5px; padding: 11px 12px;
+  }
+  .campo-p input:focus, .campo-p textarea:focus { outline: none; border-color: var(--lime); }
+  .campos-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+
+  .grupo-nicho { margin-bottom: 14px; }
+  .grupo-nicho__titulo { font-size: 9.5px; letter-spacing: 1.1px; color: var(--text-5);
+                         text-transform: uppercase; margin-bottom: 6px; }
+  .chips-nicho { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip-n { font-size: 10.5px; padding: 6px 10px; border: 1px solid var(--border-input);
+            color: var(--text-4); cursor: pointer; background: transparent; }
+  .chip-n:hover { border-color: var(--text-4); color: var(--off-white); }
+  .chip-n.on { background: var(--lime); border-color: var(--lime); color: var(--ink); font-weight: 700; }
+
+  .galeria { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .pieza { border: 2px solid var(--border-dark); position: relative; }
+  .pieza img, .pieza video { width: 100%; height: 150px; object-fit: cover; display: block; background: var(--surface-2); }
+  .pieza__pie { padding: 8px 10px; font-size: 10px; color: var(--text-5); display: flex;
+                justify-content: space-between; align-items: center; gap: 8px; }
+  .pieza__borrar { background: none; border: none; color: var(--text-5); cursor: pointer;
+                   font-size: 14px; line-height: 1; padding: 0; }
+  .pieza__borrar:hover { color: var(--magenta); }
+  .subir {
+    border: 2px dashed var(--border-input); display: grid; place-items: center; min-height: 186px;
+    cursor: pointer; color: var(--text-5); font-size: 11px; letter-spacing: 0.8px;
+    text-align: center; padding: 12px; text-transform: uppercase;
+  }
+  .subir:hover { border-color: var(--lime); color: var(--lime); }
+  .subir input { display: none; }
+
+  .verificacion { display: flex; gap: 10px; align-items: flex-start; padding: 14px;
+                  background: var(--surface-2); border-left: 4px solid var(--blue); margin-top: 14px; }
+  .verificacion__texto { font-size: 11.5px; line-height: 1.6; color: var(--text-2); }
+
   /* ── Pestañas móviles ───────────────────────────────────────────────────── */
 
   .tabs-movil {
     position: sticky; bottom: 0; z-index: 20; display: none;
     background: var(--surface-1); border-top: 2px solid var(--border-dark);
   }
-  .tabs-movil__inner { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .tabs-movil__inner { display: grid; grid-template-columns: repeat(4, 1fr); }
   .tab-movil {
     background: transparent; border: none; padding: 14px 6px; cursor: pointer;
     font-family: var(--mono-body); font-size: 9.5px; font-weight: 700;
     letter-spacing: 0.6px; text-transform: uppercase; color: var(--text-5);
   }
+  .tab-movil.activo[data-vista="perfil"]     { background: var(--blue);     color: #fff; }
   .tab-movil.activo[data-vista="tarifas"]    { background: var(--lime);      color: var(--ink); }
   .tab-movil.activo[data-vista="propuestas"] { background: var(--magenta);   color: var(--ink); }
   .tab-movil.activo[data-vista="entregar"]   { background: var(--off-white); color: var(--ink); }
@@ -463,7 +513,10 @@
       <span class="logo__texto">CREADORES.APP</span>
     </div>
     <div class="lateral__rotulo">Portal de creadora</div>
-    <button class="nav-item activo" data-vista="tarifas">
+    <button class="nav-item activo" data-vista="perfil">
+      <span>Mi perfil</span><span class="badge badge--magenta oculto" id="badge-perfil"></span>
+    </button>
+    <button class="nav-item" data-vista="tarifas">
       <span>Mis tarifas</span><span class="badge badge--plano" id="badge-tarifas"></span>
     </button>
     <button class="nav-item" data-vista="propuestas">
@@ -482,7 +535,8 @@
 
 <nav class="tabs-movil oculto" id="tabs-movil">
   <div class="tabs-movil__inner">
-    <button class="tab-movil activo" data-vista="tarifas">Tarifas</button>
+    <button class="tab-movil activo" data-vista="perfil">Perfil</button>
+    <button class="tab-movil" data-vista="tarifas">Tarifas</button>
     <button class="tab-movil" data-vista="propuestas">Propuestas</button>
     <button class="tab-movil" data-vista="entregar">Entregar</button>
   </div>
@@ -665,7 +719,7 @@ const GRUPOS = {
 
 // ── Navegación ──────────────────────────────────────────────────────────────
 
-let vista = 'tarifas';
+let vista = 'perfil';
 let DATOS = { tarifas: null, tratos: [], perfil: null };
 
 function marcarNav() {
@@ -685,7 +739,8 @@ async function ir(v) {
   $('principal').innerHTML = '<div class="vacio">Cargando…</div>';
   try {
     ESTADO = await api('/estado').catch(() => null);
-    if (v === 'tarifas') await vistaTarifas();
+    if (v === 'perfil') await vistaPerfil();
+    else if (v === 'tarifas') await vistaTarifas();
     else if (v === 'propuestas') await vistaPropuestas();
     else if (v === 'entregar') await vistaEntregar();
   } catch (e) {
@@ -727,6 +782,234 @@ function cabecera(titulo, subtitulo, clase) {
       </div>
     </div>
     ${avisoEstado()}`;
+}
+
+// ── Vista: Mi perfil ────────────────────────────────────────────────────────
+
+let NICHO_SEL = [];
+let TAXONOMIA = [];
+
+async function vistaPerfil() {
+  const [perfil, redes, nichos, muestras] = await Promise.all([
+    api('/me'), api('/redes'), api('/nichos'), api('/muestras'),
+  ]);
+  TAXONOMIA = nichos.categorias || [];
+  NICHO_SEL = [...(perfil.nicho || [])];
+  const verificado = redes.fuente_metricas === 'verificado';
+
+  $('principal').innerHTML =
+    cabecera('Mi perfil', 'Esto es lo que ven las marcas cuando te buscan.', 'perfil') + `
+
+    <div class="bloque-perfil">
+      <div class="bloque-perfil__titulo">Cómo te presentas</div>
+      <div class="bloque-perfil__nota">Tu @usuario no aparece acá. Se revela solo cuando cierras un trato.</div>
+      <div class="campo-p">
+        <label>Nombre en el catálogo</label>
+        <input id="p-nombre" value="${esc(perfil.nombre_publico || '')}">
+      </div>
+      <div class="campo-p">
+        <label>En una línea, ¿qué haces?</label>
+        <textarea id="p-bio" rows="2" maxlength="240" placeholder="Rutinas de rizos sin frizz">${esc(perfil.bio_corta || '')}</textarea>
+      </div>
+      <div class="campos-2">
+        <div class="campo-p"><label>Ciudad</label><input id="p-ciudad" value="${esc(perfil.ciudad || '')}"></div>
+        <div class="campo-p"><label>WhatsApp</label><input id="p-whatsapp" value="${esc(perfil.whatsapp || '')}"></div>
+      </div>
+    </div>
+
+    <div class="bloque-perfil">
+      <div class="bloque-perfil__titulo">Tus redes</div>
+      <div class="bloque-perfil__nota">Las usamos para verificarte. Las marcas no las ven.</div>
+      <div class="campos-2">
+        <div class="campo-p"><label>Instagram</label>
+          <input id="p-ig" value="${redes.instagram ? '@' + esc(redes.instagram) : ''}" placeholder="@tucuenta"></div>
+        <div class="campo-p"><label>TikTok</label>
+          <input id="p-tk" value="${redes.tiktok ? '@' + esc(redes.tiktok) : ''}" placeholder="@tucuenta"></div>
+      </div>
+      <div class="campo-p">
+        <label>Seguidores en total ${verificado ? '· verificados' : '· los declaras tú'}</label>
+        <input id="p-seguidores" type="number" value="${redes.seguidores || ''}" ${verificado ? 'disabled' : ''}>
+      </div>
+
+      <div class="verificacion">
+        <span style="font-size:16px;line-height:1">${verificado ? '✓' : '○'}</span>
+        <div class="verificacion__texto">
+          ${verificado
+            ? 'Tus números están verificados con Instagram. Las marcas ven ese distintivo en tu perfil.'
+            : `Por ahora tus números son los que tú declaras.
+               ${redes.conexion_disponible
+                 ? 'Conecta tu Instagram y quedan verificados: las marcas confían más en un perfil verificado.'
+                 : 'Pronto vas a poder conectar tu Instagram para que queden verificados.'}`}
+        </div>
+      </div>
+      ${!verificado && redes.conexion_disponible
+        ? '<button class="btn-portal btn-portal--sec" style="margin-top:12px" id="btn-conectar-ig">CONECTAR INSTAGRAM</button>'
+        : ''}
+    </div>
+
+    <div class="bloque-perfil">
+      <div class="bloque-perfil__titulo">Tu nicho</div>
+      <div class="bloque-perfil__nota">Máximo 3 · así te encuentran las marcas de tu tema</div>
+      <div id="nichos"></div>
+    </div>
+
+    <div class="bloque-perfil">
+      <div class="bloque-perfil__titulo">Tu trabajo</div>
+      <div class="bloque-perfil__nota">
+        Hasta ${muestras.maximo} piezas · es lo primero que mira una marca
+      </div>
+      <div class="galeria" id="galeria"></div>
+      <div class="error oculto" id="muestras-msg" style="margin-top:12px"></div>
+    </div>
+
+    <div class="acciones">
+      <button class="btn-portal" id="btn-guardar-perfil">GUARDAR PERFIL →</button>
+    </div>
+    <div class="error oculto" id="perfil-msg"></div>
+  `;
+
+  pintarNichos();
+  pintarGaleria(muestras.muestras, muestras.maximo);
+
+  $('btn-guardar-perfil').addEventListener('click', guardarPerfil);
+  $('btn-conectar-ig')?.addEventListener('click', () => {
+    alert('La conexión con Instagram todavía no está activa. Te avisamos apenas esté.');
+  });
+}
+
+function pintarNichos() {
+  $('nichos').innerHTML = TAXONOMIA.map(cat => `
+    <div class="grupo-nicho">
+      <div class="grupo-nicho__titulo">${esc(cat.nombre)}</div>
+      <div class="chips-nicho">
+        ${(cat.subnichos || []).map(sn => `
+          <button type="button" class="chip-n ${NICHO_SEL.includes(sn) ? 'on' : ''}" data-n="${esc(sn)}">${esc(sn)}</button>
+        `).join('')}
+      </div>
+    </div>`).join('');
+
+  $('nichos').querySelectorAll('[data-n]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const n = chip.dataset.n;
+      if (NICHO_SEL.includes(n)) {
+        NICHO_SEL = NICHO_SEL.filter(x => x !== n);
+      } else {
+        if (NICHO_SEL.length >= 3) {
+          alert('Máximo 3. Un perfil enfocado recibe más propuestas que uno que dice hacer de todo.');
+          return;
+        }
+        NICHO_SEL.push(n);
+      }
+      chip.classList.toggle('on');
+    });
+  });
+}
+
+function pintarGaleria(muestras, maximo) {
+  const piezas = muestras.map(m => `
+    <div class="pieza">
+      ${m.tipo === 'video'
+        ? `<video src="/media/${m.id}?t=${TOKEN}" muted playsinline></video>`
+        : `<img src="/media/${m.id}?t=${TOKEN}" alt="${esc(m.titulo || 'Pieza de tu trabajo')}">`}
+      <div class="pieza__pie">
+        <span>${esc(m.titulo || (m.tipo === 'video' ? 'Video' : 'Foto'))}</span>
+        <button class="pieza__borrar" data-borrar="${m.id}" aria-label="Quitar esta pieza">✕</button>
+      </div>
+    </div>`).join('');
+
+  const puedeSubir = muestras.length < maximo;
+  $('galeria').innerHTML = piezas + (puedeSubir ? `
+    <label class="subir">
+      <input type="file" id="archivo" accept="image/jpeg,image/png,image/webp,video/mp4">
+      <span>+ Subir pieza<br><span style="font-size:9.5px;color:var(--text-6)">JPG, PNG o MP4 · máx 10 MB</span></span>
+    </label>` : '');
+
+  $('galeria').querySelectorAll('[data-borrar]').forEach(b => {
+    b.addEventListener('click', async () => {
+      if (!confirm('¿Quitar esta pieza de tu perfil?')) return;
+      try {
+        await api('/muestras/' + b.dataset.borrar, { method: 'DELETE' });
+        const d = await api('/muestras');
+        pintarGaleria(d.muestras, d.maximo);
+      } catch (e) { alert('No se pudo: ' + e.message); }
+    });
+  });
+
+  $('archivo')?.addEventListener('change', async (e) => {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+    const msg = $('muestras-msg');
+    msg.classList.add('oculto');
+
+    // Se valida antes de leer el archivo: no tiene sentido cargar 40 MB en
+    // memoria para que el servidor lo rechace.
+    if (archivo.size > 10 * 1024 * 1024) {
+      msg.className = 'aviso';
+      msg.textContent = `Esa pieza pesa ${(archivo.size / 1024 / 1024).toFixed(1)} MB. El máximo son 10 MB.`;
+      msg.classList.remove('oculto');
+      return;
+    }
+
+    const lector = new FileReader();
+    lector.onload = async () => {
+      try {
+        msg.className = 'aviso aviso--ok';
+        msg.textContent = 'Subiendo…';
+        msg.classList.remove('oculto');
+        await api('/muestras', {
+          method: 'POST',
+          body: JSON.stringify({ archivo_base64: lector.result, mime: archivo.type }),
+        });
+        const d = await api('/muestras');
+        pintarGaleria(d.muestras, d.maximo);
+        msg.classList.add('oculto');
+      } catch (err) {
+        msg.className = 'aviso';
+        msg.textContent = err.message;
+        msg.classList.remove('oculto');
+      }
+    };
+    lector.readAsDataURL(archivo);
+  });
+}
+
+async function guardarPerfil() {
+  const btn = $('btn-guardar-perfil');
+  const msg = $('perfil-msg');
+  msg.classList.add('oculto');
+  btn.disabled = true;
+  btn.textContent = 'GUARDANDO…';
+  try {
+    await api('/perfil', {
+      method: 'PUT',
+      body: JSON.stringify({
+        nombre_publico: $('p-nombre').value,
+        bio_corta: $('p-bio').value,
+        ciudad: $('p-ciudad').value,
+        whatsapp: $('p-whatsapp').value,
+        instagram: $('p-ig').value,
+        tiktok: $('p-tk').value,
+        seguidores: $('p-seguidores').disabled ? undefined : $('p-seguidores').value,
+      }),
+    });
+    if (NICHO_SEL.length) {
+      await api('/nichos', { method: 'PUT', body: JSON.stringify({ nicho: NICHO_SEL }) });
+    }
+    ESTADO = await api('/estado').catch(() => ESTADO);
+    msg.className = 'aviso aviso--ok';
+    msg.textContent = 'Guardado.';
+    msg.classList.remove('oculto');
+    // El aviso de arriba puede haber cambiado: ya no le falta lo que acaba de llenar.
+    const cab = document.querySelector('.estado-perfil');
+    if (cab) cab.outerHTML = avisoEstado();
+  } catch (e) {
+    msg.className = 'aviso';
+    msg.textContent = e.message;
+    msg.classList.remove('oculto');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'GUARDAR PERFIL →';
+  }
 }
 
 // ── Vista: Mis tarifas ──────────────────────────────────────────────────────
@@ -1247,8 +1530,15 @@ async function arrancar() {
     badge.textContent = nuevas;
     badge.classList.toggle('oculto', nuevas === 0);
     $('badge-entregar').textContent = DATOS.tratos.filter(t => t.estado === 'pago_retenido').length || '';
+
+    // Aviso en la pestaña de perfil si le falta algo que se llena ahí.
+    const est = await api('/estado').catch(() => null);
+    const pendientesPerfil = (est?.faltantes || []).filter(f => f !== 'tarifas').length;
+    const bp = $('badge-perfil');
+    bp.textContent = pendientesPerfil || '';
+    bp.classList.toggle('oculto', !pendientesPerfil);
   } catch (e) { /* el detalle se muestra en cada vista */ }
-  ir('tarifas');
+  ir('perfil');
 }
 
 if (TOKEN) {

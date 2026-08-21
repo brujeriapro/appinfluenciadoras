@@ -338,7 +338,7 @@ async function guardarTarifas(creadora_id, tarifas = []) {
 const getMuestrasDeCreadora = (creadora_id) =>
   get('mk_muestras', {
     creadora_id: `eq.${creadora_id}`,
-    select: 'id,tipo,orden',
+    select: 'id,tipo,orden,titulo,subida_por',
     order: 'orden.asc',
   });
 
@@ -346,6 +346,14 @@ const getMuestra = (id) =>
   getUno('mk_muestras', { id: `eq.${id}`, select: '*' });
 
 const insertMuestra = (data) => post('mk_muestras', data);
+
+async function borrarMuestra(id) {
+  const url = new URL(`${BASE_URL}/mk_muestras`);
+  url.searchParams.set('id', `eq.${id}`);
+  const res = await fetch(url.toString(), { method: 'DELETE', headers: HEADERS });
+  if (!res.ok) throw new Error(`Supabase DELETE mk_muestras: ${res.status}`);
+  return true;
+}
 
 async function getMuestrasDeVarias(ids = []) {
   if (!ids.length) return {};
@@ -491,7 +499,7 @@ module.exports = {
   getContactoCreadora, getPrivadoDeCreadora, guardarPrivadoDeCreadora, getCreadoraPorHandle,
   crearTokenReset, getTokenReset, marcarTokenUsado,
   getTarifasDeCreadora, getTarifasDeVarias, guardarTarifas,
-  getMuestrasDeCreadora, getMuestra, insertMuestra, getMuestrasDeVarias,
+  getMuestrasDeCreadora, getMuestra, insertMuestra, borrarMuestra, getMuestrasDeVarias,
   insertTrato, getTratoById, updateTrato, getTratosDeMarca, getTratosDeCreadora,
   getTratosAdmin, siguienteCodigoTrato, contarTratosPrevios,
   insertEvento, getEventosDeTrato,

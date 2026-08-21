@@ -52,6 +52,7 @@ Se corren a mano en el SQL Editor de Supabase, en orden:
 3. `migrations/mk_003_nichos_y_tarifas.sql` — taxonomía amplia de nichos + tabla `mk_tarifas`
 4. `migrations/mk_004_portal_creadora.sql` — entregables con subtítulo, producto/exclusividad y plazos
 5. `migrations/mk_005_registro_creadoras.sql` — registro abierto, datos privados y recuperación de clave
+6. `migrations/mk_006_perfil_creadora.sql` — perfil autogestionado y campos de verificación
 
 Además hay que crear el bucket **privado** `mk-muestras` en Supabase Storage.
 
@@ -127,14 +128,25 @@ Su @usuario, nombre real y datos bancarios están en una tabla aparte, nunca en 
 
 ```
 se registra sola (o la importas)
-   -> estado "nueva"       · le llega correo de bienvenida
-pone sus tarifas
+   -> estado "nueva"        · le llega correo de bienvenida
+completa su perfil: nicho, redes, tarifas y al menos una pieza de trabajo
    -> estado "en_revision"  · te llega correo de que está lista
-revisas sus cuentas y le asignas nicho
+verificas sus cuentas y apruebas
    -> apruebas              · le llega correo y entra al catálogo
 ```
 
-En cada punto su portal le dice qué falta, con todas las letras. El registro se puede cerrar sin desplegar poniendo `registro_creadoras_abierto` en `false`, y el mínimo de seguidores se ajusta con `alcance_minimo_registro`.
+Ella llena todo; el equipo solo verifica y aprueba. En cada punto su portal le dice qué le falta, con todas las letras. El registro se puede cerrar sin desplegar poniendo `registro_creadoras_abierto` en `false`, y el mínimo de seguidores se ajusta con `alcance_minimo_registro`.
+
+## Métricas declaradas y verificadas
+
+Hoy los seguidores los escribe la creadora: `fuente_metricas = 'declarado'`. La landing promete *"métricas reales, no capturas"*, y mientras todo sea declarado eso no se cumple.
+
+El plan es conectar Instagram con OAuth para que el alcance y el engagement vengan de Meta (`fuente_metricas = 'verificado'`), y mostrar un distintivo en el catálogo. Los campos ya existen; la conexión no. Se enciende con `instagram_conexion_activa`.
+
+Dos cosas a tener en cuenta cuando se implemente:
+
+- **La API vieja de Instagram (Basic Display) está descontinuada** desde finales de 2024. La que sirve es *Instagram API con Instagram Login*, y exige cuenta Business o Creator. Quien tenga cuenta personal se queda en modo declarado hasta que cambie — que es gratis y toma un minuto.
+- **Nunca embeber el feed de Instagram.** El widget muestra el @usuario y tumba la promesa de identidad oculta. El contenido se descarga por API y se re-aloja en el bucket, igual que las piezas que ella sube a mano.
 
 ## Nichos y tarifas
 

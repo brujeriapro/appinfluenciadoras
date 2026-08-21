@@ -14,6 +14,7 @@ const db = require('./db');
 const config = require('./config');
 const maquina = require('./tratos');
 const { rangoAlcance } = require('./comisiones');
+const { subirMuestra, borrarMuestra } = require('./muestras');
 const notificaciones = require('./notificaciones');
 
 const router = express.Router();
@@ -418,60 +419,23 @@ router.patch('/creadoras/:id', async (req, res) => {
  */
 router.post('/creadoras/:id/muestras', async (req, res) => {
   try {
-    const { archivo_base64, mime, tipo } = req.body;
-    if (!archivo_base64) return res.status(400).json({ error: 'Falta el archivo' });
-
     const creadora = await db.getCreadoraCompleta(req.params.id);
     if (!creadora) return res.status(404).json({ error: 'Creadora no encontrada' });
 
-    // El bucket solo acepta estos tipos. Se valida antes de subir para dar un
-    // error entendible en vez de un 400 críptico de Storage.
-    const MIMES_OK = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4'];
-    const tipoMime = mime || 'image/jpeg';
-    if (!MIMES_OK.includes(tipoMime)) {
-      return res.status(400).json({
-        error: `Formato no permitido (${tipoMime}). Se aceptan: JPG, PNG, WebP y MP4.`,
-      });
-    }
-
-    const buffer = Buffer.from(String(archivo_base64).replace(/^data:[^;]+;base64,/, ''), 'base64');
-
-    const MAX_BYTES = 10 * 1024 * 1024;   // el mismo tope del bucket
-    if (buffer.length > MAX_BYTES) {
-      return res.status(413).json({
-        error: `La pieza pesa ${(buffer.length / 1024 / 1024).toFixed(1)} MB. El máximo son 10 MB.`,
-      });
-    }
-
-    const ext = tipoMime === 'video/mp4' ? 'mp4' : tipoMime.split('/')[1];
-    const storage_path = `${crypto.randomUUID()}.${ext}`;
-
-    const url = `${String(config.supabase.url).replace(/\/$/, '')}/storage/v1/object/${config.supabase.bucket_muestras}/${storage_path}`;
-    const subida = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${config.supabase.service_role_key}`,
-        'Content-Type': tipoMime,
-      },
-      body: buffer,
-    });
-    if (!subida.ok) {
-      throw new Error(`Storage: ${subida.status} ${await subida.text()}`);
-    }
-
-    const existentes = await db.getMuestrasDeCreadora(creadora.id);
-    const muestra = await db.insertMuestra({
-      creadora_id: creadora.id,
-      tipo: tipo || (tipoMime.startsWith('video/') ? 'video' : 'imagen'),
-      storage_path,
-      mime: tipoMime,
-      orden: existentes.length,
-    });
-
+    const muestra = await subirMuestra(creadora.id, { ...req.body, subida_por: 'admin' });
     res.json({ ok: true, muestra: { id: muestra.id, tipo: muestra.tipo } });
   } catch (e) {
     console.error('[admin/muestras]', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.delete('/muestras/:id', async (req, res) => {
+  try {
+    await borrarMuestra(req.params.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message });
   }
 });
 
