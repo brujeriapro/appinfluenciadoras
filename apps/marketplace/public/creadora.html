@@ -302,6 +302,52 @@
   .timeline li.hecho { color: var(--ink); font-weight: 700; }
   .timeline li.hecho .caja { background: var(--lime); border-color: var(--ink); }
 
+  /* ── Estado del perfil, en grande ───────────────────────────────────────── */
+
+  .pasos-estado { margin-bottom: 22px; border: 2px solid var(--ink); background: #fff; }
+  .pasos-estado__fila { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .paso-e {
+    padding: 14px 16px; border-right: 2px solid var(--ink);
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .paso-e:last-child { border-right: none; }
+  .paso-e__num {
+    width: 22px; height: 22px; flex: none; border: 2px solid var(--ink);
+    display: grid; place-items: center; font-family: var(--mono-title);
+    font-weight: 800; font-size: 11px; background: #fff; color: var(--ink);
+  }
+  .paso-e__texto { font-family: var(--mono-title); font-weight: 700; font-size: 11.5px;
+                   letter-spacing: -0.2px; text-transform: uppercase; line-height: 1.35; color: #7A7A7A; }
+
+  /* El paso donde está ahora: fondo de color y texto en negro. */
+  .paso-e.actual { background: var(--lime); }
+  .paso-e.actual .paso-e__texto { color: var(--ink); }
+  .paso-e.actual .paso-e__num { background: var(--ink); color: var(--lime); }
+  .paso-e.actual--espera { background: var(--blue); }
+  .paso-e.actual--espera .paso-e__texto { color: #fff; }
+  .paso-e.actual--espera .paso-e__num { background: #fff; color: var(--blue); }
+  .paso-e.actual--malo { background: #FFF0F7; }
+  .paso-e.actual--malo .paso-e__texto { color: #C4106F; }
+  .paso-e.actual--malo .paso-e__num { background: #C4106F; color: #fff; }
+
+  /* Los que ya pasó. */
+  .paso-e.hecho .paso-e__num { background: var(--ink); color: var(--lime); }
+  .paso-e.hecho .paso-e__texto { color: var(--ink); }
+
+  .pasos-estado__mensaje {
+    border-top: 2px solid var(--ink); padding: 14px 16px;
+    font-size: 12.5px; line-height: 1.6; color: var(--ink);
+  }
+  .pasos-estado__falta { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .falta-chip { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+                padding: 4px 8px; background: var(--magenta); color: var(--ink); }
+
+  @media (max-width: 700px) {
+    .pasos-estado__fila { grid-template-columns: 1fr; }
+    .paso-e { border-right: none; border-bottom: 2px solid var(--ink); }
+    .paso-e:last-child { border-bottom: none; }
+  }
+
   /* ── Mi perfil ──────────────────────────────────────────────────────────── */
 
   .bloque-perfil { border: 2px solid var(--ink); padding: 18px; margin-bottom: 16px; background: #fff; }
@@ -981,7 +1027,63 @@ function avisoEstado() {
     </div>`;
 }
 
-function cabecera(titulo, subtitulo, clase) {
+/**
+ * Los tres pasos del proceso, con el actual marcado.
+ *
+ * Solo va en Mi perfil, que es donde ella actúa. El aviso de una línea que hay
+ * en las demás vistas se pasa por alto justo cuando más importa: cuando lleva
+ * días esperando y no sabe si el problema es suyo o nuestro.
+ */
+function pasosEstado() {
+  if (!ESTADO) return '';
+
+  const rechazada = ESTADO.tono === 'malo';
+  const publicada = ESTADO.visible === true;
+  const enRevision = !publicada && !rechazada && (ESTADO.faltantes || []).length === 0;
+  const completando = !publicada && !rechazada && !enRevision;
+
+  const QUE_FALTA = {
+    nicho: 'tu nicho',
+    redes: 'tus redes',
+    tarifas: 'tus tarifas',
+    trabajo: 'una pieza de tu trabajo',
+  };
+
+  const paso = (num, texto, estado) => `
+    <div class="paso-e ${estado}">
+      <span class="paso-e__num">${estado === 'hecho' ? '✓' : num}</span>
+      <span class="paso-e__texto">${texto}</span>
+    </div>`;
+
+  let uno, dos, tres;
+  if (rechazada) {
+    uno = 'hecho'; dos = 'actual actual--malo'; tres = '';
+  } else if (publicada) {
+    uno = 'hecho'; dos = 'hecho'; tres = 'actual';
+  } else if (enRevision) {
+    uno = 'hecho'; dos = 'actual actual--espera'; tres = '';
+  } else {
+    uno = 'actual'; dos = ''; tres = '';
+  }
+
+  return `
+    <div class="pasos-estado">
+      <div class="pasos-estado__fila">
+        ${paso(1, 'Completa tu perfil', uno)}
+        ${paso(2, rechazada ? 'No aprobado' : 'Estamos revisando', dos)}
+        ${paso(3, 'Publicada en el banco', tres)}
+      </div>
+      <div class="pasos-estado__mensaje">
+        ${esc(ESTADO.mensaje)}
+        ${completando && (ESTADO.faltantes || []).length ? `
+          <div class="pasos-estado__falta">
+            ${ESTADO.faltantes.map(f => `<span class="falta-chip">Falta ${esc(QUE_FALTA[f] || f)}</span>`).join('')}
+          </div>` : ''}
+      </div>
+    </div>`;
+}
+
+function cabecera(titulo, subtitulo, clase, conPasos = false) {
   return `
     <div class="encabezado">
       <h1 class="titulo titulo--${clase}">${titulo}</h1>
@@ -991,7 +1093,7 @@ function cabecera(titulo, subtitulo, clase) {
         <span class="chip-info">Retiro ${HORAS_PAGO}h</span>
       </div>
     </div>
-    ${avisoEstado()}`;
+    ${conPasos ? '' : avisoEstado()}`;
 }
 
 // ── Vista: Mi perfil ────────────────────────────────────────────────────────
@@ -1008,7 +1110,8 @@ async function vistaPerfil() {
   const verificado = redes.fuente_metricas === 'verificado';
 
   $('principal').innerHTML =
-    cabecera('Mi perfil', 'Esto es lo que ven las marcas cuando te buscan.', 'perfil') + `
+    cabecera('Mi perfil', 'Esto es lo que ven las marcas cuando te buscan.', 'perfil', true) +
+    pasosEstado() + `
 
     <div class="bloque-perfil">
       <div class="bloque-perfil__titulo">Cómo te presentas</div>
@@ -1269,9 +1372,10 @@ async function guardarPerfil() {
     msg.className = 'aviso aviso--ok';
     msg.textContent = 'Guardado.';
     msg.classList.remove('oculto');
-    // El aviso de arriba puede haber cambiado: ya no le falta lo que acaba de llenar.
-    const cab = document.querySelector('.estado-perfil');
-    if (cab) cab.outerHTML = avisoEstado();
+    // Los pasos de arriba pueden haber cambiado: ya no le falta lo que acaba
+    // de llenar, y puede que con esto haya entrado a revisión.
+    const bloque = document.querySelector('.pasos-estado');
+    if (bloque) bloque.outerHTML = pasosEstado();
   } catch (e) {
     msg.className = 'aviso';
     msg.textContent = e.message;
