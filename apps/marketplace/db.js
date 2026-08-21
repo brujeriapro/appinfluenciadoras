@@ -128,7 +128,7 @@ const getMarcas = () =>
 // Columnas que puede ver una marca. Sin influencer_id, sin email, sin whatsapp:
 // nada que permita contactar o identificar a la creadora por fuera del trato.
 const COLS_CATALOGO = [
-  'id', 'codigo', 'nombre_publico', 'pais', 'departamento', 'ciudad',
+  'id', 'codigo', 'nombre_publico', 'foto_perfil_path', 'pais', 'departamento', 'ciudad',
   'categorias', 'nicho', 'rango_alcance', 'rango_instagram', 'rango_tiktok',
   'engagement_pct', 'dias_entrega', 'audiencia_mujeres', 'audiencia_pais',
   'nivel_tarifa', 'tarifa_min', 'tarifa_max',

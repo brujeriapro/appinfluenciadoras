@@ -725,12 +725,23 @@ const pieza = (m) => m
   ? `<img src="/media/${m.id}?t=${TOKEN}" alt="Pieza de trabajo" loading="lazy">`
   : '<span>pieza</span>';
 
+/**
+ * Avatar de la creadora: su foto de perfil si la subió, y si no sus iniciales.
+ *
+ * Antes salía la primera pieza de trabajo, que muchas veces es un producto y no
+ * dice nada de quién está detrás.
+ */
+const avatarDe = (c) => c.foto_perfil_path
+  ? `<img src="/media/perfil/${c.id}?t=${TOKEN}" alt="" loading="lazy">`
+  : `<span style="font-family:var(--mono-t);font-weight:800;font-size:13px;color:var(--text-3)">${
+      esc((c.nombre_publico || '?').slice(0, 2).toUpperCase())}</span>`;
+
 function filaHTML(c) {
   const ms = c.muestras || [];
   return `
   <article class="fila">
     <div class="fila__cab">
-      <div class="avatar">${ms[0] ? pieza(ms[0]) : 'foto'}</div>
+      <div class="avatar">${avatarDe(c)}</div>
       <div class="fila__id">
         <div class="alias">${esc(c.nombre_publico)}</div>
         <div class="sub-id">${esc([c.codigo, (c.nicho || [])[0], c.ciudad].filter(Boolean).join(' · '))}</div>

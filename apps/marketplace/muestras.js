@@ -149,6 +149,64 @@ async function subirMuestra(creadora_id, { archivo_base64, mime, titulo, origen_
   });
 }
 
+/**
+ * Sube un archivo al bucket y devuelve su ruta, sin crear fila en mk_muestras.
+ *
+ * Lo usan la foto de perfil de la creadora y el logo de la marca: son archivos
+ * que viven como columna de su dueño, no como pieza de una galería.
+ */
+async function subirArchivo({ archivo_base64, mime }) {
+  if (!archivo_base64) throw new ErrorMuestra('Falta el archivo');
+
+  const tipoMime = mime || 'image/jpeg';
+  if (!MIMES_IMAGEN.includes(tipoMime)) {
+    throw new ErrorMuestra(`Formato no permitido (${tipoMime}). Sube una foto JPG, PNG o WebP.`);
+  }
+
+  const buffer = Buffer.from(String(archivo_base64).replace(/^data:[^;]+;base64,/, ''), 'base64');
+  if (!buffer.length) throw new ErrorMuestra('El archivo llegó vacío');
+  if (buffer.length > MAX_BYTES) {
+    throw new ErrorMuestra(
+      `La foto pesa ${(buffer.length / 1024 / 1024).toFixed(1)} MB. El máximo son 10 MB.`, 413
+    );
+  }
+
+  const EXT = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png',
+                'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif' };
+  const storage_path = `${crypto.randomUUID()}.${EXT[tipoMime] || 'jpg'}`;
+
+  const url = `${String(config.supabase.url).replace(/\/$/, '')}/storage/v1/object/${config.supabase.bucket_muestras}/${storage_path}`;
+  const subida = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${config.supabase.service_role_key}`,
+      'Content-Type': tipoMime,
+    },
+    body: buffer,
+  });
+  if (!subida.ok) {
+    const detalle = await subida.text().catch(() => '');
+    console.error(`[muestras] Storage ${subida.status}: ${detalle}`);
+    throw new ErrorMuestra(`Storage rechazó la foto (${subida.status})`, 502);
+  }
+
+  return { storage_path, mime: tipoMime };
+}
+
+/** Borra un objeto del bucket, sin tocar la base. */
+async function borrarArchivo(storage_path) {
+  if (!storage_path) return;
+  const url = `${String(config.supabase.url).replace(/\/$/, '')}/storage/v1/object/${config.supabase.bucket_muestras}/${storage_path}`;
+  try {
+    await fetch(url, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${config.supabase.service_role_key}` },
+    });
+  } catch (e) {
+    console.warn('[muestras] no se pudo borrar del bucket:', e.message);
+  }
+}
+
 /** Borra la pieza de la base y del bucket. */
 async function borrarMuestra(muestra_id) {
   const muestra = await db.getMuestra(muestra_id);
@@ -171,4 +229,5 @@ async function borrarMuestra(muestra_id) {
   return muestra;
 }
 
-module.exports = { subirMuestra, borrarMuestra, ErrorMuestra, MIMES_OK, MIMES_IMAGEN, MIMES_VIDEO, MAX_BYTES };
+module.exports = { subirMuestra, borrarMuestra, subirArchivo, borrarArchivo,
+                   ErrorMuestra, MIMES_OK, MIMES_IMAGEN, MIMES_VIDEO, MAX_BYTES };

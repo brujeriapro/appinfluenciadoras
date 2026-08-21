@@ -393,6 +393,20 @@
   .subir:hover { background: var(--lime); color: var(--ink); }
   .subir input { display: none; }
 
+  .foto-perfil { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 16px; }
+  .foto-perfil__marco {
+    width: 96px; height: 96px; flex: none; border: 2px solid var(--ink);
+    background: #E8E8E8; display: grid; place-items: center; overflow: hidden;
+    font-family: var(--mono-title); font-weight: 800; font-size: 26px; color: #9A9A9A;
+  }
+  .foto-perfil__marco img { width: 100%; height: 100%; object-fit: cover; }
+  .foto-perfil__acciones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .foto-perfil input[type=file] { display: none; }
+  .aviso-cara {
+    background: #EEEEFF; border-left: 4px solid var(--blue); padding: 11px 13px;
+    font-size: 11.5px; line-height: 1.6; color: var(--ink); margin-top: 12px;
+  }
+
   .verificacion { display: flex; gap: 10px; align-items: flex-start; padding: 14px;
                   background: #EEEEFF; border-left: 4px solid var(--blue); margin-top: 14px; }
   .verificacion__texto { font-size: 11.5px; line-height: 1.6; color: var(--ink); }
@@ -1114,6 +1128,34 @@ async function vistaPerfil() {
     pasosEstado() + `
 
     <div class="bloque-perfil">
+      <div class="bloque-perfil__titulo">Tu foto</div>
+      <div class="bloque-perfil__nota">Es lo primero que ve una marca en el catálogo</div>
+      <div class="foto-perfil">
+        <div class="foto-perfil__marco" id="marco-foto">
+          ${perfil.foto_perfil_path
+            ? `<img src="/media/perfil/${perfil.id}?t=${TOKEN}&v=${Date.now()}" alt="Tu foto de perfil">`
+            : esc((perfil.nombre_publico || '?').slice(0, 2).toUpperCase())}
+        </div>
+        <div>
+          <label class="btn-portal btn-portal--sec" style="display:inline-block;cursor:pointer">
+            ${perfil.foto_perfil_path ? 'Cambiar foto' : 'Subir foto'}
+            <input type="file" id="archivo-foto" accept="image/*">
+          </label>
+          ${perfil.foto_perfil_path
+            ? '<button class="btn-portal btn-portal--sec" id="quitar-foto" style="margin-left:8px">Quitar</button>'
+            : ''}
+          <div class="aviso-cara">
+            <strong>Piénsalo antes de poner tu cara.</strong> Las marcas ven esta foto
+            <em>antes</em> de contratarte, cuando todavía no saben quién eres. Si te importa
+            mantener el anonimato hasta cerrar el trato, usa una foto de tu contenido o de
+            tu trabajo en vez de un primer plano tuyo.
+          </div>
+          <div class="error oculto" id="foto-msg" style="margin-top:10px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bloque-perfil">
       <div class="bloque-perfil__titulo">Cómo te presentas</div>
       <div class="bloque-perfil__nota">Tu @usuario no aparece acá. Se revela solo cuando cierras un trato.</div>
       <div class="campo-p">
@@ -1207,6 +1249,36 @@ async function vistaPerfil() {
 
   pintarNichos();
   pintarGaleria(muestras.muestras, muestras.maximo);
+
+  $('archivo-foto')?.addEventListener('change', async (e) => {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+    const msg = $('foto-msg');
+    msg.className = 'aviso aviso--ok';
+    msg.textContent = 'Subiendo…';
+    msg.classList.remove('oculto');
+    try {
+      // La misma conversión que las piezas: sale como JPEG liviano y en un
+      // formato que todos los navegadores muestran.
+      const { base64, mime } = await prepararArchivo(archivo);
+      await api('/foto', { method: 'PUT', body: JSON.stringify({ archivo_base64: base64, mime }) });
+      vistaPerfil($('principal'));
+    } catch (err) {
+      msg.className = 'aviso';
+      msg.textContent = err.message;
+      msg.classList.remove('oculto');
+    } finally {
+      e.target.value = '';
+    }
+  });
+
+  $('quitar-foto')?.addEventListener('click', async () => {
+    if (!confirm('¿Quitar tu foto de perfil?')) return;
+    try {
+      await api('/foto', { method: 'DELETE' });
+      vistaPerfil($('principal'));
+    } catch (e) { alert('No se pudo: ' + e.message); }
+  });
 
   $('btn-guardar-perfil').addEventListener('click', guardarPerfil);
   $('btn-conectar-ig')?.addEventListener('click', () => {

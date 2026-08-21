@@ -21,6 +21,35 @@ const router = express.Router();
 
 const STORAGE_URL = String(config.supabase.url || '').replace(/\/$/, '') + '/storage/v1/object';
 
+/**
+ * Foto de perfil de una creadora.
+ *
+ * Va por el mismo proxy que las piezas: nunca se expone la URL de Storage, ni
+ * siquiera para una foto de perfil.
+ */
+router.get('/perfil/:creadoraId', sesionAuth, async (req, res) => {
+  try {
+    const c = await db.getCreadoraCompleta(req.params.creadoraId);
+    if (!c || !c.foto_perfil_path) return res.status(404).send('Sin foto');
+
+    const url = `${STORAGE_URL}/${config.supabase.bucket_muestras}/${c.foto_perfil_path}`;
+    const upstream = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${config.supabase.service_role_key}` },
+    });
+    if (!upstream.ok) return res.status(404).send('No disponible');
+
+    res.setHeader('Content-Type', c.foto_perfil_mime || 'image/jpeg');
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Cache-Control', 'private, max-age=300');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Robots-Tag', 'noindex, noimageindex');
+    upstream.body.pipe(res);
+  } catch (e) {
+    console.error('[media/perfil]', e.message);
+    res.status(500).send('Error');
+  }
+});
+
 router.get('/:id', sesionAuth, async (req, res) => {
   try {
     const muestra = await db.getMuestra(req.params.id);

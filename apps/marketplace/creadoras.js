@@ -11,7 +11,7 @@ const maquina = require('./tratos');
 const { resumirTarifas, rangoAlcance, resumirAlcance } = require('./comisiones');
 const { creadoraAuth, firmarToken, rateLimit } = require('./auth');
 const notificaciones = require('./notificaciones');
-const { subirMuestra, borrarMuestra } = require('./muestras');
+const { subirMuestra, borrarMuestra, subirArchivo, borrarArchivo } = require('./muestras');
 
 const router = express.Router();
 
@@ -404,6 +404,41 @@ router.get('/redes', async (req, res) => {
       // mostrar el botón o un "próximamente".
       conexion_disponible: (await db.getConfig()).instagram_conexion_activa === true,
     });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Su foto de perfil ───────────────────────────────────────────────────────
+
+router.put('/foto', async (req, res) => {
+  try {
+    const actual = await db.getCreadoraCompleta(req.usuarioId);
+    if (!actual) return res.status(404).json({ error: 'Perfil no encontrado' });
+
+    const { storage_path, mime } = await subirArchivo(req.body);
+    await db.updateCreadora(req.usuarioId, {
+      foto_perfil_path: storage_path,
+      foto_perfil_mime: mime,
+    });
+
+    // La anterior se borra después de guardar la nueva: si se borrara antes y
+    // fallara la subida, quedaría sin foto.
+    if (actual.foto_perfil_path) borrarArchivo(actual.foto_perfil_path);
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[creadoras/foto]', e.message);
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+router.delete('/foto', async (req, res) => {
+  try {
+    const actual = await db.getCreadoraCompleta(req.usuarioId);
+    if (actual?.foto_perfil_path) borrarArchivo(actual.foto_perfil_path);
+    await db.updateCreadora(req.usuarioId, { foto_perfil_path: null, foto_perfil_mime: null });
+    res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

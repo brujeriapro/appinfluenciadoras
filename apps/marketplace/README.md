@@ -62,6 +62,7 @@ Se corren a mano en el SQL Editor de Supabase, en orden:
 9. `migrations/mk_009_departamentos.sql` — departamentos y ciudades de Colombia
 10. `migrations/mk_010_panel_marca.sql` — código de creadora, triage, campañas y perfil de marca
 11. `migrations/mk_011_wompi_y_planes.sql` — pagos con Wompi, planes y límite de fichas
+12. `migrations/mk_012_foto_perfil.sql` — foto de perfil de la creadora
 
 Además hay que crear el bucket **privado** `mk-muestras` en Supabase Storage, con límite de 10 MB y estos tipos permitidos (sin espacios entre las comas):
 
