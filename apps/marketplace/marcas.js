@@ -33,10 +33,20 @@ router.post('/registro', rateLimit({ max: 5 }), async (req, res) => {
       return res.status(400).json({ error: 'Debes aceptar los términos y condiciones' });
     }
 
-    // Fase 1: acceso por invitación, no registro público abierto.
+    // El registro es abierto: lo que sostiene la calidad ya no es un código
+    // sino el plan. Quien entra ve 3 fichas del demo, y para ver más tiene que
+    // poner tarjeta y datos de empresa — mejor filtro que un código que se
+    // reenvía por WhatsApp.
+    //
+    // El código sigue existiendo por si hay que cerrar el registro: se apaga
+    // `registro_marcas_abierto` y vuelve a exigirse, sin desplegar nada.
+    const cfgReg = await db.getConfig();
     const codigo = String(codigo_invitacion || '').trim().toUpperCase();
-    if (!config.codigos_invitacion.includes(codigo)) {
-      return res.status(403).json({ error: 'Código de invitación no válido' });
+
+    if (cfgReg.registro_marcas_abierto === false) {
+      if (!config.codigos_invitacion.includes(codigo)) {
+        return res.status(403).json({ error: 'Código de invitación no válido' });
+      }
     }
 
     const emailNorm = String(email).toLowerCase().trim();
@@ -55,7 +65,7 @@ router.post('/registro', rateLimit({ max: 5 }), async (req, res) => {
       departamento: departamento || null,
       ciudad: ciudad || null,
       sitio_web: sitio_web || null,
-      codigo_invitacion: codigo,
+      codigo_invitacion: codigo || null,
       terminos_version: TERMINOS_VERSION,
       terminos_aceptados_at: new Date().toISOString(),
       terminos_ip: ipDe(req),
@@ -65,6 +75,19 @@ router.post('/registro', rateLimit({ max: 5 }), async (req, res) => {
   } catch (e) {
     console.error('[marcas/registro]', e.message);
     res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * ¿Hace falta código de invitación? Público, porque el formulario lo consulta
+ * antes de que exista sesión.
+ */
+router.get('/registro-abierto', async (req, res) => {
+  try {
+    const cfg = await db.getConfig();
+    res.json({ abierto: cfg.registro_marcas_abierto !== false });
+  } catch (e) {
+    res.json({ abierto: true });
   }
 });
 

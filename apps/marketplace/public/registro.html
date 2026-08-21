@@ -159,10 +159,10 @@
             </div>
           </div>
 
-          <div class="campo">
+          <div class="campo oculto" id="campo-codigo">
             <label for="codigo">Código de invitación</label>
             <input id="codigo" placeholder="Te lo dimos por WhatsApp o correo">
-            <div class="pista">Por ahora el acceso es por invitación. Si no tienes código, escríbenos.</div>
+            <div class="pista">El registro está cerrado por ahora. Si no tienes código, escríbenos.</div>
           </div>
 
           <div class="separador"></div>
@@ -331,6 +331,13 @@ function pintarCiudades() {
   sel.onchange = () => $('ciudad').classList.toggle('oculto', sel.value !== 'Otra');
   $('ciudad').classList.add('oculto');
 }
+
+// Si el registro está abierto, el campo de código ni se muestra. Sigue en el
+// HTML porque el interruptor se puede cerrar sin desplegar.
+fetch('/api/marcas/registro-abierto')
+  .then(r => r.json())
+  .then(d => { if (!d.abierto) $('campo-codigo').classList.remove('oculto'); })
+  .catch(() => {});
 
 fetch('/api/creadoras/paises')
   .then(r => r.json())

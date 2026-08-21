@@ -33,6 +33,10 @@ def calcular_colombia_score(bio: str, ciudad_detectada: str = "") -> tuple:
         score += 15
         signals.append("hashtag_colombia_bio")
 
+    if re.search(r"\bcolombia\b", bio_lower):
+        score += 15
+        signals.append("keyword_colombia")
+
     palabras_es = ["de", "en", "la", "el", "con", "para", "por", "una", "que", "mi"]
     if sum(1 for p in palabras_es if f" {p} " in f" {bio_lower} ") >= 2:
         score += 10
@@ -63,4 +67,6 @@ def aplica_filtros(perfil: dict) -> tuple:
         return False, "seguidores_insuficientes"
     if perfil.get("colombia_score", 0) < 10:
         return False, "no_colombia"
+    if not perfil.get("nichos"):
+        return False, "sin_nicho_capilar"
     return True, None

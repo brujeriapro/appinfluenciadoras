@@ -22,7 +22,7 @@ Plan completo: [`plans/2026-08-20-marketplace-creadoras-fase1.md`](../../plans/2
 cd apps/marketplace
 npm install
 node index.js          # http://localhost:3040
-npm test               # 34 pruebas: comisiones, máquina de estados y tarifas
+npm test               # 47 pruebas: comisiones, máquina de estados, tarifas y pagos con Wompi
 ```
 
 ### Variables de entorno
@@ -63,6 +63,7 @@ Se corren a mano en el SQL Editor de Supabase, en orden:
 10. `migrations/mk_010_panel_marca.sql` — código de creadora, triage, campañas y perfil de marca
 11. `migrations/mk_011_wompi_y_planes.sql` — pagos con Wompi, planes y límite de fichas
 12. `migrations/mk_012_foto_perfil.sql` — foto de perfil de la creadora
+13. `migrations/mk_013_registro_marcas_abierto.sql` — el registro de marcas deja de exigir código
 
 Además hay que crear el bucket **privado** `mk-muestras` en Supabase Storage, con límite de 10 MB y estos tipos permitidos (sin espacios entre las comas):
 
@@ -95,7 +96,7 @@ auth.js          Basic Auth (admin) + JWT con claim de tipo (marca / creadora) +
 comisiones.js    Cálculo de comisión. Funciones puras, sin I/O
 tratos.js        Máquina de estados. TODA escritura de estado pasa por aquí
 catalogo.js      GET /api/catalogo — identidad oculta
-marcas.js        Registro por invitación, sesión, crear y gestionar tratos
+marcas.js        Registro abierto, sesión, crear y gestionar tratos
 creadoras.js     Sesión, perfil propio, aceptar / rechazar / entregar
 admin.js         Tratos, pagos, curaduría, config, export CSV
 media.js         Proxy de piezas de muestra desde Storage privado
@@ -104,7 +105,7 @@ terminos.js      Texto legal versionado
 notificaciones.js Correos transaccionales
 public/admin.html  Panel de operación: tratos, pagos, curaduría, ajustes, export
 public/creadora.html Portal de la creadora: perfil, tarifas, propuestas, entrega
-public/registro.html Acceso de marcas: registro por invitación, login, recuperar clave
+public/registro.html Acceso de marcas: registro abierto, login, recuperar clave
 public/panel.html    Panel de marca: catálogo, ficha, campañas, trato, perfil
 public/js/panel-*.js Vistas del panel, separadas por tamaño
 ```

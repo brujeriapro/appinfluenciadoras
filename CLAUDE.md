@@ -283,10 +283,10 @@ Taxonomía de dos niveles en `mk_config.nichos`: 15 categorías madre (belleza, 
 cd apps/marketplace
 npm install
 node index.js       # http://localhost:3040
-npm test            # 34 pruebas: comisiones, máquina de estados y tarifas
+npm test            # 47 pruebas: comisiones, máquina de estados, tarifas y pagos con Wompi
 ```
 
-Migraciones (a mano en el SQL Editor de Supabase, en orden): `mk_001_init.sql`, `mk_002_seed_config.sql`, `mk_003_nichos_y_tarifas.sql`, `mk_004_portal_creadora.sql`, `mk_005_registro_creadoras.sql`, `mk_006_perfil_creadora.sql`, `mk_007_paises.sql`, `mk_008_seguidores_por_red.sql`, `mk_009_departamentos.sql`, `mk_010_panel_marca.sql`, `mk_011_wompi_y_planes.sql`, `mk_012_foto_perfil.sql`. Además, crear el bucket privado `mk-muestras` en Storage.
+Migraciones (a mano en el SQL Editor de Supabase, en orden): `mk_001_init.sql`, `mk_002_seed_config.sql`, `mk_003_nichos_y_tarifas.sql`, `mk_004_portal_creadora.sql`, `mk_005_registro_creadoras.sql`, `mk_006_perfil_creadora.sql`, `mk_007_paises.sql`, `mk_008_seguidores_por_red.sql`, `mk_009_departamentos.sql`, `mk_010_panel_marca.sql`, `mk_011_wompi_y_planes.sql`, `mk_012_foto_perfil.sql`, `mk_013_registro_marcas_abierto.sql`. Además, crear el bucket privado `mk-muestras` en Storage.
 
 ### Identidad visual
 
@@ -303,6 +303,7 @@ Brutalismo digital / Y2K editorial, definido en el handoff de Claude Design y co
 - El dominio (`creadores.app`) aún no está comprado: corre sobre la URL de Railway.
 - **Pagos con Wompi**: la marca paga el trato con tarjeta y el webhook confirma el escrow. Sin llaves configuradas, sigue el registro manual desde el panel.
 - **Planes de suscripción**: demo (3 fichas), Emprende $19.900 (10), Marca $99.900 (60), Agencia $199.900 (sin límite). Se limita abrir fichas, **nunca** enviar propuestas: cada propuesta deja comisión.
+- **El registro de marcas es abierto**: no hace falta código de invitación. Lo que sostiene la calidad del banco es el plan — quien entra ve 3 fichas y para ver más tiene que poner tarjeta. El código sigue en el código y se reactiva apagando `registro_marcas_abierto` en `mk_config`, sin desplegar nada.
 - Sin marca de agua en esta fase, por decisión de producto.
 
 ---
