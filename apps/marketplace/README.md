@@ -57,7 +57,15 @@ Se corren a mano en el SQL Editor de Supabase, en orden:
 8. `migrations/mk_008_seguidores_por_red.sql` — seguidores de Instagram y TikTok por separado
 9. `migrations/mk_009_departamentos.sql` — departamentos y ciudades de Colombia
 
-Además hay que crear el bucket **privado** `mk-muestras` en Supabase Storage.
+Además hay que crear el bucket **privado** `mk-muestras` en Supabase Storage, con límite de 10 MB y estos tipos permitidos (sin espacios entre las comas):
+
+```
+image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/quicktime,video/webm
+```
+
+**El portal convierte toda imagen a JPEG antes de subirla**, redimensionada a 1600px de lado mayor. Eso resuelve dos cosas de una: el peso (una foto de celular pasa de varios MB a unos cientos de KB) y la compatibilidad (cualquier formato que el navegador sepa leer termina en uno que todos saben mostrar).
+
+HEIC de iPhone queda fuera a propósito: se podría guardar, pero Chrome y Firefox no lo renderizan y la marca vería una imagen rota. Si llega uno, el mensaje le dice a la creadora que tome una captura de pantalla.
 
 ### Importar las Brujas Embajadoras
 

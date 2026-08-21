@@ -9,9 +9,17 @@ const crypto = require('crypto');
 const db = require('./db');
 const config = require('./config');
 
-// Los mismos tipos y el mismo tope que acepta el bucket de Storage. Se valida
-// aquí para dar un error entendible en vez de un 400 críptico de Supabase.
-const MIMES_OK = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4'];
+// Los mismos tipos que acepta el bucket de Storage. Se valida aquí también
+// para dar un error entendible en vez de un 400 críptico de Supabase.
+//
+// Qué NO está en la lista y por qué: HEIC y HEIF, el formato con que graba el
+// iPhone. Se podrían guardar, pero Chrome y Firefox no los renderizan — la
+// marca vería una imagen rota. El portal convierte toda imagen a JPEG antes de
+// subirla, así que este caso no debería llegar; si llega, el mensaje le dice a
+// la creadora qué hacer.
+const MIMES_IMAGEN = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
+const MIMES_VIDEO = ['video/mp4', 'video/quicktime', 'video/webm'];
+const MIMES_OK = [...MIMES_IMAGEN, ...MIMES_VIDEO];
 const MAX_BYTES = 10 * 1024 * 1024;
 
 class ErrorMuestra extends Error {
@@ -41,7 +49,15 @@ async function subirMuestra(creadora_id, { archivo_base64, mime, titulo, origen_
 
   const tipoMime = mime || 'image/jpeg';
   if (!MIMES_OK.includes(tipoMime)) {
-    throw new ErrorMuestra(`Formato no permitido (${tipoMime}). Se aceptan JPG, PNG, WebP y MP4.`);
+    if (/hei[cf]/i.test(tipoMime)) {
+      throw new ErrorMuestra(
+        'Esa foto está en formato HEIC de iPhone y los navegadores no lo muestran. ' +
+        'Tómale una captura de pantalla o cámbiale el formato a JPG.'
+      );
+    }
+    throw new ErrorMuestra(
+      `Formato no permitido (${tipoMime}). Se aceptan JPG, PNG, WebP, GIF y video MP4 o MOV.`
+    );
   }
 
   const buffer = Buffer.from(String(archivo_base64).replace(/^data:[^;]+;base64,/, ''), 'base64');
@@ -63,7 +79,13 @@ async function subirMuestra(creadora_id, { archivo_base64, mime, titulo, origen_
     );
   }
 
-  const ext = tipoMime === 'video/mp4' ? 'mp4' : tipoMime.split('/')[1];
+  // La extensión del archivo en Storage, normalizada.
+  const EXT = {
+    'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png',
+    'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif',
+    'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm',
+  };
+  const ext = EXT[tipoMime] || 'bin';
   const storage_path = `${crypto.randomUUID()}.${ext}`;
 
   const url = `${String(config.supabase.url).replace(/\/$/, '')}/storage/v1/object/${config.supabase.bucket_muestras}/${storage_path}`;
@@ -108,7 +130,7 @@ async function subirMuestra(creadora_id, { archivo_base64, mime, titulo, origen_
 
   return db.insertMuestra({
     creadora_id,
-    tipo: tipoMime.startsWith('video/') ? 'video' : 'imagen',
+    tipo: MIMES_VIDEO.includes(tipoMime) ? 'video' : 'imagen',
     storage_path,
     mime: tipoMime,
     orden: existentes.length,
@@ -140,4 +162,4 @@ async function borrarMuestra(muestra_id) {
   return muestra;
 }
 
-module.exports = { subirMuestra, borrarMuestra, ErrorMuestra, MIMES_OK, MAX_BYTES };
+module.exports = { subirMuestra, borrarMuestra, ErrorMuestra, MIMES_OK, MIMES_IMAGEN, MIMES_VIDEO, MAX_BYTES };
