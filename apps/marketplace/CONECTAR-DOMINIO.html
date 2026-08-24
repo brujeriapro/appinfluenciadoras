@@ -1,0 +1,480 @@
+<title>Conectar creatorsmanager.com</title>
+<style>
+  /* Guía operativa: se sigue con el teclado en la otra mano. Todo lo que hay
+     que copiar va en monoespaciada y en su propia caja; todo lo que hay que
+     decidir va marcado. Misma paleta del producto. */
+
+  :root {
+    --tinta:      #0E0E0E;
+    --papel:      #ECECE9;
+    --superficie: #FFFFFF;
+    --texto:      #1C1C1E;
+    --texto-2:    #4A4A50;
+    --texto-3:    #6E6E76;
+    --borde:      #0E0E0E;
+    --borde-2:    #C9C9C4;
+    --borde-3:    #E3E3DF;
+    --campo:      #F5F5F2;
+
+    --lima:    #D6FF00;
+    --magenta: #FF2E9A;
+    --azul:    #2323F0;
+
+    --mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --tinta: #F2F2EF; --papel: #0B0B0C; --superficie: #151517;
+      --texto: #EDEDEA; --texto-2: #B6B6B2; --texto-3: #85858C;
+      --borde: #3C3C40; --borde-2: #2C2C30; --borde-3: #242427;
+      --campo: #1E1E21; --azul: #7B7BFF;
+    }
+  }
+  :root[data-theme="dark"] {
+    --tinta: #F2F2EF; --papel: #0B0B0C; --superficie: #151517;
+    --texto: #EDEDEA; --texto-2: #B6B6B2; --texto-3: #85858C;
+    --borde: #3C3C40; --borde-2: #2C2C30; --borde-3: #242427;
+    --campo: #1E1E21; --azul: #7B7BFF;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--papel); color: var(--texto);
+    font-family: var(--sans); font-size: 16px; line-height: 1.62;
+    margin: 0; padding: 0 20px 100px; -webkit-font-smoothing: antialiased;
+  }
+  .hoja { max-width: 760px; margin: 0 auto; }
+
+  /* ── Encabezado ────────────────────────────────────────────────────────── */
+
+  header {
+    border: 2px solid var(--borde); background: var(--superficie);
+    padding: clamp(24px, 4.5vw, 38px); margin: clamp(26px, 5vw, 54px) 0 40px;
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.6px;
+    text-transform: uppercase; color: var(--texto-3); margin-bottom: 15px;
+  }
+  h1 {
+    font-family: var(--mono); font-weight: 700;
+    font-size: clamp(25px, 4.6vw, 38px); line-height: 1.05; letter-spacing: -1.7px;
+    text-transform: uppercase; margin: 0 0 16px; color: var(--tinta); text-wrap: balance;
+  }
+  header p { margin: 0; color: var(--texto-2); max-width: 58ch; }
+
+  /* ── Pasos ─────────────────────────────────────────────────────────────── */
+
+  .paso { margin-bottom: 46px; }
+  .paso__cab {
+    display: flex; gap: 14px; align-items: baseline;
+    border-top: 2px solid var(--borde); padding-top: 15px; margin-bottom: 4px;
+  }
+  .paso__n {
+    font-family: var(--mono); font-weight: 700; font-size: 13px;
+    background: var(--tinta); color: var(--papel);
+    padding: 3px 9px; flex: none; letter-spacing: 0.5px;
+  }
+  h2 {
+    font-family: var(--mono); font-weight: 700;
+    font-size: clamp(17px, 2.7vw, 22px); line-height: 1.15; letter-spacing: -0.7px;
+    text-transform: uppercase; color: var(--tinta); margin: 0; text-wrap: balance;
+  }
+  .paso__donde {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.1px;
+    text-transform: uppercase; color: var(--texto-3); margin: 8px 0 18px;
+  }
+
+  h3 {
+    font-family: var(--mono); font-weight: 700; font-size: 13.5px;
+    color: var(--tinta); margin: 28px 0 9px; letter-spacing: -0.1px;
+  }
+
+  p { margin: 0 0 15px; max-width: 66ch; }
+  strong { font-weight: 700; color: var(--tinta); }
+  em { color: var(--texto-2); }
+  a { color: var(--azul); text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid var(--azul); outline-offset: 3px; }
+
+  ol.pasos { counter-reset: p; list-style: none; padding: 0; margin: 0 0 18px; max-width: 66ch; }
+  ol.pasos > li {
+    counter-increment: p; position: relative; padding-left: 30px; margin-bottom: 13px;
+  }
+  ol.pasos > li::before {
+    content: counter(p) "."; position: absolute; left: 0; top: 0;
+    font-family: var(--mono); font-weight: 700; font-size: 12.5px; color: var(--texto-3);
+  }
+  ul { margin: 0 0 15px; padding-left: 20px; max-width: 66ch; }
+  li { margin-bottom: 8px; }
+
+  code {
+    font-family: var(--mono); font-size: 0.87em;
+    background: var(--campo); padding: 2px 6px; border: 1px solid var(--borde-3);
+    color: var(--texto); word-break: break-all;
+  }
+
+  /* Lo que hay que copiar literal */
+  .copiar {
+    border: 2px solid var(--borde); background: var(--campo);
+    padding: 14px 16px; margin: 14px 0 18px; overflow-x: auto;
+  }
+  .copiar__t {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--texto-3); margin-bottom: 9px;
+  }
+  .copiar pre {
+    font-family: var(--mono); font-size: 13px; margin: 0; line-height: 1.7;
+    color: var(--texto); white-space: pre; font-weight: 700;
+  }
+
+  /* Tabla de campos de formulario */
+  .campos { overflow-x: auto; margin: 14px 0 20px; border: 2px solid var(--borde); }
+  table { width: 100%; border-collapse: collapse; background: var(--superficie); }
+  th {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.1px;
+    text-transform: uppercase; text-align: left; font-weight: 700;
+    padding: 10px 13px; border-bottom: 2px solid var(--borde);
+    color: var(--texto-3); white-space: nowrap;
+  }
+  td {
+    padding: 11px 13px; font-size: 13.5px; vertical-align: top;
+    border-bottom: 1px solid var(--borde-3); line-height: 1.5;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.val { font-family: var(--mono); font-weight: 700; word-break: break-all; }
+
+  /* Comprobación al final de cada paso */
+  .check {
+    border-left: 4px solid var(--tinta); background: var(--superficie);
+    padding: 13px 16px; margin: 20px 0 0;
+  }
+  .check__t {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--texto-3); margin-bottom: 7px;
+  }
+  .check p { margin: 0; font-size: 14.5px; }
+
+  /* Avisos */
+  .ojo {
+    border: 2px solid var(--magenta); background: var(--superficie);
+    padding: 15px 17px; margin: 20px 0;
+  }
+  .ojo__t {
+    font-family: var(--mono); font-weight: 700; font-size: 10.5px;
+    letter-spacing: 1.2px; text-transform: uppercase;
+    color: var(--magenta); margin-bottom: 9px;
+  }
+  .ojo p:last-child, .ojo ul:last-child { margin-bottom: 0; }
+
+  .tip {
+    border: 1px solid var(--borde-2); background: var(--superficie);
+    padding: 14px 16px; margin: 18px 0; font-size: 14.5px; color: var(--texto-2);
+  }
+  .tip strong { color: var(--tinta); }
+  .tip p:last-child { margin-bottom: 0; }
+
+  /* Bifurcación: dos caminos según el registrador */
+  .ruta {
+    border: 2px solid var(--borde); background: var(--superficie);
+    padding: 17px 19px; margin: 16px 0;
+  }
+  .ruta__t {
+    font-family: var(--mono); font-weight: 700; font-size: 12.5px;
+    letter-spacing: -0.2px; color: var(--tinta); margin-bottom: 4px;
+  }
+  .ruta__sub {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--texto-3); margin-bottom: 13px;
+  }
+  .ruta--rec { border-color: var(--tinta); border-width: 3px; }
+  .ruta--rec .ruta__sub { color: var(--tinta); }
+  .ruta p:last-child, .ruta ol:last-child { margin-bottom: 0; }
+
+  .cierre {
+    border: 2px solid var(--borde); background: var(--tinta); color: var(--papel);
+    padding: clamp(20px, 4vw, 32px); margin-top: 44px;
+  }
+  .cierre h2 { color: var(--papel); }
+  .cierre .paso__cab { border-top: none; padding-top: 0; }
+  .cierre p, .cierre li { color: var(--papel); opacity: 0.88; }
+  .cierre strong { color: var(--lima); opacity: 1; }
+  .cierre code { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: var(--papel); }
+
+  @media (max-width: 560px) {
+    body { font-size: 15.5px; padding: 0 15px 70px; }
+    td, th { padding: 9px 10px; }
+    .copiar pre { font-size: 12px; }
+  }
+</style>
+
+<div class="hoja">
+
+<header>
+  <div class="eyebrow">Creators Manager · Puesta en producción</div>
+  <h1>Conectar creatorsmanager.com</h1>
+  <p>Cinco pasos, en este orden. Cada uno termina con una comprobación: si esa
+  comprobación no da, no sigas al siguiente — el error se vuelve mucho más difícil de
+  encontrar dos pasos más adelante.</p>
+</header>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+
+<div class="paso">
+<div class="paso__cab"><span class="paso__n">01</span><h2>Decir el dominio en Railway</h2></div>
+<div class="paso__donde">railway.app · servicio supportive-intuition</div>
+
+<p>Ojo con el servicio: es <strong>supportive-intuition</strong>, no <em>appinfluenciadoras</em>.
+Son dos servicios del mismo repositorio y ya te confundiste una vez con la llave de Supabase.</p>
+
+<ol class="pasos">
+  <li>Entra a Railway y abre el proyecto.</li>
+  <li>Clic en el servicio <strong>supportive-intuition</strong>.</li>
+  <li>Pestaña <strong>Settings</strong> → sección <strong>Networking</strong>.</li>
+  <li>Clic en <strong>+ Custom Domain</strong>.</li>
+  <li>Escribe <code>www.creatorsmanager.com</code> y confirma.</li>
+</ol>
+
+<div class="ojo">
+  <div class="ojo__t">Por qué www y no el dominio pelado</div>
+  <p>El dominio raíz —<code>creatorsmanager.com</code> sin <code>www</code>— no acepta el tipo de
+  registro que Railway necesita. Es una limitación vieja del DNS, no de Railway: en la raíz de un
+  dominio no se puede poner un CNAME.</p>
+  <p>Se resuelve de dos maneras y las dos están en el paso 2. Por ahora registra el <code>www</code>,
+  que funciona en cualquier proveedor, y en el paso siguiente decides qué hacer con el pelado.</p>
+</div>
+
+<p>Railway te va a mostrar algo así, y <strong>ese valor lo necesitas para el paso 2</strong>:</p>
+
+<div class="copiar">
+  <div class="copiar__t">Lo que te muestra Railway (tuyo va a ser distinto)</div>
+  <pre>CNAME   www   →   abc123xyz.up.railway.app</pre>
+</div>
+
+<p>Al lado va a decir <em>«Waiting for DNS»</em> o similar. Es normal: todavía no has hecho el paso 2.</p>
+
+<div class="check">
+  <div class="check__t">Antes de seguir</div>
+  <p>Copia el valor que te dio Railway y tenlo a mano. Es lo único que sale de este paso.</p>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+
+<div class="paso">
+<div class="paso__cab"><span class="paso__n">02</span><h2>Apuntar el DNS</h2></div>
+<div class="paso__donde">Donde compraste el dominio</div>
+
+<p>Aquí hay dos caminos según dónde tengas el dominio. El resultado es el mismo; cambia el trabajo.</p>
+
+<div class="ruta ruta--rec">
+  <div class="ruta__t">Camino A · Mover el DNS a Cloudflare</div>
+  <div class="ruta__sub">Recomendado · gratis · ya lo hiciste con panarabbit.app</div>
+  <p>Cloudflare sí deja apuntar el dominio pelado a un CNAME (lo llaman <em>CNAME flattening</em>).
+  Con esto <code>creatorsmanager.com</code> y <code>www.creatorsmanager.com</code> funcionan los dos,
+  sin redirecciones raras.</p>
+  <ol class="pasos">
+    <li>Crea cuenta en <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">dash.cloudflare.com</a> y clic en <strong>Add a domain</strong>.</li>
+    <li>Escribe <code>creatorsmanager.com</code> y elige el plan <strong>Free</strong>.</li>
+    <li>Cloudflare te da dos servidores de nombres, tipo <code>ana.ns.cloudflare.com</code>.</li>
+    <li>Entra donde compraste el dominio, busca <strong>Nameservers</strong> y reemplaza los que
+    están por los dos de Cloudflare.</li>
+    <li>Vuelve a Cloudflare, sección <strong>DNS</strong>, y crea los dos registros de la tabla de abajo.</li>
+  </ol>
+</div>
+
+<div class="ruta">
+  <div class="ruta__t">Camino B · Dejar el DNS donde está</div>
+  <div class="ruta__sub">Más rápido hoy, menos limpio</div>
+  <p>Creas solo el CNAME de <code>www</code>, y el dominio pelado lo mandas con una
+  <strong>redirección</strong> (casi todos los registradores tienen «Forwarding» o «Redirección de
+  dominio»): de <code>creatorsmanager.com</code> hacia <code>https://www.creatorsmanager.com</code>,
+  permanente (301).</p>
+  <p>Funciona. La pega es que la dirección «bonita» sin www nunca es la real, y algunas
+  redirecciones de registrador no manejan bien el HTTPS.</p>
+</div>
+
+<h3>Los registros que hay que crear</h3>
+
+<div class="campos">
+<table>
+  <thead><tr><th>Tipo</th><th>Nombre</th><th>Valor</th><th>Proxy</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="val">CNAME</td>
+      <td class="val">www</td>
+      <td class="val">lo que te dio Railway<br><span style="font-family:var(--sans);font-weight:400;color:var(--texto-3)">ej. abc123xyz.up.railway.app</span></td>
+      <td class="val">DNS only</td>
+    </tr>
+    <tr>
+      <td class="val">CNAME</td>
+      <td class="val">@</td>
+      <td class="val">lo mismo de arriba<br><span style="font-family:var(--sans);font-weight:400;color:var(--texto-3)">solo en el camino A</span></td>
+      <td class="val">DNS only</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="ojo">
+  <div class="ojo__t">Si usas Cloudflare, apaga la nubecita</div>
+  <p>Cloudflare pone un <strong>proxy</strong> (nube naranja) por defecto. Déjalo en
+  <strong>DNS only</strong> (nube gris) hasta que todo funcione. Con el proxy encendido, Railway no
+  puede validar el dominio ni emitir el certificado, y el error que ves no dice nada de esto.</p>
+  <p>Cuando ya esté andando, si quieres lo enciendes.</p>
+</div>
+
+<div class="tip">
+  <p><strong>El DNS tarda.</strong> Normalmente entre 5 minutos y 2 horas; cambiar los nameservers
+  puede tomar hasta 24. No lo des por roto en los primeros diez minutos.</p>
+</div>
+
+<div class="check">
+  <div class="check__t">Antes de seguir</div>
+  <p>En Railway, el dominio debe aparecer con un <strong>chulo verde</strong> y el certificado
+  emitido. Abre <code>https://www.creatorsmanager.com</code> y tienes que ver la landing con el
+  candado del navegador. Si sale error de certificado, espera: se está emitiendo.</p>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+
+<div class="paso">
+<div class="paso__cab"><span class="paso__n">03</span><h2>Decirle a la app cuál es su dirección</h2></div>
+<div class="paso__donde">Railway · supportive-intuition · Variables</div>
+
+<p>La app no adivina en qué dominio vive. De esta variable cuelgan <strong>los enlaces de todos los
+correos</strong> y <strong>a dónde vuelve la marca después de pagar</strong>. Si queda mal, el pago se
+cobra y la clienta aterriza en una página que no existe.</p>
+
+<ol class="pasos">
+  <li>Servicio <strong>supportive-intuition</strong> → pestaña <strong>Variables</strong>.</li>
+  <li>Clic en <strong>+ New Variable</strong>.</li>
+  <li>Nombre y valor exactos:</li>
+</ol>
+
+<div class="copiar">
+  <div class="copiar__t">Copiar tal cual</div>
+  <pre>MK_BASE_URL = https://www.creatorsmanager.com</pre>
+</div>
+
+<p>Sin barra al final. Con <code>https://</code>. Y con <code>www</code> si ese es el que quedó
+funcionando en el paso 2.</p>
+
+<p>Railway redespliega solo al guardar la variable. Espera a que termine.</p>
+
+<div class="check">
+  <div class="check__t">Antes de seguir</div>
+  <p>Entra a <code>https://www.creatorsmanager.com/registro.html</code>, pon un correo cualquiera en
+  <strong>«Olvidé mi contraseña»</strong> y mira los <strong>logs</strong> de Railway. El enlace que
+  intenta enviar tiene que empezar por tu dominio, no por <code>localhost</code>.</p>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+
+<div class="paso">
+<div class="paso__cab"><span class="paso__n">04</span><h2>Mover el aviso de pagos de Wompi</h2></div>
+<div class="paso__donde">comercios.wompi.co</div>
+
+<p>Wompi le avisa a la app cuando alguien paga. Ese aviso hoy va a la dirección vieja de Railway.
+Si no lo cambias, <strong>el dinero entra pero la app nunca se entera</strong>: el trato se queda en
+«esperando pago» y el plan de la marca nunca se activa.</p>
+
+<ol class="pasos">
+  <li>Entra a <a href="https://comercios.wompi.co" target="_blank" rel="noopener">comercios.wompi.co</a>.</li>
+  <li>Ve a <strong>Desarrolladores</strong> → <strong>Configuración</strong> (o <em>Ajustes técnicos</em>).</li>
+  <li>Busca <strong>URL de eventos</strong> y reemplázala por:</li>
+</ol>
+
+<div class="copiar">
+  <div class="copiar__t">URL de eventos</div>
+  <pre>https://www.creatorsmanager.com/webhook/wompi</pre>
+</div>
+
+<p>Si hay un campo de <strong>URL de redirección</strong>, no lo toques: la app la manda en cada
+pago, calculada desde <code>MK_BASE_URL</code>.</p>
+
+<div class="ojo">
+  <div class="ojo__t">Los pagos siguen apagados</div>
+  <p>Aunque configures esto, hoy nadie puede pagar: en la base, <code>pagos_wompi_activos</code> y
+  <code>planes_activos</code> están en <code>false</code>. Se prenden cuando quieras hacer la primera
+  prueba de cobro — avísame y te paso el SQL, que es una línea.</p>
+</div>
+
+<div class="check">
+  <div class="check__t">Antes de seguir</div>
+  <p>Que la URL guardada en Wompi termine exactamente en <code>/webhook/wompi</code>. Un solo
+  carácter de más y los pagos no se confirman.</p>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+
+<div class="paso">
+<div class="paso__cab"><span class="paso__n">05</span><h2>El correo del dominio</h2></div>
+<div class="paso__donde">Zoho Mail · 20 minutos</div>
+
+<p>Este es el que <strong>bloquea el lanzamiento</strong>. Sin correo saliente, quien olvide su
+contraseña queda por fuera para siempre y nadie se entera de que le llegó una propuesta.</p>
+
+<p>Zoho Mail es gratis para un dominio y hasta cinco buzones. Ya dejé la app lista para usar
+cualquier proveedor, así que solo hay que crear la cuenta y cargar tres variables.</p>
+
+<ol class="pasos">
+  <li>Entra a <a href="https://www.zoho.com/mail/" target="_blank" rel="noopener">zoho.com/mail</a>
+  y elige el plan <strong>Forever Free</strong>. Está abajo de la página de precios, no arriba.</li>
+  <li>Registra <code>creatorsmanager.com</code> como dominio propio.</li>
+  <li>Zoho te pide verificar que el dominio es tuyo: te da un registro <strong>TXT</strong> o
+  <strong>CNAME</strong> para crear en el DNS. Créalo donde hiciste el paso 2.</li>
+  <li>Crea el buzón <code>hola@creatorsmanager.com</code>.</li>
+  <li>Zoho te da los registros <strong>MX</strong>. Créalos también. Sin ellos puedes enviar pero
+  no recibir.</li>
+  <li>En Zoho ve a <strong>Configuración → Seguridad → Contraseñas de aplicación</strong> y genera
+  una. <em>No uses tu contraseña normal</em>: la app necesita una de aplicación.</li>
+</ol>
+
+<h3>Las variables en Railway</h3>
+
+<div class="copiar">
+  <div class="copiar__t">Servicio supportive-intuition → Variables</div>
+  <pre>MK_SMTP_HOST = smtp.zoho.com
+MK_SMTP_PORT = 465
+MK_SMTP_USER = hola@creatorsmanager.com
+MK_SMTP_PASS = (la contraseña de aplicación)
+MK_SMTP_FROM = Creators Manager &lt;hola@creatorsmanager.com&gt;</pre>
+</div>
+
+<div class="tip">
+  <p><strong>¿Prefieres Gmail?</strong> Funciona igual y es más conocido, pero Google cobra
+  (~$30.000/mes) por usar tu propio dominio. Si vas por ahí, <em>no</em> pongas
+  <code>MK_SMTP_HOST</code> ni <code>MK_SMTP_PORT</code>: sin esas dos, la app asume Gmail sola.</p>
+</div>
+
+<div class="check">
+  <div class="check__t">La prueba de fuego</div>
+  <p>Ve a <code>/registro.html</code>, clic en <strong>«Olvidé mi contraseña»</strong> y pon un
+  correo tuyo que sí exista como cuenta. Te tiene que llegar el mensaje, con el enlace apuntando a
+  <code>creatorsmanager.com</code>. Revisa también spam la primera vez.</p>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+
+<div class="cierre">
+<div class="paso__cab"><span class="paso__n" style="background:var(--lima);color:#0E0E0E">FIN</span><h2>Cuando termines</h2></div>
+
+<p>Con los cinco pasos hechos quedan cerrados <strong>dos de los tres bloqueadores</strong> del
+lanzamiento: el dominio y el correo. El tercero es prender Wompi y hacer un cobro de verdad.</p>
+
+<p>Avísame cuando el paso 2 esté andando y verifico desde aquí que el dominio resuelve, que el
+certificado quedó bien y que la app está respondiendo en la dirección nueva. También te paso el
+SQL para encender los pagos cuando quieras hacer la primera prueba.</p>
+
+<p style="margin-bottom:0">Si algo se atasca, lo más útil que me puedes mandar es <strong>qué dice
+Railway al lado del dominio</strong> y una captura de los registros del DNS. Con eso se ve al
+instante dónde está el nudo.</p>
+</div>
+
+</div>
