@@ -413,49 +413,78 @@ pago, calculada desde <code>MK_BASE_URL</code>.</p>
 <!-- ══════════════════════════════════════════════════════════════════════ -->
 
 <div class="paso">
-<div class="paso__cab"><span class="paso__n">05</span><h2>El correo del dominio</h2></div>
-<div class="paso__donde">Zoho Mail · 20 minutos</div>
+<div class="paso__cab"><span class="paso__n">05</span><h2>El correo que sale de la app</h2></div>
+<div class="paso__donde">Brevo · 15 minutos</div>
 
 <p>Este es el que <strong>bloquea el lanzamiento</strong>. Sin correo saliente, quien olvide su
 contraseña queda por fuera para siempre y nadie se entera de que le llegó una propuesta.</p>
 
-<p>Zoho Mail es gratis para un dominio y hasta cinco buzones. Ya dejé la app lista para usar
-cualquier proveedor, así que solo hay que crear la cuenta y cargar tres variables.</p>
+<div class="ojo">
+  <div class="ojo__t">Zoho gratis no sirve para esto</div>
+  <p>El plan Forever Free de Zoho Mail dice textualmente <em>«No se incluye IMAP/POP/Active Sync»</em>.
+  Sin SMTP, una aplicación no puede enviar por ahí — solo sirve para leer y escribir a mano desde el
+  navegador. Para que la app mande correos hay que pagar Mail Lite, o usar otra cosa.</p>
+</div>
+
+<p><strong>Brevo</strong> es correo transaccional: existe justamente para que una aplicación mande
+avisos. Plan gratuito permanente, sin tarjeta, <strong>300 correos al día</strong> — con 60 creadoras
+y 10 marcas no llegas ni a la décima parte.</p>
+
+<h3>Crear la cuenta</h3>
 
 <ol class="pasos">
-  <li>Entra a <a href="https://www.zoho.com/mail/" target="_blank" rel="noopener">zoho.com/mail</a>
-  y elige el plan <strong>Forever Free</strong>. Está abajo de la página de precios, no arriba.</li>
-  <li>Registra <code>creatorsmanager.com</code> como dominio propio.</li>
-  <li>Zoho te pide verificar que el dominio es tuyo: te da un registro <strong>TXT</strong> o
-  <strong>CNAME</strong> para crear en el DNS. Créalo donde hiciste el paso 2.</li>
-  <li>Crea el buzón <code>hola@creatorsmanager.com</code>.</li>
-  <li>Zoho te da los registros <strong>MX</strong>. Créalos también. Sin ellos puedes enviar pero
-  no recibir.</li>
-  <li>En Zoho ve a <strong>Configuración → Seguridad → Contraseñas de aplicación</strong> y genera
-  una. <em>No uses tu contraseña normal</em>: la app necesita una de aplicación.</li>
+  <li>Entra a <a href="https://www.brevo.com" target="_blank" rel="noopener">brevo.com</a> y crea
+  cuenta con tu correo. El plan <strong>Free</strong> ya viene puesto.</li>
+  <li>Te va a preguntar para qué la usas: elige la opción de <strong>correo transaccional</strong> o
+  <em>developer</em>. Si te ofrece un tour de marketing, sáltalo.</li>
+</ol>
+
+<h3>Verificar tu dominio</h3>
+
+<p>Esto es lo que permite que los correos salgan desde <code>hola@creatorsmanager.com</code> y no
+desde una dirección genérica de Brevo. Sin esto, terminan en spam.</p>
+
+<ol class="pasos">
+  <li>En Brevo ve a <strong>Senders, Domains &amp; Dedicated IPs</strong> → pestaña
+  <strong>Domains</strong> → <strong>Add a domain</strong>.</li>
+  <li>Escribe <code>creatorsmanager.com</code>.</li>
+  <li>Brevo te da unos registros <strong>TXT</strong> (SPF, DKIM y uno de verificación). Créalos en
+  GoDaddy igual que hiciste con el del paso 2: <em>Administrar DNS → Agregar registro</em>.</li>
+  <li>Vuelve a Brevo y dale <strong>Verify</strong>. Si dice que aún no, espera diez minutos y
+  reintenta — es el DNS propagando.</li>
+</ol>
+
+<h3>Sacar la clave SMTP</h3>
+
+<ol class="pasos">
+  <li>En Brevo, menú de tu cuenta → <strong>SMTP &amp; API</strong> → pestaña <strong>SMTP</strong>.</li>
+  <li>Ahí aparecen el <strong>Login</strong> y el servidor. Dale a <strong>Generate a new SMTP key</strong>.</li>
+  <li>Cópiala apenas la genere: <strong>no la vuelve a mostrar</strong>.</li>
 </ol>
 
 <h3>Las variables en Railway</h3>
 
 <div class="copiar">
   <div class="copiar__t">Servicio supportive-intuition → Variables</div>
-  <pre>MK_SMTP_HOST = smtp.zoho.com
-MK_SMTP_PORT = 465
-MK_SMTP_USER = hola@creatorsmanager.com
-MK_SMTP_PASS = (la contraseña de aplicación)
+  <pre>MK_SMTP_HOST = smtp-relay.brevo.com
+MK_SMTP_PORT = 587
+MK_SMTP_USER = (el "Login" que muestra Brevo)
+MK_SMTP_PASS = (la SMTP key recién generada)
 MK_SMTP_FROM = Creators Manager &lt;hola@creatorsmanager.com&gt;</pre>
 </div>
 
 <div class="tip">
-  <p><strong>¿Prefieres Gmail?</strong> Funciona igual y es más conocido, pero Google cobra
-  (~$30.000/mes) por usar tu propio dominio. Si vas por ahí, <em>no</em> pongas
-  <code>MK_SMTP_HOST</code> ni <code>MK_SMTP_PORT</code>: sin esas dos, la app asume Gmail sola.</p>
+  <p><strong>Enviar y recibir son dos cosas distintas.</strong> Brevo <em>manda</em> los correos de la
+  app, pero no te da un buzón: si alguien le responde a <code>hola@creatorsmanager.com</code>, ese
+  mensaje no llega a ninguna parte.</p>
+  <p>Para recibir, lo más simple es un <strong>reenvío</strong> desde GoDaddy hacia tu Gmail de
+  siempre. No bloquea el lanzamiento, pero conviene tenerlo antes de que llegue la primera marca.</p>
 </div>
 
 <div class="check">
   <div class="check__t">La prueba de fuego</div>
-  <p>Ve a <code>/registro.html</code>, clic en <strong>«Olvidé mi contraseña»</strong> y pon un
-  correo tuyo que sí exista como cuenta. Te tiene que llegar el mensaje, con el enlace apuntando a
+  <p>Ve a <code>/registro.html</code>, clic en <strong>«Olvidé mi contraseña»</strong> y pon un correo
+  tuyo que sí exista como cuenta. Te tiene que llegar el mensaje, con el enlace apuntando a
   <code>creatorsmanager.com</code>. Revisa también spam la primera vez.</p>
 </div>
 </div>
