@@ -7,7 +7,13 @@
 
 const config = {
   puerto: parseInt(process.env.PORT || '3040', 10),
-  base_url: process.env.MK_BASE_URL || 'http://localhost:3040',
+  // De esta URL cuelgan los enlaces de TODOS los correos y el retorno del pago
+  // de Wompi. Si cae a localhost en producción, la marca paga y aterriza en la
+  // nada, y quien olvide su clave recibe un enlace que no abre en ningún lado.
+  // Por eso, si nadie la declara, se usa el dominio que Railway ya publica.
+  base_url: process.env.MK_BASE_URL
+    || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null)
+    || 'http://localhost:3040',
   entorno: process.env.NODE_ENV || 'development',
 
   supabase: {
@@ -68,8 +74,23 @@ if (config.wompi.llave_publica && !config.wompi.secreto_eventos && !process.env.
   console.warn('[config] Falta WOMPI_SECRETO_EVENTOS: no se van a poder confirmar los pagos.');
 }
 
+// El registro de marcas es abierto (mk_config.registro_marcas_abierto). Los
+// códigos solo hacen falta el día que se cierre, y entonces sí tiene que haber
+// alguno cargado o nadie podría entrar.
 if (!config.codigos_invitacion.length && !process.env.MK_SKIP_CONFIG_CHECK) {
-  console.warn('[config] MK_CODIGOS_INVITACION vacío — ninguna marca podrá registrarse.');
+  console.warn('[config] MK_CODIGOS_INVITACION vacío. No importa mientras el registro esté');
+  console.warn('         abierto, pero si lo cierras sin cargar códigos, ninguna marca');
+  console.warn('         podrá registrarse.');
+}
+
+// Los correos y el retorno del pago cuelgan de base_url: si apunta a localhost
+// mientras el servicio está en internet, los dos se rompen en silencio.
+if (config.base_url.includes('localhost') && config.entorno === 'production'
+    && !process.env.MK_SKIP_CONFIG_CHECK) {
+  console.warn('[config] MK_BASE_URL no está definida y no se pudo deducir el dominio.');
+  console.warn('         Los enlaces de los correos y el retorno del pago de Wompi van a');
+  console.warn('         apuntar a localhost. Declara MK_BASE_URL con el dominio público,');
+  console.warn('         sin barra al final.');
 }
 
 // Supabase ofrece dos formatos de llave. Las nuevas (sb_secret_...) sirven para
