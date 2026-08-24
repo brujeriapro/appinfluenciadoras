@@ -1,4 +1,4 @@
-// Panel admin de Creadores.app — para el equipo que opera el marketplace.
+// Panel admin de Creators Manager — para el equipo que opera el marketplace.
 //
 // Es el único lugar del sistema donde:
 //   - se ve la identidad real de las creadoras,

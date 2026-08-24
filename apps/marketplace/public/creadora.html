@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mi portal · Creadores.app</title>
+<title>Mi portal · Creators Manager</title>
 <meta name="robots" content="noindex, nofollow">
 <link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/tokens.css">
@@ -554,7 +554,7 @@
 <div class="login-wrap" id="login-wrap">
   <form class="login" id="login-form">
     <h1 id="login-titulo">Mi portal</h1>
-    <p id="login-sub">CREADORES.APP</p>
+    <p id="login-sub">CREATORS MANAGER</p>
 
     <!-- Campos que solo pide el registro -->
     <div id="campos-registro" class="oculto">
@@ -633,7 +633,7 @@
   <aside class="lateral">
     <div class="lateral__logo">
       <div class="logo__marca">C</div>
-      <span class="logo__texto">CREADORES.APP</span>
+      <span class="logo__texto">CREATORS MANAGER</span>
     </div>
     <div class="lateral__rotulo">Portal de creadora</div>
     <button class="nav-item activo" data-vista="perfil">
@@ -709,7 +709,7 @@ const $ = (id) => document.getElementById(id);
 let modo = 'login';
 
 const TEXTOS = {
-  login:     { titulo: 'Mi portal',        sub: 'CREADORES.APP',              btn: 'ENTRAR →' },
+  login:     { titulo: 'Mi portal',        sub: 'CREATORS MANAGER',              btn: 'ENTRAR →' },
   registro:  { titulo: 'Crear mi perfil',  sub: 'GRATIS · SIN EXCLUSIVIDAD',  btn: 'CREAR MI PERFIL →' },
   primera:   { titulo: 'Crear contraseña', sub: 'PARA QUIEN YA TIENE PERFIL', btn: 'CREAR Y ENTRAR →' },
   olvide:    { titulo: 'Recuperar acceso', sub: 'TE MANDAMOS UN ENLACE',      btn: 'ENVIARME EL ENLACE →' },
@@ -1740,7 +1740,7 @@ async function verPropuesta(id) {
         <span class="desglose__valor">${COP(t.monto_creadora)}</span>
       </div>
       <div class="desglose__fila">
-        <span class="desglose__label">Comisión Creadores.app ${t.comision_creadora_pct}%</span>
+        <span class="desglose__label">Comisión Creators Manager ${t.comision_creadora_pct}%</span>
         <span class="desglose__valor desglose__valor--resta">−${COP(t.comision_creadora_valor)}</span>
       </div>
       <div class="desglose__neto">

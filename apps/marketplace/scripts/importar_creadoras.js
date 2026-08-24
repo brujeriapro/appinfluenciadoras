@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Importa las Brujas Embajadoras de Brujería Capilar al banco de Creadores.app.
+// Importa las Brujas Embajadoras de Brujería Capilar al banco de Creators Manager.
 //
 // Qué trae: las creadoras que YA demostraron que entregan — status Calificada o
 // Contenido Entregado, o las que están activas en el programa UGC. Las demás no

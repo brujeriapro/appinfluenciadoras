@@ -1,4 +1,4 @@
-// Creadores.app — servidor del marketplace de creadoras.
+// Creators Manager — servidor del marketplace de creadoras.
 //
 // Este archivo solo cablea: middlewares, routers y estáticos. Toda la lógica
 // vive en los módulos. Si empieza a crecer, es señal de que algo se está
@@ -29,7 +29,7 @@ app.use(express.json({ limit: '16mb' }));
 // ── Rutas públicas ──────────────────────────────────────────────────────────
 
 app.get('/health', (req, res) => {
-  res.json({ ok: true, servicio: 'creadores.app', entorno: config.entorno });
+  res.json({ ok: true, servicio: 'creatorsmanager.com', entorno: config.entorno });
 });
 
 app.use('/api/landing', require('./landing'));
@@ -89,7 +89,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(config.puerto, () => {
-  console.log(`Creadores.app escuchando en http://localhost:${config.puerto}`);
+  console.log(`Creators Manager escuchando en http://localhost:${config.puerto}`);
   console.log(`  Landing:  ${config.base_url}/`);
   console.log(`  Admin:    ${config.base_url}/admin.html`);
 });

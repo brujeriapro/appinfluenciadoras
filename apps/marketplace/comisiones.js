@@ -1,4 +1,4 @@
-// Motor de comisión de Creadores.app.
+// Motor de comisión de Creators Manager.
 //
 // Funciones puras, sin acceso a base de datos ni a red: todo lo que necesitan
 // llega por parámetro. Es el módulo donde se decide cuánta plata cobra cada

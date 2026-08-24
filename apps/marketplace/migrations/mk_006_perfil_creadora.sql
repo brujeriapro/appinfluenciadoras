@@ -1,5 +1,5 @@
 -- ===========================================================================
--- Creadores.app - mk_006
+-- Creators Manager - mk_006
 --
 -- La creadora completa su propio perfil: nicho, redes, bio y su trabajo. El
 -- equipo pasa de llenar datos a solo revisar y aprobar.

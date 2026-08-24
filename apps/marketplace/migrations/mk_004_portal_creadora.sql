@@ -1,5 +1,5 @@
 -- ===========================================================================
--- Creadores.app - mk_004
+-- Creators Manager - mk_004
 --
 -- Ajustes que pide el handoff del Portal de la Creadora:
 --

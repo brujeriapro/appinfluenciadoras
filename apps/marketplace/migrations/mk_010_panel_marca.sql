@@ -1,5 +1,5 @@
 -- ===========================================================================
--- Creadores.app - mk_010
+-- Creators Manager - mk_010
 --
 -- Lo que necesita el panel de marca, segun el handoff de diseno.
 --

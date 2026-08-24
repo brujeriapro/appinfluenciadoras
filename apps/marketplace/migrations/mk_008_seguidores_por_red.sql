@@ -1,5 +1,5 @@
 -- ===========================================================================
--- Creadores.app - mk_008
+-- Creators Manager - mk_008
 --
 -- Los seguidores se piden por red, no en un total.
 --

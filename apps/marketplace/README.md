@@ -1,4 +1,4 @@
-# Creadores.app — marketplace de creadoras
+# Creators Manager — marketplace de creadoras
 
 Marketplace de dos lados: marcas colombianas contratan colaboraciones pagas con un banco de creadoras de todos los nichos — belleza, moda, fitness, comida, hogar, viajes, tech y más. La plataforma cobra comisión por cada trato cerrado y retiene el pago hasta que el contenido se entrega y se aprueba.
 
@@ -37,7 +37,8 @@ npm test               # 47 pruebas: comisiones, máquina de estados, tarifas y 
 | `MK_CODIGOS_INVITACION` | no* | Códigos separados por coma. Sin esto, ninguna marca puede registrarse |
 | `MK_BASE_URL` | no | URL pública, para los links de los correos |
 | `MK_SMTP_USER` / `MK_SMTP_PASS` | no | Gmail del remitente. **No usar el de Brujería** |
-| `MK_SMTP_FROM` | no | Por defecto `Creadores.app <no-reply@creadores.app>` |
+| `MK_SMTP_FROM` | no | Por defecto `Creators Manager <no-reply@creatorsmanager.com>` |
+| `MK_BASE_URL` | sí en producción | Dominio público sin barra final: `https://creatorsmanager.com`. De aquí cuelgan los enlaces de los correos y el retorno del pago. Si falta, se deduce del dominio de Railway |
 | `MK_BUCKET_MUESTRAS` | no | Bucket privado de Storage, por defecto `mk-muestras` |
 | `WOMPI_LLAVE_PUBLICA` | no | Sin ella el escrow sigue siendo transferencia manual |
 | `WOMPI_LLAVE_PRIVADA` | no | Para confirmar transacciones contra la API |

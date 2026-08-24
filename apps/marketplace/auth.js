@@ -1,4 +1,4 @@
-// Autenticación de Creadores.app.
+// Autenticación de Creators Manager.
 //
 // Tres identidades distintas, tres puertas distintas:
 //   - admin    -> Basic Auth, aplicado por router (no global con lista blanca)
@@ -18,7 +18,7 @@ const config = require('./config');
 function adminAuth(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Basic ')) {
-    res.setHeader('WWW-Authenticate', 'Basic realm="Creadores.app Admin"');
+    res.setHeader('WWW-Authenticate', 'Basic realm="Creators Manager Admin"');
     return res.status(401).send('Acceso restringido');
   }
   const credenciales = Buffer.from(auth.slice(6), 'base64').toString();
@@ -30,7 +30,7 @@ function adminAuth(req, res, next) {
     req.actor = 'admin';
     return next();
   }
-  res.setHeader('WWW-Authenticate', 'Basic realm="Creadores.app Admin"');
+  res.setHeader('WWW-Authenticate', 'Basic realm="Creators Manager Admin"');
   return res.status(401).send('Credenciales incorrectas');
 }
 

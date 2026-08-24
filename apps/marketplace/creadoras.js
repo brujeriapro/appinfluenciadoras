@@ -1,6 +1,6 @@
 // Router del lado creadora: sesión, perfil propio y respuesta a los tratos.
 //
-// La cuenta es propia de Creadores.app, separada de la del portal de Brujas
+// La cuenta es propia de Creators Manager, separada de la del portal de Brujas
 // Embajadoras: mismo ser humano, credenciales distintas, secretos distintos.
 
 const express = require('express');

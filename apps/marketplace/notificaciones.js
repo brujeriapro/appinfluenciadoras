@@ -1,4 +1,4 @@
-// Correos transaccionales de Creadores.app.
+// Correos transaccionales de Creators Manager.
 //
 // Remitente propio: estos correos NO pueden salir del Gmail de Brujería Capilar
 // o delatarían que el marketplace es de la marca, que es justo lo que el
@@ -60,7 +60,7 @@ function plantilla(contenido) {
   <div style="max-width:560px;margin:0 auto;background:#fff;border:2px solid #0E0E0E">
     <div style="background:#0E0E0E;padding:16px 20px">
       <span style="display:inline-block;background:#D6FF00;color:#0E0E0E;font-weight:800;padding:4px 7px;letter-spacing:-0.5px">C</span>
-      <span style="color:#F2F2F2;font-weight:800;letter-spacing:-0.5px;margin-left:8px">CREADORES.APP</span>
+      <span style="color:#F2F2F2;font-weight:800;letter-spacing:-0.5px;margin-left:8px">CREATORS MANAGER</span>
     </div>
     <div style="padding:24px 20px;color:#0E0E0E;font-size:13px;line-height:1.7">
       ${contenido}
@@ -83,7 +83,7 @@ const urlTrato = (lado, id) => `${config.base_url}/${lado}.html#/trato/${id}`;
 function bienvenidaCreadora({ creadora }) {
   return enviar(
     creadora.email,
-    'Ya tienes perfil en Creadores.app',
+    'Ya tienes perfil en Creators Manager',
     `<p>Hola ${esc(creadora.nombre_publico)}, tu perfil quedó creado.</p>
      <p style="background:#D6FF00;padding:10px;border:2px solid #0E0E0E">
        <strong>Lo que sigue:</strong> entra y pon tus tarifas.<br>
@@ -141,7 +141,7 @@ function resetClave({ email, token, lado }) {
   const url = `${config.base_url}/${pagina}#recuperar=${token}`;
   return enviar(
     email,
-    'Recupera tu contraseña · Creadores.app',
+    'Recupera tu contraseña · Creators Manager',
     `<p>Pediste volver a entrar a tu cuenta.</p>
      <p>Este enlace sirve una sola vez y vence en una hora.</p>
      ${boton('CREAR NUEVA CONTRASEÑA', url)}

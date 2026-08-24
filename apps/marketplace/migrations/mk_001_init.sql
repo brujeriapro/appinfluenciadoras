@@ -1,5 +1,5 @@
 -- ===========================================================================
--- Creadores.app - esquema inicial del marketplace
+-- Creators Manager - esquema inicial del marketplace
 -- Correr en el SQL Editor de Supabase. Idempotente: se puede repetir sin dano.
 --
 -- Convencion: TODAS las tablas del marketplace llevan prefijo mk_. Conviven en
@@ -178,7 +178,7 @@ CREATE INDEX IF NOT EXISTS mk_entregas_trato_idx ON mk_entregas(trato_id);
 -- de Supabase cerrada para las llaves publicas (anon / authenticated).
 --
 -- La app no se ve afectada: se conecta con la service_role_key, que ignora RLS
--- por diseno. El unico camino hacia estos datos es el backend de Creadores.app,
+-- por diseno. El unico camino hacia estos datos es el backend de Creators Manager,
 -- que es donde viven las reglas de identidad oculta.
 --
 -- Sin esto, cualquiera con la anon key del proyecto (una llave publica, pensada

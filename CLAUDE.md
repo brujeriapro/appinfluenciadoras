@@ -66,7 +66,7 @@ Claude should always orient itself through `/prime` at session start, then act w
 │       └── _legacy/                 # Scripts Python deprecados — lógica portada a apps/creadoras/
 ├── apps/
 │   ├── creadoras/         # App Node del Programa Creadoras (desplegada en Railway)
-│   └── marketplace/       # Creadores.app — marketplace de creadoras (servicio Railway aparte)
+│   └── marketplace/       # Creators Manager — marketplace de creadoras (servicio Railway aparte)
 ├── reference/             # Templates, examples, reusable patterns
 ├── README.md              # Onboarding entry point para colaboradoras
 └── shell-aliases.md       # Shell aliases reference
@@ -83,7 +83,7 @@ Claude should always orient itself through `/prime` at session start, then act w
 | `scripts/`   | Competitor analysis automation — scraper, report generator, config.                 |
 | `scripts/influencers/_legacy/` | Scripts Python archivados del pipeline (lógica ahora en `apps/creadoras/`). |
 | `apps/creadoras/` | App Node del Programa Creadoras — dashboard admin, webhooks Tally, scoring, cron. Desplegada en Railway. |
-| `apps/marketplace/` | **Creadores.app** — marketplace donde marcas contratan colaboraciones pagas con creadoras. Servicio Railway independiente, misma base Supabase. |
+| `apps/marketplace/` | **Creators Manager** — marketplace donde marcas contratan colaboraciones pagas con creadoras. Servicio Railway independiente, misma base Supabase. |
 | `reference/` | Helpful docs, templates and patterns to assist in various workflows.                |
 
 ---
@@ -249,7 +249,7 @@ Requiere `scripts/influencers/config_influencers.json` con credenciales válidas
 
 ---
 
-## Creadores.app — Marketplace de Creadoras (apps/marketplace/)
+## Creators Manager — Marketplace de Creadoras (apps/marketplace/)
 
 Marketplace de dos lados: marcas de belleza y consumo colombianas contratan colaboraciones pagas con un banco de creadoras, y la plataforma cobra comisión por cada trato cerrado. **Es una marca y un producto aparte de Brujería Capilar.** Comparte la base de datos de Supabase con el Programa Creadoras (para no duplicar el banco de creadoras) pero corre en su propio proceso, con su propio dominio, su propio panel admin y sus propios secretos. No importa código de `apps/creadoras/`.
 
@@ -300,7 +300,7 @@ Brutalismo digital / Y2K editorial, definido en el handoff de Claude Design y co
 - ⚠️ Hay **país** en el perfil (20 países) pero la **moneda es COP para todos**. Una creadora en México cobra y recibe en pesos colombianos, y la interfaz lo dice explícitamente. Multi-moneda es un proyecto aparte: exige conversión, pagos internacionales y repensar el escrow.
 - ⚠️ Las métricas de alcance son **declaradas** por la creadora, no verificadas. Los campos para verificarlas vía Instagram existen (`fuente_metricas`) pero la conexión con Meta no está construida. Al hacerla: nunca embeber el feed —muestra el @usuario— y recordar que la API exige cuenta Business o Creator.
 - ⚠️ El portal promete plazos (72h para responder, 48h para aprobar, pago 48h después) que **hoy solo se muestran**: no hay cron que los ejecute. Ver README de la app.
-- El dominio (`creadores.app`) aún no está comprado: corre sobre la URL de Railway.
+- El dominio es **`creatorsmanager.com`** (comprado el 24-ago-2026). Falta apuntarlo a Railway y declarar `MK_BASE_URL`; mientras tanto corre sobre la URL de Railway. El producto se llamaba Creadores.app y se renombró a **Creators Manager** para que el nombre y el dominio digan lo mismo.
 - **Pagos con Wompi**: la marca paga el trato con tarjeta y el webhook confirma el escrow. Sin llaves configuradas, sigue el registro manual desde el panel.
 - **Planes de suscripción**: demo (3 fichas), Emprende $19.900 (10), Marca $99.900 (60), Agencia $199.900 (sin límite). Se limita abrir fichas, **nunca** enviar propuestas: cada propuesta deja comisión.
 - **El registro de marcas es abierto y mínimo**: cuatro campos — marca, teléfono, correo y clave. Ni código de invitación, ni NIT, ni ciudad, ni persona de contacto: eso se pide en el perfil del panel, cuando ya hay cuenta que perder. Lo que sostiene la calidad del banco es el plan — quien entra ve 3 fichas y para ver más tiene que poner tarjeta. El código sigue existiendo y se reactiva apagando `registro_marcas_abierto` en `mk_config`, sin desplegar nada.

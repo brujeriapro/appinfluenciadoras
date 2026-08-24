@@ -1,5 +1,5 @@
 -- ===========================================================================
--- Creadores.app - mk_005
+-- Creators Manager - mk_005
 --
 -- Las creadoras ahora pueden registrarse solas. Antes solo entraban por el
 -- script de importacion o creadas a mano desde el panel.

@@ -1,5 +1,5 @@
 -- ===========================================================================
--- Creadores.app - mk_011
+-- Creators Manager - mk_011
 --
 -- Pagos con Wompi y planes de suscripcion.
 --

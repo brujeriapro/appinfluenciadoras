@@ -1,5 +1,5 @@
 -- ===========================================================================
--- Creadores.app - semillas de configuracion
+-- Creators Manager - semillas de configuracion
 -- Correr DESPUES de mk_001_init.sql. Idempotente: no pisa valores ya editados
 -- desde el panel admin (ON CONFLICT DO NOTHING).
 --

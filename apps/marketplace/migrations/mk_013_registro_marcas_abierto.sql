@@ -1,5 +1,5 @@
 -- ===========================================================================
--- Creadores.app - mk_013
+-- Creators Manager - mk_013
 --
 -- Registrarse como marca deja de exigir codigo de invitacion, y el formulario
 -- se reduce a lo minimo: marca, telefono, correo y clave.

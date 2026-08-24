@@ -1,7 +1,7 @@
 {
   "name": "creadores-app",
   "version": "1.0.0",
-  "description": "Creadores.app — marketplace de colaboraciones pagas entre marcas y creadoras (Colombia)",
+  "description": "Creators Manager — marketplace de colaboraciones pagas entre marcas y creadoras (Colombia)",
   "private": true,
   "scripts": {
     "start": "node index.js",

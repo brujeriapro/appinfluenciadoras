@@ -90,7 +90,7 @@ Patrones establecidos que este plan respeta:
 | `apps/marketplace/migrations/mk_001_init.sql` | Crea las 8 tablas `mk_*` + índices |
 | `apps/marketplace/migrations/mk_002_seed_config.sql` | Semillas de `mk_config`: comisiones, niveles de tarifa, plazo de no-circunvalación |
 | `apps/marketplace/scripts/importar_creadoras.js` | Importa Brujas Embajadoras elegibles a `mk_creadoras` como borradores no visibles |
-| `apps/marketplace/public/css/tokens.css` | Sistema visual Creadores.app: negro/lima/magenta/azul, Martian Mono + Space Mono, radio 0 |
+| `apps/marketplace/public/css/tokens.css` | Sistema visual Creators Manager: negro/lima/magenta/azul, Martian Mono + Space Mono, radio 0 |
 | `apps/marketplace/public/index.html` | Landing pública portada del handoff de diseño |
 | `apps/marketplace/public/catalogo.html` | Pantallas 1 y 2: tarjeta de creadora + catálogo con filtros |
 | `apps/marketplace/public/registro.html` | Pantalla 4: registro/onboarding de marca + aceptación de términos |
@@ -142,7 +142,7 @@ Ninguno. Este plan es puramente aditivo — no toca el código del Programa Crea
 
 11. **La identidad visual es la del handoff de diseño, no la de la spec inicial.** La spec de arranque pedía índigo profundo + Inter + fondo blanco (tono B2B sobrio). El diseño entregado en Claude Design es lo contrario: **brutalismo digital / Y2K editorial** — negro `#0E0E0E`, lima `#D6FF00`, magenta `#FF2E9A`, azul `#2323F0`, dos monoespaciadas (Martian Mono + Space Mono), `border-radius: 0` sin excepción, sin sombras, sin gradientes, bordes duros de 2px. Manda el handoff: es la decisión más reciente y viene resuelta a alta fidelidad con valores exactos. Todas las pantallas del producto se construyen sobre ese sistema.
 
-12. **La marca se escribe `CREADORES.APP`.** El handoff usa ese lockup en logo, header y footer. Se adopta en toda la interfaz y en el remitente de los correos. El dominio natural es `creadores.app`.
+12. **La marca se escribe `CREATORS MANAGER`.** El handoff usa ese lockup en logo, header y footer. Se adopta en toda la interfaz y en el remitente de los correos. El dominio natural es `creatorsmanager.com`.
 
 13. **La landing pública es parte de la Fase 1.** El handoff entregó la landing completa (10 bloques) antes que las 6 pantallas de producto, así que se porta primero y se sirve como raíz del sitio. Sus CTAs (`SOY MARCA`, `SOY CREADORA`) enlazan a los flujos de registro reales. Los datos que la landing muestra como fijos (métricas del hero, 8 tarjetas del banco) se sirven desde el backend vía `GET /api/landing`, no hardcodeados, para que dejen de mentir en cuanto haya datos reales.
 
@@ -165,7 +165,7 @@ Ninguna de estas bloquea el arranque de la implementación; se necesitan antes d
 1. ~~Nicho~~ **Resuelto (ampliado).** La taxonomía de belleza se reemplazó por una de **dos niveles que cubre todo el universo de creadoras**: 15 categorías madre con ~100 subnichos (`mk_003`). La creadora elige hasta 3 subnichos y la categoría madre se deduce sola. La marca filtra por categoría (amplio) o afina por subnicho.
 2. **Rangos de alcance a mostrar** (bloquea el Paso 12). Propuesta: `1K–10K`, `10K–50K`, `50K–100K`, `100K+`. Mostrar rango en vez de número exacto también dificulta identificar a la creadora.
 3. ~~Niveles de tarifa~~ **Resuelto (cambio de modelo).** La plataforma ya no asigna tarifa. **Cada creadora publica su precio por tipo de entregable** con un control deslizante ($50.000–$8.000.000, paso $10.000). Los niveles `inicial`/`medio`/`top` pasaron a ser rangos de presupuesto para que la marca filtre, y el nivel de cada creadora se **deriva** de lo que ella misma publicó.
-4. ~~Dominio~~ **Resuelto**: el DNS aún no está comprado. Todo corre sobre la URL `.up.railway.app` hasta que se adquiera. El handoff de diseño usa `CREADORES.APP` como marca, así que el dominio a comprar es **creadores.app** (o `creadoresapp.com` como alterno). El paso de despliegue omite la configuración de dominio.
+4. ~~Dominio~~ **Resuelto**: el DNS aún no está comprado. Todo corre sobre la URL `.up.railway.app` hasta que se adquiera. El handoff de diseño usa `CREATORS MANAGER` como marca, así que el dominio a comprar es **creatorsmanager.com** (o `creadoresapp.com` como alterno). El paso de despliegue omite la configuración de dominio.
 5. **Email remitente del marketplace**: se necesita una cuenta distinta a `brujeriapro@gmail.com` para que los correos no lleguen firmados por Brujería. Bloquea el Paso 17.
 6. **Plazo de no-circunvalación**: la spec dice "6-12 meses". Propuesta: 12 meses. Bloquea el Paso 16 (texto legal).
 

@@ -1,4 +1,4 @@
-// Términos y Condiciones de Creadores.app.
+// Términos y Condiciones de Creators Manager.
 //
 // Mismo patrón que apps/creadoras/acuerdo.js: el texto legal vive como módulo
 // JS, no como HTML suelto, para que sea versionable y quede constancia de qué
@@ -10,15 +10,15 @@
 // que sostiene el modelo de negocio: si no es exigible, cualquier marca puede
 // usar el catálogo como directorio y contratar por fuera.
 
-const TERMINOS_VERSION = '2026-08-v1';
+const TERMINOS_VERSION = '2026-08-v2';
 
 // Los valores que cambian se inyectan desde mk_config, no se repiten a mano.
 function terminosBody({ comision_marca_pct = 12, comision_creadora_pct = 8, plazo_meses = 12 } = {}) {
   return `
 <h1 class="tc-title">TÉRMINOS Y CONDICIONES</h1>
-<p class="tc-sub">Creadores.app · Versión ${TERMINOS_VERSION}</p>
+<p class="tc-sub">Creators Manager · Versión ${TERMINOS_VERSION}</p>
 
-<p>Creadores.app es una plataforma operada por <strong>COLBELLEZA LATAM S.A.S.</strong> (NIT 901.519.449-0, domiciliada en Medellín, Colombia), en adelante "la Plataforma", que conecta marcas ("la Marca") con creadoras de contenido ("la Creadora") para celebrar colaboraciones pagas.</p>
+<p>Creators Manager es una plataforma operada por <strong>COLBELLEZA LATAM S.A.S.</strong> (NIT 901.519.449-0, domiciliada en Medellín, Colombia), en adelante "la Plataforma", que conecta marcas ("la Marca") con creadoras de contenido ("la Creadora") para celebrar colaboraciones pagas.</p>
 
 <p>Al crear una cuenta, la Marca acepta estos términos en su totalidad.</p>
 
@@ -102,7 +102,7 @@ function terminosHTML(valores) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Términos y Condiciones · Creadores.app</title>
+<title>Términos y Condiciones · Creators Manager</title>
 <link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>*{box-sizing:border-box;border-radius:0}body{margin:0;background:#F2F2F2}${TERMINOS_CSS}</style>
 </head>

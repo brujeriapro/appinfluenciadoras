@@ -1,4 +1,4 @@
-// Capa de acceso a Supabase para Creadores.app.
+// Capa de acceso a Supabase para Creators Manager.
 //
 // Mismo patrón que apps/creadoras/supabase.js: REST API directa con la
 // service_role_key, sin ORM. Comparte instancia con el Programa Creadoras, pero

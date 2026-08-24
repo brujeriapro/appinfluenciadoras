@@ -1,4 +1,4 @@
-// Configuración de Creadores.app — marketplace de creadoras.
+// Configuración de Creators Manager — marketplace de creadoras.
 //
 // A diferencia de apps/creadoras/, este servicio NO tiene fallback a un JSON local:
 // nace directo en producción y todos sus secretos vienen de variables de entorno.
@@ -49,7 +49,7 @@ const config = {
   smtp: {
     user: process.env.MK_SMTP_USER || '',
     pass: process.env.MK_SMTP_PASS || '',
-    remitente: process.env.MK_SMTP_FROM || 'Creadores.app <no-reply@creadores.app>',
+    remitente: process.env.MK_SMTP_FROM || 'Creators Manager <no-reply@creatorsmanager.com>',
   },
 };
 

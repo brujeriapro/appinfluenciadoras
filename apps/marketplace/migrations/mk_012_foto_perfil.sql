@@ -1,5 +1,5 @@
 -- ===========================================================================
--- Creadores.app - mk_012
+-- Creators Manager - mk_012
 --
 -- Foto de perfil de la creadora.
 --
