@@ -133,6 +133,76 @@ const boton = (texto, url) =>
 
 const urlTrato = (lado, id) => `${config.base_url}/${lado}.html#/trato/${id}`;
 
+// ── Invitación al banco de creadoras ────────────────────────────────────────
+
+/**
+ * Lo que reconoce el correo cambia según lo que la persona realmente hizo con
+ * Brujería Capilar. Escribirle "gracias por el contenido que nos entregaste" a
+ * alguien que solo se registró suena a plantilla y se nota de inmediato.
+ */
+const RECONOCIMIENTO = {
+  'Contenido Entregado':
+    'Nos hiciste contenido y cumpliste. Eso, que suena obvio, es justo lo que más le cuesta encontrar a una marca.',
+  'Producto Enviado':
+    'Te enviamos un kit del Programa Creadoras y quedaste dentro de nuestro grupo de creadoras.',
+  'Calificada':
+    'Quedaste seleccionada en el Programa Creadoras de Brujería Capilar.',
+  'Pausada':
+    'Estuviste en el Programa Creadoras de Brujería Capilar.',
+  'Descartada':
+    'Te registraste en el Programa Creadoras de Brujería Capilar. Esto es distinto y no depende de aquello.',
+  'Registrada':
+    'Te registraste en el Programa Creadoras de Brujería Capilar.',
+};
+
+/**
+ * Invitación a las creadoras del Programa Creadoras para entrar al marketplace.
+ *
+ * Tres cosas que el correo tiene que dejar claras, en este orden: que le van a
+ * pagar, que el precio lo pone ella, y por qué su @usuario no aparece — sin esa
+ * última, esconder el perfil se lee como si le estuvieran ocultando algo.
+ */
+function invitacionCreadora({ email, nombre, status }) {
+  const saludo = nombre ? `Hola, ${String(nombre).split(' ')[0]}.` : 'Hola.';
+  const reconoce = RECONOCIMIENTO[status] || RECONOCIMIENTO['Registrada'];
+
+  return enviar(
+    email,
+    'Ahora las marcas pagan por el contenido que ya haces',
+    `<p style="font-size:15px"><strong>${esc(saludo)}</strong></p>
+
+     <p>${reconoce}</p>
+
+     <p>Te escribimos porque abrimos <strong>Creators Manager</strong>: un lugar donde
+     marcas colombianas contratan creadoras para colaboraciones <strong>pagas</strong>.
+     Lo hicimos nosotras mismas, después de trabajar con cientos de creadoras y ver
+     lo difícil que es de los dos lados.</p>
+
+     <p style="border-left:3px solid #0E0E0E;padding-left:12px">
+       <strong>Tú pones tu precio.</strong> Nadie te dice cuánto vale tu trabajo: defines
+       tu tarifa por cada tipo de contenido y las marcas la ven antes de escribirte.<br><br>
+       <strong>El pago queda protegido.</strong> La marca deposita antes de que empieces.
+       Entregas, aprueba, y te pagamos. No hay "te pago el otro mes".<br><br>
+       <strong>Nada de regalos a cambio de contenido.</strong> Aquí se paga en dinero.
+     </p>
+
+     <p><strong>Tu cuenta no aparece pública.</strong> En el catálogo las marcas ven tu
+     trabajo, tus cifras y tu tarifa, pero no tu @usuario: lo conocen solo cuando ya
+     pagaron y el trato está cerrado. Así nadie te escribe por fuera para regatearte.</p>
+
+     <p>Crear tu perfil toma unos minutos y es gratis. Solo cobramos comisión cuando
+     cierras un trato — si no ganas, no ganamos.</p>
+
+     ${boton('CREAR MI PERFIL', `${config.base_url}/creadora.html`)}
+
+     <p style="margin-top:20px;font-size:11.5px;color:#7A7A7A">
+       Te escribimos porque estás en la base del Programa Creadoras de Brujería Capilar
+       (COLBELLEZA LATAM S.A.S.). Si no te interesa, ignora este correo y no volvemos a
+       escribirte por esto.
+     </p>`,
+  );
+}
+
 // ── Alta de creadoras ───────────────────────────────────────────────────────
 
 /** A la creadora recién registrada: qué sigue, en concreto. */
@@ -312,6 +382,7 @@ function pagoLiberado({ trato, creadora }) {
 
 module.exports = {
   enviar,
+  invitacionCreadora,
   bienvenidaCreadora, avisoPerfilNuevo, avisoListaParaRevisar, perfilAprobado, resetClave,
   nuevaSolicitud, tratoAceptado, tratoRechazado,
   pagoRetenido, contenidoEntregado, contenidoAprobado, pagoLiberado,

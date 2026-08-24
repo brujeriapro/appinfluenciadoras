@@ -17,6 +17,7 @@ const { rangoAlcance, resumirAlcance } = require('./comisiones');
 const wompi = require('./wompi');
 const { subirMuestra, borrarMuestra } = require('./muestras');
 const notificaciones = require('./notificaciones');
+const { OLAS, filtrarCandidatas, pendientesDe, filtroDeEstados } = require('./invitaciones');
 
 const router = express.Router();
 
@@ -607,6 +608,112 @@ router.get('/export/comisiones.csv', async (req, res) => {
     res.send('﻿' + [encabezado.join(','), ...lineas].join('\n'));
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+
+// ── Invitaciones al banco de creadoras ──────────────────────────────────────
+//
+// Corre aquí y no como script suelto porque en el servidor ya están la llave de
+// Brevo y el resto de la configuración. Desde un portátil habría que replicarlas
+// a mano, y una llave copiada a un .env es una llave que se filtra.
+
+const dormir = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function candidatasDeOla(estados) {
+  const filas = await db.get('influencers', {
+    select: 'id,nombre,email,status',
+    status: filtroDeEstados(estados),
+  });
+  return filtrarCandidatas(filas);
+}
+
+/** Cuántas van y cuántas faltan, por ola. */
+router.get('/invitaciones', async (req, res) => {
+  try {
+    const previas = await db.get('mk_invitaciones', { select: 'email,enviada_at,registrada_at' });
+
+    const olas = [];
+    for (const [n, ola] of Object.entries(OLAS)) {
+      const gente = await candidatasDeOla(ola.estados);
+      const faltan = pendientesDe(gente, previas).length;
+      olas.push({
+        ola: Number(n), nombre: ola.nombre,
+        total: gente.length, invitadas: gente.length - faltan, faltan,
+      });
+    }
+
+    res.json({
+      olas,
+      enviadas_total: previas.filter(p => p.enviada_at).length,
+      se_registraron: previas.filter(p => p.registrada_at).length,
+      correo_listo: Boolean(config.brevo_api_key || config.smtp.user),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Envía una tanda. El tope por defecto deja margen bajo el límite diario del
+ * proveedor, que comparte cuota con los correos normales de la plataforma.
+ */
+router.post('/invitaciones/enviar', async (req, res) => {
+  try {
+    const ola = Number(req.body.ola);
+    const limite = Math.min(Number(req.body.limite) || 250, 300);
+    const simulacro = req.body.dry_run === true;
+
+    if (!OLAS[ola]) return res.status(400).json({ error: 'Ola inválida (1 a 4)' });
+    if (!config.brevo_api_key && !config.smtp.user) {
+      return res.status(400).json({ error: 'No hay correo configurado: no se enviaría nada' });
+    }
+
+    const previas = await db.get('mk_invitaciones', { select: 'email' });
+    const todas = await candidatasDeOla(OLAS[ola].estados);
+    const pendientes = pendientesDe(todas, previas);
+    const lote = pendientes.slice(0, limite);
+
+    if (simulacro) {
+      return res.json({
+        simulacro: true, ola, en_la_ola: todas.length,
+        ya_invitadas: todas.length - pendientes.length,
+        se_enviarian: lote.length, quedarian: Math.max(0, pendientes.length - lote.length),
+        muestra: lote.slice(0, 8).map(c => ({ nombre: c.nombre, email: c.email })),
+      });
+    }
+
+    // Se responde de una y el envío sigue por detrás: 250 correos con pausa
+    // toman varios minutos y ningún navegador espera tanto sin cortar.
+    res.json({ ok: true, ola, se_enviaran: lote.length, quedaran: Math.max(0, pendientes.length - lote.length) });
+
+    let ok = 0, fallos = 0;
+    for (const [i, c] of lote.entries()) {
+      let anotada;
+      try {
+        // Anotar antes de enviar: si el proceso muere, lo peor es una
+        // invitación registrada sin salir. Al revés sería escribir dos veces.
+        anotada = await db.post('mk_invitaciones', {
+          influencer_id: c.id, email: c.email, nombre: c.nombre || null,
+          ola, status_origen: c.status,
+        });
+      } catch (e) {
+        continue; // choca con el índice único: ya estaba invitada
+      }
+
+      const salio = await notificaciones.invitacionCreadora({
+        email: c.email, nombre: c.nombre, status: c.status,
+      });
+      salio ? ok++ : fallos++;
+      await db.patch('mk_invitaciones', { id: anotada.id },
+        salio ? { enviada_at: new Date().toISOString() } : { error: 'El envío falló' });
+
+      // Sin pausa, cientos de correos seguidos parecen un ataque.
+      if (i < lote.length - 1) await dormir(900);
+    }
+    console.log(`[invitaciones] Ola ${ola}: ${ok} enviadas, ${fallos} fallidas`);
+  } catch (e) {
+    console.error('[invitaciones]', e.message);
   }
 });
 

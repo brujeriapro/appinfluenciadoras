@@ -35,9 +35,13 @@
 
   .contenido { padding: clamp(16px, 3vw, 30px); }
 
-  /* Tiles de KPI: grilla de bordes compartidos, como en la landing. */
-  .kpis { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin-bottom: 26px; }
-  .kpi { padding: 18px 16px; }
+  /* Tiles de KPI: grilla de bordes compartidos, como en la landing.
+     El `display: grid` faltaba, así que `grid-template-columns` no aplicaba y
+     los tiles se apilaban en una sola columna en todas las vistas. */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+          gap: 2px; background: var(--border-dark); border: 2px solid var(--border-dark);
+          margin-bottom: 26px; }
+  .kpi { padding: 18px 16px; background: var(--ink); }
   .kpi__label { font-size: 10.5px; letter-spacing: 1.2px; color: var(--grey-700); text-transform: uppercase; }
   .kpi__valor { font-family: var(--mono-title); font-size: clamp(20px, 2.6vw, 30px); font-weight: 800;
                 letter-spacing: -1.6px; margin-top: 8px; }
@@ -201,6 +205,7 @@
       <button class="tab" data-vista="tratos">Tratos</button>
       <button class="tab" data-vista="creadoras">Creadoras</button>
       <button class="tab" data-vista="marcas">Marcas</button>
+      <button class="tab" data-vista="invitaciones">Invitaciones</button>
       <button class="tab" data-vista="ajustes">Ajustes</button>
     </div>
   </div>
@@ -867,6 +872,120 @@ VISTAS.marcas = async () => {
         Todavía no se ha registrado ninguna marca.<br><br>
         Se registran en <code style="color:var(--lime)">/registro.html</code> con un código de invitación.
       </div>`;
+};
+
+
+// ── Vista: Invitaciones ─────────────────────────────────────────────────────
+
+VISTAS.invitaciones = async () => {
+  const d = await api('/invitaciones');
+
+  const filas = d.olas.map(o => `
+    <tr>
+      <td class="num">${o.ola}</td>
+      <td>${esc(o.nombre)}</td>
+      <td class="num">${o.total}</td>
+      <td class="num">${o.invitadas}</td>
+      <td class="num">${o.faltan ? `<strong>${o.faltan}</strong>` : '—'}</td>
+      <td>
+        ${o.faltan
+          ? `<button class="btn-mini" data-simular="${o.ola}">VER A QUIÉN</button>
+             <button class="btn-mini" data-enviar="${o.ola}">ENVIAR TANDA</button>`
+          : '<span style="color:var(--grey-700);font-size:11px">completa</span>'}
+      </td>
+    </tr>`).join('');
+
+  const totalFaltan = d.olas.reduce((a, o) => a + o.faltan, 0);
+
+  contenido().innerHTML = `
+    <div class="seccion-titulo">Invitar creadoras del Programa Creadoras</div>
+
+    ${d.correo_listo ? '' : `
+      <div class="bloque" style="border-color:var(--magenta);margin-bottom:16px">
+        <strong style="color:var(--magenta)">No hay correo configurado.</strong>
+        Sin <code>MK_BREVO_API_KEY</code> no sale ninguna invitación.
+      </div>`}
+
+    <div class="kpis" style="margin-bottom:18px">
+      <div class="kpi"><div class="kpi__label">Enviadas</div>
+        <div class="kpi__valor">${d.enviadas_total}</div>
+        <div class="kpi__nota">En total, todas las olas</div></div>
+      <div class="kpi"><div class="kpi__label">Se registraron</div>
+        <div class="kpi__valor kpi__valor--lima">${d.se_registraron}</div>
+        <div class="kpi__nota">${d.enviadas_total ? Math.round(d.se_registraron / d.enviadas_total * 100) + '% de las invitadas' : 'Aún ninguna'}</div></div>
+      <div class="kpi"><div class="kpi__label">Faltan por invitar</div>
+        <div class="kpi__valor">${totalFaltan}</div>
+        <div class="kpi__nota">Sumando las cuatro olas</div></div>
+    </div>
+
+    <div class="bloque" style="margin-bottom:18px;font-size:12.5px;line-height:1.7">
+      <strong>Una ola por día, no todas de una.</strong> El proveedor deja 300 correos
+      diarios, pero el motivo de fondo es otro: un dominio nuevo que manda cientos de
+      mensajes de golpe se ve como spam y esa reputación se le queda pegada. Las olas van
+      de mayor a menor cercanía con la marca, para que las primeras en abrir sean las que
+      ya te conocen.
+    </div>
+
+    <div class="tabla-wrap"><table>
+      <thead><tr><th>Ola</th><th>Quiénes</th><th>Total</th><th>Invitadas</th><th>Faltan</th><th></th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table></div>
+
+    <div id="resultado-inv"></div>
+  `;
+
+  const caja = () => document.getElementById('resultado-inv');
+
+  contenido().querySelectorAll('[data-simular]').forEach(b => {
+    b.addEventListener('click', async () => {
+      b.disabled = true; b.textContent = 'MIRANDO…';
+      try {
+        const r = await api('/invitaciones/enviar', {
+          method: 'POST',
+          body: JSON.stringify({ ola: Number(b.dataset.simular), dry_run: true }),
+        });
+        caja().innerHTML = `
+          <div class="bloque" style="margin-top:16px">
+            <div class="seccion-titulo" style="margin-top:0">Simulacro · ola ${r.ola}</div>
+            <p style="font-size:12.5px">Se enviarían <strong>${r.se_enviarian}</strong> invitaciones.
+            ${r.quedarian ? `Quedarían <strong>${r.quedarian}</strong> para mañana.` : ''}
+            No se ha mandado nada todavía.</p>
+            <div style="font-size:11.5px;color:var(--grey-700);line-height:1.8">
+              ${r.muestra.map(m => `${esc(m.nombre || '(sin nombre)')} — ${esc(m.email)}`).join('<br>')}
+              ${r.se_enviarian > 8 ? `<br>… y ${r.se_enviarian - 8} más` : ''}
+            </div>
+          </div>`;
+      } catch (e) { alert('No se pudo: ' + e.message); }
+      b.disabled = false; b.textContent = 'VER A QUIÉN';
+    });
+  });
+
+  contenido().querySelectorAll('[data-enviar]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const ola = Number(b.dataset.enviar);
+      // Esto le escribe a gente real y no se puede deshacer.
+      if (!confirm(`Vas a enviar invitaciones de la ola ${ola} a creadoras reales.
+
+` +
+                   `No se puede deshacer y nadie recibe dos veces.
+
+¿Seguimos?`)) return;
+      b.disabled = true; b.textContent = 'ENVIANDO…';
+      try {
+        const r = await api('/invitaciones/enviar', {
+          method: 'POST', body: JSON.stringify({ ola }),
+        });
+        caja().innerHTML = `
+          <div class="bloque" style="margin-top:16px;border-color:var(--lima)">
+            <div class="seccion-titulo" style="margin-top:0">Enviando ${r.se_enviaran} invitaciones</div>
+            <p style="font-size:12.5px">Van saliendo de a una, con pausa entre cada una — toma
+            unos minutos. Puedes cerrar esto: sigue corriendo en el servidor.
+            ${r.quedaran ? `<br>Quedan <strong>${r.quedaran}</strong> de esta ola para mañana.` : ''}
+            <br><br>Recarga en un rato para ver el conteo actualizado.</p>
+          </div>`;
+      } catch (e) { alert('No se pudo: ' + e.message); b.disabled = false; b.textContent = 'ENVIAR TANDA'; }
+    });
+  });
 };
 
 // ── Vista: Ajustes ──────────────────────────────────────────────────────────
