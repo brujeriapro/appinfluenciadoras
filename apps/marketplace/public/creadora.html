@@ -704,6 +704,12 @@ async function publico(ruta, cuerpo) {
 
 const $ = (id) => document.getElementById(id);
 
+// Enlace de invitación: quien llega con ?ref= entra por el cupo de otra
+// creadora. Se guarda en memoria porque el registro puede tardar varios pasos
+// y limpiar la barra de direcciones evita que se comparta por accidente.
+const REF_INVITACION = new URLSearchParams(location.search).get('ref') || null;
+if (REF_INVITACION) history.replaceState(null, '', location.pathname);
+
 // Cuatro modos en una sola pantalla: entrar, registrarse, primera vez y
 // recuperar. Menos pantallas que mantener y menos formas de perderse.
 let modo = 'login';
@@ -854,6 +860,7 @@ $('login-form').addEventListener('submit', async (e) => {
         departamento: $('campo-depto').classList.contains('oculto') ? null : $('departamento').value,
         ciudad: ciudadElegida(),
         acepta_terminos: true,
+        codigo_ref: REF_INVITACION,
       });
       TOKEN = r.token;
     } else if (modo === 'olvide') {

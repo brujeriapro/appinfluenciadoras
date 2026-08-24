@@ -18,6 +18,7 @@ const wompi = require('./wompi');
 const { subirMuestra, borrarMuestra } = require('./muestras');
 const notificaciones = require('./notificaciones');
 const { OLAS, filtrarCandidatas, pendientesDe, filtroDeEstados } = require('./invitaciones');
+const referidos = require('./referidos');
 
 const router = express.Router();
 
@@ -667,6 +668,7 @@ router.post('/invitaciones/prueba', async (req, res) => {
 
     const salio = await notificaciones.invitacionCreadora({
       email, nombre: req.body.nombre || 'María', status,
+      codigoRef: req.body.codigo_ref || 'PRUEBA7X',
     });
     if (!salio) return res.status(500).json({ error: 'No salió. Revisa los logs.' });
     res.json({ ok: true, email });
@@ -722,8 +724,12 @@ router.post('/invitaciones/enviar', async (req, res) => {
         continue; // choca con el índice único: ya estaba invitada
       }
 
+      // Su código de referida viaja en el enlace del correo: sin él, el bloque
+      // de "traes a dos" no tendría a dónde apuntar.
+      const codigoRef = await referidos.asegurarCodigo(anotada.id, anotada.codigo_ref);
+
       const salio = await notificaciones.invitacionCreadora({
-        email: c.email, nombre: c.nombre, status: c.status,
+        email: c.email, nombre: c.nombre, status: c.status, codigoRef,
       });
       salio ? ok++ : fallos++;
       await db.patch('mk_invitaciones', { id: anotada.id },

@@ -7,6 +7,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const db = require('./db');
+const referidos = require('./referidos');
 const maquina = require('./tratos');
 const { resumirTarifas, rangoAlcance, resumirAlcance } = require('./comisiones');
 const { creadoraAuth, firmarToken, rateLimit } = require('./auth');
@@ -25,11 +26,22 @@ const router = express.Router();
  * filtro humano es lo que sostiene la promesa de "banco curado" — sin él, el
  * catálogo se llena de perfiles sin verificar y deja de valer para las marcas.
  */
+/** ¿Este enlace de invitación todavía sirve? Público: se consulta sin sesión. */
+router.get('/referido/:codigo', async (req, res) => {
+  try {
+    const r = await referidos.validar(req.params.codigo);
+    res.json({ vale: r.vale, restantes: r.restantes || 0, invita: r.invita || null, motivo: r.motivo });
+  } catch (e) {
+    res.json({ vale: false, motivo: 'error' });
+  }
+});
+
 router.post('/registro', rateLimit({ windowMs: 600_000, max: 5 }), async (req, res) => {
   try {
     const {
       nombre_publico, nombre_real, email, password, whatsapp, pais, departamento, ciudad,
       instagram, tiktok, seguidores_instagram, seguidores_tiktok, acepta_terminos,
+      codigo_ref,
     } = req.body;
 
     if (!nombre_publico || !email || !password) {
@@ -43,6 +55,15 @@ router.post('/registro', rateLimit({ windowMs: 600_000, max: 5 }), async (req, r
     }
     if (acepta_terminos !== true) {
       return res.status(400).json({ error: 'Debes aceptar los términos' });
+    }
+
+    // Un código de referida inválido o agotado NO impide registrarse: se entra
+    // igual, solo que sin quedar atribuida a nadie. Perder una creadora por un
+    // enlace mal copiado sería absurdo.
+    let referidaPor = null;
+    if (codigo_ref) {
+      const r = await referidos.validar(codigo_ref).catch(() => ({ vale: false }));
+      if (r.vale) referidaPor = r.codigo;
     }
 
     const cfg = await db.getConfig();
@@ -90,7 +111,8 @@ router.post('/registro', rateLimit({ windowMs: 600_000, max: 5 }), async (req, r
       ...alcance,
       visible: false,
       estado_perfil: 'nueva',
-      origen: 'registro',
+      origen: referidaPor ? 'referida' : 'registro',
+      referida_por: referidaPor,
     });
 
     // Lo sensible va a la tabla aparte: el catálogo consulta mk_creadoras y ahí

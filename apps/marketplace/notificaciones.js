@@ -136,69 +136,88 @@ const urlTrato = (lado, id) => `${config.base_url}/${lado}.html#/trato/${id}`;
 // ── Invitación al banco de creadoras ────────────────────────────────────────
 
 /**
- * Lo que reconoce el correo cambia según lo que la persona realmente hizo con
- * Brujería Capilar. Escribirle "gracias por el contenido que nos entregaste" a
- * alguien que solo se registró suena a plantilla y se nota de inmediato.
+ * De dónde salió su perfil. Cambia según lo que la persona hizo de verdad con
+ * la marca: escribirle "trabajaste con nosotros" a alguien que solo se registró
+ * se nota, y a quien sí trabajó le importa que se lo reconozcan.
  */
-const RECONOCIMIENTO = {
+const ORIGEN = {
   'Contenido Entregado':
-    'Nos hiciste contenido y cumpliste. Eso, que suena obvio, es justo lo que más le cuesta encontrar a una marca.',
+    'Tu perfil nos llegó recomendado por una marca con la que ya trabajaste, y con la que cumpliste.',
   'Producto Enviado':
-    'Te enviamos un kit del Programa Creadoras y quedaste dentro de nuestro grupo de creadoras.',
+    'Tu perfil nos llegó recomendado por una marca con la que ya trabajaste.',
   'Calificada':
-    'Quedaste seleccionada en el Programa Creadoras de Brujería Capilar.',
+    'Tu perfil nos llegó recomendado por una marca que te seleccionó para trabajar con ella.',
   'Pausada':
-    'Estuviste en el Programa Creadoras de Brujería Capilar.',
+    'Tu perfil nos llegó recomendado por una marca con la que estuviste.',
   'Descartada':
-    'Te registraste en el Programa Creadoras de Brujería Capilar. Esto es distinto y no depende de aquello.',
+    'Tu perfil nos llegó recomendado por una marca con la que te registraste.',
   'Registrada':
-    'Te registraste en el Programa Creadoras de Brujería Capilar.',
+    'Tu perfil nos llegó recomendado por una marca con la que te registraste.',
 };
 
 /**
- * Invitación a las creadoras del Programa Creadoras para entrar al marketplace.
+ * Invitación al prelanzamiento.
  *
- * Tres cosas que el correo tiene que dejar claras, en este orden: que le van a
- * pagar, que el precio lo pone ella, y por qué su @usuario no aparece — sin esa
- * última, esconder el perfil se lee como si le estuvieran ocultando algo.
+ * El asunto no menciona pagos a propósito: no toda colaboración es en dinero
+ * —hay canje— y prometer plata en el asunto para después matizarlo adentro es
+ * la clase de cosa que hace que la siguiente no se abra.
  */
-function invitacionCreadora({ email, nombre, status }) {
-  const saludo = nombre ? `Hola, ${String(nombre).split(' ')[0]}.` : 'Hola.';
-  const reconoce = RECONOCIMIENTO[status] || RECONOCIMIENTO['Registrada'];
+function invitacionCreadora({ email, nombre, status, codigoRef }) {
+  const saludo = nombre ? `${String(nombre).split(' ')[0]},` : 'Hola,';
+  const origen = ORIGEN[status] || ORIGEN['Registrada'];
+  // Dos enlaces distintos a propósito: el suyo va limpio —si llevara su propio
+  // código quedaría referida por sí misma y gastaría uno de sus dos cupos— y el
+  // que comparte sí lo lleva, que es lo que atribuye a sus amigas.
+  const urlPropia = `${config.base_url}/creadora.html`;
+  const urlParaCompartir = codigoRef
+    ? `${urlPropia}?ref=${encodeURIComponent(codigoRef)}`
+    : urlPropia;
+
+  const bloqueReferidos = codigoRef ? `
+     <div style="border:2px solid #0E0E0E;background:#D6FF00;padding:14px 16px;margin-top:20px">
+       <div style="font-weight:800;letter-spacing:-0.3px;margin-bottom:6px">TRAES A DOS</div>
+       <div style="font-size:12.5px;line-height:1.65">
+         Tu cupo incluye dos invitaciones para creadoras que tú elijas. Comparte
+         este enlace y entran contigo al prelanzamiento:<br>
+         <span style="display:inline-block;background:#fff;border:1px solid #0E0E0E;padding:6px 9px;margin-top:8px;font-size:11.5px;word-break:break-all">${urlParaCompartir}</span>
+       </div>
+     </div>` : '';
 
   return enviar(
     email,
-    'Ahora las marcas pagan por el contenido que ya haces',
-    `<p style="font-size:15px"><strong>${esc(saludo)}</strong></p>
+    'Fuiste seleccionada para el prelanzamiento en Colombia',
+    `<p style="font-size:13px;color:#5A5A5A;margin:0 0 16px">${esc(saludo)}</p>
 
-     <p>${reconoce}</p>
+     <p style="font-size:17px;font-weight:800;letter-spacing:-0.6px;line-height:1.3;margin:0 0 14px">
+       Por fin en Colombia.</p>
 
-     <p>Te escribimos porque abrimos <strong>Creators Manager</strong>: un lugar donde
-     marcas colombianas contratan creadoras para colaboraciones <strong>pagas</strong>.
-     Lo hicimos nosotras mismas, después de trabajar con cientos de creadoras y ver
-     lo difícil que es de los dos lados.</p>
+     <p>Lo que en otros países ya cambió la forma de trabajar entre marcas y creadoras
+     llega acá: <strong>Creators Manager</strong>, la plataforma donde las marcas
+     encuentran creadoras, acuerdan la colaboración y el trato queda respaldado de
+     principio a fin. Se acabó cerrar todo por mensajes directos y confiar en que la
+     otra parte cumpla.</p>
 
-     <p style="border-left:3px solid #0E0E0E;padding-left:12px">
-       <strong>Tú pones tu precio.</strong> Nadie te dice cuánto vale tu trabajo: defines
-       tu tarifa por cada tipo de contenido y las marcas la ven antes de escribirte.<br><br>
-       <strong>El pago queda protegido.</strong> La marca deposita antes de que empieces.
-       Entregas, aprueba, y te pagamos. No hay "te pago el otro mes".<br><br>
-       <strong>Nada de regalos a cambio de contenido.</strong> Aquí se paga en dinero.
-     </p>
+     <p>${origen} Por eso estás entre las primeras invitadas al prelanzamiento.</p>
 
-     <p><strong>Tu cuenta no aparece pública.</strong> En el catálogo las marcas ven tu
-     trabajo, tus cifras y tu tarifa, pero no tu @usuario: lo conocen solo cuando ya
-     pagaron y el trato está cerrado. Así nadie te escribe por fuera para regatearte.</p>
+     <div style="border-left:3px solid #0E0E0E;padding-left:14px;margin:18px 0">
+       <p style="margin:0 0 10px"><strong>Tú defines tus condiciones.</strong> Fijas tu tarifa
+       por cada tipo de contenido, y decides qué colaboraciones aceptas y cuáles no.</p>
+       <p style="margin:0 0 10px"><strong>Los acuerdos quedan respaldados.</strong> Lo pactado se
+       registra antes de que empieces a trabajar, y se cumple.</p>
+       <p style="margin:0"><strong>Colaboraciones de todo tipo.</strong> En dinero, en producto o
+       ambas: cada marca publica lo que ofrece y tú eliges.</p>
+     </div>
 
-     <p>Crear tu perfil toma unos minutos y es gratis. Solo cobramos comisión cuando
-     cierras un trato — si no ganas, no ganamos.</p>
+     <p><strong>Tu cupo en el prelanzamiento es gratuito</strong> y no tiene mensualidad.
+     Crear tu perfil toma unos minutos.</p>
 
-     ${boton('CREAR MI PERFIL', `${config.base_url}/creadora.html`)}
+     ${boton('ACTIVAR MI CUPO', urlPropia)}
+     ${bloqueReferidos}
 
-     <p style="margin-top:20px;font-size:11.5px;color:#7A7A7A">
-       Te escribimos porque estás en la base del Programa Creadoras de Brujería Capilar
-       (COLBELLEZA LATAM S.A.S.). Si no te interesa, ignora este correo y no volvemos a
-       escribirte por esto.
+     <p style="margin-top:24px;font-size:11px;color:#7A7A7A;line-height:1.6">
+       Creators Manager es un servicio de COLBELLEZA LATAM S.A.S., NIT 901.519.449-0,
+       Medellín, Colombia. Recibiste este correo porque tu perfil fue recomendado para
+       el prelanzamiento. Si prefieres no participar, ignora este mensaje.
      </p>`,
   );
 }
