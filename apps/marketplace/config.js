@@ -47,6 +47,9 @@ const config = {
   },
 
   smtp: {
+    // Sin host se usa Gmail. Con host, cualquier proveedor.
+    host: process.env.MK_SMTP_HOST || '',
+    puerto: parseInt(process.env.MK_SMTP_PORT || '465', 10),
     user: process.env.MK_SMTP_USER || '',
     pass: process.env.MK_SMTP_PASS || '',
     remitente: process.env.MK_SMTP_FROM || 'Creators Manager <no-reply@creatorsmanager.com>',

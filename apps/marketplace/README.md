@@ -37,6 +37,8 @@ npm test               # 47 pruebas: comisiones, máquina de estados, tarifas y 
 | `MK_CODIGOS_INVITACION` | no* | Códigos separados por coma. Sin esto, ninguna marca puede registrarse |
 | `MK_BASE_URL` | no | URL pública, para los links de los correos |
 | `MK_SMTP_USER` / `MK_SMTP_PASS` | no | Gmail del remitente. **No usar el de Brujería** |
+| `MK_SMTP_HOST` | no | Servidor SMTP, ej. `smtp.zoho.com`. Sin esto se asume Gmail |
+| `MK_SMTP_PORT` | no | Por defecto `465` (SSL). Con 587 usa STARTTLS |
 | `MK_SMTP_FROM` | no | Por defecto `Creators Manager <no-reply@creatorsmanager.com>` |
 | `MK_BASE_URL` | sí en producción | Dominio público sin barra final: `https://creatorsmanager.com`. De aquí cuelgan los enlaces de los correos y el retorno del pago. Si falta, se deduce del dominio de Railway |
 | `MK_BUCKET_MUESTRAS` | no | Bucket privado de Storage, por defecto `mk-muestras` |

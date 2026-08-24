@@ -22,10 +22,23 @@ let _transporte = null;
 function transporte() {
   if (_transporte) return _transporte;
   if (!config.smtp.user || !config.smtp.pass) return null;
-  _transporte = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: config.smtp.user, pass: config.smtp.pass },
-  });
+  // Con MK_SMTP_HOST se puede usar cualquier proveedor —Zoho, Brevo, el que
+  // sea—. Sin ella se asume Gmail, que es de donde salio esto. Importa porque
+  // el remitente deberia ser del dominio propio, y Gmail no manda correo
+  // "desde" un dominio que no administra.
+  _transporte = nodemailer.createTransport(
+    config.smtp.host
+      ? {
+          host: config.smtp.host,
+          port: config.smtp.puerto,
+          secure: config.smtp.puerto === 465,
+          auth: { user: config.smtp.user, pass: config.smtp.pass },
+        }
+      : {
+          service: 'gmail',
+          auth: { user: config.smtp.user, pass: config.smtp.pass },
+        }
+  );
   return _transporte;
 }
 
