@@ -655,6 +655,27 @@ router.get('/invitaciones', async (req, res) => {
 });
 
 /**
+ * Manda UNA invitación al correo que se le diga, sin tocar la lista real ni
+ * anotarla en `mk_invitaciones`. Sirve para verla en el buzón antes de soltar
+ * una tanda de doscientas.
+ */
+router.post('/invitaciones/prueba', async (req, res) => {
+  try {
+    const email = String(req.body.email || '').trim();
+    const status = req.body.status || 'Contenido Entregado';
+    if (!email.includes('@')) return res.status(400).json({ error: 'Falta un correo válido' });
+
+    const salio = await notificaciones.invitacionCreadora({
+      email, nombre: req.body.nombre || 'María', status,
+    });
+    if (!salio) return res.status(500).json({ error: 'No salió. Revisa los logs.' });
+    res.json({ ok: true, email });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
  * Envía una tanda. El tope por defecto deja margen bajo el límite diario del
  * proveedor, que comparte cuota con los correos normales de la plataforma.
  */

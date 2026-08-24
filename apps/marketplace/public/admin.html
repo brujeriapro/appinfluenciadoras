@@ -931,10 +931,45 @@ VISTAS.invitaciones = async () => {
       <tbody>${filas}</tbody>
     </table></div>
 
+    <div class="bloque" style="margin-top:18px">
+      <div class="bloque__titulo">Mándate una de prueba</div>
+      <p style="font-size:12.5px;margin:0 0 10px">Llega a tu buzón como le llegaría a una
+      creadora. No cuenta como invitada ni sale de la lista.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="inv-prueba-email" placeholder="tu@correo.com" style="flex:1;min-width:200px">
+        <select id="inv-prueba-status" style="min-width:180px">
+          <option value="Contenido Entregado">Como la vería la ola 1</option>
+          <option value="Producto Enviado">Como la vería la ola 2</option>
+          <option value="Registrada">Como la vería la ola 3</option>
+          <option value="Descartada">Como la vería la ola 4</option>
+        </select>
+        <button class="btn-mini" id="inv-prueba-btn">ENVIARME UNA</button>
+      </div>
+      <div id="inv-prueba-msg" style="font-size:12px;margin-top:10px"></div>
+    </div>
+
     <div id="resultado-inv"></div>
   `;
 
   const caja = () => document.getElementById('resultado-inv');
+
+  document.getElementById('inv-prueba-btn').addEventListener('click', async () => {
+    const email = document.getElementById('inv-prueba-email').value.trim();
+    const msg = document.getElementById('inv-prueba-msg');
+    if (!email.includes('@')) { msg.style.color = 'var(--magenta)'; msg.textContent = 'Escribe un correo.'; return; }
+    msg.style.color = 'var(--grey-700)'; msg.textContent = 'Enviando…';
+    try {
+      await api('/invitaciones/prueba', {
+        method: 'POST',
+        body: JSON.stringify({ email, status: document.getElementById('inv-prueba-status').value }),
+      });
+      msg.style.color = 'var(--lime)';
+      msg.textContent = 'Enviada a ' + email + '. Si no aparece, mira en spam.';
+    } catch (e) {
+      msg.style.color = 'var(--magenta)';
+      msg.textContent = e.message;
+    }
+  });
 
   contenido().querySelectorAll('[data-simular]').forEach(b => {
     b.addEventListener('click', async () => {
