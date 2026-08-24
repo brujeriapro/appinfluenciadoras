@@ -257,6 +257,10 @@ function pintarModo() {
   $('acepta-wrap').classList.toggle('oculto', modo !== 'registro');
   $('campo-clave').classList.toggle('oculto', modo === 'olvide');
   $('email').closest('.campo').classList.toggle('oculto', modo === 'recuperar');
+  // Un campo obligatorio y oculto a la vez cancela el envío del formulario sin
+  // avisar: el navegador quiere señalar el error, no puede enfocar algo que no
+  // se ve, y aborta en silencio. Se ve como un botón que "no hace nada".
+  $('email').required = modo !== 'recuperar';
   $('clave').required = modo !== 'olvide';
   $('label-clave').textContent = ['registro', 'recuperar'].includes(modo)
     ? 'Escoge tu contraseña (mínimo 8)' : 'Contraseña';
