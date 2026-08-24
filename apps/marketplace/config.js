@@ -46,6 +46,13 @@ const config = {
     secreto_integridad:  process.env.WOMPI_SECRETO_INTEGRIDAD || '',
   },
 
+  // Railway bloquea las conexiones SMTP salientes —es su defensa contra el
+  // spam— así que desde ahí NINGÚN puerto de correo funciona: da "Connection
+  // timeout" sin más explicación. Con esta llave el correo sale por la API web
+  // de Brevo, que viaja por el mismo puerto que cualquier página y nunca se
+  // bloquea. Si no está, se cae al SMTP de siempre.
+  brevo_api_key: process.env.MK_BREVO_API_KEY || '',
+
   smtp: {
     // Sin host se usa Gmail. Con host, cualquier proveedor.
     host: process.env.MK_SMTP_HOST || '',

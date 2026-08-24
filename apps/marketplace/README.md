@@ -37,6 +37,7 @@ npm test               # 47 pruebas: comisiones, máquina de estados, tarifas y 
 | `MK_CODIGOS_INVITACION` | no* | Códigos separados por coma. Sin esto, ninguna marca puede registrarse |
 | `MK_BASE_URL` | no | URL pública, para los links de los correos |
 | `MK_SMTP_USER` / `MK_SMTP_PASS` | no | Gmail del remitente. **No usar el de Brujería** |
+| `MK_BREVO_API_KEY` | sí en Railway | Llave de la API de Brevo. **Railway bloquea SMTP saliente**, así que desde ahí el correo solo sale por la API web. Con esta llave puesta, las `MK_SMTP_*` se ignoran salvo `MK_SMTP_FROM` |
 | `MK_SMTP_HOST` | no | Servidor SMTP, ej. `smtp.zoho.com`. Sin esto se asume Gmail |
 | `MK_SMTP_PORT` | no | Por defecto `465` (SSL). Con 587 usa STARTTLS |
 | `MK_SMTP_FROM` | no | Por defecto `Creators Manager <no-reply@creatorsmanager.com>` |

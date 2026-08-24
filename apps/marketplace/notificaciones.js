@@ -13,6 +13,7 @@
 
 const nodemailer = require('nodemailer');
 const config = require('./config');
+const fetch = require('node-fetch');
 const { formatearCOP } = require('./comisiones');
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -42,17 +43,59 @@ function transporte() {
   return _transporte;
 }
 
-async function enviar(para, asunto, cuerpoHTML) {
-  const t = transporte();
-  if (!t) {
-    console.warn(`[notif] SMTP sin configurar — no se envió "${asunto}" a ${para}`);
-    return false;
+/**
+ * Parte "Nombre <correo@dominio>" en las dos piezas que pide la API.
+ * Si viene solo el correo, el nombre queda vacío y Brevo usa el del remitente.
+ */
+function remitente() {
+  const crudo = String(config.smtp.remitente || '');
+  const m = crudo.match(/^\s*(.*?)\s*<\s*([^>]+)\s*>\s*$/);
+  return m ? { name: m[1], email: m[2] } : { email: crudo.trim() };
+}
+
+/** Envío por la API web de Brevo. Es el camino que funciona desde Railway. */
+async function enviarPorApi(para, asunto, cuerpoHTML) {
+  const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': config.brevo_api_key,
+      'content-type': 'application/json',
+      'accept': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: remitente(),
+      to: [{ email: para }],
+      subject: asunto,
+      htmlContent: plantilla(cuerpoHTML),
+    }),
+  });
+
+  if (!r.ok) {
+    // El cuerpo del error de Brevo dice exactamente qué pasó —remitente sin
+    // verificar, llave inválida, cuota agotada—. Sin él, depurar es adivinar.
+    const detalle = await r.text().catch(() => '');
+    throw new Error(`Brevo respondió ${r.status}: ${detalle.slice(0, 300)}`);
   }
+  return true;
+}
+
+async function enviar(para, asunto, cuerpoHTML) {
   if (!para) {
     console.warn(`[notif] Sin destinatario para "${asunto}"`);
     return false;
   }
+
   try {
+    if (config.brevo_api_key) {
+      await enviarPorApi(para, asunto, cuerpoHTML);
+      return true;
+    }
+
+    const t = transporte();
+    if (!t) {
+      console.warn(`[notif] Correo sin configurar — no se envió "${asunto}" a ${para}`);
+      return false;
+    }
     await t.sendMail({
       from: config.smtp.remitente,
       to: para,
