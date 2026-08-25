@@ -844,9 +844,11 @@ function filaHTML(c) {
       </div>
       <button class="btn btn--sm" data-ficha="${c.id}">Ver ficha →</button>
     </div>
-    <div class="tira">
-      ${[0,1,2,3].map(i => `<div>${pieza(ms[i])}</div>`).join('')}
-    </div>
+    ${ms.length ? `
+      <div class="tira">
+        ${ms.slice(0, 4).map(m => `<div>${pieza(m)}</div>`).join('')}
+      </div>` : `
+      <div class="tira-vacia">Todavía no ha publicado trabajo</div>`}
   </article>`;
 }
 
