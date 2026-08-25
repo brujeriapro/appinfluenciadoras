@@ -484,15 +484,17 @@ function pintarFiltros() {
   // 32 departamentos con la mayoría vacíos no ayuda a nadie.
   const ciudades = [...new Set(E.catalogo.map(c => c.ciudad).filter(Boolean))].sort();
 
+  // Desplegable en vez de una fila de chips por opción. Con quince nichos y
+  // setenta ciudades, los chips convertían el panel en una lista de scroll
+  // interminable donde encontrar algo costaba más que filtrar.
   const grupo = (label, clave, opciones, todos) => `
     <div class="filtros__grupo">
       <div class="filtros__label">${label}</div>
-      <div class="chips">
-        <button class="chip ${!E.filtros[clave] ? 'on' : ''}" data-f="${clave}" data-v="">${todos}</button>
+      <select class="filtro-select ${E.filtros[clave] ? 'activo' : ''}" data-f="${clave}">
+        <option value="">${todos}</option>
         ${opciones.map(o => `
-          <button class="chip ${E.filtros[clave] === o.v ? 'on' : ''}"
-                  data-f="${clave}" data-v="${esc(o.v)}">${esc(o.t)}</button>`).join('')}
-      </div>
+          <option value="${esc(o.v)}" ${E.filtros[clave] === o.v ? 'selected' : ''}>${esc(o.t)}</option>`).join('')}
+      </select>
     </div>`;
 
   const rp = cfg.rango_presupuesto || { min: 200000, max: 5000000, paso: 50000 };
@@ -500,7 +502,15 @@ function pintarFiltros() {
 
   $('grupos-filtro').innerHTML =
     grupo('Nicho', 'nicho', nichos, 'Todos') +
-    grupo('Alcance por red', 'rango_alcance', rangos, 'Todo') +
+    `<div class="filtros__grupo">
+      <div class="filtros__label">Alcance por red</div>
+      <div class="chips">
+        <button class="chip ${!E.filtros.rango_alcance ? 'on' : ''}" data-f="rango_alcance" data-v="">Todo</button>
+        ${rangos.map(o => `
+          <button class="chip ${E.filtros.rango_alcance === o.v ? 'on' : ''}"
+                  data-f="rango_alcance" data-v="${esc(o.v)}">${esc(o.t)}</button>`).join('')}
+      </div>
+    </div>` +
     grupo('Ciudad', 'ciudad', ciudades.map(c => ({ v: c, t: c })), 'Todas') + `
     <div class="filtros__grupo">
       <div class="filtros__label">Presupuesto máximo</div>
@@ -512,9 +522,16 @@ function pintarFiltros() {
     </div>` +
     grupo('Tipo de entregable', 'entregable', entregables, 'Todos');
 
-  $('grupos-filtro').querySelectorAll('[data-f]').forEach(b => {
+  $('grupos-filtro').querySelectorAll('button[data-f]').forEach(b => {
     b.addEventListener('click', () => {
       E.filtros[b.dataset.f] = b.dataset.v || '';
+      cargarCatalogo();
+    });
+  });
+
+  $('grupos-filtro').querySelectorAll('select[data-f]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      E.filtros[sel.dataset.f] = sel.value || '';
       cargarCatalogo();
     });
   });
