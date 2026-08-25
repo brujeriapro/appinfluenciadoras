@@ -1646,10 +1646,10 @@ async function descargarHistoria(perfil, arroba) {
 
   // El titular: es una buena noticia, no un anuncio
   x.textAlign = 'center';
-  x.fillStyle = '#F2F2F2'; x.font = TIT(700, 42);
-  x.fillText('QUEDÉ', A / 2, 320);
-  x.fillStyle = '#D6FF00'; x.font = TIT(800, 150);
-  x.fillText('APROBADA', A / 2, 470);
+  x.fillStyle = '#F2F2F2'; x.font = TIT(800, 68);
+  x.fillText('PARA TRABAJAR', A / 2, 340);
+  x.fillStyle = '#D6FF00'; x.font = TIT(800, 106);
+  x.fillText('CONMIGO', A / 2, 452);
 
   // Su foto, protagonista
   const FX = A / 2 - 260, FY = 570, FW = 520, FH = 640;
@@ -1699,8 +1699,8 @@ async function descargarHistoria(perfil, arroba) {
 
   // Lo que le dice a quien la ve
   x.fillStyle = '#B6B6B2'; x.font = CUE(400, 36);
-  ['Las marcas que quieran trabajar', 'conmigo ya saben dónde encontrarme.']
-    .forEach((l, i) => x.fillText(l, A / 2, 1470 + i * 52));
+  ['Mis tarifas, mi trabajo y mis', 'condiciones, en un solo lugar.', 'Sin cotizar por DM.']
+    .forEach((l, i) => x.fillText(l, A / 2, 1450 + i * 52));
 
   // Cierre: la arroba primero, que es lo que se toca en una historia.
   x.fillStyle = '#D6FF00'; x.font = TIT(800, 46);
