@@ -97,6 +97,17 @@ router.get('/resumen', async (req, res) => {
  * Nunca devuelve las credenciales: solo su forma —prefijo, largo, si tiene
  * espacios— que es lo que hace falta para saber si la que llegó es la correcta.
  */
+// Qué variables de WhatsApp ve el servicio. Nunca los valores, solo si están.
+router.get('/diagnostico-wa', async (req, res) => {
+  res.json({
+    WA_PHONE_NUMBER_ID: Boolean(config.whatsapp.phone_number_id),
+    WA_TOKEN: Boolean(config.whatsapp.token),
+    WA_PLANTILLA: config.whatsapp.plantilla || null,
+    largo_token: (config.whatsapp.token || '').length,
+    verificacion: await whatsapp.verificar(),
+  });
+});
+
 router.get('/diagnostico', async (req, res) => {
   const llave = String(config.supabase.service_role_key || '');
   const forma = {

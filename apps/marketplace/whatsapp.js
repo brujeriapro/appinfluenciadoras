@@ -96,8 +96,18 @@ async function enviarPlantilla(telefono, variables = []) {
  * conviene poder comprobarlo antes de una tanda y no a mitad.
  */
 async function verificar() {
-  if (!config.whatsapp.phone_number_id || !config.whatsapp.token) {
-    return { ok: false, motivo: 'Falta WA_PHONE_NUMBER_ID o WA_TOKEN' };
+  // Se dice cuál falta, no "una de las dos": con dos servicios en Railway que
+  // salen del mismo repositorio, lo más común es haberlas puesto en el otro.
+  const faltan = [];
+  if (!config.whatsapp.phone_number_id) faltan.push('WA_PHONE_NUMBER_ID');
+  if (!config.whatsapp.token) faltan.push('WA_TOKEN');
+  if (faltan.length) {
+    return {
+      ok: false,
+      motivo: `El servicio no ve ${faltan.join(' ni ')}. `
+            + 'Revisa que estén en el servicio supportive-intuition y con ese nombre exacto.',
+      faltan,
+    };
   }
 
   try {
