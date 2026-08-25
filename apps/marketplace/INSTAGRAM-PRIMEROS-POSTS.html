@@ -1,0 +1,381 @@
+<title>Primeros seis posts</title>
+<style>
+  /* Guion de contenido para pasarle a diseño. Cada post trae lo que va en las
+     láminas, el texto del pie y por qué está ahí — sin el porqué, quien diseñe
+     va a "mejorar" el copy y perder el ángulo. */
+
+  :root {
+    --tinta:      #0E0E0E;
+    --papel:      #ECECE9;
+    --superficie: #FFFFFF;
+    --texto:      #1C1C1E;
+    --texto-2:    #4A4A50;
+    --texto-3:    #6E6E76;
+    --borde:      #0E0E0E;
+    --borde-2:    #C9C9C4;
+    --borde-3:    #E3E3DF;
+
+    --lima:    #D6FF00;
+    --magenta: #FF2E9A;
+    --azul:    #2323F0;
+
+    --mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --tinta: #F2F2EF; --papel: #0B0B0C; --superficie: #151517;
+      --texto: #EDEDEA; --texto-2: #B6B6B2; --texto-3: #85858C;
+      --borde: #3C3C40; --borde-2: #2C2C30; --borde-3: #242427; --azul: #7B7BFF;
+    }
+  }
+  :root[data-theme="dark"] {
+    --tinta: #F2F2EF; --papel: #0B0B0C; --superficie: #151517;
+    --texto: #EDEDEA; --texto-2: #B6B6B2; --texto-3: #85858C;
+    --borde: #3C3C40; --borde-2: #2C2C30; --borde-3: #242427; --azul: #7B7BFF;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--papel); color: var(--texto); font-family: var(--sans);
+    font-size: 16px; line-height: 1.62; margin: 0; padding: 0 20px 100px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .hoja { max-width: 780px; margin: 0 auto; }
+
+  header {
+    border: 2px solid var(--borde); background: var(--superficie);
+    padding: clamp(24px, 4.5vw, 38px); margin: clamp(26px, 5vw, 54px) 0 18px;
+  }
+  .eyebrow { font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.6px;
+             text-transform: uppercase; color: var(--texto-3); margin-bottom: 15px; }
+  h1 { font-family: var(--mono); font-weight: 700; font-size: clamp(25px, 4.6vw, 38px);
+       line-height: 1.05; letter-spacing: -1.7px; text-transform: uppercase;
+       margin: 0 0 16px; color: var(--tinta); text-wrap: balance; }
+  header p { margin: 0; color: var(--texto-2); max-width: 58ch; }
+
+  .orden {
+    border: 1px solid var(--borde-2); background: var(--superficie);
+    padding: 14px 16px; margin-bottom: 40px; font-size: 14px; color: var(--texto-2);
+  }
+  .orden strong { color: var(--tinta); }
+
+  /* ── Un post ───────────────────────────────────────────────────────────── */
+
+  .post { margin-bottom: 52px; }
+  .post__cab { display: flex; gap: 13px; align-items: baseline;
+               border-top: 2px solid var(--borde); padding-top: 15px; }
+  .post__n { font-family: var(--mono); font-weight: 700; font-size: 12.5px;
+             background: var(--tinta); color: var(--papel); padding: 3px 9px; flex: none; }
+  h2 { font-family: var(--mono); font-weight: 700; font-size: clamp(16px, 2.6vw, 21px);
+       line-height: 1.15; letter-spacing: -0.6px; text-transform: uppercase;
+       color: var(--tinta); margin: 0; text-wrap: balance; }
+  .post__meta { font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.1px;
+                text-transform: uppercase; color: var(--texto-3); margin: 8px 0 16px; }
+
+  .porque { border-left: 3px solid var(--borde-2); padding-left: 13px;
+            font-size: 14px; line-height: 1.6; color: var(--texto-2); margin: 0 0 20px; }
+
+  h3 { font-family: var(--mono); font-weight: 700; font-size: 11px; letter-spacing: 1.3px;
+       text-transform: uppercase; color: var(--texto-3); margin: 24px 0 10px; }
+
+  /* Láminas: se ven como se van a ver en el feed */
+  .laminas { display: grid; gap: 2px; background: var(--borde);
+             border: 2px solid var(--borde); }
+  .lam { background: var(--tinta); color: #F2F2EF; padding: 20px 18px; }
+  .lam__n { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.4px;
+            color: #85858C; margin-bottom: 11px; }
+  .lam__t { font-family: var(--mono); font-weight: 700; font-size: clamp(17px, 3.2vw, 25px);
+            line-height: 1.08; letter-spacing: -1px; text-transform: uppercase;
+            text-wrap: balance; }
+  .lam__t .lima { color: #D6FF00; }
+  .lam__t .mag { color: #FF2E9A; }
+  .lam__d { font-size: 13.5px; line-height: 1.6; color: #B6B6B2; margin-top: 11px; }
+
+  /* Pie de foto: para copiar tal cual */
+  .pie {
+    border: 2px solid var(--borde); background: var(--superficie);
+    padding: 16px 18px; margin-top: 8px; white-space: pre-wrap;
+    font-size: 14.5px; line-height: 1.7;
+  }
+
+  .nota { font-size: 13px; color: var(--texto-3); line-height: 1.55; margin: 12px 0 0; }
+  .nota strong { color: var(--texto-2); }
+
+  ul { margin: 0 0 16px; padding-left: 20px; max-width: 66ch; }
+  li { margin-bottom: 8px; }
+  p { margin: 0 0 15px; max-width: 66ch; }
+  strong { font-weight: 700; color: var(--tinta); }
+  em { color: var(--texto-2); }
+  code { font-family: var(--mono); font-size: 0.87em; background: var(--borde-3);
+         padding: 2px 6px; border: 1px solid var(--borde-3); }
+
+  .cierre { border: 2px solid var(--borde); background: var(--tinta); color: var(--papel);
+            padding: clamp(20px, 4vw, 32px); margin-top: 20px; }
+  .cierre h2 { color: var(--papel); }
+  .cierre .post__cab { border-top: none; padding-top: 0; margin-bottom: 14px; }
+  .cierre p, .cierre li { color: var(--papel); opacity: 0.88; }
+  .cierre strong { color: #D6FF00; opacity: 1; }
+  .cierre li::marker { color: #D6FF00; }
+
+  @media (max-width: 560px) { body { font-size: 15.5px; padding: 0 15px 70px; } }
+</style>
+
+<div class="hoja">
+
+<header>
+  <div class="eyebrow">Creators Manager · Instagram</div>
+  <h1>Los primeros seis posts</h1>
+  <p>Todos hablan a creadoras, no a marcas. La prioridad ahora es llenar el banco:
+  sin fichas no hay nada que mostrarle a una marca, y una marca que entra a un catálogo
+  vacío no vuelve.</p>
+</header>
+
+<div class="orden">
+  <strong>Publica en este orden.</strong> Está pensado como una conversación: primero se
+  nombra el dolor, después se resuelve la duda práctica, y solo al final se pide algo.
+  Empezar por el cierre —"regístrate"— es lo que hace que nadie se registre.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<div class="post">
+  <div class="post__cab"><span class="post__n">01</span><h2>La visibilidad no paga el arriendo</h2></div>
+  <div class="post__meta">Imagen única · El que se comparte</div>
+
+  <p class="porque">Este post no busca registros: busca que una creadora se lo mande a otra
+  diciendo "esto es exactamente lo que nos pasa". Nombra el abuso que todas conocen y
+  ninguna marca dice en voz alta. Si funciona, te trae seguidoras que después conviertes.</p>
+
+  <h3>Lámina</h3>
+  <div class="laminas">
+    <div class="lam">
+      <div class="lam__n">ÚNICA</div>
+      <div class="lam__t">"Te damos<br>visibilidad".<br><span class="lima">La visibilidad<br>no paga<br>el arriendo.</span></div>
+    </div>
+  </div>
+
+  <h3>Pie de foto</h3>
+  <div class="pie">Trabajar por producto está bien cuando tú lo eliges.
+
+Lo que no está bien es que sea la única opción que te ofrecen. Que te pidan tres piezas por un frasco. Que te digan "esto te va a servir para tu portafolio" cuando llevas dos años haciendo portafolio.
+
+Tu trabajo tiene un precio. Tú lo pones.
+
+Estamos abriendo Creators Manager en Colombia: el lugar donde las marcas te contratan con la tarifa que tú publicaste. En dinero, en producto o ambas — pero eligiendo tú.
+
+Link en la bio.</div>
+
+  <p class="nota"><strong>Diseño:</strong> fondo negro, la frase en monoespaciada enorme.
+  La segunda mitad en lima. Sin logo grande — que se lea como un cartel, no como publicidad.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<div class="post">
+  <div class="post__cab"><span class="post__n">02</span><h2>¿Cuánto cobro?</h2></div>
+  <div class="post__meta">Carrusel de 5 · El que se guarda</div>
+
+  <p class="porque">Es la pregunta que más traba a una creadora, y lo comprobamos: de las
+  primeras que se registraron, casi todas dejaron el perfil a medias justo en la pantalla
+  de tarifas. Este post responde algo que nadie les responde, y por eso se guarda y se
+  vuelve a mirar.</p>
+
+  <h3>Láminas</h3>
+  <div class="laminas">
+    <div class="lam"><div class="lam__n">1 / 5</div>
+      <div class="lam__t">Nadie te enseñó<br><span class="lima">cuánto cobrar.</span></div>
+      <div class="lam__d">Y por eso cobras de menos. O no cobras.</div></div>
+    <div class="lam"><div class="lam__n">2 / 5</div>
+      <div class="lam__t">No cobras<br>por seguidores.</div>
+      <div class="lam__d">Cobras por el trabajo: guion, grabación, edición, tu cara y tu
+      nombre puestos ahí. Eso cuesta lo mismo con 3.000 seguidores que con 30.000.</div></div>
+    <div class="lam"><div class="lam__n">3 / 5</div>
+      <div class="lam__t">Empieza por<br><span class="lima">las horas.</span></div>
+      <div class="lam__d">Cuenta cuánto te toma un reel de verdad — pensarlo, grabarlo,
+      editarlo, responder comentarios. Ponle un valor a tu hora. Ese es tu piso, no tu techo.</div></div>
+    <div class="lam"><div class="lam__n">4 / 5</div>
+      <div class="lam__t">Cobra más por<br>lo que te cuesta más.</div>
+      <div class="lam__d">Exclusividad, uso en pauta, más de una plataforma, plazos cortos.
+      Todo eso se cobra aparte. No es descaro: es lo que hace cualquier proveedor.</div></div>
+    <div class="lam"><div class="lam__n">5 / 5</div>
+      <div class="lam__t"><span class="lima">¿Todavía no<br>estás segura?</span></div>
+      <div class="lam__d">En Creators Manager puedes publicarte con la tarifa "a convenir"
+      y decidirla después, con cada marca. Nadie te obliga a poner un número hoy.</div></div>
+  </div>
+
+  <h3>Pie de foto</h3>
+  <div class="pie">Guarda esto para la próxima vez que te escriban preguntando tus tarifas.
+
+La razón por la que cobrar da miedo es que se siente como una negociación en la que puedes perder: si pides mucho, no te contratan; si pides poco, quedas mal parada.
+
+Deja de negociar. Publica tu precio y que las marcas te escriban sabiendo cuánto cuestas.
+
+Y si todavía no sabes qué número poner, tampoco pasa nada: puedes entrar con la tarifa a convenir y ajustarla cuando tengas más claro.
+
+Link en la bio.</div>
+
+  <p class="nota"><strong>Diseño:</strong> la lámina 1 es la portada del feed — que se
+  entienda sola. Numera las láminas para que se sienta como una guía, no como un anuncio.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<div class="post">
+  <div class="post__cab"><span class="post__n">03</span><h2>"Te pago cuando salga"</h2></div>
+  <div class="post__meta">Carrusel de 4 · El del miedo real</div>
+
+  <p class="porque">A quien ya la dejaron colgada, este post le habla directo. Y es tu
+  ventaja más difícil de copiar: el pago protegido ya está construido y funcionando.</p>
+
+  <h3>Láminas</h3>
+  <div class="laminas">
+    <div class="lam"><div class="lam__n">1 / 4</div>
+      <div class="lam__t"><span class="mag">"Te pago<br>cuando salga."</span></div>
+      <div class="lam__d">Y salió. Y no te pagaron.</div></div>
+    <div class="lam"><div class="lam__n">2 / 4</div>
+      <div class="lam__t">Ya entregaste.<br>Ya publicaste.<br>Ya bloqueaste<br>la fecha.</div>
+      <div class="lam__d">Y ahora estás escribiendo por tercera vez a preguntar por tu plata.</div></div>
+    <div class="lam"><div class="lam__n">3 / 4</div>
+      <div class="lam__t">Aquí la marca<br><span class="lima">paga antes.</span></div>
+      <div class="lam__d">El dinero queda retenido en la plataforma desde que aceptas.
+      No lo tiene la marca. No lo tenemos nosotros para gastarlo. Está ahí, esperándote.</div></div>
+    <div class="lam"><div class="lam__n">4 / 4</div>
+      <div class="lam__t">Entregas.<br>Aprueba.<br><span class="lima">Te pagamos.</span></div>
+      <div class="lam__d">Sin recordatorios, sin "hablo con contabilidad", sin el otro mes.</div></div>
+  </div>
+
+  <h3>Pie de foto</h3>
+  <div class="pie">Levanta la mano si alguna vez te quedaron debiendo una colaboración.
+
+No es falta de suerte ni de olfato para elegir marcas. Es que el trato se hace por mensajes, sin nada que lo respalde, y cuando la otra parte decide no cumplir no hay a quién reclamarle.
+
+En Creators Manager la marca deposita antes de que empieces a trabajar. Tú entregas, la marca aprueba, y el pago sale. Si no cumple, no se toca tu trabajo.
+
+Es lo mínimo, y aun así casi nadie lo hace.
+
+Link en la bio.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<div class="post">
+  <div class="post__cab"><span class="post__n">04</span><h2>Cómo funciona</h2></div>
+  <div class="post__meta">Carrusel de 4 · El práctico</div>
+
+  <p class="porque">Después de tres posts de dolor, alguien va a querer saber qué es esto
+  exactamente. Este es el que resuelve la duda antes de que se vuelva excusa para no entrar.</p>
+
+  <h3>Láminas</h3>
+  <div class="laminas">
+    <div class="lam"><div class="lam__n">1 / 4</div>
+      <div class="lam__t">Cómo funciona,<br><span class="lima">en serio.</span></div>
+      <div class="lam__d">Tres pasos. Gratis. Sin mensualidad.</div></div>
+    <div class="lam"><div class="lam__n">2 / 4 — PASO 01</div>
+      <div class="lam__t">Publicas<br>tu precio.</div>
+      <div class="lam__d">Armas tu perfil con tu trabajo, tus nichos y cuánto cobras por
+      cada tipo de contenido. O dejas la tarifa a convenir, si prefieres.</div></div>
+    <div class="lam"><div class="lam__n">3 / 4 — PASO 02</div>
+      <div class="lam__t">Las marcas<br>te escriben.</div>
+      <div class="lam__d">Te llega la propuesta completa: qué quieren, para cuándo y cuánto
+      pagan. Aceptas lo que te sirva y rechazas el resto, sin dar explicaciones.</div></div>
+    <div class="lam"><div class="lam__n">4 / 4 — PASO 03</div>
+      <div class="lam__t"><span class="lima">Cobras.</span></div>
+      <div class="lam__d">El dinero estaba retenido desde el principio. Entregas, la marca
+      aprueba, y te llega.</div></div>
+  </div>
+
+  <h3>Pie de foto</h3>
+  <div class="pie">Crear tu perfil es gratis y toma unos minutos. No hay mensualidad ni letra chica: solo cobramos una comisión cuando cierras una colaboración. Si no ganas, no ganamos.
+
+¿Qué necesitas para entrar? Tus redes, elegir tus nichos y subir algo de lo que has hecho. Nada más.
+
+Todos los perfiles pasan por revisión antes de salir publicados. No es una plataforma abierta a cualquiera, y eso es justo lo que hace que las marcas que buscan aquí lleguen dispuestas a pagar.
+
+Link en la bio.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<div class="post">
+  <div class="post__cab"><span class="post__n">05</span><h2>No necesitas 100 mil seguidores</h2></div>
+  <div class="post__meta">Imagen única · El que rompe la objeción</div>
+
+  <p class="porque">Es la objeción que va a frenar a la mayoría, y hay que salirle al paso
+  antes de pedirles nada. Además es verdad en tu caso: ocho de cada diez creadoras de tu
+  base están por debajo de 5.000 seguidores, y son justo las que una marca pequeña puede
+  pagar.</p>
+
+  <h3>Lámina</h3>
+  <div class="laminas">
+    <div class="lam"><div class="lam__n">ÚNICA</div>
+      <div class="lam__t">"Es que yo<br>tengo poquitos<br>seguidores".<br><span class="lima">Ese es el punto.</span></div>
+    </div>
+  </div>
+
+  <h3>Pie de foto</h3>
+  <div class="pie">Las marcas pequeñas —que son la mayoría en Colombia— no pueden pagar a alguien de 200 mil seguidores. Ni les sirve.
+
+Lo que buscan es alguien real, de su ciudad, que hable como su clienta y que de verdad entregue. Eso lo tienes tú.
+
+Una creadora de 3.000 seguidores con una comunidad que le cree vale más para una marca de barrio que una cuenta grande a la que nadie le responde.
+
+Si estabas esperando a "crecer más" para cobrar por tu trabajo: no hace falta.
+
+Link en la bio.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<div class="post">
+  <div class="post__cab"><span class="post__n">06</span><h2>El cupo</h2></div>
+  <div class="post__meta">Imagen única · El único que pide algo</div>
+
+  <p class="porque">Recién aquí se pide el registro. Los cinco anteriores construyeron el
+  permiso para hacerlo. Publícalo cuando ya tengas movimiento en los otros — si sale de
+  primero, no funciona.</p>
+
+  <h3>Lámina</h3>
+  <div class="laminas">
+    <div class="lam"><div class="lam__n">ÚNICA</div>
+      <div class="lam__t">Prelanzamiento<br>Colombia.<br><span class="lima">Tu cupo<br>es gratis.</span></div>
+      <div class="lam__d">Y viene con dos invitaciones para que traigas a quien tú quieras.</div></div>
+  </div>
+
+  <h3>Pie de foto</h3>
+  <div class="pie">Estamos abriendo Creators Manager en Colombia y los primeros cupos son gratuitos: sin mensualidad, ni ahora ni después.
+
+Creas tu perfil, pones tus condiciones y quedas en el banco al que las marcas entran a buscar. Todos los perfiles pasan por revisión.
+
+Y cuando entres, tu cupo viene con dos invitaciones. Sabes mejor que nadie quién merece estar aquí.
+
+Link en la bio.</div>
+
+  <p class="nota"><strong>Ojo con esto:</strong> el post promete dos invitaciones, y eso
+  funciona en el sistema pero solo para quien llegó por correo. Si alguien entra desde
+  Instagram, hoy no recibe su código. Vale la pena resolverlo antes de publicar este post
+  — dímelo y lo dejo listo.</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<div class="cierre">
+<div class="post__cab"><span class="post__n" style="background:#D6FF00;color:#0E0E0E">·</span><h2>Cuatro cosas antes de publicar</h2></div>
+
+<ul>
+  <li><strong>Ritmo:</strong> uno cada dos o tres días. Seis posts te dan unas dos semanas,
+  tiempo suficiente para ver cuál funciona antes de decidir el siguiente.</li>
+  <li><strong>El 01 y el 05 son los que se comparten.</strong> Si alguno va a llevar pauta,
+  que sea uno de esos: no piden nada, así que la gente los manda a sus amigas.</li>
+  <li><strong>Nada de caras de creadoras</strong> en la cuadrícula. Todo el producto se
+  sostiene en que su identidad no es pública — contradecirlo en la vitrina sería raro.</li>
+  <li><strong>Responde todos los comentarios los primeros días.</strong> Con veinte
+  seguidoras, cada respuesta tuya vale más que cualquier post.</li>
+</ul>
+
+<p style="margin-bottom:0">Cuando veas cuál de los seis se mueve más, escribimos los
+siguientes en esa dirección en vez de adivinar.</p>
+</div>
+
+</div>
