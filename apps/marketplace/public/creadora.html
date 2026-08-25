@@ -255,6 +255,15 @@
   .nota-escrow { background: #EEEEFF; border-left: 4px solid var(--blue);
                  padding: 14px 16px; margin-top: 20px; font-size: 12.5px; line-height: 1.65; color: var(--ink); }
 
+  .bloque-abierta { border: 2px solid var(--border-dark); padding: 15px 16px; margin: 20px 0 0; }
+  .bloque-abierta.elegida { border-color: var(--lime); }
+  .abierta-label { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+  .abierta-label input { width: 17px; height: 17px; flex: none; margin-top: 2px; accent-color: var(--lime); }
+  .abierta-label strong { display: block; font-family: var(--mono-title); font-weight: 700;
+                          font-size: 13px; letter-spacing: -0.2px; margin-bottom: 6px; }
+  .abierta-label em { display: block; font-style: normal; font-size: 12px; line-height: 1.6;
+                      color: var(--blue-text-softer); }
+
   .acciones { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; align-items: center; }
   .btn-portal {
     font-family: var(--mono-title); font-weight: 800; font-size: 12.5px; letter-spacing: 0.6px;
@@ -713,6 +722,7 @@ if (REF_INVITACION) history.replaceState(null, '', location.pathname);
 // Cuatro modos en una sola pantalla: entrar, registrarse, primera vez y
 // recuperar. Menos pantallas que mantener y menos formas de perderse.
 let modo = 'login';
+let TARIFA_ABIERTA = false;
 
 const TEXTOS = {
   login:     { titulo: 'Mi portal',        sub: 'CREATORS MANAGER',              btn: 'ENTRAR →' },
@@ -1483,6 +1493,7 @@ async function vistaTarifas() {
   HORAS_PAGO = d.horas_pago_tras_aprobar ?? 48;
   MONEDA_UNICA = d.moneda_unica !== false;
 
+  TARIFA_ABIERTA = d.tarifa_abierta === true;
   const guardadas = new Map((d.tarifas || []).map(t => [t.entregable, t]));
   ITEMS = (d.entregables || []).map(e => {
     const g = guardadas.get(e.clave);
@@ -1513,6 +1524,20 @@ async function vistaTarifas() {
       <div id="filas-tarifas"></div>
     </div>
 
+    <!-- Ponerse precio es lo que más traba a una creadora nueva. Esta es la
+         salida: puede publicarse sin número y decidirlo después. -->
+    <div class="bloque-abierta ${TARIFA_ABIERTA ? 'elegida' : ''}" id="bloque-abierta">
+      <label class="abierta-label">
+        <input type="checkbox" id="chk-abierta" ${TARIFA_ABIERTA ? 'checked' : ''}>
+        <span>
+          <strong>Prefiero conversar el precio con cada marca</strong>
+          <em>¿No sabes qué cobrar? Es lo más difícil y a casi todas les pasa. Marca esto
+          y tu perfil sale publicado igual: en vez de un precio, las marcas verán que tu
+          tarifa se acuerda. Puedes ponerle número cuando quieras.</em>
+        </span>
+      </label>
+    </div>
+
     <div class="acciones">
       <button class="btn-portal" id="btn-guardar">GUARDAR TARIFAS →</button>
       <span class="nota-pie">Los cambios se ven en tu perfil público al guardar</span>
@@ -1522,6 +1547,19 @@ async function vistaTarifas() {
 
   pintarFilas();
   $('btn-guardar').addEventListener('click', guardarTarifas);
+
+  $('chk-abierta').addEventListener('change', async (e) => {
+    const abierta = e.target.checked;
+    $('bloque-abierta').classList.toggle('elegida', abierta);
+    try {
+      await api('/tarifa-abierta', { method: 'PUT', body: JSON.stringify({ abierta }) });
+      TARIFA_ABIERTA = abierta;
+    } catch (err) {
+      e.target.checked = !abierta;
+      $('bloque-abierta').classList.toggle('elegida', !abierta);
+      alert('No se pudo guardar: ' + err.message);
+    }
+  });
 }
 
 function pintarFilas() {

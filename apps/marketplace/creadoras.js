@@ -518,6 +518,7 @@ router.get('/tarifas', async (req, res) => {
     ]);
     res.json({
       moneda_unica: cfg.moneda_unica !== false,
+      tarifa_abierta: (await db.getCreadoraCompleta(req.usuarioId))?.tarifa_abierta === true,
       entregables: cfg.entregables || [],
       rango: cfg.rango_tarifa || { min: 50000, max: 8000000, paso: 10000 },
       // La comisión viaja al front para que el neto se actualice mientras ella
@@ -573,7 +574,7 @@ router.put('/tarifas', async (req, res) => {
     // El perfil entra a la cola de revisión cuando ya no le falta nada: nicho,
     // redes, tarifas y al menos una pieza de trabajo. Antes de eso, revisarlo
     // sería hacerle perder el tiempo al equipo.
-    if (actual?.estado_perfil === 'nueva' && resumen.tarifa_min) {
+    if (actual?.estado_perfil === 'nueva' && (resumen.tarifa_min || actual.tarifa_abierta)) {
       const [muestras, priv] = await Promise.all([
         db.getMuestrasDeCreadora(req.usuarioId),
         db.getPrivadoDeCreadora(req.usuarioId),
@@ -613,6 +614,32 @@ router.get('/nichos', async (req, res) => {
 });
 
 /** La creadora elige sus nichos (hasta 3 subnichos). */
+/**
+ * "Prefiero conversar el precio". Es la salida para quien no sabe cuánto
+ * cobrar: sin esto se quedaba con el perfil a medias, fuera del catálogo.
+ */
+router.put('/tarifa-abierta', async (req, res) => {
+  try {
+    const abierta = req.body.abierta === true;
+    await db.updateCreadora(req.usuarioId, { tarifa_abierta: abierta });
+
+    // Si ya no le falta nada más, esto es lo que la manda a revisión.
+    const c = await db.getCreadoraCompleta(req.usuarioId);
+    if (abierta && c?.estado_perfil === 'nueva') {
+      const [muestras, priv] = await Promise.all([
+        db.getMuestrasDeCreadora(req.usuarioId),
+        db.getPrivadoDeCreadora(req.usuarioId),
+      ]);
+      if ((c.nicho || []).length && (priv?.instagram_handle || priv?.tiktok_handle) && muestras.length) {
+        await db.updateCreadora(req.usuarioId, { estado_perfil: 'en_revision' });
+      }
+    }
+    res.json({ ok: true, tarifa_abierta: abierta });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.put('/nichos', async (req, res) => {
   try {
     const { nicho } = req.body;

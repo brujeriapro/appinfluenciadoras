@@ -631,7 +631,7 @@ VISTAS.creadoras = async () => {
       <thead><tr><th>Nombre</th><th>Redes</th><th>Seguidores</th><th>Ciudad</th>
         <th>Tarifas</th><th>Nicho</th><th>Origen</th><th></th></tr></thead>
       <tbody>${porRevisar.map(c => {
-        const lista = c.tarifas_activas > 0 && (c.nicho || []).length > 0;
+        const lista = (c.tarifas_activas > 0 || c.tarifa_abierta) && (c.nicho || []).length > 0;
         return `
         <tr class="clicable" data-creadora="${c.id}">
           <td>${esc(c.nombre_publico)}${c.nombre_real ? `<div style="font-size:10.5px;color:var(--grey-700)">${esc(c.nombre_real)}</div>` : ''}</td>
@@ -641,11 +641,15 @@ VISTAS.creadoras = async () => {
           </td>
           <td class="num">${(c.alcance_total || 0).toLocaleString('es-CO')}</td>
           <td>${esc([c.ciudad, c.pais].filter(Boolean).join(' · ') || '—')}</td>
-          <td class="num">${c.tarifas_activas || '<span style="color:var(--magenta)">0</span>'}</td>
+          <td class="num">${c.tarifas_activas
+            || (c.tarifa_abierta
+                ? '<span style="font-size:10.5px;color:var(--lime)">a convenir</span>'
+                : '<span style="color:var(--magenta)">0</span>')}</td>
           <td>${(c.nicho || []).length ? (c.nicho || []).map(n => `<span class="chip">${esc(n)}</span>`).join(' ') : '<span style="color:var(--magenta);font-size:11px">falta</span>'}</td>
           <td style="font-size:10.5px;color:var(--grey-700)">${esc(c.origen || '—')}</td>
           <td>
             <button class="btn-mini" data-aprobar="${c.id}" ${lista ? '' : 'disabled title="Le falta tarifa o nicho"'}>APROBAR</button>
+            ${lista ? '' : `<button class="btn-mini" data-recordar="${c.id}" title="Le escribe diciéndole exactamente qué falta">RECORDAR</button>`}
             <button class="btn-mini btn-mini--peligro" data-rechazar="${c.id}">NO</button>
           </td>
         </tr>`;
@@ -690,6 +694,23 @@ VISTAS.creadoras = async () => {
 
   contenido().querySelectorAll('[data-creadora]').forEach(tr => {
     tr.addEventListener('click', () => verCreadora(tr.dataset.creadora));
+  });
+
+  contenido().querySelectorAll('[data-recordar]').forEach(b => {
+    b.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      b.disabled = true; b.textContent = 'ENVIANDO…';
+      try {
+        const r = await api('/creadoras/' + b.dataset.recordar + '/recordatorio', {
+          method: 'POST', body: '{}',
+        });
+        b.textContent = 'ENVIADO';
+        alert(['Le escribimos. Le falta:', ''].concat(r.falta.map(f => '· ' + f)).join(String.fromCharCode(10)));
+      } catch (err) {
+        alert('No se pudo: ' + err.message);
+        b.disabled = false; b.textContent = 'RECORDAR';
+      }
+    });
   });
 
   // Aprobar y rechazar desde la cola, sin abrir el detalle.

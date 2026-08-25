@@ -358,15 +358,63 @@ router.get('/por-revisar', async (req, res) => {
   }
 });
 
+/**
+ * Le recuerda a una creadora qué le falta para poder publicarse.
+ *
+ * Calcula lo que falta en el momento, en vez de fiarse de lo que el panel
+ * mostraba: entre que se cargó la pantalla y se aprieta el botón, ella pudo
+ * haber completado algo, y un recordatorio de algo ya hecho quema confianza.
+ */
+router.post('/creadoras/:id/recordatorio', async (req, res) => {
+  try {
+    const c = await db.getCreadoraCompleta(req.params.id);
+    if (!c) return res.status(404).json({ error: 'No encontrada' });
+    if (!c.email) return res.status(400).json({ error: 'No tiene correo' });
+
+    const [tarifas, muestras, priv] = await Promise.all([
+      db.getTarifasDeCreadora(c.id),
+      db.getMuestrasDeCreadora(c.id),
+      db.getPrivadoDeCreadora(c.id),
+    ]);
+
+    const falta = [];
+    if (!tarifas.some(t => t.activo !== false) && !c.tarifa_abierta) {
+      falta.push('Decir cuánto cobras — con un precio por entregable, o marcando que prefieres conversarlo');
+    }
+    if (!(c.nicho || []).length) falta.push('Elegir tus nichos, para que las marcas del tema te encuentren');
+    if (!priv?.instagram_handle && !priv?.tiktok_handle) falta.push('Conectar al menos una red');
+    if (!muestras.length) falta.push('Subir al menos una pieza de tu trabajo');
+
+    if (!falta.length) {
+      return res.status(409).json({ error: 'No le falta nada. Ya se puede aprobar.' });
+    }
+
+    const salio = await notificaciones.recordatorioPerfil({
+      email: c.email, nombre: c.nombre_publico, falta,
+    });
+    if (!salio) return res.status(500).json({ error: 'El correo no salió. Revisa los logs.' });
+
+    await db.updateCreadora(c.id, { recordatorio_at: new Date().toISOString() });
+    res.json({ ok: true, falta });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 /** Publica el perfil en el catálogo y se lo avisa a ella. */
 router.post('/creadoras/:id/aprobar', async (req, res) => {
   try {
     const c = await db.getCreadoraCompleta(req.params.id);
     if (!c) return res.status(404).json({ error: 'No encontrada' });
 
+    // "Abierta a negociación" es una respuesta válida a cuánto cobra: la
+    // creadora dijo algo, y la marca sabe a qué atenerse. Lo que no sirve es el
+    // silencio, que deja a la marca adivinando.
     const tarifas = await db.getTarifasDeCreadora(c.id);
-    if (!tarifas.some(t => t.activo !== false)) {
-      return res.status(409).json({ error: 'No tiene tarifas. No se puede publicar sin precio.' });
+    if (!tarifas.some(t => t.activo !== false) && !c.tarifa_abierta) {
+      return res.status(409).json({
+        error: 'No dijo cuánto cobra. Pídele tarifas, o márcala como abierta a negociación.',
+      });
     }
     if (!(c.nicho || []).length) {
       return res.status(409).json({ error: 'Falta asignarle nicho antes de publicar.' });

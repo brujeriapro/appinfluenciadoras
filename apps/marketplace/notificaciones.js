@@ -222,6 +222,47 @@ function invitacionCreadora({ email, nombre, status, codigoRef }) {
   );
 }
 
+/**
+ * Recordatorio a quien dejó el perfil a medias.
+ *
+ * Dice exactamente qué falta, no un "completa tu perfil" genérico: la creadora
+ * ya intentó una vez, y si no supo qué le faltaba entonces, repetírselo igual
+ * no ayuda. Y ofrece la salida de la tarifa, que es donde casi todas se traban.
+ */
+function recordatorioPerfil({ email, nombre, falta = [] }) {
+  const saludo = nombre ? `${String(nombre).split(' ')[0]},` : 'Hola,';
+  const lista = falta.map(f => `<li style="margin-bottom:7px">${esc(f)}</li>`).join('');
+
+  return enviar(
+    email,
+    'Te falta poco para entrar al banco de creadoras',
+    `<p style="font-size:13px;color:#5A5A5A;margin:0 0 16px">${esc(saludo)}</p>
+
+     <p style="font-size:16px;font-weight:800;letter-spacing:-0.4px;margin:0 0 14px">
+       Tu perfil quedó a medio camino.</p>
+
+     <p>Creaste tu cuenta pero todavía no apareces en el catálogo, así que ninguna
+     marca puede encontrarte. Te falta:</p>
+
+     <ul style="margin:14px 0 18px;padding-left:20px">${lista}</ul>
+
+     <div style="border:2px solid #0E0E0E;background:#D6FF00;padding:14px 16px;margin:18px 0">
+       <div style="font-weight:800;letter-spacing:-0.3px;margin-bottom:6px">¿NO SABES QUÉ COBRAR?</div>
+       <div style="font-size:12.5px;line-height:1.65">
+         Es lo más difícil y a casi todas les pasa. No tienes que decidirlo ahora:
+         en la sección de tarifas puedes marcar <strong>"prefiero conversar el precio"</strong>
+         y publicarte igual. Después le pones número, cuando tengas más claro.
+       </div>
+     </div>
+
+     ${boton('TERMINAR MI PERFIL', `${config.base_url}/creadora.html`)}
+
+     <p style="margin-top:22px;font-size:11px;color:#7A7A7A;line-height:1.6">
+       Si ya no te interesa, ignora este correo. No volvemos a insistir.
+     </p>`,
+  );
+}
+
 // ── Alta de creadoras ───────────────────────────────────────────────────────
 
 /** A la creadora recién registrada: qué sigue, en concreto. */
@@ -401,7 +442,7 @@ function pagoLiberado({ trato, creadora }) {
 
 module.exports = {
   enviar,
-  invitacionCreadora,
+  invitacionCreadora, recordatorioPerfil,
   bienvenidaCreadora, avisoPerfilNuevo, avisoListaParaRevisar, perfilAprobado, resetClave,
   nuevaSolicitud, tratoAceptado, tratoRechazado,
   pagoRetenido, contenidoEntregado, contenidoAprobado, pagoLiberado,

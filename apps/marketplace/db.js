@@ -131,7 +131,7 @@ const COLS_CATALOGO = [
   'id', 'codigo', 'nombre_publico', 'foto_perfil_path', 'pais', 'departamento', 'ciudad',
   'categorias', 'nicho', 'rango_alcance', 'rango_instagram', 'rango_tiktok',
   'engagement_pct', 'dias_entrega', 'audiencia_mujeres', 'audiencia_pais',
-  'nivel_tarifa', 'tarifa_min', 'tarifa_max',
+  'nivel_tarifa', 'tarifa_min', 'tarifa_max', 'tarifa_abierta',
   'entregable_tipico', 'bio_corta', 'colaboraciones_completadas',
 ].join(',');
 
