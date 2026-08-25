@@ -28,6 +28,32 @@ app.use(express.json({ limit: '16mb' }));
 
 // ── Rutas públicas ──────────────────────────────────────────────────────────
 
+// ── Rescate de los enlaces de la primera tanda de invitaciones ─────────────
+//
+// Brevo reescribe los enlaces de cada correo para pasarlos por un subdominio
+// nuestro y contar los clics. El 25-ago-2026 salieron 114 invitaciones y ese
+// subdominio —r.mail.creatorsmanager.com— estaba presentando un certificado
+// vencido del lado de Brevo: cada creadora que hacía clic veía una pantalla de
+// "este sitio puede estar suplantando a...". El peor recibimiento posible.
+//
+// Como esos correos ya están en las bandejas y no se pueden reescribir, el
+// subdominio se apunta aquí y todo lo que llegue por él se manda al registro.
+// Se pierde el conteo de clics y la atribución de referidas de esa tanda —el
+// código va en el path cifrado por Brevo, que no sabemos leer— pero las
+// creadoras llegan a donde tenían que llegar.
+//
+// Cuando Brevo arregle su certificado esto se puede quitar. Mientras tanto no
+// estorba: solo actúa si la petición llega por ese host.
+app.use((req, res, next) => {
+  const host = String(req.hostname || req.headers.host || '').toLowerCase();
+  if (!host.startsWith('r.mail.')) return next();
+
+  const destino = `${config.base_url}/creadora.html`;
+  // 302 y no 301: es un arreglo temporal y un permanente se queda cacheado en
+  // el navegador de la creadora aunque después lo revirtamos.
+  res.redirect(302, destino);
+});
+
 app.get('/health', (req, res) => {
   res.json({ ok: true, servicio: 'creatorsmanager.com', entorno: config.entorno });
 });
