@@ -39,38 +39,71 @@ async function validar(codigoCrudo) {
   const codigo = normalizar(codigoCrudo);
   if (!codigo) return { vale: false, motivo: 'sin_codigo' };
 
-  const inv = await db.getUno('mk_invitaciones', {
-    codigo_ref: `eq.${codigo}`,
-    select: 'id,codigo_ref,cupos_ref,nombre',
-  });
-  if (!inv) return { vale: false, motivo: 'no_existe' };
+  // Se busca en los dos sitios: el código puede ser de una creadora ya
+  // registrada, o de una invitación por correo cuya dueña todavía no ha
+  // entrado. Los 114 correos de la ola 1 llevan códigos del segundo tipo y
+  // tienen que seguir funcionando.
+  const dueña =
+    await db.getUno('mk_creadoras', {
+      codigo_ref: `eq.${codigo}`, select: 'id,codigo_ref,cupos_ref,nombre_publico',
+    }) ||
+    await db.getUno('mk_invitaciones', {
+      codigo_ref: `eq.${codigo}`, select: 'id,codigo_ref,cupos_ref,nombre',
+    });
 
+  if (!dueña) return { vale: false, motivo: 'no_existe' };
+
+  const invita = dueña.nombre_publico || dueña.nombre || null;
+  const cupos = dueña.cupos_ref || 0;
   const usados = await contarUsos(codigo);
-  if (usados >= (inv.cupos_ref || 0)) {
-    return { vale: false, motivo: 'sin_cupo', usados, cupos: inv.cupos_ref, invita: inv.nombre };
+
+  if (usados >= cupos) {
+    return { vale: false, motivo: 'sin_cupo', usados, cupos, invita };
   }
-  return { vale: true, codigo, usados, cupos: inv.cupos_ref, invita: inv.nombre, restantes: inv.cupos_ref - usados };
+  return { vale: true, codigo, usados, cupos, invita, restantes: cupos - usados };
 }
 
 /** Cuántas se registraron ya con ese código. */
 async function contarUsos(codigo) {
   const filas = await db.get('mk_creadoras', {
-    referida_por: `eq.${normalizar(codigo)}`,
-    select: 'id',
+    referida_por: `eq.${normalizar(codigo)}`, select: 'id',
   });
   return filas.length;
 }
 
 /**
- * Asegura que una invitación tenga código. Se llama al invitar, y también al
- * registrarse alguien que fue invitada, para que pueda referir a su vez.
+ * Le asegura código propio a una creadora.
  *
- * Reintenta ante el choque contra el índice único, que con siete caracteres es
- * improbable pero no imposible.
+ * Si llegó por una invitación por correo hereda ese mismo código, para que el
+ * enlace que ya compartió por WhatsApp no deje de funcionar de un día para otro.
  */
+async function asegurarCodigoDeCreadora(creadora) {
+  if (creadora.codigo_ref) return creadora.codigo_ref;
+
+  let codigo = null;
+  if (creadora.email) {
+    const inv = await db.getUno('mk_invitaciones', {
+      email: `eq.${String(creadora.email).toLowerCase().trim()}`,
+      select: 'codigo_ref',
+    }).catch(() => null);
+    if (inv?.codigo_ref) codigo = inv.codigo_ref;
+  }
+
+  for (let intento = 0; intento < 5; intento++) {
+    const candidato = codigo || nuevoCodigo();
+    try {
+      await db.updateCreadora(creadora.id, { codigo_ref: candidato });
+      return candidato;
+    } catch (e) {
+      codigo = null; // el heredado chocó: se genera uno nuevo
+      if (intento === 4) throw e;
+    }
+  }
+}
+
+/** Igual, pero para una invitación por correo que todavía no tiene código. */
 async function asegurarCodigo(invitacionId, codigoActual) {
   if (codigoActual) return codigoActual;
-
   for (let intento = 0; intento < 5; intento++) {
     const codigo = nuevoCodigo();
     try {
@@ -82,4 +115,7 @@ async function asegurarCodigo(invitacionId, codigoActual) {
   }
 }
 
-module.exports = { nuevoCodigo, normalizar, validar, contarUsos, asegurarCodigo };
+module.exports = {
+  nuevoCodigo, normalizar, validar, contarUsos,
+  asegurarCodigo, asegurarCodigoDeCreadora,
+};

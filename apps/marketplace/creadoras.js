@@ -7,6 +7,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const db = require('./db');
+const config = require('./config');
 const referidos = require('./referidos');
 const maquina = require('./tratos');
 const { resumirTarifas, rangoAlcance, resumirAlcance } = require('./comisiones');
@@ -647,6 +648,44 @@ router.put('/tarifa-abierta', async (req, res) => {
       }
     }
     res.json({ ok: true, tarifa_abierta: abierta });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Su enlace de invitaciones y cuántas ha traído.
+ *
+ * Solo tiene sentido con el perfil ya publicado: invitar a otras antes de
+ * estar ella misma adentro es pedirle que recomiende algo que aún no conoce.
+ */
+router.get('/mis-invitaciones', async (req, res) => {
+  try {
+    const c = await db.getCreadoraCompleta(req.usuarioId);
+    if (!c) return res.status(404).json({ error: 'Perfil no encontrado' });
+    if (!c.visible) return res.json({ disponible: false });
+
+    const codigo = await referidos.asegurarCodigoDeCreadora(c);
+    const usados = await referidos.contarUsos(codigo);
+    const cupos = c.cupos_ref || 2;
+
+    // Quiénes entraron por ella: le da algo que mirar, y saber que sirvió es
+    // lo que hace que vuelva a invitar.
+    const traidas = await db.get('mk_creadoras', {
+      referida_por: `eq.${codigo}`,
+      select: 'nombre_publico,visible,created_at',
+      order: 'created_at.desc',
+    });
+
+    res.json({
+      disponible: true,
+      codigo,
+      enlace: `${config.base_url}/invitacion.html?ref=${encodeURIComponent(codigo)}`,
+      cupos,
+      usados,
+      restantes: Math.max(0, cupos - usados),
+      traidas: traidas.map(t => ({ nombre: t.nombre_publico, publicada: t.visible })),
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

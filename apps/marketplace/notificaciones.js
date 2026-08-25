@@ -311,13 +311,44 @@ function avisoListaParaRevisar({ creadora }) {
 }
 
 /** A la creadora: su perfil quedó publicado. */
-function perfilAprobado({ creadora }) {
+/**
+ * Quedó publicada.
+ *
+ * Es el momento de más orgullo de toda su experiencia —acaba de pasar una
+ * revisión— y por eso es el mejor para pedirle que invite. Pedírselo en
+ * cualquier otro momento se siente como una tarea; aquí se siente como un
+ * privilegio que acaba de ganar.
+ */
+function perfilAprobado({ creadora, codigoRef }) {
+  const enlace = codigoRef
+    ? `${config.base_url}/invitacion.html?ref=${encodeURIComponent(codigoRef)}`
+    : null;
+
   return enviar(
     creadora.email,
-    'Tu perfil ya está publicado',
-    `<p>Listo, ${esc(creadora.nombre_publico)}: las marcas ya te pueden encontrar en el banco.</p>
-     <p>Cuando alguna quiera trabajar contigo te llega la propuesta por acá, con el valor que recibirías.</p>
-     ${boton('VER MI PERFIL', `${config.base_url}/creadora.html`)}`
+    'Quedaste adentro: tu perfil ya está publicado',
+    `<p style="font-size:16px;font-weight:800;letter-spacing:-0.4px;margin:0 0 14px">
+       Listo, ${esc(creadora.nombre_publico)}. Pasaste la revisión.</p>
+
+     <p>Tu perfil ya está publicado en el banco y las marcas te pueden encontrar. Cuando
+     alguna quiera trabajar contigo te llega la propuesta acá, con lo que recibirías.</p>
+
+     ${boton('VER MI PERFIL', `${config.base_url}/creadora.html`)}
+
+     ${enlace ? `
+     <div style="border:2px solid #0E0E0E;background:#D6FF00;padding:15px 17px;margin-top:24px">
+       <div style="font-weight:800;letter-spacing:-0.3px;margin-bottom:7px">TIENES DOS INVITACIONES</div>
+       <div style="font-size:12.5px;line-height:1.65">
+         Ahora que estás adentro puedes traer a dos creadoras. Sabes mejor que nadie
+         quién trabaja bien. Comparte tu enlace:<br>
+         <span style="display:inline-block;background:#fff;border:1px solid #0E0E0E;padding:7px 10px;margin-top:9px;font-size:11.5px;word-break:break-all">${enlace}</span>
+       </div>
+     </div>` : ''}
+
+     <p style="margin-top:22px;font-size:12px;color:#5A5A5A;line-height:1.6">
+       Un consejo: los perfiles con varias piezas de trabajo reciben muchas más
+       propuestas. Si te falta subir alguna, es el mejor momento.
+     </p>`
   );
 }
 

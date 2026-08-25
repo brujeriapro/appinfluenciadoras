@@ -486,7 +486,14 @@ router.post('/creadoras/:id/aprobar', async (req, res) => {
       fecha_revision: new Date().toISOString(),
       motivo_rechazo: null,
     });
-    notificaciones.perfilAprobado({ creadora: c }).catch(e =>
+    // Su código de invitaciones nace aquí: aprobarla es el momento en que
+    // puede empezar a traer gente, y el correo que sigue se lo entrega.
+    const codigoRef = await referidos.asegurarCodigoDeCreadora(c).catch(e => {
+      console.error('[referidos] no se pudo generar código:', e.message);
+      return null;
+    });
+
+    notificaciones.perfilAprobado({ creadora: c, codigoRef }).catch(e =>
       console.error('[notif] perfilAprobado:', e.message));
 
     res.json({ ok: true, creadora: actualizada });

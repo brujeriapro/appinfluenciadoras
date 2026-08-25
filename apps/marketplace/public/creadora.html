@@ -369,6 +369,16 @@
   /* ── Mi perfil ──────────────────────────────────────────────────────────── */
 
   .bloque-perfil { border: 2px solid var(--ink); padding: 18px; margin-bottom: 16px; background: #fff; }
+  /* Invitaciones: en lima porque es lo único del portal que le da algo, no
+     que le pide algo. */
+  .bloque-perfil--inv { border-color: var(--lime); }
+  .inv-enlace { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .inv-enlace input { flex: 1; min-width: 200px; font-size: 11.5px; }
+  .inv-traidas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px;
+                 padding-top: 12px; border-top: 1px solid var(--border-dark); }
+  .inv-traida { font-size: 11px; padding: 4px 9px; border: 1px solid var(--lime);
+                color: var(--lime); }
+
   .bloque-perfil__titulo { font-family: var(--mono-title); font-weight: 800; font-size: 12.5px;
                            letter-spacing: -0.2px; text-transform: uppercase; margin-bottom: 4px; }
   .bloque-perfil__nota { font-size: 10.5px; letter-spacing: 0.6px; color: #5A5A5A;
@@ -1314,6 +1324,8 @@ async function vistaPerfil() {
       <div class="error oculto" id="muestras-msg" style="margin-top:12px"></div>
     </div>
 
+    <div id="mis-invitaciones"></div>
+
     <div class="acciones">
       <button class="btn-portal" id="btn-guardar-perfil">GUARDAR PERFIL →</button>
     </div>
@@ -1327,6 +1339,8 @@ async function vistaPerfil() {
 
   pintarNichos();
   pintarGaleria(muestras.muestras, muestras.maximo);
+
+  pintarInvitaciones();
 
   $('archivo-foto')?.addEventListener('change', async (e) => {
     const archivo = e.target.files[0];
@@ -1539,6 +1553,55 @@ async function guardarPerfil() {
 // ── Vista: Mis tarifas ──────────────────────────────────────────────────────
 
 let ITEMS = [];
+
+/**
+ * Sus dos invitaciones.
+ *
+ * Se carga aparte y después de pintar el perfil: si el endpoint falla o
+ * todavía no está publicada, el resto de la pantalla no se ve afectado.
+ */
+async function pintarInvitaciones() {
+  const caja = $('mis-invitaciones');
+  if (!caja) return;
+
+  let d;
+  try { d = await api('/mis-invitaciones'); } catch (e) { return; }
+  if (!d.disponible) return;
+
+  const traidas = (d.traidas || []).length ? `
+    <div class="inv-traidas">
+      ${d.traidas.map(t => `<span class="inv-traida">${esc(t.nombre)}${t.publicada ? ' ✓' : ' · en revisión'}</span>`).join('')}
+    </div>` : '';
+
+  caja.innerHTML = `
+    <div class="bloque-perfil bloque-perfil--inv">
+      <div class="bloque-perfil__titulo">Tus invitaciones · ${d.restantes} de ${d.cupos}</div>
+      <div class="bloque-perfil__nota">
+        ${d.restantes
+          ? 'Trae a creadoras que trabajen bien. Sabes mejor que nadie quiénes son.'
+          : 'Usaste tus dos invitaciones. Gracias por traer gente buena.'}
+      </div>
+      ${d.restantes ? `
+        <div class="inv-enlace">
+          <input id="inv-url" readonly value="${esc(d.enlace)}">
+          <button class="btn-portal btn-portal--sec" id="inv-copiar">Copiar</button>
+        </div>` : ''}
+      ${traidas}
+    </div>`;
+
+  $('inv-copiar')?.addEventListener('click', async () => {
+    const btn = $('inv-copiar');
+    try {
+      await navigator.clipboard.writeText(d.enlace);
+    } catch (e) {
+      // Sin permiso de portapapeles —pasa en algunos navegadores— al menos
+      // queda seleccionado para copiar a mano.
+      $('inv-url').select();
+    }
+    btn.textContent = 'Copiado';
+    setTimeout(() => { btn.textContent = 'Copiar'; }, 1800);
+  });
+}
 
 async function vistaTarifas() {
   const d = await api('/tarifas');
