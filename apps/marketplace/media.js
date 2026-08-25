@@ -65,7 +65,14 @@ router.get('/:id', sesionAuth, async (req, res) => {
       return res.status(404).send('No disponible');
     }
 
-    res.setHeader('Content-Type', muestra.mime || upstream.headers.get('content-type') || 'application/octet-stream');
+    // Los .mov que salen de un iPhone llevan video H.264, que todo navegador
+    // sabe reproducir — pero Chrome y Firefox rechazan el tipo
+    // "video/quicktime" y muestran el reproductor en negro. Anunciarlo como
+    // mp4 no cambia el archivo y lo hace verse en todas partes.
+    const tipo = muestra.mime === 'video/quicktime'
+      ? 'video/mp4'
+      : (muestra.mime || upstream.headers.get('content-type') || 'application/octet-stream');
+    res.setHeader('Content-Type', tipo);
     res.setHeader('Content-Disposition', 'inline');
     res.setHeader('Cache-Control', 'private, max-age=300');
     res.setHeader('X-Content-Type-Options', 'nosniff');

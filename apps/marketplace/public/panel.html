@@ -743,9 +743,28 @@ function vistaCatalogo(c) {
   });
 }
 
-const pieza = (m) => m
-  ? `<img src="/media/${m.id}?t=${TOKEN}" alt="Pieza de trabajo" loading="lazy">`
-  : '<span>pieza</span>';
+/**
+ * Una pieza del portafolio: puede ser foto o video.
+ *
+ * Pintarlo todo con <img> hacía que los videos salieran como imagen rota, y
+ * hoy dos de cada tres piezas del catálogo son video. `preload="metadata"`
+ * carga solo el primer fotograma, así que una fila con cuatro videos no pesa
+ * como cuatro descargas.
+ */
+const pieza = (m) => {
+  if (!m) return '<span>pieza</span>';
+  const url = `/media/${m.id}?t=${TOKEN}`;
+  if (m.tipo === 'video') {
+    // Envuelto en su propio marco: los contenedores de pieza no están
+    // posicionados y el indicador de play se iría a otra parte de la página.
+    return `<span class="pieza-wrap">
+              <video src="${url}" preload="metadata" muted playsinline loop
+                     class="pieza-video" aria-label="Pieza de trabajo en video"></video>
+              <span class="pieza-play" aria-hidden="true">▶</span>
+            </span>`;
+  }
+  return `<img src="${url}" alt="Pieza de trabajo" loading="lazy">`;
+};
 
 /**
  * Avatar de la creadora: su foto de perfil si la subió, y si no sus iniciales.
