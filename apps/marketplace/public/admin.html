@@ -389,6 +389,7 @@ VISTAS.resumen = async () => {
 // ── Vista: Tratos ───────────────────────────────────────────────────────────
 
 let filtroEstado = '';
+let SOLO_LISTAS = false;
 
 VISTAS.tratos = async () => {
   const tratos = await api('/tratos' + (filtroEstado ? '?estado=' + filtroEstado : ''));
@@ -625,8 +626,22 @@ VISTAS.creadoras = async () => {
 
   // Cola de revisión: lo que exige acción hoy va primero, con los @usuarios a
   // la vista para poder verificarlos antes de aprobar.
+  const paraAprobar = porRevisar.filter(c => c.lista);
+  const enCola = SOLO_LISTAS ? paraAprobar : porRevisar;
+
   const cola = porRevisar.length ? `
     <div class="seccion-titulo">Esperando revisión · ${porRevisar.length}</div>
+
+    <div class="bloque" style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="btn-mini ${SOLO_LISTAS ? '' : 'btn-mini--ghost'}" id="filtro-listas">
+        ${SOLO_LISTAS ? '✓ ' : ''}SOLO LAS LISTAS (${paraAprobar.length})
+      </button>
+      <span style="font-size:12.5px;color:var(--grey-700);flex:1;min-width:200px">
+        Listas = con nicho y con trabajo publicado. Las demás necesitan que suban algo antes.
+      </span>
+      ${paraAprobar.length ? `<button class="btn-mini" id="aprobar-listas">APROBAR LAS ${paraAprobar.length} LISTAS</button>` : ''}
+    </div>
+    <div id="aprobar-masivo-msg" style="font-size:12.5px;margin-bottom:14px"></div>
     <div class="bloque" style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <span style="font-size:12.5px;color:var(--grey-700);flex:1;min-width:220px">
         Escríbele de una a todas las que tienen algo pendiente — incluidas las ya
@@ -639,8 +654,8 @@ VISTAS.creadoras = async () => {
     <div class="tabla-wrap"><table>
       <thead><tr><th>Nombre</th><th>Redes</th><th>Seguidores</th><th>Ciudad</th>
         <th>Tarifas</th><th>Nicho</th><th>Origen</th><th></th></tr></thead>
-      <tbody>${porRevisar.map(c => {
-        const lista = (c.tarifas_activas > 0 || c.tarifa_abierta) && (c.nicho || []).length > 0;
+      <tbody>${enCola.map(c => {
+        const lista = c.lista;
         return `
         <tr class="clicable" data-creadora="${c.id}">
           <td>${esc(c.nombre_publico)}${c.nombre_real ? `<div style="font-size:10.5px;color:var(--grey-700)">${esc(c.nombre_real)}</div>` : ''}</td>
@@ -729,6 +744,36 @@ VISTAS.creadoras = async () => {
     } catch (e) {
       msg.style.color = 'var(--magenta)'; msg.textContent = e.message;
       b.disabled = false; b.textContent = 'RECORDAR A TODAS';
+    }
+  });
+
+  document.getElementById('filtro-listas')?.addEventListener('click', () => {
+    SOLO_LISTAS = !SOLO_LISTAS;
+    ir('creadoras');
+  });
+
+  document.getElementById('aprobar-listas')?.addEventListener('click', async () => {
+    const b = document.getElementById('aprobar-listas');
+    const msg = document.getElementById('aprobar-masivo-msg');
+    let r;
+    try {
+      r = await api('/creadoras/aprobar-listas', { method: 'POST', body: JSON.stringify({ dry_run: true }) });
+    } catch (e) { msg.style.color = 'var(--magenta)'; msg.textContent = e.message; return; }
+
+    const nombres = r.muestra.map(m => '· ' + m.nombre).join(String.fromCharCode(10));
+    if (!confirm(`Vas a publicar ${r.se_aprobarian} perfiles y a avisarles por correo.` +
+                 String.fromCharCode(10) + String.fromCharCode(10) + nombres +
+                 (r.se_aprobarian > 10 ? String.fromCharCode(10) + '… y más' : '') +
+                 String.fromCharCode(10) + String.fromCharCode(10) + '¿Seguimos?')) return;
+
+    b.disabled = true; b.textContent = 'APROBANDO…';
+    try {
+      const e = await api('/creadoras/aprobar-listas', { method: 'POST', body: '{}' });
+      msg.style.color = 'var(--lime)';
+      msg.textContent = `Aprobando ${e.se_aprobaran}. Van saliendo de a una con su correo; recarga en un momento.`;
+    } catch (err) {
+      msg.style.color = 'var(--magenta)'; msg.textContent = err.message;
+      b.disabled = false; b.textContent = 'APROBAR LAS LISTAS';
     }
   });
 

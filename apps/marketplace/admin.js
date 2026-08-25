@@ -351,9 +351,10 @@ router.get('/por-revisar', async (req, res) => {
   try {
     const pendientes = await db.getCreadorasPorRevisar();
     const conDatos = await Promise.all(pendientes.map(async c => {
-      const [priv, tarifas] = await Promise.all([
+      const [priv, tarifas, muestras] = await Promise.all([
         db.getPrivadoDeCreadora(c.id),
         db.getTarifasDeCreadora(c.id),
+        db.getMuestrasDeCreadora(c.id),
       ]);
       const { password_hash, ...perfil } = c;
       return {
@@ -362,11 +363,83 @@ router.get('/por-revisar', async (req, res) => {
         tiktok: priv?.tiktok_handle || null,
         nombre_real: priv?.nombre_real || null,
         tarifas_activas: tarifas.filter(t => t.activo !== false).length,
+        muestras: muestras.length,
+        // Lista de verdad: con nicho y con trabajo publicado. Sin piezas la
+        // ficha existe pero no le sirve a ninguna marca, y aprobar eso en masa
+        // llenaría el catálogo de perfiles vacíos.
+        lista: Boolean((c.nicho || []).length) && muestras.length > 0,
       };
     }));
     res.json(conDatos);
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Aprueba de una todas las que ya están listas.
+ *
+ * Solo las que tienen nicho y trabajo publicado: el botón individual permite
+ * criterios más laxos porque ahí hay alguien mirando la ficha, pero aprobar en
+ * masa sin ver es distinto y el criterio tiene que ser el que hace útil un
+ * perfil.
+ *
+ * Va reusando la aprobación de a una, no un UPDATE en bloque, porque cada
+ * aprobación dispara su correo, genera su código de invitaciones y le suma
+ * prioridad a quien la refirió. Un update masivo se saltaría todo eso.
+ */
+router.post('/creadoras/aprobar-listas', async (req, res) => {
+  try {
+    const pendientes = await db.getCreadorasPorRevisar();
+
+    const listas = [];
+    for (const c of pendientes) {
+      if (!(c.nicho || []).length) continue;
+      const muestras = await db.getMuestrasDeCreadora(c.id);
+      if (!muestras.length) continue;
+      listas.push(c);
+    }
+
+    if (req.body.dry_run === true) {
+      return res.json({
+        simulacro: true, se_aprobarian: listas.length,
+        muestra: listas.slice(0, 10).map(c => ({ nombre: c.nombre_publico, codigo: c.codigo })),
+      });
+    }
+
+    if (!listas.length) return res.status(409).json({ error: 'Ninguna está lista todavía.' });
+
+    res.json({ ok: true, se_aprobaran: listas.length });
+
+    let ok = 0;
+    for (const c of listas) {
+      try {
+        await db.updateCreadora(c.id, {
+          visible: true,
+          estado_perfil: 'aprobada',
+          fecha_revision: new Date().toISOString(),
+          motivo_rechazo: null,
+        });
+
+        const codigoRef = await referidos.asegurarCodigoDeCreadora(c).catch(() => null);
+        await notificaciones.perfilAprobado({ creadora: c, codigoRef }).catch(e =>
+          console.error('[notif] perfilAprobado:', e.message));
+
+        if (c.referida_por) {
+          await premiarAQuienLaTrajo(c).catch(e =>
+            console.error('[referidos] no se pudo premiar:', e.message));
+        }
+        ok++;
+        // Cada aprobación manda al menos un correo, y la cuota diaria es
+        // compartida con las invitaciones.
+        await dormir(700);
+      } catch (e) {
+        console.error(`[aprobar-listas] ${c.codigo}:`, e.message);
+      }
+    }
+    console.log(`[aprobar-listas] ${ok} de ${listas.length} aprobadas`);
+  } catch (e) {
+    console.error('[aprobar-listas]', e.message);
   }
 });
 
