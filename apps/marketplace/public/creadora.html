@@ -1634,38 +1634,25 @@ async function descargarHistoria(perfil, arroba) {
   const CUE = (p, t) => `${p} ${t}px "Space Mono", ui-monospace, monospace`;
 
   x.fillStyle = '#0E0E0E'; x.fillRect(0, 0, A, H);
-  x.strokeStyle = '#D6FF00'; x.lineWidth = 8;
-  x.strokeRect(40, 40, A - 80, H - 80);
 
-  // Logo, discreto
-  x.fillStyle = '#D6FF00'; x.fillRect(96, 120, 58, 58);
-  x.fillStyle = '#0E0E0E'; x.font = TIT(800, 36); x.textAlign = 'center';
-  x.fillText('C', 125, 162);
-  x.fillStyle = '#7A7A7A'; x.font = TIT(700, 24); x.textAlign = 'left';
-  x.fillText('CREATORS MANAGER', 172, 158);
+  // ── Logo ────────────────────────────────────────────────────────────────
+  x.fillStyle = '#D6FF00'; x.fillRect(78, 78, 132, 132);
+  x.fillStyle = '#0E0E0E'; x.font = TIT(800, 62); x.textAlign = 'center';
+  x.fillText('[C]', 144, 165);
+  x.fillStyle = '#F2F2F2'; x.font = TIT(800, 40); x.textAlign = 'left';
+  x.fillText('CREATORS', 78, 268);
+  x.fillText('MANAGER', 78, 316);
 
-  // El titular: es una buena noticia, no un anuncio
-  x.textAlign = 'center';
-  x.fillStyle = '#F2F2F2'; x.font = TIT(700, 54);
-  x.fillText('AHORA SOY', A / 2, 306);
-  x.fillStyle = '#D6FF00'; x.font = TIT(800, 96);
-  x.fillText('CREADORA', A / 2, 412);
-  x.fillText('VERIFICADA', A / 2, 508);
-
-  // Su foto, protagonista
-  const FX = A / 2 - 250, FY = 600, FW = 500, FH = 610;
-  x.fillStyle = '#1A1A1A'; x.fillRect(FX, FY, FW, FH);
-
+  // ── Su foto ─────────────────────────────────────────────────────────────
+  const FX = 140, FY = 430, FW = 800, FH = 800;
   let dibujada = false;
   if (perfil.foto_perfil_path && perfil.id) {
     try {
       const img = await new Promise((ok, mal) => {
         const i = new Image();
-        i.onload = () => ok(i);
-        i.onerror = mal;
+        i.onload = () => ok(i); i.onerror = mal;
         i.src = `/media/perfil/${perfil.id}?t=${TOKEN}`;
       });
-      // Recorte centrado para llenar el marco sin deformarla.
       const escala = Math.max(FW / img.width, FH / img.height);
       const aw = img.width * escala, ah = img.height * escala;
       x.save();
@@ -1673,35 +1660,59 @@ async function descargarHistoria(perfil, arroba) {
       x.drawImage(img, FX + (FW - aw) / 2, FY + (FH - ah) / 2, aw, ah);
       x.restore();
       dibujada = true;
-    } catch (e) { /* sin foto se usan sus iniciales */ }
+    } catch (e) { /* sin foto van sus iniciales */ }
   }
-
   if (!dibujada) {
-    x.fillStyle = '#2A2A2A'; x.fillRect(FX, FY, FW, FH);
-    x.fillStyle = '#D6FF00'; x.font = TIT(800, 160); x.textAlign = 'center';
-    x.fillText(String(perfil.nombre_publico || '?').slice(0, 2).toUpperCase(), A / 2, FY + FH / 2 + 55);
+    x.fillStyle = '#1C1C1C'; x.fillRect(FX, FY, FW, FH);
+    x.fillStyle = '#2E2E2E'; x.font = TIT(800, 230); x.textAlign = 'center';
+    x.fillText(String(perfil.nombre_publico || '?').slice(0, 2).toUpperCase(), A / 2, FY + FH / 2 + 80);
   }
 
-  x.strokeStyle = '#D6FF00'; x.lineWidth = 6;
-  x.strokeRect(FX, FY, FW, FH);
+  // ── La cinta ────────────────────────────────────────────────────────────
+  // Cruza la foto en diagonal y se sale por los dos lados: es lo que le da el
+  // movimiento, y de paso tapa cualquier encuadre desafortunado de la foto.
+  x.save();
+  x.translate(A / 2, 900);
+  x.rotate(-7 * Math.PI / 180);
+  const alto = 104;
+  x.fillStyle = '#D6FF00';
+  x.fillRect(-A, -alto / 2, A * 2, alto);
 
-  // Nombre
-  x.textAlign = 'center';
-  x.fillStyle = '#F2F2F2'; x.font = TIT(700, 52);
-  x.fillText(String(perfil.nombre_publico || '').toUpperCase().slice(0, 20), A / 2, 1310);
+  x.fillStyle = '#0E0E0E'; x.font = TIT(800, 44); x.textAlign = 'left';
+  const trozo = 'VERIFICADA   ✦   ';
+  const ancho = x.measureText(trozo).width;
+  for (let i = -A; i < A; i += ancho) x.fillText(trozo, i, 16);
+  x.restore();
+
+  // ── Su nombre, en grande ────────────────────────────────────────────────
+  // Se parte en dos líneas por palabras: un alias largo en una sola línea se
+  // sale del lienzo.
+  // Cada palabra en su renglón mientras quepan dos: así se lee como titular y
+  // no como un pie de foto largo. Si son más de dos, las últimas se juntan.
+  const palabras = String(perfil.nombre_publico || '').toUpperCase().trim().split(/\s+/);
+  const l1 = palabras[0] || '';
+  const l2 = palabras.slice(1).join(' ');
+
+  // El alias más largo manda el tamaño: sin esto, un nombre de doce letras se
+  // sale del lienzo.
+  const largo = Math.max(l1.length, l2.length);
+  const cuerpo = largo <= 8 ? 122 : largo <= 11 ? 96 : 76;
+
+  x.textAlign = 'left'; x.fillStyle = '#F2F2F2'; x.font = TIT(800, cuerpo);
+  if (l2) {
+    x.fillText(l1, 78, 1560);
+    x.fillText(l2, 78, 1560 + cuerpo * 1.02);
+  } else {
+    x.fillText(l1, 78, 1620);
+  }
+
+  // ── Cierre ──────────────────────────────────────────────────────────────
+  x.fillStyle = '#B6B6B2'; x.font = CUE(400, 32);
+  x.fillText('Ahora hago parte de', 82, 1770);
+  x.fillStyle = '#D6FF00';
+  x.fillText('Creators Manager.', 82, 1814);
   x.fillStyle = '#7A7A7A'; x.font = CUE(400, 28);
-  x.fillText(perfil.codigo || '', A / 2, 1358);
-
-  // Lo que le dice a quien la ve
-  x.fillStyle = '#B6B6B2'; x.font = CUE(400, 36);
-  ['Mis tarifas, mi trabajo y mis', 'condiciones, en un solo lugar.', 'Sin cotizar por DM.']
-    .forEach((l, i) => x.fillText(l, A / 2, 1450 + i * 52));
-
-  // Cierre: la arroba primero, que es lo que se toca en una historia.
-  x.fillStyle = '#D6FF00'; x.font = TIT(800, 46);
-  x.fillText('@' + (arroba || 'creatorsmanager'), A / 2, 1690);
-  x.fillStyle = '#7A7A7A'; x.font = CUE(400, 30);
-  x.fillText('creatorsmanager.com', A / 2, 1742);
+  x.fillText('@' + (arroba || 'creatorsmanager'), 82, 1868);
 
   const enlace = document.createElement('a');
   enlace.download = `creators-manager-${(perfil.codigo || 'perfil').toLowerCase()}.png`;
