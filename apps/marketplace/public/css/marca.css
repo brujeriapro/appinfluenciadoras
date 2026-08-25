@@ -255,13 +255,16 @@ input[type=range]::-moz-range-thumb {
    ocupa lo que necesita. */
 .tira { display: flex; flex-wrap: wrap; gap: 2px; padding: 2px 0 0;
         border-top: 1px solid var(--border-1); }
-.tira > * { width: 176px; height: 235px; background: var(--border-3);
+/* Proporcion 9:16, la misma con la que se graba en un celular. Con la celda
+   mas ancha que el video quedaban dos bandas negras a los lados; asi el video
+   la llena exacta y no sobra nada. */
+.tira > * { width: 146px; height: 260px; background: var(--border-3);
             min-width: 0; overflow: hidden; flex: none;
             display: grid; place-items: center; font-size: 9px; color: var(--text-4);
             letter-spacing: 0.8px; }
 
 @media (max-width: 720px) {
-  .tira > * { width: 120px; height: 160px; }
+  .tira > * { width: 101px; height: 180px; }
 }
 .tira img { width: 100%; height: 100%; object-fit: cover; }
 
