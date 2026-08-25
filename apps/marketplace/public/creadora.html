@@ -371,6 +371,45 @@
   .bloque-perfil { border: 2px solid var(--ink); padding: 18px; margin-bottom: 16px; background: #fff; }
   /* Invitaciones: en lima porque es lo único del portal que le da algo, no
      que le pide algo. */
+  /* Alta guiada. Pantalla limpia y sin navegación: una cosa a la vez. */
+  .alta { max-width: 560px; margin: 0 auto; padding: clamp(20px, 5vw, 40px) 4px 60px; }
+  .alta-cab { margin-bottom: 26px; }
+  .alta-progreso { height: 3px; background: #DDDDD9; margin-bottom: 10px; }
+  .alta-progreso__barra { display: block; height: 100%; background: var(--lime); transition: width .3s; }
+  .alta-paso { font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase; color: #6E6E76; }
+  .alta__t { font-family: var(--mono-title); font-weight: 800; font-size: clamp(24px, 5.5vw, 34px);
+             letter-spacing: -1.6px; text-transform: uppercase; margin: 0 0 12px; line-height: 1.05; }
+  .alta__d { font-size: 13.5px; line-height: 1.65; color: #4A4A50; margin: 0 0 26px; }
+  .alta__btn { width: 100%; margin-top: 24px; }
+  .alta__nota { text-align: center; font-size: 11.5px; color: #6E6E76; margin-top: 10px; }
+  .alta__saltar { display: block; width: 100%; background: none; border: none; margin-top: 16px;
+                  color: #6E6E76; font-size: 12px; text-decoration: underline;
+                  cursor: pointer; font-family: var(--mono-body); }
+  .alta__saltar:hover { color: var(--ink); }
+
+  .alta-grupo { margin-bottom: 18px; }
+  .alta-grupo__t { font-size: 10.5px; letter-spacing: 1.2px; text-transform: uppercase;
+                   color: #6E6E76; margin-bottom: 8px; }
+  .alta-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .alta-chip { font-family: var(--mono-body); font-size: 12px; padding: 8px 12px;
+               border: 1px solid #C9C9C4; background: #fff;
+               color: #1C1C1E; cursor: pointer; }
+  .alta-chip:hover { border-color: var(--ink); }
+  .alta-chip.on { background: var(--lime); border-color: var(--lime); color: var(--ink); font-weight: 700; }
+
+  .alta-subir { display: grid; place-items: center; gap: 4px; padding: 40px 20px;
+                border: 2px dashed #B8B8B3; background: #fff; cursor: pointer; text-align: center; }
+  .alta-subir:hover { border-color: var(--ink); }
+  .alta-subir input { display: none; }
+  .alta-subir__mas { font-family: var(--mono-title); font-size: 30px; color: var(--ink); line-height: 1; }
+  .alta-subir__t { font-family: var(--mono-title); font-weight: 700; font-size: 13.5px; }
+  .alta-subir__d { font-size: 11px; color: #6E6E76; }
+
+  .alta-galeria { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+                  gap: 8px; margin-top: 16px; }
+  .alta-galeria img, .alta-galeria video { width: 100%; aspect-ratio: 1; object-fit: cover;
+                                           border: 2px solid var(--lime); }
+
   .bloque-perfil--inv { border-color: var(--lime); }
   .inv-premio { font-size: 11.5px; line-height: 1.6; color: var(--blue-text-softer);
                 border-left: 2px solid var(--lime); padding-left: 11px; margin-top: 12px; }
@@ -927,6 +966,9 @@ $('login-form').addEventListener('submit', async (e) => {
         codigo_ref: REF_INVITACION,
       });
       TOKEN = r.token;
+      // Recién registrada: primero el alta guiada, después el portal.
+      sessionStorage.setItem('mk_creadora', TOKEN);
+      return asistenteAlta();
     } else if (modo === 'olvide') {
       await publico('/olvide-clave', { email: $('email').value });
       err.className = 'aviso aviso--ok';
@@ -2152,6 +2194,156 @@ function revisarEnvio() {
 }
 
 // ── Arranque ────────────────────────────────────────────────────────────────
+
+/**
+ * Alta guiada, justo después de registrarse.
+ *
+ * Antes se soltaba a la creadora en el portal con el perfil a medias, y ahí se
+ * perdía: trece de las primeras veintiuna quedaron sin una sola pieza, o sea
+ * sin poder aprobarse y sin saberlo. Aquí se le piden las dos cosas que
+ * faltaban —nicho y una muestra de su trabajo— antes de dejarla entrar.
+ *
+ * Se puede saltar, pero diciéndole qué pierde. Bloquearla del todo tampoco
+ * sirve: si está en el computador y sus fotos están en el celular, la
+ * perderíamos ahí mismo.
+ */
+let PASO_ALTA = 1;
+let NICHO_ALTA = [];
+
+async function asistenteAlta() {
+  $('login-wrap').classList.add('oculto');
+  $('app').classList.remove('oculto');
+  $('tabs-movil').classList.add('oculto');
+  document.querySelector('.nav')?.classList.add('oculto');
+
+  const nichos = await api('/nichos').catch(() => ({ categorias: [] }));
+  TAXONOMIA = nichos.categorias || [];
+  pintarPasoAlta();
+}
+
+function pintarPasoAlta() {
+  const total = 2;
+  const cab = `
+    <div class="alta-cab">
+      <div class="alta-progreso">
+        <span class="alta-progreso__barra" style="width:${(PASO_ALTA - 1) / total * 100}%"></span>
+      </div>
+      <div class="alta-paso">Paso ${PASO_ALTA} de ${total}</div>
+    </div>`;
+
+  if (PASO_ALTA === 1) {
+    const grupos = TAXONOMIA.map(c => `
+      <div class="alta-grupo">
+        <div class="alta-grupo__t">${esc(c.nombre)}</div>
+        <div class="alta-chips">
+          ${(c.subnichos || []).map(n => `
+            <button type="button" class="alta-chip ${NICHO_ALTA.includes(n) ? 'on' : ''}"
+                    data-nicho="${esc(n)}">${esc(n)}</button>`).join('')}
+        </div>
+      </div>`).join('');
+
+    $('principal').innerHTML = `
+      <div class="alta">
+        ${cab}
+        <h1 class="alta__t">¿De qué hablas?</h1>
+        <p class="alta__d">Elige hasta 3. Es lo que hace que las marcas de tu tema te
+        encuentren — sin esto tu perfil no le aparece a nadie.</p>
+        <div class="alta-nichos">${grupos}</div>
+        <button class="btn-portal alta__btn" id="alta-sig" ${NICHO_ALTA.length ? '' : 'disabled'}>
+          CONTINUAR →
+        </button>
+        <div class="alta__nota" id="alta-msg">${NICHO_ALTA.length} de 3 elegidos</div>
+      </div>`;
+
+    document.querySelectorAll('.alta-chip').forEach(b => {
+      b.addEventListener('click', () => {
+        const n = b.dataset.nicho;
+        if (NICHO_ALTA.includes(n)) NICHO_ALTA = NICHO_ALTA.filter(x => x !== n);
+        else if (NICHO_ALTA.length < 3) NICHO_ALTA.push(n);
+        else return alert('Máximo 3. Un perfil enfocado se contrata más que uno que dice hacer de todo.');
+        pintarPasoAlta();
+      });
+    });
+
+    $('alta-sig').addEventListener('click', async () => {
+      const btn = $('alta-sig');
+      btn.disabled = true; btn.textContent = 'GUARDANDO…';
+      try {
+        await api('/nichos', { method: 'PUT', body: JSON.stringify({ nicho: NICHO_ALTA }) });
+        PASO_ALTA = 2;
+        pintarPasoAlta();
+      } catch (e) {
+        alert('No se pudo: ' + e.message);
+        btn.disabled = false; btn.textContent = 'CONTINUAR →';
+      }
+    });
+    return;
+  }
+
+  // Paso 2: su trabajo
+  $('principal').innerHTML = `
+    <div class="alta">
+      ${cab}
+      <h1 class="alta__t">Muéstranos tu trabajo</h1>
+      <p class="alta__d">Sube al menos una pieza: foto o video, lo que ya hayas hecho.
+      Es lo primero que mira una marca, y los perfiles con trabajo publicado reciben
+      muchas más propuestas.</p>
+
+      <label class="alta-subir" id="alta-drop">
+        <input type="file" id="alta-archivo" accept="image/*,video/mp4,video/quicktime,video/webm">
+        <span class="alta-subir__mas">+</span>
+        <span class="alta-subir__t">Subir foto o video</span>
+        <span class="alta-subir__d">Máximo 10 MB</span>
+      </label>
+
+      <div class="alta-galeria oculto" id="alta-galeria"></div>
+      <div class="aviso oculto" id="alta-msg2"></div>
+
+      <button class="btn-portal alta__btn oculto" id="alta-fin">LISTO, TERMINAR →</button>
+      <button type="button" class="alta__saltar" id="alta-saltar">
+        Lo hago después
+      </button>
+    </div>`;
+
+  $('alta-archivo').addEventListener('change', async (e) => {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+    const msg = $('alta-msg2');
+    msg.className = 'aviso aviso--ok'; msg.textContent = 'Subiendo…'; msg.classList.remove('oculto');
+    try {
+      const { base64, mime } = await prepararArchivo(archivo);
+      await api('/muestras', { method: 'POST', body: JSON.stringify({ archivo_base64: base64, mime }) });
+      const d = await api('/muestras');
+      const g = $('alta-galeria');
+      g.classList.remove('oculto');
+      g.innerHTML = (d.muestras || []).map(m => m.tipo === 'video'
+        ? `<video src="/media/${m.id}?t=${TOKEN}#t=1" muted playsinline></video>`
+        : `<img src="/media/${m.id}?t=${TOKEN}" alt="">`).join('');
+      msg.classList.add('oculto');
+      $('alta-fin').classList.remove('oculto');
+      $('alta-saltar').classList.add('oculto');
+    } catch (err) {
+      msg.className = 'aviso'; msg.textContent = err.message; msg.classList.remove('oculto');
+    } finally {
+      e.target.value = '';
+    }
+  });
+
+  $('alta-fin').addEventListener('click', () => salirDelAlta());
+  $('alta-saltar').addEventListener('click', () => {
+    if (confirm(`Sin una pieza de tu trabajo tu perfil no se publica y las marcas no te van a ver.
+
+¿Seguro que lo dejas para después?`)) {
+      salirDelAlta();
+    }
+  });
+}
+
+function salirDelAlta() {
+  document.querySelector('.nav')?.classList.remove('oculto');
+  $('tabs-movil').classList.remove('oculto');
+  arrancar();
+}
 
 async function arrancar() {
   $('login-wrap').classList.add('oculto');
