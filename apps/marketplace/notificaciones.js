@@ -333,7 +333,17 @@ function perfilAprobado({ creadora, codigoRef }) {
      <p>Tu perfil ya está publicado y las marcas te pueden encontrar. Cuando
      alguna quiera trabajar contigo te llega la propuesta acá, con lo que recibirías.</p>
 
-     ${boton('VER MI PERFIL', `${config.base_url}/creadora.html`)}
+     <!-- La imagen se dibuja en el navegador de ella, asi que no se puede
+          adjuntar aqui: se la manda a buscar al portal, donde el boton es lo
+          primero que ve al entrar. -->
+     <div style="border:2px solid #0E0E0E;padding:16px 18px;margin:22px 0">
+       <div style="font-weight:800;letter-spacing:-0.3px;margin-bottom:7px">CUÉNTALO</div>
+       <div style="font-size:12.5px;line-height:1.65;margin-bottom:14px">
+         Te armamos una imagen con tu foto para que la publiques en tus historias.
+         Las marcas que ya te siguen van a saber dónde contratarte.
+       </div>
+       ${boton('DESCARGAR MI HISTORIA', `${config.base_url}/creadora.html`)}
+     </div>
 
      ${enlace ? `
      <div style="border:2px solid #0E0E0E;background:#D6FF00;padding:15px 17px;margin-top:24px">

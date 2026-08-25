@@ -411,7 +411,16 @@
                                            border: 2px solid var(--lime); }
 
   .bloque-perfil--inv { border-color: var(--lime); }
-  .bloque-perfil--historia { border-color: var(--lime); }
+  /* Va arriba y con peso: es lo primero que debería hacer alguien que acaba de
+     quedar aprobada, y en el fondo del perfil no lo veía nadie. */
+  .pendiente-historia { border: 2px solid var(--lime); background: #FBFFE8;
+                        padding: 18px 20px; margin-bottom: 20px; }
+  .pendiente-historia__marca { display: inline-block; background: var(--lime); color: var(--ink);
+                               font-family: var(--mono-title); font-weight: 800; font-size: 9.5px;
+                               letter-spacing: 1.3px; padding: 4px 8px; margin-bottom: 11px; }
+  .pendiente-historia__t { font-family: var(--mono-title); font-weight: 800; font-size: 16px;
+                           letter-spacing: -0.5px; color: var(--ink); margin-bottom: 7px; }
+  .pendiente-historia__d { font-size: 12.5px; line-height: 1.6; color: #4A4A50; margin-bottom: 14px; }
   .inv-premio { font-size: 11.5px; line-height: 1.6; color: var(--blue-text-softer);
                 border-left: 2px solid var(--lime); padding-left: 11px; margin-top: 12px; }
   .inv-premio strong { color: var(--lime); }
@@ -1261,6 +1270,7 @@ async function vistaPerfil() {
   $('principal').innerHTML =
     cabecera('Mi perfil', 'Esto es lo que ven las marcas cuando te buscan.', 'perfil', true) +
     pasosEstado() + `
+    <div id="mis-invitaciones"></div>
 
     <div class="bloque-perfil">
       <div class="bloque-perfil__titulo">Tu foto</div>
@@ -1370,8 +1380,6 @@ async function vistaPerfil() {
       <div class="galeria" id="galeria"></div>
       <div class="error oculto" id="muestras-msg" style="margin-top:12px"></div>
     </div>
-
-    <div id="mis-invitaciones"></div>
 
     <div class="acciones">
       <button class="btn-portal" id="btn-guardar-perfil">GUARDAR PERFIL →</button>
@@ -1612,7 +1620,7 @@ let ITEMS = [];
  * que queremos. Por eso el texto le habla a las marcas —que es lo que a ella le
  * conviene mostrar— y no a nosotros.
  */
-async function descargarHistoria(perfil) {
+async function descargarHistoria(perfil, arroba) {
   const A = 1080, H = 1920;
   const c = document.createElement('canvas');
   c.width = A; c.height = H;
@@ -1622,54 +1630,83 @@ async function descargarHistoria(perfil) {
   // la identidad.
   try { await document.fonts.ready; } catch (e) {}
 
-  const TITULO = (p, t) => `${p} ${t}px "Martian Mono", ui-monospace, monospace`;
-  const CUERPO = (p, t) => `${p} ${t}px "Space Mono", ui-monospace, monospace`;
+  const TIT = (p, t) => `${p} ${t}px "Martian Mono", ui-monospace, monospace`;
+  const CUE = (p, t) => `${p} ${t}px "Space Mono", ui-monospace, monospace`;
 
   x.fillStyle = '#0E0E0E'; x.fillRect(0, 0, A, H);
-
-  // Marco
   x.strokeStyle = '#D6FF00'; x.lineWidth = 8;
-  x.strokeRect(46, 46, A - 92, H - 92);
+  x.strokeRect(40, 40, A - 80, H - 80);
 
-  // Logo
-  x.fillStyle = '#D6FF00'; x.fillRect(110, 150, 86, 86);
-  x.fillStyle = '#0E0E0E'; x.font = TITULO(800, 52); x.textAlign = 'center';
-  x.fillText('C', 153, 208);
-  x.fillStyle = '#F2F2F2'; x.font = TITULO(800, 38); x.textAlign = 'left';
-  x.fillText('CREATORS MANAGER', 220, 205);
+  // Logo, discreto
+  x.fillStyle = '#D6FF00'; x.fillRect(96, 120, 58, 58);
+  x.fillStyle = '#0E0E0E'; x.font = TIT(800, 36); x.textAlign = 'center';
+  x.fillText('C', 125, 162);
+  x.fillStyle = '#7A7A7A'; x.font = TIT(700, 24); x.textAlign = 'left';
+  x.fillText('CREATORS MANAGER', 172, 158);
 
-  // Titular
-  x.textAlign = 'left';
-  x.fillStyle = '#F2F2F2'; x.font = TITULO(800, 104);
-  x.fillText('YA ESTOY EN', 110, 560);
-  x.fillStyle = '#D6FF00';
-  x.fillText('CREATORS', 110, 680);
-  x.fillText('MANAGER', 110, 800);
+  // El titular: es una buena noticia, no un anuncio
+  x.textAlign = 'center';
+  x.fillStyle = '#F2F2F2'; x.font = TIT(700, 42);
+  x.fillText('QUEDÉ', A / 2, 320);
+  x.fillStyle = '#D6FF00'; x.font = TIT(800, 150);
+  x.fillText('APROBADA', A / 2, 470);
 
-  // Su nombre y código
-  x.fillStyle = '#D6FF00'; x.fillRect(110, 900, 14, 130);
-  x.fillStyle = '#F2F2F2'; x.font = TITULO(700, 54);
-  const alias = String(perfil.nombre_publico || '').toUpperCase().slice(0, 22);
-  x.fillText(alias, 152, 962);
-  x.fillStyle = '#9A9A9A'; x.font = CUERPO(400, 32);
-  x.fillText(perfil.codigo || '', 152, 1012);
+  // Su foto, protagonista
+  const FX = A / 2 - 260, FY = 570, FW = 520, FH = 640;
+  x.fillStyle = '#1A1A1A'; x.fillRect(FX, FY, FW, FH);
 
-  // Lo que le dice a una marca que lo vea
-  const lineas = [
-    'Las marcas que buscan creadoras',
-    'para colaboraciones pagas ahora',
-    'me encuentran acá. Con mis tarifas,',
-    'mi trabajo y mis condiciones.',
-  ];
-  x.fillStyle = '#B6B6B2'; x.font = CUERPO(400, 38);
-  lineas.forEach((l, i) => x.fillText(l, 110, 1180 + i * 58));
+  let dibujada = false;
+  if (perfil.foto_perfil_path && perfil.id) {
+    try {
+      const img = await new Promise((ok, mal) => {
+        const i = new Image();
+        i.onload = () => ok(i);
+        i.onerror = mal;
+        i.src = `/media/perfil/${perfil.id}?t=${TOKEN}`;
+      });
+      // Recorte centrado para llenar el marco sin deformarla.
+      const escala = Math.max(FW / img.width, FH / img.height);
+      const aw = img.width * escala, ah = img.height * escala;
+      x.save();
+      x.beginPath(); x.rect(FX, FY, FW, FH); x.clip();
+      x.drawImage(img, FX + (FW - aw) / 2, FY + (FH - ah) / 2, aw, ah);
+      x.restore();
+      dibujada = true;
+    } catch (e) { /* sin foto se usan sus iniciales */ }
+  }
 
-  // Cierre
-  x.fillStyle = '#D6FF00'; x.fillRect(110, 1500, A - 220, 4);
-  x.fillStyle = '#F2F2F2'; x.font = TITULO(800, 46);
-  x.fillText('CREATORSMANAGER.COM', 110, 1590);
-  x.fillStyle = '#9A9A9A'; x.font = CUERPO(400, 30);
-  x.fillText('Marcas: escríbanme por ahí', 110, 1650);
+  if (!dibujada) {
+    x.fillStyle = '#2A2A2A'; x.fillRect(FX, FY, FW, FH);
+    x.fillStyle = '#D6FF00'; x.font = TIT(800, 160); x.textAlign = 'center';
+    x.fillText(String(perfil.nombre_publico || '?').slice(0, 2).toUpperCase(), A / 2, FY + FH / 2 + 55);
+  }
+
+  x.strokeStyle = '#D6FF00'; x.lineWidth = 6;
+  x.strokeRect(FX, FY, FW, FH);
+
+  // Sello sobre la esquina de la foto
+  const sw = 300, sh = 62;
+  x.fillStyle = '#D6FF00'; x.fillRect(FX, FY + FH - sh, sw, sh);
+  x.fillStyle = '#0E0E0E'; x.font = TIT(800, 22); x.textAlign = 'center';
+  x.fillText('CREADORA VERIFICADA', FX + sw / 2, FY + FH - 22);
+
+  // Nombre
+  x.textAlign = 'center';
+  x.fillStyle = '#F2F2F2'; x.font = TIT(700, 52);
+  x.fillText(String(perfil.nombre_publico || '').toUpperCase().slice(0, 20), A / 2, 1310);
+  x.fillStyle = '#7A7A7A'; x.font = CUE(400, 28);
+  x.fillText(perfil.codigo || '', A / 2, 1358);
+
+  // Lo que le dice a quien la ve
+  x.fillStyle = '#B6B6B2'; x.font = CUE(400, 36);
+  ['Las marcas que quieran trabajar', 'conmigo ya saben dónde encontrarme.']
+    .forEach((l, i) => x.fillText(l, A / 2, 1470 + i * 52));
+
+  // Cierre: la arroba primero, que es lo que se toca en una historia.
+  x.fillStyle = '#D6FF00'; x.font = TIT(800, 46);
+  x.fillText('@' + (arroba || 'creatorsmanager'), A / 2, 1690);
+  x.fillStyle = '#7A7A7A'; x.font = CUE(400, 30);
+  x.fillText('creatorsmanager.com', A / 2, 1742);
 
   const enlace = document.createElement('a');
   enlace.download = `creators-manager-${(perfil.codigo || 'perfil').toLowerCase()}.png`;
@@ -1697,15 +1734,14 @@ async function pintarInvitaciones() {
     </div>` : '';
 
   caja.innerHTML = `
-    <div class="bloque-perfil bloque-perfil--historia">
-      <div class="bloque-perfil__titulo">Cuéntalo en tus historias</div>
-      <div class="bloque-perfil__nota">
-        Te armamos una imagen lista para publicar. Las marcas que te siguen sabrán
-        dónde encontrarte, y las creadoras que te ven se enteran de que esto existe.
+    <div class="pendiente-historia">
+      <div class="pendiente-historia__marca">TE FALTA ESTO</div>
+      <div class="pendiente-historia__t">Anuncia que quedaste aprobada</div>
+      <div class="pendiente-historia__d">
+        Te armamos la imagen con tu foto, lista para tus historias. Las marcas que ya te
+        siguen van a saber dónde contratarte.
       </div>
-      <button class="btn-portal btn-portal--sec" id="btn-historia" style="margin-top:12px">
-        Descargar mi historia
-      </button>
+      <button class="btn-portal" id="btn-historia">Descargar y publicar →</button>
     </div>
 
     <div class="bloque-perfil bloque-perfil--inv">
@@ -1737,7 +1773,7 @@ async function pintarInvitaciones() {
     const b = $('btn-historia');
     b.disabled = true; b.textContent = 'Preparando…';
     try {
-      await descargarHistoria(DATOS.perfil || {});
+      await descargarHistoria(DATOS.perfil || {}, d.instagram_marca);
       b.textContent = 'Descargada ✓';
     } catch (e) {
       b.textContent = 'No se pudo';

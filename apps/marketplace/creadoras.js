@@ -677,8 +677,11 @@ router.get('/mis-invitaciones', async (req, res) => {
       order: 'created_at.desc',
     });
 
+    const cfg = await db.getConfig();
+
     res.json({
       disponible: true,
+      instagram_marca: cfg.instagram_marca || 'creatorsmanager',
       codigo,
       enlace: `${config.base_url}/invitacion.html?ref=${encodeURIComponent(codigo)}`,
       cupos,
