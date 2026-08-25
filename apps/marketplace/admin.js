@@ -874,7 +874,7 @@ router.post('/whatsapp/prueba', async (req, res) => {
     const r = await whatsapp.enviarPlantilla(tel, [nombre]);
 
     if (!r.ok) return res.status(500).json({ error: r.error, telefono: tel });
-    res.json({ ok: true, telefono: tel, id: r.id });
+    res.json({ ok: true, telefono: tel, id: r.id, idioma: r.idioma });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

@@ -1072,7 +1072,8 @@ VISTAS.invitaciones = async () => {
     try {
       const r = await api('/whatsapp/prueba', { method: 'POST', body: JSON.stringify({ telefono: tel }) });
       msg.style.color = 'var(--lime)';
-      msg.textContent = 'Enviado a +' + r.telefono + '. Revisa tu WhatsApp.';
+      msg.textContent = 'Enviado a +' + r.telefono + '. Revisa tu WhatsApp.'
+        + (r.idioma && r.idioma !== 'es' ? ` (idioma ${r.idioma} — ponlo en WA_PLANTILLA_IDIOMA)` : '');
     } catch (e) {
       msg.style.color = 'var(--magenta)';
       msg.textContent = e.message;

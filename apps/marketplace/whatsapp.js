@@ -46,42 +46,88 @@ function normalizarTelefono(crudo) {
  * llama está recorriendo cientos de destinatarios y un fallo suelto no puede
  * tumbar la tanda entera.
  */
+/**
+ * Códigos de idioma que Meta usa para el español.
+ *
+ * Al crear una plantilla, la interfaz deja elegir "Español", "Español (México)"
+ * o "Español (España)", y cada una queda con un código distinto. Pedirla con el
+ * código equivocado devuelve "template name does not exist in the translation",
+ * que suena a que la plantilla no existe cuando en realidad sí está.
+ */
+const IDIOMAS_ES = ['es', 'es_ES', 'es_MX', 'es_AR', 'es_LA'];
+
+/** Una sola llamada a Meta con un idioma concreto. */
+async function intentarEnvio(numero, variables, idioma) {
+  const r = await fetch(`${API}/${config.whatsapp.phone_number_id}/messages`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${config.whatsapp.token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to: numero,
+      type: 'template',
+      template: {
+        name: config.whatsapp.plantilla,
+        language: { code: idioma },
+        components: variables.length ? [{
+          type: 'body',
+          parameters: variables.map(v => ({ type: 'text', text: String(v) })),
+        }] : [],
+      },
+    }),
+  });
+
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    return {
+      ok: false,
+      codigo: d?.error?.code,
+      error: d?.error?.message || `HTTP ${r.status}`,
+    };
+  }
+  return { ok: true, id: d?.messages?.[0]?.id || null, idioma };
+}
+
+/**
+ * Manda una plantilla a un número.
+ *
+ * Devuelve { ok, id } o { ok: false, error } — nunca lanza, porque quien la
+ * llama está recorriendo cientos de destinatarios y un fallo suelto no puede
+ * tumbar la tanda entera.
+ *
+ * Si el idioma configurado no corresponde, prueba las otras variantes del
+ * español antes de darse por vencida: el resultado es el mismo y le ahorra a
+ * quien opera tener que adivinar el código exacto.
+ */
 async function enviarPlantilla(telefono, variables = []) {
   if (!configurado()) return { ok: false, error: 'WhatsApp sin configurar' };
 
   const numero = normalizarTelefono(telefono);
   if (!numero) return { ok: false, error: 'Teléfono no válido' };
 
-  try {
-    const r = await fetch(`${API}/${config.whatsapp.phone_number_id}/messages`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${config.whatsapp.token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: numero,
-        type: 'template',
-        template: {
-          name: config.whatsapp.plantilla,
-          language: { code: config.whatsapp.idioma },
-          components: variables.length ? [{
-            type: 'body',
-            parameters: variables.map(v => ({ type: 'text', text: String(v) })),
-          }] : [],
-        },
-      }),
-    });
+  const primero = config.whatsapp.idioma;
+  const orden = [primero, ...IDIOMAS_ES.filter(i => i !== primero)];
 
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      // El mensaje de Meta dice exactamente qué pasó —plantilla no aprobada,
-      // token vencido, número fuera de WhatsApp— y sin él depurar es adivinar.
-      const detalle = d?.error?.message || `HTTP ${r.status}`;
-      return { ok: false, error: detalle };
+  try {
+    let ultimo = null;
+    for (const idioma of orden) {
+      const r = await intentarEnvio(numero, variables, idioma);
+      if (r.ok) return r;
+      ultimo = r;
+      // 132001 es "no existe en esa traducción": vale la pena probar otra.
+      // Cualquier otro error —token, número, cuota— no se arregla cambiando
+      // de idioma, así que se corta ahí.
+      if (r.codigo !== 132001) break;
     }
-    return { ok: true, id: d?.messages?.[0]?.id || null };
+    return {
+      ok: false,
+      error: ultimo?.codigo === 132001
+        ? `No se encontró la plantilla "${config.whatsapp.plantilla}" en ningún idioma español. `
+          + 'Revisa que el nombre en WA_PLANTILLA sea exactamente el aprobado en Meta.'
+        : ultimo?.error || 'Error desconocido',
+    };
   } catch (e) {
     return { ok: false, error: e.message };
   }
