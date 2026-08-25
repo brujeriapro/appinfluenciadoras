@@ -639,7 +639,8 @@ VISTAS.creadoras = async () => {
       <span style="font-size:12.5px;color:var(--grey-700);flex:1;min-width:200px">
         Listas = con nicho y con trabajo publicado. Las demás necesitan que suban algo antes.
       </span>
-      ${paraAprobar.length ? `<button class="btn-mini" id="aprobar-listas">APROBAR LAS ${paraAprobar.length} LISTAS</button>` : ''}
+      <button class="btn-mini oculto" id="aprobar-sel">APROBAR SELECCIONADAS</button>
+      ${paraAprobar.length ? `<button class="btn-mini btn-mini--ghost" id="aprobar-listas">APROBAR LAS ${paraAprobar.length} LISTAS</button>` : ''}
     </div>
     <div id="aprobar-masivo-msg" style="font-size:12.5px;margin-bottom:14px"></div>
     <div class="bloque" style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -652,12 +653,19 @@ VISTAS.creadoras = async () => {
     </div>
     <div id="rec-masivo-msg" style="font-size:12.5px;margin-bottom:14px"></div>
     <div class="tabla-wrap"><table>
-      <thead><tr><th>Nombre</th><th>Redes</th><th>Seguidores</th><th>Ciudad</th>
+      <thead><tr>
+        <th style="width:34px"><input type="checkbox" id="sel-todas" title="Marcar todas"
+              style="width:16px;height:16px;accent-color:var(--lime)"></th>
+        <th>Nombre</th><th>Redes</th><th>Seguidores</th><th>Ciudad</th>
         <th>Tarifas</th><th>Nicho</th><th>Origen</th><th></th></tr></thead>
       <tbody>${enCola.map(c => {
         const lista = c.lista;
         return `
         <tr class="clicable" data-creadora="${c.id}">
+          <td onclick="event.stopPropagation()">
+            <input type="checkbox" class="sel-creadora" value="${c.id}"
+                   style="width:16px;height:16px;accent-color:var(--lime)">
+          </td>
           <td>${esc(c.nombre_publico)}${c.nombre_real ? `<div style="font-size:10.5px;color:var(--grey-700)">${esc(c.nombre_real)}</div>` : ''}</td>
           <td style="font-size:11px">
             ${c.instagram ? `<a href="https://instagram.com/${esc(c.instagram)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">@${esc(c.instagram)}</a><br>` : ''}
@@ -750,6 +758,46 @@ VISTAS.creadoras = async () => {
   document.getElementById('filtro-listas')?.addEventListener('click', () => {
     SOLO_LISTAS = !SOLO_LISTAS;
     ir('creadoras');
+  });
+
+  // Selección manual: quien marca está viendo la ficha, así que puede aprobar
+  // perfiles que el criterio automático dejaría fuera.
+  const marcadas = () => [...document.querySelectorAll('.sel-creadora:checked')].map(i => i.value);
+
+  function refrescarSeleccion() {
+    const n = marcadas().length;
+    const b = document.getElementById('aprobar-sel');
+    b.classList.toggle('oculto', n === 0);
+    b.textContent = `APROBAR ${n} SELECCIONADA${n === 1 ? '' : 'S'}`;
+  }
+
+  document.getElementById('sel-todas')?.addEventListener('change', (e) => {
+    document.querySelectorAll('.sel-creadora').forEach(i => { i.checked = e.target.checked; });
+    refrescarSeleccion();
+  });
+
+  contenido().querySelectorAll('.sel-creadora').forEach(i => {
+    i.addEventListener('change', refrescarSeleccion);
+  });
+
+  document.getElementById('aprobar-sel')?.addEventListener('click', async () => {
+    const ids = marcadas();
+    if (!ids.length) return;
+    const msg = document.getElementById('aprobar-masivo-msg');
+
+    if (!confirm(`Vas a publicar ${ids.length} perfil${ids.length === 1 ? '' : 'es'} y avisarles por correo.` +
+                 String.fromCharCode(10) + 'No se puede deshacer. ¿Seguimos?')) return;
+
+    const b = document.getElementById('aprobar-sel');
+    b.disabled = true; b.textContent = 'APROBANDO…';
+    try {
+      const r = await api('/creadoras/aprobar-listas', { method: 'POST', body: JSON.stringify({ ids }) });
+      msg.style.color = 'var(--lime)';
+      msg.textContent = `Aprobando ${r.se_aprobaran}. Van de a una con su correo; recarga en un momento.`;
+    } catch (e) {
+      msg.style.color = 'var(--magenta)'; msg.textContent = e.message;
+      b.disabled = false; refrescarSeleccion();
+    }
   });
 
   document.getElementById('aprobar-listas')?.addEventListener('click', async () => {

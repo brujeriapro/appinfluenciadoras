@@ -391,12 +391,22 @@ router.get('/por-revisar', async (req, res) => {
 router.post('/creadoras/aprobar-listas', async (req, res) => {
   try {
     const pendientes = await db.getCreadorasPorRevisar();
+    const pedidas = Array.isArray(req.body.ids) ? req.body.ids : null;
 
     const listas = [];
     for (const c of pendientes) {
-      if (!(c.nicho || []).length) continue;
-      const muestras = await db.getMuestrasDeCreadora(c.id);
-      if (!muestras.length) continue;
+      // Con una selección explícita se respeta lo que decidió quien está
+      // mirando las fichas: solo se exige nicho, igual que al aprobar de a una.
+      // Sin selección, el criterio es el estricto —también con trabajo
+      // publicado— porque nadie está revisando ficha por ficha.
+      if (pedidas) {
+        if (!pedidas.includes(c.id)) continue;
+        if (!(c.nicho || []).length) continue;
+      } else {
+        if (!(c.nicho || []).length) continue;
+        const muestras = await db.getMuestrasDeCreadora(c.id);
+        if (!muestras.length) continue;
+      }
       listas.push(c);
     }
 
@@ -407,7 +417,12 @@ router.post('/creadoras/aprobar-listas', async (req, res) => {
       });
     }
 
-    if (!listas.length) return res.status(409).json({ error: 'Ninguna está lista todavía.' });
+    if (!listas.length) {
+      return res.status(409).json({
+        error: pedidas ? 'Ninguna de las marcadas se puede aprobar: les falta el nicho.'
+                       : 'Ninguna está lista todavía.',
+      });
+    }
 
     res.json({ ok: true, se_aprobaran: listas.length });
 
