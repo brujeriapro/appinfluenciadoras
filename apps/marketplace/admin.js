@@ -359,6 +359,71 @@ router.get('/por-revisar', async (req, res) => {
 });
 
 /**
+ * Le escribe a TODAS las que tienen algo pendiente, de una.
+ *
+ * No le escribe dos veces a la misma en menos de una semana: un recordatorio
+ * cada dos días deja de ser un recordatorio y pasa a ser insistencia, y la
+ * respuesta a eso es dejar de abrir los correos.
+ */
+router.post('/creadoras/recordatorio-masivo', async (req, res) => {
+  try {
+    const dias = Number(req.body.dias_gracia ?? 7);
+    const corte = new Date(Date.now() - dias * 86400_000).toISOString();
+    const todas = await db.getCreadorasAdmin();
+
+    const pendientes = [];
+    for (const c of todas) {
+      if (!c.email) continue;
+      if (c.estado_perfil === 'rechazada') continue;
+      if (c.recordatorio_at && c.recordatorio_at > corte) continue;
+
+      const [tarifas, muestras, priv] = await Promise.all([
+        db.getTarifasDeCreadora(c.id),
+        db.getMuestrasDeCreadora(c.id),
+        db.getPrivadoDeCreadora(c.id),
+      ]);
+
+      const falta = [];
+      if (!muestras.length) falta.push('Subir al menos una pieza de tu trabajo — foto o video');
+      if (!(c.nicho || []).length) falta.push('Elegir tus nichos, para que las marcas del tema te encuentren');
+      if (!priv?.instagram_handle && !priv?.tiktok_handle) falta.push('Conectar al menos una red');
+      if (!tarifas.some(t => t.activo !== false) && !c.tarifa_abierta) {
+        falta.push('Decir cuánto cobras — con un precio, o marcando que prefieres conversarlo');
+      }
+      if (falta.length) pendientes.push({ c, falta });
+    }
+
+    if (req.body.dry_run === true) {
+      return res.json({
+        simulacro: true, se_escribiria_a: pendientes.length,
+        muestra: pendientes.slice(0, 8).map(x => ({
+          nombre: x.c.nombre_publico, publicada: x.c.visible, falta: x.falta.length,
+        })),
+      });
+    }
+
+    // Se responde de una: escribirle a decenas toma minutos y ningún navegador
+    // espera tanto sin cortar.
+    res.json({ ok: true, se_escribira_a: pendientes.length });
+
+    let ok = 0;
+    for (const [i, x] of pendientes.entries()) {
+      const salio = await notificaciones.recordatorioPerfil({
+        email: x.c.email, nombre: x.c.nombre_publico, falta: x.falta,
+      });
+      if (salio) {
+        ok++;
+        await db.updateCreadora(x.c.id, { recordatorio_at: new Date().toISOString() });
+      }
+      if (i < pendientes.length - 1) await dormir(900);
+    }
+    console.log(`[recordatorios] ${ok} de ${pendientes.length} enviados`);
+  } catch (e) {
+    console.error('[recordatorio-masivo]', e.message);
+  }
+});
+
+/**
  * Le recuerda a una creadora qué le falta para poder publicarse.
  *
  * Calcula lo que falta en el momento, en vez de fiarse de lo que el panel

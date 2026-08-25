@@ -777,10 +777,6 @@ function filaHTML(c) {
           <div class="metrica__valor">${esc(c.rango_tiktok || '—')}</div>
           <div class="metrica__label">TikTok</div>
         </div>
-        <div class="metrica">
-          <div class="metrica__valor">${c.engagement_pct != null ? c.engagement_pct + '%' : '—'}</div>
-          <div class="metrica__label">Engagement</div>
-        </div>
       </div>
       <div class="desde">
         <div class="desde__valor">${c.tarifa_min ? COP(c.tarifa_min) : 'A convenir'}</div>
@@ -825,8 +821,6 @@ function tarjetaHTML(c) {
              <div class="metrica__label">Instagram</div></div>
         <div><div class="metrica__valor">${esc(c.rango_tiktok || '—')}</div>
              <div class="metrica__label">TikTok</div></div>
-        <div><div class="metrica__valor">${c.engagement_pct != null ? c.engagement_pct + '%' : '—'}</div>
-             <div class="metrica__label">Engagement</div></div>
         <div><div class="metrica__valor">${c.dias_entrega ? c.dias_entrega + ' días' : '—'}</div>
              <div class="metrica__label">Entrega</div></div>
       </div>

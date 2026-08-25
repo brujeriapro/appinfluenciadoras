@@ -627,6 +627,15 @@ VISTAS.creadoras = async () => {
   // la vista para poder verificarlos antes de aprobar.
   const cola = porRevisar.length ? `
     <div class="seccion-titulo">Esperando revisión · ${porRevisar.length}</div>
+    <div class="bloque" style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span style="font-size:12.5px;color:var(--grey-700);flex:1;min-width:220px">
+        Escríbele de una a todas las que tienen algo pendiente — incluidas las ya
+        publicadas a las que les faltan piezas. No repite a quien ya recibió esta semana.
+      </span>
+      <button class="btn-mini" id="rec-simular">VER A CUÁNTAS</button>
+      <button class="btn-mini" id="rec-todas">RECORDAR A TODAS</button>
+    </div>
+    <div id="rec-masivo-msg" style="font-size:12.5px;margin-bottom:14px"></div>
     <div class="tabla-wrap"><table>
       <thead><tr><th>Nombre</th><th>Redes</th><th>Seguidores</th><th>Ciudad</th>
         <th>Tarifas</th><th>Nicho</th><th>Origen</th><th></th></tr></thead>
@@ -694,6 +703,33 @@ VISTAS.creadoras = async () => {
 
   contenido().querySelectorAll('[data-creadora]').forEach(tr => {
     tr.addEventListener('click', () => verCreadora(tr.dataset.creadora));
+  });
+
+  document.getElementById('rec-simular')?.addEventListener('click', async () => {
+    const msg = document.getElementById('rec-masivo-msg');
+    msg.style.color = 'var(--grey-700)'; msg.textContent = 'Revisando…';
+    try {
+      const r = await api('/creadoras/recordatorio-masivo', {
+        method: 'POST', body: JSON.stringify({ dry_run: true }),
+      });
+      msg.style.color = 'var(--off-white)';
+      msg.textContent = `Se les escribiría a ${r.se_escribiria_a}. Nadie que ya haya recibido esta semana.`;
+    } catch (e) { msg.style.color = 'var(--magenta)'; msg.textContent = e.message; }
+  });
+
+  document.getElementById('rec-todas')?.addEventListener('click', async () => {
+    if (!confirm('Le va a escribir a todas las que tienen algo pendiente. ¿Seguimos?')) return;
+    const b = document.getElementById('rec-todas');
+    const msg = document.getElementById('rec-masivo-msg');
+    b.disabled = true; b.textContent = 'ENVIANDO…';
+    try {
+      const r = await api('/creadoras/recordatorio-masivo', { method: 'POST', body: '{}' });
+      msg.style.color = 'var(--lime)';
+      msg.textContent = `Escribiéndole a ${r.se_escribira_a}. Van saliendo de a una; recarga en un rato.`;
+    } catch (e) {
+      msg.style.color = 'var(--magenta)'; msg.textContent = e.message;
+      b.disabled = false; b.textContent = 'RECORDAR A TODAS';
+    }
   });
 
   contenido().querySelectorAll('[data-recordar]').forEach(b => {

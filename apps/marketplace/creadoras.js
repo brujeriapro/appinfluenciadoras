@@ -278,8 +278,11 @@ router.get('/estado', async (req, res) => {
     const faltantes = [];
     if (!(c.nicho || []).length) faltantes.push('nicho');
     if (!conRedes)               faltantes.push('redes');
-    if (!conTarifas)             faltantes.push('tarifas');
     if (!muestras.length)        faltantes.push('trabajo');
+    // La tarifa ya no bloquea nada, pero sigue valiendo la pena sugerirla: una
+    // ficha con precio le ahorra a la marca tener que preguntar.
+    const sugerencias = [];
+    if (!conTarifas && !c.tarifa_abierta) sugerencias.push('tarifas');
 
     // Lo que le decimos, según lo que le falte. Concreto y en su idioma: nadie
     // debería quedarse esperando sin saber por qué no le llegan propuestas.
@@ -296,9 +299,16 @@ router.get('/estado', async (req, res) => {
       mensaje = c.motivo_rechazo
         ? `Tu perfil no fue aprobado: ${c.motivo_rechazo}`
         : 'Tu perfil no fue aprobado. Escríbenos si quieres saber más.';
+    } else if (c.visible && !muestras.length) {
+      tono = 'accion';
+      mensaje = 'Tu perfil está publicado, pero sin una sola pieza de tu trabajo las '
+              + 'marcas no tienen qué mirar. Sube al menos una: es lo que más te va a '
+              + 'traer propuestas.';
     } else if (c.visible) {
       tono = 'bueno';
-      mensaje = 'Tu perfil está publicado. Las marcas ya te pueden encontrar.';
+      mensaje = sugerencias.includes('tarifas')
+        ? 'Tu perfil está publicado. Si pones tus tarifas, las marcas llegan sabiendo cuánto cobras.'
+        : 'Tu perfil está publicado. Las marcas ya te pueden encontrar.';
     } else if (faltantes.length) {
       tono = 'accion';
       const lista = faltantes.map(f => QUE_FALTA[f]).filter(Boolean);
@@ -317,6 +327,7 @@ router.get('/estado', async (req, res) => {
       nicho: c.nicho || [],
       fuente_metricas: c.fuente_metricas || 'declarado',
       faltantes,
+      sugerencias,
       mensaje,
       tono,
     });

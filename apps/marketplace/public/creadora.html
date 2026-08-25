@@ -353,6 +353,10 @@
     font-size: 12.5px; line-height: 1.6; color: var(--ink);
   }
   .pasos-estado__falta { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .falta-chip--btn { cursor: pointer; border: 1px solid var(--lime); background: none;
+                     color: var(--lime); font-family: var(--mono-body); }
+  .falta-chip--btn:hover { background: var(--lime); color: var(--ink); }
+
   .falta-chip { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
                 padding: 4px 8px; background: var(--magenta); color: var(--ink); }
 
@@ -1054,6 +1058,19 @@ function marcarNav() {
 document.addEventListener('click', e => {
   const b = e.target.closest('.nav-item, .tab-movil');
   if (b && !b.disabled && b.dataset.vista !== 'pagos') ir(b.dataset.vista);
+
+  // Los avisos de "te falta X" llevan a donde se resuelve. Va delegado porque
+  // el bloque de estado se vuelve a dibujar en cada cambio de sección.
+  const f = e.target.closest('[data-ir]');
+  if (f) {
+    ir(f.dataset.ir);
+    if (f.dataset.ir === 'perfil') {
+      setTimeout(() => {
+        document.querySelector('.subida-muestras, #archivo')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 400);
+    }
+  }
 });
 
 async function ir(v) {
@@ -1106,15 +1123,22 @@ function pasosEstado() {
 
   const rechazada = ESTADO.tono === 'malo';
   const publicada = ESTADO.visible === true;
+  // Publicada pero sin piezas: sigue habiendo algo urgente que hacer, y el
+  // aviso tiene que aparecer igual.
+  const faltaAlgo = (ESTADO.faltantes || []).length > 0;
   const enRevision = !publicada && !rechazada && (ESTADO.faltantes || []).length === 0;
-  const completando = !publicada && !rechazada && !enRevision;
+  const completando = (!publicada && !rechazada && !enRevision) || (publicada && faltaAlgo);
 
   const QUE_FALTA = {
     nicho: 'tu nicho',
     redes: 'tus redes',
     tarifas: 'tus tarifas',
-    trabajo: 'una pieza de tu trabajo',
+    trabajo: 'subir tu trabajo',
   };
+
+  // A qué sección lleva cada cosa que falta. Decirle qué le falta sin llevarla
+  // ahí es dejarle la tarea de encontrarlo.
+  const DONDE = { nicho: 'perfil', redes: 'perfil', tarifas: 'tarifas', trabajo: 'perfil' };
 
   const paso = (num, texto, estado) => `
     <div class="paso-e ${estado}">
@@ -1144,7 +1168,8 @@ function pasosEstado() {
         ${esc(ESTADO.mensaje)}
         ${completando && (ESTADO.faltantes || []).length ? `
           <div class="pasos-estado__falta">
-            ${ESTADO.faltantes.map(f => `<span class="falta-chip">Falta ${esc(QUE_FALTA[f] || f)}</span>`).join('')}
+            ${ESTADO.faltantes.map(f => `<button type="button" class="falta-chip falta-chip--btn"
+                 data-ir="${DONDE[f] || 'perfil'}">Falta ${esc(QUE_FALTA[f] || f)} →</button>`).join('')}
           </div>` : ''}
       </div>
     </div>`;
