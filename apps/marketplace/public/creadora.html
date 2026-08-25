@@ -491,6 +491,18 @@
   .login .aviso { border-color: var(--ink); background: #fff; color: var(--ink); }
   .login .aviso--ok { border-color: var(--blue); background: #F0F0FF; }
 
+  .separador-o { display: flex; align-items: center; gap: 11px; margin: 18px 0 14px;
+                 color: #9A9A9A; font-size: 10.5px; letter-spacing: 1px; }
+  .separador-o::before, .separador-o::after { content: ""; flex: 1; height: 1px; background: #DDD; }
+
+  .btn-registrarme {
+    width: 100%; background: var(--ink); color: var(--lime); border: 2px solid var(--ink);
+    font-family: var(--mono-title); font-weight: 800; font-size: 13px; letter-spacing: -0.2px;
+    padding: 14px 16px; cursor: pointer;
+  }
+  .btn-registrarme:hover { background: #000; }
+  .btn-registrarme:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
   .cambiar-modo { background: none; border: none; color: #5A5A5A; font-size: 10.5px;
                   text-decoration: underline; cursor: pointer; margin-top: 14px; padding: 0;
                   letter-spacing: 0.6px; }
@@ -634,8 +646,15 @@
     <button class="btn-portal" style="width:100%" type="submit" id="login-btn">ENTRAR →</button>
     <div class="error oculto" id="login-error"></div>
 
+    <!-- Registrarse era un enlace subrayado de 10px, del mismo peso que
+         "olvidé mi contraseña". Para quien llega por primera vez —que es la
+         mayoría— esa es la acción principal, no una nota al pie. -->
+    <div class="separador-o"><span>o</span></div>
+    <button type="button" class="btn-registrarme" data-modo="registro">
+      Crear mi perfil de creadora →
+    </button>
+
     <div class="enlaces-login">
-      <button type="button" class="cambiar-modo" data-modo="registro">Soy creadora y quiero registrarme</button>
       <button type="button" class="cambiar-modo" data-modo="primera">Ya tengo perfil, es mi primera vez</button>
       <button type="button" class="cambiar-modo" data-modo="olvide">Olvidé mi contraseña</button>
     </div>
@@ -753,9 +772,14 @@ function pintarModo() {
   document.querySelectorAll('.enlaces-login .cambiar-modo').forEach(b => {
     b.classList.toggle('oculto', b.dataset.modo === modo);
   });
+  // Ya estando en el formulario de registro, el botón de registrarse sobra —y
+  // el separador con él, o queda una raya suelta.
+  const enRegistro = modo === 'registro';
+  document.querySelector('.btn-registrarme').classList.toggle('oculto', enRegistro);
+  document.querySelector('.separador-o').classList.toggle('oculto', enRegistro);
 }
 
-document.querySelectorAll('.enlaces-login .cambiar-modo').forEach(b => {
+document.querySelectorAll('.enlaces-login .cambiar-modo, .btn-registrarme').forEach(b => {
   b.addEventListener('click', () => {
     modo = b.dataset.modo === modo ? 'login' : b.dataset.modo;
     pintarModo();
