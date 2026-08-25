@@ -707,6 +707,21 @@ VISTAS.creadoras = async () => {
 
   const cajaWa = () => document.getElementById('resultado-wa');
 
+  document.getElementById('wa-prueba-btn')?.addEventListener('click', async () => {
+    const tel = document.getElementById('wa-prueba-tel').value.trim();
+    const msg = document.getElementById('wa-prueba-msg');
+    if (!tel) { msg.style.color = 'var(--magenta)'; msg.textContent = 'Escribe tu número.'; return; }
+    msg.style.color = 'var(--grey-700)'; msg.textContent = 'Enviando…';
+    try {
+      const r = await api('/whatsapp/prueba', { method: 'POST', body: JSON.stringify({ telefono: tel }) });
+      msg.style.color = 'var(--lime)';
+      msg.textContent = 'Enviado a +' + r.telefono + '. Revisa tu WhatsApp.';
+    } catch (e) {
+      msg.style.color = 'var(--magenta)';
+      msg.textContent = e.message;
+    }
+  });
+
   contenido().querySelectorAll('[data-wa-simular]').forEach(b => {
     b.addEventListener('click', async () => {
       b.disabled = true; b.textContent = 'MIRANDO…';
@@ -1092,6 +1107,17 @@ VISTAS.invitaciones = async () => {
           </tr>`).join('')}
         </tbody>
       </table></div>
+      <div class="bloque" style="margin-top:14px">
+        <div class="bloque__titulo">Mándate una de prueba</div>
+        <p style="font-size:12.5px;margin:0 0 10px">Llega a tu WhatsApp igual que le
+        llegaría a una creadora. No cuenta como invitada ni toca la lista.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="wa-prueba-tel" placeholder="300 000 0000" inputmode="tel" style="flex:1;min-width:180px">
+          <button class="btn-mini" id="wa-prueba-btn">ENVIARME UNA</button>
+        </div>
+        <div id="wa-prueba-msg" style="font-size:12px;margin-top:10px"></div>
+      </div>
+
       <div id="resultado-wa"></div>` : ''}
   `;
 

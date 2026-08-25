@@ -852,6 +852,34 @@ router.get('/whatsapp', async (req, res) => {
   }
 });
 
+/**
+ * Manda UNA plantilla al número que se le diga, sin tocar la lista real.
+ *
+ * Es la única forma barata de comprobar que la plantilla existe con ese
+ * nombre, que Meta la aprobó, y que el número de variables coincide con lo que
+ * el código le pasa. Si algo de eso está mal, el error de Meta lo dice con
+ * nombre propio y se arregla antes de gastar una tanda entera.
+ */
+router.post('/whatsapp/prueba', async (req, res) => {
+  try {
+    const tel = whatsapp.normalizarTelefono(req.body.telefono);
+    if (!tel) {
+      return res.status(400).json({ error: 'Ese número no parece un celular colombiano' });
+    }
+    if (!config.whatsapp.plantilla) {
+      return res.status(400).json({ error: 'Falta WA_PLANTILLA con el nombre de la plantilla aprobada' });
+    }
+
+    const nombre = String(req.body.nombre || 'María').trim().split(/\s+/)[0];
+    const r = await whatsapp.enviarPlantilla(tel, [nombre]);
+
+    if (!r.ok) return res.status(500).json({ error: r.error, telefono: tel });
+    res.json({ ok: true, telefono: tel, id: r.id });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.post('/whatsapp/enviar', async (req, res) => {
   try {
     const ola = Number(req.body.ola);
