@@ -411,6 +411,7 @@
                                            border: 2px solid var(--lime); }
 
   .bloque-perfil--inv { border-color: var(--lime); }
+  .bloque-perfil--historia { border-color: var(--lime); }
   .inv-premio { font-size: 11.5px; line-height: 1.6; color: var(--blue-text-softer);
                 border-left: 2px solid var(--lime); padding-left: 11px; margin-top: 12px; }
   .inv-premio strong { color: var(--lime); }
@@ -1601,6 +1602,82 @@ async function guardarPerfil() {
 let ITEMS = [];
 
 /**
+ * Historia para que la creadora anuncie que ya está en el banco.
+ *
+ * Se dibuja en el navegador con canvas: generarla en el servidor obligaría a
+ * instalar librerías de imagen pesadas, y aquí sale instantánea y sin costo.
+ *
+ * Es la pieza que más empuja el voz a voz: una creadora publicando esto en sus
+ * historias le está hablando a otras creadoras, que es exactamente el público
+ * que queremos. Por eso el texto le habla a las marcas —que es lo que a ella le
+ * conviene mostrar— y no a nosotros.
+ */
+async function descargarHistoria(perfil) {
+  const A = 1080, H = 1920;
+  const c = document.createElement('canvas');
+  c.width = A; c.height = H;
+  const x = c.getContext('2d');
+
+  // Sin esperar a las fuentes, canvas dibuja con una genérica y se pierde toda
+  // la identidad.
+  try { await document.fonts.ready; } catch (e) {}
+
+  const TITULO = (p, t) => `${p} ${t}px "Martian Mono", ui-monospace, monospace`;
+  const CUERPO = (p, t) => `${p} ${t}px "Space Mono", ui-monospace, monospace`;
+
+  x.fillStyle = '#0E0E0E'; x.fillRect(0, 0, A, H);
+
+  // Marco
+  x.strokeStyle = '#D6FF00'; x.lineWidth = 8;
+  x.strokeRect(46, 46, A - 92, H - 92);
+
+  // Logo
+  x.fillStyle = '#D6FF00'; x.fillRect(110, 150, 86, 86);
+  x.fillStyle = '#0E0E0E'; x.font = TITULO(800, 52); x.textAlign = 'center';
+  x.fillText('C', 153, 208);
+  x.fillStyle = '#F2F2F2'; x.font = TITULO(800, 38); x.textAlign = 'left';
+  x.fillText('CREATORS MANAGER', 220, 205);
+
+  // Titular
+  x.textAlign = 'left';
+  x.fillStyle = '#F2F2F2'; x.font = TITULO(800, 104);
+  x.fillText('YA ESTOY', 110, 560);
+  x.fillText('EN EL BANCO', 110, 680);
+  x.fillStyle = '#D6FF00';
+  x.fillText('DE CREADORAS', 110, 800);
+
+  // Su nombre y código
+  x.fillStyle = '#D6FF00'; x.fillRect(110, 900, 14, 130);
+  x.fillStyle = '#F2F2F2'; x.font = TITULO(700, 54);
+  const alias = String(perfil.nombre_publico || '').toUpperCase().slice(0, 22);
+  x.fillText(alias, 152, 962);
+  x.fillStyle = '#9A9A9A'; x.font = CUERPO(400, 32);
+  x.fillText(perfil.codigo || '', 152, 1012);
+
+  // Lo que le dice a una marca que lo vea
+  const lineas = [
+    'Las marcas que buscan creadoras',
+    'para colaboraciones pagas ahora',
+    'me encuentran acá. Con mis tarifas,',
+    'mi trabajo y mis condiciones.',
+  ];
+  x.fillStyle = '#B6B6B2'; x.font = CUERPO(400, 38);
+  lineas.forEach((l, i) => x.fillText(l, 110, 1180 + i * 58));
+
+  // Cierre
+  x.fillStyle = '#D6FF00'; x.fillRect(110, 1500, A - 220, 4);
+  x.fillStyle = '#F2F2F2'; x.font = TITULO(800, 46);
+  x.fillText('CREATORSMANAGER.COM', 110, 1590);
+  x.fillStyle = '#9A9A9A'; x.font = CUERPO(400, 30);
+  x.fillText('Marcas: escríbanme por ahí', 110, 1650);
+
+  const enlace = document.createElement('a');
+  enlace.download = `creators-manager-${(perfil.codigo || 'perfil').toLowerCase()}.png`;
+  enlace.href = c.toDataURL('image/png');
+  enlace.click();
+}
+
+/**
  * Sus dos invitaciones.
  *
  * Se carga aparte y después de pintar el perfil: si el endpoint falla o
@@ -1620,6 +1697,17 @@ async function pintarInvitaciones() {
     </div>` : '';
 
   caja.innerHTML = `
+    <div class="bloque-perfil bloque-perfil--historia">
+      <div class="bloque-perfil__titulo">Cuéntalo en tus historias</div>
+      <div class="bloque-perfil__nota">
+        Te armamos una imagen lista para publicar. Las marcas que te siguen sabrán
+        dónde encontrarte, y las creadoras que te ven se enteran de que esto existe.
+      </div>
+      <button class="btn-portal btn-portal--sec" id="btn-historia" style="margin-top:12px">
+        Descargar mi historia
+      </button>
+    </div>
+
     <div class="bloque-perfil bloque-perfil--inv">
       <div class="bloque-perfil__titulo">Tus invitaciones · ${d.restantes} de ${d.cupos}</div>
       <div class="bloque-perfil__nota">
@@ -1644,6 +1732,18 @@ async function pintarInvitaciones() {
         </div>` : ''}
       ${traidas}
     </div>`;
+
+  $('btn-historia')?.addEventListener('click', async () => {
+    const b = $('btn-historia');
+    b.disabled = true; b.textContent = 'Preparando…';
+    try {
+      await descargarHistoria(DATOS.perfil || {});
+      b.textContent = 'Descargada ✓';
+    } catch (e) {
+      b.textContent = 'No se pudo';
+    }
+    setTimeout(() => { b.disabled = false; b.textContent = 'Descargar mi historia'; }, 2200);
+  });
 
   $('inv-copiar')?.addEventListener('click', async () => {
     const btn = $('inv-copiar');
