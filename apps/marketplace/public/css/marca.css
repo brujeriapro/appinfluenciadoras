@@ -258,6 +258,28 @@ input[type=range]::-moz-range-thumb {
 .filtro-select:focus { outline: none; border-color: var(--ink); }
 .filtro-select.activo { border-color: var(--ink); border-width: 2px; font-weight: 700; }
 
+/* ── Piezas en video ─────────────────────────────────────────────────────
+   Se definen aparte y antes de la tira: viven pegados a `.tira > *` pero no
+   son parte de su bloque, y al reescribirlo se han perdido dos veces.
+
+   `place-self: stretch` es lo que hace que llenen la celda —la tira centra a
+   sus hijos, y un hijo centrado toma su tamaño natural, que en un <video> es
+   300x150—. Y `contain` en vez de `cover` porque recortando, un video vertical
+   de celular queda reducido a una franja del centro que no dice nada del
+   trabajo de la creadora. */
+.pieza-wrap { position: relative; display: block; place-self: stretch;
+              width: 100%; height: 100%; min-width: 0; overflow: hidden;
+              padding: 0; border: none; background: none; cursor: pointer; }
+.pieza-wrap:focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; }
+.pieza-video { width: 100%; height: 100%; object-fit: contain; display: block;
+               background: var(--ink); }
+.pieza-play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+              width: 30px; height: 30px; display: grid; place-items: center;
+              background: rgba(14, 14, 14, .72); color: var(--lime); font-size: 11px;
+              pointer-events: none; transition: opacity .15s; }
+/* Mientras corre, el triangulo estorba. */
+.pieza-wrap.corriendo .pieza-play { opacity: 0; }
+
 /* Miniaturas del trabajo.
    Cuatro por fila repartiendose el ancho. No se les fija proporcion: una pieza
    vertical que ocupara un cuarto de una pantalla ancha tendria que medir 650px
