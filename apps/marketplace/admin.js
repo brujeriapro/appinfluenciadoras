@@ -19,6 +19,7 @@ const { subirMuestra, borrarMuestra } = require('./muestras');
 const notificaciones = require('./notificaciones');
 const { OLAS, filtrarCandidatas, pendientesDe, filtroDeEstados } = require('./invitaciones');
 const referidos = require('./referidos');
+const whatsapp = require('./whatsapp');
 
 const router = express.Router();
 
@@ -784,6 +785,113 @@ async function candidatasDeOla(estados) {
   });
   return filtrarCandidatas(filas);
 }
+
+// ── Invitaciones por WhatsApp ───────────────────────────────────────────────
+//
+// Mismo mecanismo que el correo, pero con dos diferencias que impone Meta: solo
+// se pueden mandar plantillas aprobadas, y un número nuevo tiene un tope diario
+// bajo que sube solo si nadie reporta. Por eso el lote por defecto es chico.
+
+async function candidatasConTelefono(estados) {
+  const filas = await db.get('influencers', {
+    select: 'id,nombre,email,telefono,status',
+    status: filtroDeEstados(estados),
+  });
+
+  const vistos = new Set();
+  return filtrarCandidatas(filas).filter(f => {
+    const tel = whatsapp.normalizarTelefono(f.telefono);
+    if (!tel || vistos.has(tel)) return false;
+    vistos.add(tel);
+    f._tel = tel;
+    return true;
+  });
+}
+
+router.get('/whatsapp', async (req, res) => {
+  try {
+    const previas = await db.get('mk_invitaciones', { select: 'email,enviada_at', canal: 'eq.whatsapp' });
+
+    const olas = [];
+    for (const [n, ola] of Object.entries(OLAS)) {
+      const gente = await candidatasConTelefono(ola.estados);
+      const faltan = pendientesDe(gente, previas).length;
+      olas.push({
+        ola: Number(n), nombre: ola.nombre,
+        total: gente.length, invitadas: gente.length - faltan, faltan,
+      });
+    }
+
+    res.json({
+      olas,
+      enviadas_total: previas.filter(p => p.enviada_at).length,
+      listo: whatsapp.configurado(),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/whatsapp/enviar', async (req, res) => {
+  try {
+    const ola = Number(req.body.ola);
+    // Tope bajo a propósito: un número nuevo que manda cientos el primer día
+    // es lo que Meta castiga con bloqueo, y no hay apelación rápida.
+    const limite = Math.min(Number(req.body.limite) || 50, 250);
+    const simulacro = req.body.dry_run === true;
+
+    if (!OLAS[ola]) return res.status(400).json({ error: 'Ola inválida (1 a 4)' });
+    if (!whatsapp.configurado()) {
+      return res.status(400).json({ error: 'Falta configurar WhatsApp: WA_PHONE_NUMBER_ID, WA_TOKEN y WA_PLANTILLA' });
+    }
+
+    const previas = await db.get('mk_invitaciones', { select: 'email', canal: 'eq.whatsapp' });
+    const todas = await candidatasConTelefono(OLAS[ola].estados);
+    const pendientes = pendientesDe(todas, previas);
+    const lote = pendientes.slice(0, limite);
+
+    if (simulacro) {
+      return res.json({
+        simulacro: true, ola, en_la_ola: todas.length,
+        ya_invitadas: todas.length - pendientes.length,
+        se_enviarian: lote.length, quedarian: Math.max(0, pendientes.length - lote.length),
+        muestra: lote.slice(0, 8).map(c => ({ nombre: c.nombre, telefono: c._tel })),
+      });
+    }
+
+    res.json({ ok: true, ola, se_enviaran: lote.length, quedaran: Math.max(0, pendientes.length - lote.length) });
+
+    let ok = 0, fallos = 0;
+    for (const [i, c] of lote.entries()) {
+      let anotada;
+      try {
+        anotada = await db.post('mk_invitaciones', {
+          influencer_id: c.id, email: c.email, nombre: c.nombre || null,
+          telefono: c._tel, ola, canal: 'whatsapp', status_origen: c.status,
+        });
+      } catch (e) { continue; }
+
+      const primerNombre = String(c.nombre || '').trim().split(/\s+/)[0] || 'hola';
+      const r = await whatsapp.enviarPlantilla(c._tel, [primerNombre]);
+
+      if (r.ok) {
+        ok++;
+        await db.patch('mk_invitaciones', { id: anotada.id }, { enviada_at: new Date().toISOString() });
+      } else {
+        fallos++;
+        await db.patch('mk_invitaciones', { id: anotada.id }, { error: r.error });
+        console.error(`[wa] ${c._tel}: ${r.error}`);
+      }
+
+      // Más espaciado que el correo: los envíos en ráfaga a números que no te
+      // esperan son lo que dispara los reportes.
+      if (i < lote.length - 1) await dormir(1500);
+    }
+    console.log(`[wa] Ola ${ola}: ${ok} enviados, ${fallos} fallidos`);
+  } catch (e) {
+    console.error('[wa]', e.message);
+  }
+});
 
 /** Cuántas van y cuántas faltan, por ola. */
 router.get('/invitaciones', async (req, res) => {

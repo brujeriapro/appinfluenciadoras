@@ -705,6 +705,52 @@ VISTAS.creadoras = async () => {
     tr.addEventListener('click', () => verCreadora(tr.dataset.creadora));
   });
 
+  const cajaWa = () => document.getElementById('resultado-wa');
+
+  contenido().querySelectorAll('[data-wa-simular]').forEach(b => {
+    b.addEventListener('click', async () => {
+      b.disabled = true; b.textContent = 'MIRANDO…';
+      try {
+        const r = await api('/whatsapp/enviar', {
+          method: 'POST',
+          body: JSON.stringify({ ola: Number(b.dataset.waSimular), dry_run: true }),
+        });
+        cajaWa().innerHTML = `
+          <div class="bloque" style="margin-top:14px">
+            <div class="seccion-titulo" style="margin-top:0">Simulacro · ola ${r.ola}</div>
+            <p style="font-size:12.5px">Se enviarían <strong>${r.se_enviarian}</strong> mensajes.
+            ${r.quedarian ? `Quedarían <strong>${r.quedarian}</strong> para los días siguientes.` : ''}
+            No se ha mandado nada.</p>
+            <div style="font-size:11.5px;color:var(--grey-700);line-height:1.8">
+              ${r.muestra.map(m => `${esc(m.nombre || '(sin nombre)')} — +${esc(m.telefono)}`).join('<br>')}
+            </div>
+          </div>`;
+      } catch (e) { alert('No se pudo: ' + e.message); }
+      b.disabled = false; b.textContent = 'VER A QUIÉN';
+    });
+  });
+
+  contenido().querySelectorAll('[data-wa-enviar]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const ola = Number(b.dataset.waEnviar);
+      if (!confirm(`Vas a mandar WhatsApp a 50 creadoras reales de la ola ${ola}. No se puede deshacer. ¿Seguimos?`)) return;
+      b.disabled = true; b.textContent = 'ENVIANDO…';
+      try {
+        const r = await api('/whatsapp/enviar', { method: 'POST', body: JSON.stringify({ ola }) });
+        cajaWa().innerHTML = `
+          <div class="bloque" style="margin-top:14px;border-color:var(--lime)">
+            <div class="seccion-titulo" style="margin-top:0">Enviando ${r.se_enviaran} mensajes</div>
+            <p style="font-size:12.5px">Van saliendo despacio, uno cada segundo y medio.
+            ${r.quedaran ? `Quedan <strong>${r.quedaran}</strong> para mañana.` : ''}
+            <br><br>Recarga en unos minutos para ver el conteo.</p>
+          </div>`;
+      } catch (e) {
+        alert('No se pudo: ' + e.message);
+        b.disabled = false; b.textContent = 'ENVIAR 50';
+      }
+    });
+  });
+
   document.getElementById('rec-simular')?.addEventListener('click', async () => {
     const msg = document.getElementById('rec-masivo-msg');
     msg.style.color = 'var(--grey-700)'; msg.textContent = 'Revisando…';
@@ -935,7 +981,7 @@ VISTAS.marcas = async () => {
 // ── Vista: Invitaciones ─────────────────────────────────────────────────────
 
 VISTAS.invitaciones = async () => {
-  const d = await api('/invitaciones');
+  const [d, wa] = await Promise.all([api('/invitaciones'), api('/whatsapp').catch(() => null)]);
 
   const filas = d.olas.map(o => `
     <tr>
@@ -1006,6 +1052,41 @@ VISTAS.invitaciones = async () => {
     </div>
 
     <div id="resultado-inv"></div>
+
+    ${wa ? `
+      <div class="seccion-titulo" style="margin-top:34px">Por WhatsApp</div>
+
+      ${wa.listo ? '' : `
+        <div class="bloque" style="border-color:var(--magenta);margin-bottom:14px">
+          <strong style="color:var(--magenta)">WhatsApp sin configurar.</strong>
+          Faltan <code>WA_PHONE_NUMBER_ID</code>, <code>WA_TOKEN</code> y
+          <code>WA_PLANTILLA</code> en Railway. Puedes ver a cuántas llegaría, pero no enviar.
+        </div>`}
+
+      <div class="bloque" style="margin-bottom:14px;font-size:12.5px;line-height:1.7">
+        <strong>Se abre casi siempre, a diferencia del correo.</strong> Por eso convierte
+        mucho más — y por eso hay que ir despacio: un número nuevo que manda cientos el
+        primer día es lo que Meta bloquea. Empieza con 50, sube al día siguiente.
+        Solo salen mensajes con la plantilla que Meta te aprobó.
+      </div>
+
+      <div class="tabla-wrap"><table>
+        <thead><tr><th>Ola</th><th>Quiénes</th><th>Con WhatsApp</th><th>Ya enviadas</th><th>Faltan</th><th></th></tr></thead>
+        <tbody>${wa.olas.map(o => `
+          <tr>
+            <td class="num">${o.ola}</td>
+            <td>${esc(o.nombre)}</td>
+            <td class="num">${o.total}</td>
+            <td class="num">${o.invitadas}</td>
+            <td class="num">${o.faltan ? `<strong>${o.faltan}</strong>` : '—'}</td>
+            <td>${o.faltan ? `
+              <button class="btn-mini" data-wa-simular="${o.ola}">VER A QUIÉN</button>
+              <button class="btn-mini" data-wa-enviar="${o.ola}" ${wa.listo ? '' : 'disabled title="Falta configurar WhatsApp"'}>ENVIAR 50</button>`
+              : '<span style="color:var(--grey-700);font-size:11px">completa</span>'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table></div>
+      <div id="resultado-wa"></div>` : ''}
   `;
 
   const caja = () => document.getElementById('resultado-inv');

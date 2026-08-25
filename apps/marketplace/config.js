@@ -53,6 +53,15 @@ const config = {
   // bloquea. Si no está, se cae al SMTP de siempre.
   brevo_api_key: process.env.MK_BREVO_API_KEY || '',
 
+  // WhatsApp Cloud API. Sin esto configurado, el panel muestra el envío por
+  // WhatsApp como no disponible en vez de fallar al intentarlo.
+  whatsapp: {
+    phone_number_id: process.env.WA_PHONE_NUMBER_ID || '',
+    token:           process.env.WA_TOKEN || '',
+    plantilla:       process.env.WA_PLANTILLA || '',
+    idioma:          process.env.WA_PLANTILLA_IDIOMA || 'es',
+  },
+
   smtp: {
     // Sin host se usa Gmail. Con host, cualquier proveedor.
     host: process.env.MK_SMTP_HOST || '',
