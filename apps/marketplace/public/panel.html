@@ -613,10 +613,10 @@ async function arrancar() {
 function pintarPlan() {
   if (!E.plan || !E.plan.activo) return;
   const sub = $('sub-marca');
-  const tope = E.plan.fichas_tope;
+  const tope = E.plan.propuestas_tope;
   sub.textContent = tope === null
-    ? `${E.plan.nombre} · fichas sin límite`
-    : `${E.plan.nombre} · ${E.plan.fichas_vistas}/${tope} fichas`;
+    ? `${E.plan.nombre} · propuestas sin límite`
+    : `${E.plan.nombre} · ${E.plan.propuestas_enviadas}/${tope} propuestas`;
 }
 
 /**
@@ -650,8 +650,8 @@ function mostrarMuro(info) {
               <div class="dato-num" style="font-size:22px;margin:10px 0 4px">${COP(p.precio_mes)}</div>
               <div class="etiqueta">al mes</div>
               <div class="p" style="font-size:11.5px;margin-top:10px">
-                ${p.fichas_mes === null ? 'Fichas sin límite' : p.fichas_mes + ' fichas al mes'}<br>
-                Propuestas ilimitadas
+                <strong>${p.propuestas_mes === null ? 'Propuestas sin límite' : p.propuestas_mes + ' propuestas al mes'}</strong><br>
+                Catálogo completo
               </div>
               <button class="btn" style="width:100%;margin-top:12px" data-plan="${p.clave}">
                 Elegir

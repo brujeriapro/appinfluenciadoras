@@ -22,57 +22,26 @@ router.use(marcaAuth);
  * abierta este mes no vuelve a contar: la llave de mk_fichas_vistas es
  * (marca, creadora, mes).
  */
-async function limiteDeFichas(marca_id, creadora_id) {
-  const cfg = await db.getConfig();
-
-  // Mientras los planes estén apagados, nadie tiene tope.
-  if (cfg.planes_activos !== true) {
-    return { bloqueada: false, plan: null, vistas: 0, tope: null };
-  }
-
-  const marca = await db.getMarcaById(marca_id);
-  // Un plan vencido vuelve a los límites del demo, sin quitarle la cuenta.
-  const vigente = marca?.plan_vence_at && new Date(marca.plan_vence_at) > new Date();
-  const clave = vigente ? (marca.plan || 'demo') : 'demo';
-  const plan = await db.getPlan(clave);
-  const tope = plan?.fichas_mes ?? null;
-
-  if (tope === null) {
+/**
+ * Registra que esta marca abrió esta ficha.
+ *
+ * Desde mk_022 el catálogo NO se limita: se abre completo en todos los planes.
+ * Limitar la búsqueda no protegía nada —lo que se ve se anota— e impedía que
+ * la marca encontrara a la creadora por la que valdría la pena pagar. El tope
+ * vive ahora donde está el valor: al enviar la propuesta.
+ *
+ * El registro se mantiene porque es lo que alimenta el "quién miró tu perfil"
+ * del portal de la creadora.
+ */
+async function anotarVista(marca_id, creadora_id) {
+  try {
     await db.registrarFichaVista(marca_id, creadora_id);
-    return { bloqueada: false, plan: clave, vistas: null, tope: null };
+  } catch (e) {
+    // Que falle el conteo no puede impedir ver una ficha.
+    console.error('[catalogo] no se pudo anotar la vista:', e.message);
   }
-
-  const yaVista = await db.getUno('mk_fichas_vistas', {
-    marca_id: `eq.${marca_id}`,
-    creadora_id: `eq.${creadora_id}`,
-    mes: `eq.${new Date().toISOString().slice(0, 7)}`,
-    select: 'mes',
-  });
-
-  // Volver a una ficha ya abierta nunca se bloquea, aunque el cupo esté lleno.
-  if (yaVista) {
-    const vistas = await db.contarFichasDelMes(marca_id);
-    return { bloqueada: false, plan: clave, vistas, tope };
-  }
-
-  const vistas = await db.contarFichasDelMes(marca_id);
-  if (vistas >= tope) {
-    return {
-      bloqueada: true,
-      plan: clave,
-      vistas,
-      tope,
-      mensaje: clave === 'demo'
-        ? `Con el demo puedes abrir ${tope} fichas. Escoge un plan para seguir viendo el banco completo.`
-        : `Llegaste a las ${tope} fichas de tu plan este mes. Sube de plan para ver más.`,
-    };
-  }
-
-  const r = await db.registrarFichaVista(marca_id, creadora_id);
-  return { bloqueada: false, plan: clave, vistas: r.vistas, tope };
 }
 
-/** Valores disponibles para poblar los selectores de filtro. */
 router.get('/filtros', async (req, res) => {
   try {
     const cfg = await db.getConfig();
@@ -143,16 +112,7 @@ router.get('/:id', async (req, res) => {
     const creadora = await db.getCreadoraCatalogo(req.params.id);
     if (!creadora) return res.status(404).json({ error: 'Creadora no encontrada' });
 
-    const limite = await limiteDeFichas(req.usuarioId, req.params.id);
-    if (limite.bloqueada) {
-      return res.status(402).json({
-        error: limite.mensaje,
-        muro: true,
-        plan: limite.plan,
-        vistas: limite.vistas,
-        tope: limite.tope,
-      });
-    }
+    await anotarVista(req.usuarioId, req.params.id);
 
     const [muestras, tarifas] = await Promise.all([
       db.getMuestrasDeCreadora(creadora.id),

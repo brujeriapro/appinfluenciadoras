@@ -573,6 +573,24 @@ const actualizarTransaccion = (referencia, data) =>
 const getPlanes = () =>
   get('mk_planes', { select: '*', activo: 'eq.true', order: 'orden.asc' });
 
+/**
+ * Cuántas propuestas ha enviado una marca este mes.
+ *
+ * Cuenta los tratos creados, no los aceptados: el cupo se gasta al proponer.
+ * Que la creadora diga que no es riesgo del negocio, no un reembolso.
+ */
+async function contarPropuestasDelMes(marca_id) {
+  const desde = new Date();
+  desde.setUTCDate(1); desde.setUTCHours(0, 0, 0, 0);
+
+  const filas = await get('mk_tratos', {
+    marca_id: `eq.${marca_id}`,
+    created_at: `gte.${desde.toISOString()}`,
+    select: 'id',
+  });
+  return filas.length;
+}
+
 const getPlan = (clave) =>
   getUno('mk_planes', { clave: `eq.${clave}`, select: '*' });
 
@@ -667,6 +685,6 @@ module.exports = {
   insertPago, getPagosDeTrato, getTodosLosPagos,
   insertEntrega, getEntregasDeTrato, updateEntrega,
   insertTransaccion, getTransaccionPorReferencia, getTransaccionesDeTrato, actualizarTransaccion,
-  getPlanes, getPlan, registrarFichaVista, contarFichasDelMes,
+  getPlanes, getPlan, registrarFichaVista, contarFichasDelMes, contarPropuestasDelMes,
   getInfluencersElegibles, contarContenidosDeInfluencer,
 };

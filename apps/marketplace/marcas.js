@@ -249,7 +249,8 @@ router.get('/plan', async (req, res) => {
       nombre: actual?.nombre || 'Demo',
       vence_at: vigente ? marca.plan_vence_at : null,
       fichas_vistas: vistas,
-      fichas_tope: actual?.fichas_mes ?? null,
+      propuestas_tope: actual?.propuestas_mes ?? null,
+      propuestas_enviadas: await db.contarPropuestasDelMes(req.usuarioId),
       planes,
     });
   } catch (e) {
@@ -361,6 +362,37 @@ router.get('/tratos', async (req, res) => {
 });
 
 /** Crea una solicitud de colaboración. */
+/**
+ * ¿Le quedan propuestas este mes?
+ *
+ * Un plan vencido vuelve a los límites del gratuito sin quitarle la cuenta: la
+ * marca sigue entrando y viendo todo, solo baja su cupo de propuestas.
+ */
+async function topeDePropuestas(marca_id) {
+  const cfg = await db.getConfig();
+  if (cfg.planes_activos !== true) {
+    return { bloqueada: false, plan: null, enviadas: 0, tope: null };
+  }
+
+  const marca = await db.getMarcaById(marca_id);
+  const vigente = marca?.plan_vence_at && new Date(marca.plan_vence_at) > new Date();
+  const clave = vigente ? (marca.plan || 'demo') : 'demo';
+  const plan = await db.getPlan(clave);
+  const tope = plan?.propuestas_mes ?? null;
+
+  if (tope === null) return { bloqueada: false, plan: clave, enviadas: null, tope: null };
+
+  const enviadas = await db.contarPropuestasDelMes(marca_id);
+  if (enviadas >= tope) {
+    return {
+      bloqueada: true, plan: clave, enviadas, tope,
+      mensaje: `Llegaste a las ${tope} propuestas de tu plan este mes. `
+             + 'Cambia de plan para seguir proponiendo.',
+    };
+  }
+  return { bloqueada: false, plan: clave, enviadas, tope };
+}
+
 router.post('/tratos', rateLimit({ max: 20 }), async (req, res) => {
   try {
     const { creadora_id, campana_id, brief, entregables, monto,
@@ -369,6 +401,20 @@ router.post('/tratos', rateLimit({ max: 20 }), async (req, res) => {
 
     if (!creadora_id || !monto) {
       return res.status(400).json({ error: 'Faltan la creadora o el monto' });
+    }
+
+    // El plan limita cuántas propuestas se envían al mes. Es el único tope que
+    // existe: buscar en el catálogo es libre, porque limitar la búsqueda no
+    // protege nada e impide encontrar a la creadora que vale la pena.
+    const limite = await topeDePropuestas(req.usuarioId);
+    if (limite.bloqueada) {
+      return res.status(402).json({
+        error: limite.mensaje,
+        muro: true,
+        plan: limite.plan,
+        enviadas: limite.enviadas,
+        tope: limite.tope,
+      });
     }
 
     // Si la propuesta sale de una campaña, lo que no venga en el cuerpo se
