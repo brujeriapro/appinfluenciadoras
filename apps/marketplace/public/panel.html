@@ -863,7 +863,7 @@ function filaHTML(c) {
     </div>
     ${ms.length ? `
       <div class="tira">
-        ${ms.slice(0, 6).map(m => `<div>${pieza(m)}</div>`).join('')}
+        ${ms.slice(0, 4).map(m => `<div>${pieza(m)}</div>`).join('')}
       </div>` : `
       <div class="tira-vacia">Todavía no ha publicado trabajo</div>`}
   </article>`;

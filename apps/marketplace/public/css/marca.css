@@ -259,48 +259,23 @@ input[type=range]::-moz-range-thumb {
 .filtro-select.activo { border-color: var(--ink); border-width: 2px; font-weight: 700; }
 
 /* Miniaturas del trabajo.
-   Antes eran cuatro celdas fijas del ancho de la fila: quien tenia una sola
-   pieza mostraba tres cajas vacias, y el resto de la fila quedaba en gris
-   muerto. Ahora solo se pintan las piezas que existen, en miniaturas
-   verticales del tamano del contenido -que es video de celular- y la tira
-   ocupa lo que necesita. */
-.tira { display: flex; flex-wrap: wrap; gap: 2px; padding: 2px 0 0;
+   Cuatro por fila repartiendose el ancho. No se les fija proporcion: una pieza
+   vertical que ocupara un cuarto de una pantalla ancha tendria que medir 650px
+   de alto y cada creadora se comeria la pantalla entera. Con alto fijo y
+   `contain`, el video se ve completo sobre el fondo oscuro y la fila cabe de
+   un vistazo.
+   El tope de ancho evita que con una sola pieza quede un panoramico absurdo. */
+.tira { display: flex; gap: 2px; padding: 2px 0 0;
         border-top: 1px solid var(--border-1); }
-/* Proporcion 9:16, la misma con la que se graba en un celular. Con la celda
-   mas ancha que el video quedaban dos bandas negras a los lados; asi el video
-   la llena exacta y no sobra nada. */
-.tira > * { width: 146px; height: 260px; background: var(--border-3);
-            min-width: 0; overflow: hidden; flex: none;
+.tira > * { flex: 1 1 0; max-width: 380px; height: 400px;
+            background: var(--border-3); min-width: 0; overflow: hidden;
             display: grid; place-items: center; font-size: 9px; color: var(--text-4);
             letter-spacing: 0.8px; }
-
-@media (max-width: 720px) {
-  .tira > * { width: 101px; height: 180px; }
-}
 .tira img { width: 100%; height: 100%; object-fit: cover; }
 
-/* Piezas en video.
-   `place-self: stretch` es lo que hace que llenen la celda: la tira centra a
-   sus hijos, y un hijo centrado toma su tamano natural — el de un <video> es
-   300x150 por defecto, asi que se desbordaba. Las fotos no lo sufrian porque
-   `.tira img` ya les fija ancho y alto. */
-.pieza-wrap { position: relative; display: block; place-self: stretch;
-              width: 100%; height: 100%; min-width: 0; overflow: hidden;
-              padding: 0; border: none; background: none; cursor: pointer; }
-.pieza-wrap:focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; }
-/* `contain` y no `cover`: recortando, un video vertical de celular quedaba
-   reducido a una franja del centro —una pared, media ceja— que no dice nada de
-   lo que hizo la creadora. Completo se entiende, y como la celda ya es
-   vertical las bandas laterales son estrechas. El fondo oscuro es la
-   convencion de cualquier reproductor. */
-.pieza-video { width: 100%; height: 100%; object-fit: contain; display: block;
-               background: var(--ink); }
-.pieza-play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-              width: 30px; height: 30px; display: grid; place-items: center;
-              background: rgba(14, 14, 14, .72); color: var(--lime); font-size: 11px;
-              pointer-events: none; transition: opacity .15s; }
-/* Mientras corre, el triangulo estorba. */
-.pieza-wrap.corriendo .pieza-play { opacity: 0; }
+@media (max-width: 720px) {
+  .tira > * { height: 230px; }
+}
 
 /* Sin trabajo no se muestran cajas vacias: se dice. */
 .tira-vacia { border-top: 1px solid var(--border-1); padding: 12px 14px;
