@@ -133,7 +133,7 @@ const boton = (texto, url) =>
 
 const urlTrato = (lado, id) => `${config.base_url}/${lado}.html#/trato/${id}`;
 
-// ── Invitación al banco de creadoras ────────────────────────────────────────
+// ── Invitación a la plataforma ────────────────────────────────────────
 
 /**
  * De dónde salió su perfil. Cambia según lo que la persona hizo de verdad con
@@ -235,7 +235,7 @@ function recordatorioPerfil({ email, nombre, falta = [] }) {
 
   return enviar(
     email,
-    'Te falta poco para entrar al banco de creadoras',
+    'Te falta poco para quedar publicada',
     `<p style="font-size:13px;color:#5A5A5A;margin:0 0 16px">${esc(saludo)}</p>
 
      <p style="font-size:16px;font-weight:800;letter-spacing:-0.4px;margin:0 0 14px">
@@ -330,7 +330,7 @@ function perfilAprobado({ creadora, codigoRef }) {
     `<p style="font-size:16px;font-weight:800;letter-spacing:-0.4px;margin:0 0 14px">
        Listo, ${esc(creadora.nombre_publico)}. Pasaste la revisión.</p>
 
-     <p>Tu perfil ya está publicado en el banco y las marcas te pueden encontrar. Cuando
+     <p>Tu perfil ya está publicado y las marcas te pueden encontrar. Cuando
      alguna quiera trabajar contigo te llega la propuesta acá, con lo que recibirías.</p>
 
      ${boton('VER MI PERFIL', `${config.base_url}/creadora.html`)}
@@ -370,7 +370,7 @@ function trajisteUna({ creadora, nombreReferida, restantes, prioridad, traidas }
        Trajiste a una, ${esc(creadora.nombre_publico)}.</p>
 
      <p><strong>${esc(nombreReferida)}</strong> creó su perfil con tu enlace y ya quedó
-     publicada en el banco. Eso dice mucho de tu ojo: no cualquiera pasa la revisión.</p>
+     publicada. Eso dice mucho de tu ojo: no cualquiera pasa la revisión.</p>
 
      <div style="border:2px solid #0E0E0E;background:#D6FF00;padding:15px 17px;margin:20px 0">
        <div style="font-weight:800;letter-spacing:-0.3px;margin-bottom:7px">SUBISTE TU PRIORIDAD</div>

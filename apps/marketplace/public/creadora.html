@@ -1219,7 +1219,7 @@ function pasosEstado() {
       <div class="pasos-estado__fila">
         ${paso(1, 'Completa tu perfil', uno)}
         ${paso(2, rechazada ? 'No aprobado' : 'Estamos revisando', dos)}
-        ${paso(3, 'Publicada en el banco', tres)}
+        ${paso(3, 'Publicada en el catálogo', tres)}
       </div>
       <div class="pasos-estado__mensaje">
         ${esc(ESTADO.mensaje)}
@@ -1602,7 +1602,7 @@ async function guardarPerfil() {
 let ITEMS = [];
 
 /**
- * Historia para que la creadora anuncie que ya está en el banco.
+ * Historia para que la creadora anuncie que ya está en la plataforma.
  *
  * Se dibuja en el navegador con canvas: generarla en el servidor obligaría a
  * instalar librerías de imagen pesadas, y aquí sale instantánea y sin costo.
@@ -1641,10 +1641,10 @@ async function descargarHistoria(perfil) {
   // Titular
   x.textAlign = 'left';
   x.fillStyle = '#F2F2F2'; x.font = TITULO(800, 104);
-  x.fillText('YA ESTOY', 110, 560);
-  x.fillText('EN EL BANCO', 110, 680);
+  x.fillText('YA ESTOY EN', 110, 560);
   x.fillStyle = '#D6FF00';
-  x.fillText('DE CREADORAS', 110, 800);
+  x.fillText('CREATORS', 110, 680);
+  x.fillText('MANAGER', 110, 800);
 
   // Su nombre y código
   x.fillStyle = '#D6FF00'; x.fillRect(110, 900, 14, 130);

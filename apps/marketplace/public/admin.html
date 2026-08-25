@@ -767,7 +767,7 @@ VISTAS.creadoras = async () => {
   contenido().querySelectorAll('[data-rechazar]').forEach(b => {
     b.addEventListener('click', async (e) => {
       e.stopPropagation();
-      const motivo = prompt('¿Por qué no entra al banco? (se lo mostramos a ella)');
+      const motivo = prompt('¿Por qué no se publica? (se lo mostramos a ella)');
       if (motivo === null) return;
       try {
         await api('/creadoras/' + b.dataset.rechazar + '/rechazar', {
