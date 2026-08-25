@@ -113,6 +113,28 @@
   .dinero-total__valor { font-family: var(--mono-t); font-weight: 800; font-size: 36px;
                          letter-spacing: -2.2px; color: var(--lima); margin: 6px 0; }
   .dinero-total__nota { font-size: 10px; line-height: 1.6; color: var(--chip-dark-text); }
+  /* Monto de la propuesta: se escribe, no se arrastra. */
+  .monto-caja { display: flex; align-items: center; gap: 6px; border: 2px solid var(--ink);
+                background: var(--surface); padding: 9px 12px; margin-bottom: 9px; }
+  .monto-caja__signo { font-family: var(--mono-t); font-weight: 800; font-size: 19px;
+                       color: var(--text-3); }
+  .monto-caja__campo { flex: 1; min-width: 0; border: none; outline: none; background: none;
+                       font-family: var(--mono-t); font-weight: 800; font-size: 22px;
+                       letter-spacing: -1px; color: var(--ink); padding: 0;
+                       font-variant-numeric: tabular-nums; }
+  .monto-caja__moneda { font-family: var(--mono-b); font-size: 10.5px; letter-spacing: 1px;
+                        color: var(--text-4); }
+
+  .monto-atajos { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 11px; }
+  .atajo { font-family: var(--mono-b); font-size: 11px; padding: 6px 10px;
+           border: 1px solid var(--border-2); background: var(--surface);
+           color: var(--text-2); cursor: pointer; white-space: nowrap; }
+  .atajo:hover { border-color: var(--ink); color: var(--ink); }
+  .atajo--tarifa { border-color: var(--ink); color: var(--ink); font-weight: 700; }
+
+  .rango-extremos { display: flex; justify-content: space-between; font-size: 10px;
+                    color: var(--text-4); margin-top: 5px; font-family: var(--mono-b); }
+
   .alerta-tarifa { background: var(--magenta); color: var(--ink); font-size: 9.5px;
                    font-weight: 700; letter-spacing: 0.6px; padding: 5px 8px;
                    text-transform: uppercase; display: inline-block; margin-top: 6px; }

@@ -364,7 +364,8 @@ router.get('/tratos', async (req, res) => {
 router.post('/tratos', rateLimit({ max: 20 }), async (req, res) => {
   try {
     const { creadora_id, campana_id, brief, entregables, monto,
-            fecha_entrega_esperada, producto, exclusividad } = req.body;
+            fecha_entrega_esperada, producto, exclusividad,
+            producto_detalle, exclusividad_detalle } = req.body;
 
     if (!creadora_id || !monto) {
       return res.status(400).json({ error: 'Faltan la creadora o el monto' });
@@ -374,7 +375,15 @@ router.post('/tratos', rateLimit({ max: 20 }), async (req, res) => {
     // hereda de ella: el brief se escribe una vez y sirve para veinte
     // propuestas. El monto nunca se hereda, porque cada creadora tiene su
     // tarifa.
-    let base = { brief, entregables, fecha_entrega_esperada, producto, exclusividad };
+    // El detalle se corta aquí y no solo en el formulario: el navegador es de
+    // quien lo usa, y un maxlength no es una validación.
+    const recorta = (t) => t ? String(t).trim().slice(0, 160) : null;
+
+    let base = {
+      brief, entregables, fecha_entrega_esperada, producto, exclusividad,
+      producto_detalle: recorta(producto_detalle),
+      exclusividad_detalle: recorta(exclusividad_detalle),
+    };
     if (campana_id) {
       const campana = await db.getCampana(campana_id);
       if (!campana || campana.marca_id !== req.usuarioId) {
@@ -386,6 +395,8 @@ router.post('/tratos', rateLimit({ max: 20 }), async (req, res) => {
         fecha_entrega_esperada: fecha_entrega_esperada || campana.fecha_fin,
         producto: producto ?? campana.producto,
         exclusividad: exclusividad ?? campana.exclusividad,
+        producto_detalle: recorta(producto_detalle),
+        exclusividad_detalle: recorta(exclusividad_detalle),
       };
       if (campana.tope_por_creadora && Number(monto) > Number(campana.tope_por_creadora)) {
         return res.status(400).json({

@@ -289,15 +289,33 @@ function pintarPropuesta() {
 
         <div class="campo">
           <label>Cuánto le ofreces</label>
-          <div class="dato-num" style="font-size:20px">${COP(p.monto)}</div>
+
+          <!-- El monto se escribe. El deslizador queda de apoyo para tantear,
+               pero con 480 posiciones nunca fue una forma de poner una cifra
+               exacta, y menos en un teléfono. -->
+          <div class="monto-caja">
+            <span class="monto-caja__signo">$</span>
+            <input type="text" id="monto-txt" inputmode="numeric" class="monto-caja__campo"
+                   value="${Math.round(p.monto).toLocaleString('es-CO')}"
+                   aria-label="Monto que le ofreces en pesos">
+            <span class="monto-caja__moneda">COP</span>
+          </div>
+
+          <div class="monto-atajos">
+            ${p.tarifaPublicada ? `<button type="button" class="atajo atajo--tarifa" data-monto="${p.tarifaPublicada}">Su tarifa · ${COP(p.tarifaPublicada)}</button>` : ''}
+            <button type="button" class="atajo" data-suma="-50000">−50 mil</button>
+            <button type="button" class="atajo" data-suma="50000">+50 mil</button>
+            <button type="button" class="atajo" data-suma="100000">+100 mil</button>
+          </div>
+
           <input type="range" id="monto" min="${rp.min}" max="${rp.max}" step="10000"
-                 value="${p.monto}" aria-valuetext="${COP(p.monto)}"
+                 value="${p.monto}" aria-hidden="true" tabindex="-1"
                  style="background:var(--border-2)">
           <div class="rango-extremos">
             <span>${COP(rp.min)}</span>
-            <span>${p.tarifaPublicada ? 'Su tarifa: ' + COP(p.tarifaPublicada) : ''}</span>
+            <span>${COP(rp.max)}</span>
           </div>
-          ${bajoTarifa ? '<span class="alerta-tarifa">Por debajo de su tarifa</span>' : ''}
+          <span class="alerta-tarifa ${bajoTarifa ? '' : 'oculto'}" id="aviso-bajo">Por debajo de su tarifa</span>
         </div>
 
         <div class="campo">
@@ -320,6 +338,15 @@ function pintarPropuesta() {
           </div>
         </div>
 
+        <!-- "ENVIADO" no le dice a la creadora qué le va a llegar. Opcional,
+             pero quien lo llena manda una propuesta que se entiende sola. -->
+        <div class="campo ${p.producto === 'NO APLICA' ? 'oculto' : ''}" id="campo-prod-det">
+          <label>Qué producto le mandas <span class="opcional">opcional</span></label>
+          <input id="producto_detalle" maxlength="160"
+                 value="${esc(p.producto_detalle || '')}"
+                 placeholder="Crema para peinar Rizos 300ml + termoprotector">
+        </div>
+
         <div class="campo">
           <label>Exclusividad</label>
           <select id="exclusividad">
@@ -329,6 +356,15 @@ function pintarPropuesta() {
           </select>
           <div class="contador">Pedir exclusividad sube el costo: ella no puede trabajar con marcas del mismo rubro.</div>
         </div>
+
+        <!-- Sin decir con quién no puede trabajar, la creadora no sabe a qué
+             está renunciando y es lo que más hace rechazar una propuesta. -->
+        <div class="campo ${p.exclusividad ? '' : 'oculto'}" id="campo-excl-det">
+          <label>Con qué no puede trabajar <span class="opcional">opcional</span></label>
+          <input id="exclusividad_detalle" maxlength="160"
+                 value="${esc(p.exclusividad_detalle || '')}"
+                 placeholder="Otras marcas de cuidado capilar">
+        </div>
       </div>
 
       <div class="modal__dinero">
@@ -336,20 +372,20 @@ function pintarPropuesta() {
 
         <div class="dinero-fila">
           <span class="dinero-fila__label">Monto acordado</span>
-          <span class="dinero-fila__valor">${COP(p.monto)}</span>
+          <span class="dinero-fila__valor" id="d-monto">${COP(p.monto)}</span>
         </div>
         <div class="dinero-fila">
           <span class="dinero-fila__label">Comisión plataforma ${pctMarca}%</span>
-          <span class="dinero-fila__valor">+${COP(comision)}</span>
+          <span class="dinero-fila__valor" id="d-comision">+${COP(comision)}</span>
         </div>
         <div class="dinero-fila">
           <span class="dinero-fila__label">Ella recibe (neto)</span>
-          <span class="dinero-fila__valor" style="color:var(--text-3)">${COP(neto)}</span>
+          <span class="dinero-fila__valor" id="d-neto" style="color:var(--text-3)">${COP(neto)}</span>
         </div>
 
         <div class="dinero-total">
           <div class="etiqueta" style="color:var(--chip-dark-text)">Total que tú pagas</div>
-          <div class="dinero-total__valor">${COP(total)}</div>
+          <div class="dinero-total__valor" id="d-total">${COP(total)}</div>
           <div class="dinero-total__nota">
             Se cobra solo si ella acepta. Queda retenido en escrow hasta que apruebes el contenido.
           </div>
@@ -360,7 +396,7 @@ function pintarPropuesta() {
         </p>
 
         <button class="btn btn--lima" style="width:100%;margin-top:14px" id="enviar-prop">
-          Enviar propuesta · ${COP(total)}
+          Enviar propuesta · <span id="d-boton">${COP(total)}</span>
         </button>
         <button class="btn btn--linea" style="width:100%;margin-top:8px" id="cancelar-prop">Cancelar</button>
         <div class="etiqueta" style="margin-top:10px;text-align:center">
@@ -403,12 +439,76 @@ function pintarPropuesta() {
     });
   });
 
+  // ── El monto ──────────────────────────────────────────────────────────
+  //
+  // Antes cada movimiento del deslizador repintaba el modal entero, y eso
+  // hacía que arrastrar se sintiera trabado: el elemento se destruía y se
+  // volvía a crear a mitad del gesto. Ahora solo se reescriben las cifras que
+  // cambian, que son cinco.
   const slider = $('monto');
-  slider.addEventListener('input', () => { PROP.monto = Number(slider.value); pintarPropuesta(); });
+  const campo = $('monto-txt');
+  const rango = E.cfg.rango_presupuesto || { min: 200000, max: 5000000, paso: 10000 };
+
+  function refrescarDinero() {
+    const m = Math.round(PROP.monto);
+    const pctM = Number(E.cfg.comision_marca_pct ?? 12);
+    const pctC = Number(E.cfg.comision_creadora_pct ?? 8);
+    const comision = Math.round(m * pctM / 100);
+    const total = m + comision;
+
+    $('d-monto').textContent = COP(m);
+    $('d-comision').textContent = '+' + COP(comision);
+    $('d-neto').textContent = COP(m - Math.round(m * pctC / 100));
+    $('d-total').textContent = COP(total);
+    $('d-boton').textContent = COP(total);
+
+    const bajo = PROP.tarifaPublicada && m < PROP.tarifaPublicada;
+    $('aviso-bajo').classList.toggle('oculto', !bajo);
+  }
+
+  /** Fija el monto y deja de acuerdo los tres controles. */
+  function fijarMonto(valor, { escribiendo = false } = {}) {
+    let m = Math.max(0, Math.round(Number(valor) || 0));
+    PROP.monto = m;
+    // El deslizador solo llega hasta su tope; el campo escrito no tiene por
+    // qué quedar limitado por eso.
+    slider.value = Math.min(Math.max(m, rango.min), rango.max);
+    if (!escribiendo) campo.value = m.toLocaleString('es-CO');
+    refrescarDinero();
+  }
+
+  slider.addEventListener('input', () => fijarMonto(slider.value));
+
+  // Mientras escribe se deja el texto como está —reformatearlo en cada tecla
+  // mueve el cursor y vuelve loco a cualquiera— y se ordena al salir.
+  campo.addEventListener('input', () => {
+    fijarMonto(campo.value.replace(/[^\d]/g, ''), { escribiendo: true });
+  });
+  campo.addEventListener('blur', () => fijarMonto(PROP.monto));
+  campo.addEventListener('focus', () => campo.select());
+
+  document.querySelectorAll('.atajo').forEach(b => {
+    b.addEventListener('click', () => {
+      fijarMonto(b.dataset.monto !== undefined
+        ? Number(b.dataset.monto)
+        : PROP.monto + Number(b.dataset.suma));
+    });
+  });
   ['brief', 'fecha', 'producto', 'exclusividad'].forEach(id => {
     $(id).addEventListener('change', () => {
-      PROP[id === 'exclusividad' ? 'exclusividad' : id] = $(id).value;
+      PROP[id] = $(id).value;
+      // El detalle solo tiene sentido si hay algo que detallar.
+      if (id === 'producto') {
+        $('campo-prod-det').classList.toggle('oculto', $(id).value === 'NO APLICA');
+      }
+      if (id === 'exclusividad') {
+        $('campo-excl-det').classList.toggle('oculto', !$(id).value);
+      }
     });
+  });
+
+  ['producto_detalle', 'exclusividad_detalle'].forEach(id => {
+    $(id).addEventListener('input', () => { PROP[id] = $(id).value; });
   });
   $('brief').addEventListener('input', () => { PROP.brief = $('brief').value; });
 
@@ -436,7 +536,9 @@ async function enviarPropuesta() {
         brief: PROP.brief,
         fecha_entrega_esperada: $('fecha').value || null,
         producto: $('producto').value,
+        producto_detalle: $('producto_detalle').value.trim() || null,
         exclusividad: $('exclusividad').value || null,
+        exclusividad_detalle: $('exclusividad_detalle').value.trim() || null,
       }),
     });
     cerrarModal();
