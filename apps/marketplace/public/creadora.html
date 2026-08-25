@@ -1646,13 +1646,14 @@ async function descargarHistoria(perfil, arroba) {
 
   // El titular: es una buena noticia, no un anuncio
   x.textAlign = 'center';
-  x.fillStyle = '#F2F2F2'; x.font = TIT(800, 68);
-  x.fillText('PARA TRABAJAR', A / 2, 340);
-  x.fillStyle = '#D6FF00'; x.font = TIT(800, 106);
-  x.fillText('CONMIGO', A / 2, 452);
+  x.fillStyle = '#F2F2F2'; x.font = TIT(700, 54);
+  x.fillText('AHORA SOY', A / 2, 306);
+  x.fillStyle = '#D6FF00'; x.font = TIT(800, 96);
+  x.fillText('CREADORA', A / 2, 412);
+  x.fillText('VERIFICADA', A / 2, 508);
 
   // Su foto, protagonista
-  const FX = A / 2 - 260, FY = 570, FW = 520, FH = 640;
+  const FX = A / 2 - 250, FY = 600, FW = 500, FH = 610;
   x.fillStyle = '#1A1A1A'; x.fillRect(FX, FY, FW, FH);
 
   let dibujada = false;
@@ -1683,12 +1684,6 @@ async function descargarHistoria(perfil, arroba) {
 
   x.strokeStyle = '#D6FF00'; x.lineWidth = 6;
   x.strokeRect(FX, FY, FW, FH);
-
-  // Sello sobre la esquina de la foto
-  const sw = 300, sh = 62;
-  x.fillStyle = '#D6FF00'; x.fillRect(FX, FY + FH - sh, sw, sh);
-  x.fillStyle = '#0E0E0E'; x.font = TIT(800, 22); x.textAlign = 'center';
-  x.fillText('CREADORA VERIFICADA', FX + sw / 2, FY + FH - 22);
 
   // Nombre
   x.textAlign = 'center';
