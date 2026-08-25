@@ -168,7 +168,7 @@ function invitacionCreadora({ email, nombre, status, codigoRef }) {
   // Dos enlaces distintos a propósito: el suyo va limpio —si llevara su propio
   // código quedaría referida por sí misma y gastaría uno de sus dos cupos— y el
   // que comparte sí lo lleva, que es lo que atribuye a sus amigas.
-  const urlPropia = `${config.base_url}/creadora.html`;
+  const urlPropia = `${config.base_url}/invitacion.html`;
   const urlParaCompartir = codigoRef
     ? `${urlPropia}?ref=${encodeURIComponent(codigoRef)}`
     : urlPropia;
@@ -211,7 +211,7 @@ function invitacionCreadora({ email, nombre, status, codigoRef }) {
      <p><strong>Tu cupo en el prelanzamiento es gratuito</strong> y no tiene mensualidad.
      Crear tu perfil toma unos minutos.</p>
 
-     ${boton('ACTIVAR MI CUPO', urlPropia)}
+     ${boton('VER MI INVITACIÓN', urlPropia)}
      ${bloqueReferidos}
 
      <p style="margin-top:24px;font-size:11px;color:#7A7A7A;line-height:1.6">

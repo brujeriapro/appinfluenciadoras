@@ -834,6 +834,13 @@ if (location.hash.startsWith('#recuperar=')) {
   pintarModo();
 }
 
+// Quien llega desde la invitación no tiene cuenta todavía: abrirle la pantalla
+// de "entra con tu correo y contraseña" es pedirle datos que no existen.
+if (location.hash === '#registro') {
+  modo = 'registro';
+  pintarModo();
+}
+
 $('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const err = $('login-error');

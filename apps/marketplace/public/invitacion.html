@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tu invitación · Creators Manager</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Fuiste seleccionada para el prelanzamiento de Creators Manager en Colombia.">
+<link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/tokens.css">
+<style>
+  /* Primera pantalla de una creadora invitada.
+     Antes el enlace del correo la dejaba en el login del portal, pidiéndole un
+     correo y una contraseña que todavía no existen. Aquí primero se le explica
+     dónde está y por qué la invitaron; el registro viene después. */
+
+  body { background: var(--ink); color: var(--off-white); margin: 0;
+         font-family: var(--mono-body); }
+
+  .barra { display: flex; align-items: center; gap: 9px;
+           padding: 16px clamp(16px, 4vw, 34px); border-bottom: 2px solid var(--border-dark); }
+  .barra__marca { width: 26px; height: 26px; background: var(--lime); display: grid;
+                  place-items: center; color: var(--ink); font-family: var(--mono-title);
+                  font-weight: 800; font-size: 13px; }
+  .barra__texto { font-family: var(--mono-title); font-weight: 800; font-size: 13.5px;
+                  letter-spacing: -0.5px; }
+
+  .hoja { max-width: 640px; margin: 0 auto; padding: clamp(26px, 6vw, 56px) clamp(16px, 4vw, 20px) 90px; }
+
+  /* Sello de invitación: lo primero que tiene que quedar claro es que no llegó
+     aquí por un anuncio. */
+  .sello { display: inline-block; background: var(--lime); color: var(--ink);
+           font-family: var(--mono-title); font-weight: 800; font-size: 10.5px;
+           letter-spacing: 1.4px; padding: 6px 11px; text-transform: uppercase; }
+
+  h1 { font-family: var(--mono-title); font-weight: 800;
+       font-size: clamp(30px, 7.5vw, 52px); line-height: 0.98; letter-spacing: -2.4px;
+       text-transform: uppercase; margin: 18px 0 0; text-wrap: balance; }
+  h1 .punto { color: var(--lime); }
+
+  .bajada { font-size: 15px; line-height: 1.65; color: var(--blue-text-soft);
+            margin: 18px 0 0; max-width: 46ch; }
+
+  .quien { border-left: 3px solid var(--lime); padding: 4px 0 4px 14px;
+           margin: 22px 0 0; font-size: 13.5px; line-height: 1.6;
+           color: var(--blue-text-softer); }
+  .quien strong { color: var(--off-white); }
+
+  /* Qué es esto, en tres golpes. Numerados porque son un orden real: primero
+     pone su precio, después la buscan, después le pagan. */
+  .pasos { display: grid; gap: 2px; background: var(--border-dark);
+           border: 2px solid var(--border-dark); margin: 34px 0 0; }
+  .paso { background: var(--ink); padding: 18px 18px 17px; }
+  .paso__n { font-family: var(--mono-title); font-weight: 800; font-size: 11px;
+             color: var(--lime); letter-spacing: 1px; }
+  .paso__t { font-family: var(--mono-title); font-weight: 800; font-size: 15px;
+             letter-spacing: -0.5px; margin: 8px 0 6px; text-transform: uppercase; }
+  .paso__d { font-size: 13px; line-height: 1.6; color: var(--blue-text-softer); }
+
+  .cerrado { border: 2px solid var(--border-dark); padding: 18px;
+             margin: 26px 0 0; font-size: 13.5px; line-height: 1.65;
+             color: var(--blue-text-softer); }
+  .cerrado strong { color: var(--off-white); }
+
+  .cta { display: block; text-align: center; background: var(--lime); color: var(--ink);
+         font-family: var(--mono-title); font-weight: 800; font-size: 15px;
+         letter-spacing: -0.3px; text-decoration: none; padding: 17px 20px;
+         border: 2px solid var(--lime); margin: 30px 0 0; }
+  .cta:hover { background: var(--lime-shade); border-color: var(--lime-shade); }
+  .cta:focus-visible { outline: 3px solid var(--off-white); outline-offset: 3px; }
+
+  .gratis { text-align: center; font-size: 12px; color: var(--blue-text-softer);
+            margin: 12px 0 0; line-height: 1.6; }
+
+  .entrar { text-align: center; margin: 26px 0 0; font-size: 12.5px; }
+  .entrar a { color: var(--blue-text-softest); text-underline-offset: 3px; }
+
+  .pie { border-top: 1px solid var(--border-dark); margin-top: 40px; padding-top: 18px;
+         font-size: 10.5px; line-height: 1.7; color: #7A7A7A; }
+
+  @media (max-width: 480px) {
+    .bajada { font-size: 14.5px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="barra">
+  <div class="barra__marca">C</div>
+  <span class="barra__texto">CREATORS MANAGER</span>
+</div>
+
+<div class="hoja">
+  <span class="sello">Invitación personal</span>
+
+  <h1>Fuiste<br>seleccionada<span class="punto">.</span></h1>
+
+  <p class="bajada">Estás entre las primeras creadoras invitadas al prelanzamiento de
+  Creators Manager en Colombia. Por fin llega acá lo que en otros países ya cambió la
+  forma de trabajar entre marcas y creadoras.</p>
+
+  <p class="quien" id="quien">Tu perfil nos llegó recomendado por una marca con la que
+  ya trabajaste.</p>
+
+  <div class="pasos">
+    <div class="paso">
+      <div class="paso__n">01</div>
+      <div class="paso__t">Tú pones tu precio</div>
+      <div class="paso__d">Defines cuánto cobras por cada tipo de contenido. Las marcas
+      lo ven antes de escribirte, así que se acaba el regateo por mensajes.</div>
+    </div>
+    <div class="paso">
+      <div class="paso__n">02</div>
+      <div class="paso__t">Las marcas te buscan</div>
+      <div class="paso__d">Te llegan propuestas concretas: qué quieren, para cuándo y
+      cuánto pagan. Aceptas las que te sirvan y rechazas las demás, sin explicaciones.</div>
+    </div>
+    <div class="paso">
+      <div class="paso__n">03</div>
+      <div class="paso__t">El acuerdo queda respaldado</div>
+      <div class="paso__d">Lo pactado se registra antes de que empieces a trabajar.
+      En dinero, en producto o ambas: cada marca publica lo que ofrece.</div>
+    </div>
+  </div>
+
+  <div class="cerrado">
+    <strong>Esto no es una plataforma abierta.</strong> Al banco de creadoras solo se
+    entra por invitación o recomendación de alguien que ya está adentro. Es lo que
+    mantiene el nivel — y la razón por la que las marcas que buscan aquí llegan
+    dispuestas a pagar.
+  </div>
+
+  <a class="cta" id="cta" href="/creadora.html#registro">CREAR MI PERFIL &rarr;</a>
+  <p class="gratis">Tu cupo en el prelanzamiento es gratuito y no tiene mensualidad.<br>
+  Toma unos minutos.</p>
+
+  <p class="entrar"><a href="/creadora.html">Ya tengo perfil, quiero entrar</a></p>
+
+  <p class="pie">Creators Manager es un servicio de COLBELLEZA LATAM S.A.S.,
+  NIT 901.519.449-0, Medellín, Colombia.</p>
+</div>
+
+<script>
+// El código de quien la invitó viaja en la dirección y tiene que sobrevivir el
+// salto al registro: si se pierde aquí, la creadora entra sin quedar atribuida
+// a nadie y su amiga no ve reflejada la invitación que usó.
+(function () {
+  var ref = new URLSearchParams(location.search).get('ref');
+  if (!ref) return;
+
+  document.getElementById('cta').href = '/creadora.html?ref=' + encodeURIComponent(ref) + '#registro';
+
+  fetch('/api/creadoras/referido/' + encodeURIComponent(ref))
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d.vale) return;
+      var quien = document.getElementById('quien');
+      quien.innerHTML = d.invita
+        ? 'Te invitó <strong>' + String(d.invita).split(' ')[0].replace(/[<>&]/g, '') +
+          '</strong>, que ya hace parte del banco de creadoras.'
+        : 'Llegas por la invitación de una creadora que ya hace parte del banco.';
+    })
+    .catch(function () {});
+})();
+</script>
+</body>
+</html>

@@ -48,7 +48,9 @@ app.use((req, res, next) => {
   const host = String(req.hostname || req.headers.host || '').toLowerCase();
   if (!host.startsWith('r.mail.')) return next();
 
-  const destino = `${config.base_url}/creadora.html`;
+  // A la landing de invitación, no al portal: quien viene del correo no tiene
+  // cuenta todavía, y el login le pide un correo y una clave que no existen.
+  const destino = `${config.base_url}/invitacion.html`;
   // 302 y no 301: es un arreglo temporal y un permanente se queda cacheado en
   // el navegador de la creadora aunque después lo revirtamos.
   res.redirect(302, destino);
