@@ -705,67 +705,6 @@ VISTAS.creadoras = async () => {
     tr.addEventListener('click', () => verCreadora(tr.dataset.creadora));
   });
 
-  const cajaWa = () => document.getElementById('resultado-wa');
-
-  document.getElementById('wa-prueba-btn')?.addEventListener('click', async () => {
-    const tel = document.getElementById('wa-prueba-tel').value.trim();
-    const msg = document.getElementById('wa-prueba-msg');
-    if (!tel) { msg.style.color = 'var(--magenta)'; msg.textContent = 'Escribe tu número.'; return; }
-    msg.style.color = 'var(--grey-700)'; msg.textContent = 'Enviando…';
-    try {
-      const r = await api('/whatsapp/prueba', { method: 'POST', body: JSON.stringify({ telefono: tel }) });
-      msg.style.color = 'var(--lime)';
-      msg.textContent = 'Enviado a +' + r.telefono + '. Revisa tu WhatsApp.';
-    } catch (e) {
-      msg.style.color = 'var(--magenta)';
-      msg.textContent = e.message;
-    }
-  });
-
-  contenido().querySelectorAll('[data-wa-simular]').forEach(b => {
-    b.addEventListener('click', async () => {
-      b.disabled = true; b.textContent = 'MIRANDO…';
-      try {
-        const r = await api('/whatsapp/enviar', {
-          method: 'POST',
-          body: JSON.stringify({ ola: Number(b.dataset.waSimular), dry_run: true }),
-        });
-        cajaWa().innerHTML = `
-          <div class="bloque" style="margin-top:14px">
-            <div class="seccion-titulo" style="margin-top:0">Simulacro · ola ${r.ola}</div>
-            <p style="font-size:12.5px">Se enviarían <strong>${r.se_enviarian}</strong> mensajes.
-            ${r.quedarian ? `Quedarían <strong>${r.quedarian}</strong> para los días siguientes.` : ''}
-            No se ha mandado nada.</p>
-            <div style="font-size:11.5px;color:var(--grey-700);line-height:1.8">
-              ${r.muestra.map(m => `${esc(m.nombre || '(sin nombre)')} — +${esc(m.telefono)}`).join('<br>')}
-            </div>
-          </div>`;
-      } catch (e) { alert('No se pudo: ' + e.message); }
-      b.disabled = false; b.textContent = 'VER A QUIÉN';
-    });
-  });
-
-  contenido().querySelectorAll('[data-wa-enviar]').forEach(b => {
-    b.addEventListener('click', async () => {
-      const ola = Number(b.dataset.waEnviar);
-      if (!confirm(`Vas a mandar WhatsApp a 50 creadoras reales de la ola ${ola}. No se puede deshacer. ¿Seguimos?`)) return;
-      b.disabled = true; b.textContent = 'ENVIANDO…';
-      try {
-        const r = await api('/whatsapp/enviar', { method: 'POST', body: JSON.stringify({ ola }) });
-        cajaWa().innerHTML = `
-          <div class="bloque" style="margin-top:14px;border-color:var(--lime)">
-            <div class="seccion-titulo" style="margin-top:0">Enviando ${r.se_enviaran} mensajes</div>
-            <p style="font-size:12.5px">Van saliendo despacio, uno cada segundo y medio.
-            ${r.quedaran ? `Quedan <strong>${r.quedaran}</strong> para mañana.` : ''}
-            <br><br>Recarga en unos minutos para ver el conteo.</p>
-          </div>`;
-      } catch (e) {
-        alert('No se pudo: ' + e.message);
-        b.disabled = false; b.textContent = 'ENVIAR 50';
-      }
-    });
-  });
-
   document.getElementById('rec-simular')?.addEventListener('click', async () => {
     const msg = document.getElementById('rec-masivo-msg');
     msg.style.color = 'var(--grey-700)'; msg.textContent = 'Revisando…';
@@ -1122,6 +1061,68 @@ VISTAS.invitaciones = async () => {
   `;
 
   const caja = () => document.getElementById('resultado-inv');
+
+  const cajaWa = () => document.getElementById('resultado-wa');
+
+  document.getElementById('wa-prueba-btn')?.addEventListener('click', async () => {
+    const tel = document.getElementById('wa-prueba-tel').value.trim();
+    const msg = document.getElementById('wa-prueba-msg');
+    if (!tel) { msg.style.color = 'var(--magenta)'; msg.textContent = 'Escribe tu número.'; return; }
+    msg.style.color = 'var(--grey-700)'; msg.textContent = 'Enviando…';
+    try {
+      const r = await api('/whatsapp/prueba', { method: 'POST', body: JSON.stringify({ telefono: tel }) });
+      msg.style.color = 'var(--lime)';
+      msg.textContent = 'Enviado a +' + r.telefono + '. Revisa tu WhatsApp.';
+    } catch (e) {
+      msg.style.color = 'var(--magenta)';
+      msg.textContent = e.message;
+    }
+  });
+
+  contenido().querySelectorAll('[data-wa-simular]').forEach(b => {
+    b.addEventListener('click', async () => {
+      b.disabled = true; b.textContent = 'MIRANDO…';
+      try {
+        const r = await api('/whatsapp/enviar', {
+          method: 'POST',
+          body: JSON.stringify({ ola: Number(b.dataset.waSimular), dry_run: true }),
+        });
+        cajaWa().innerHTML = `
+          <div class="bloque" style="margin-top:14px">
+            <div class="seccion-titulo" style="margin-top:0">Simulacro · ola ${r.ola}</div>
+            <p style="font-size:12.5px">Se enviarían <strong>${r.se_enviarian}</strong> mensajes.
+            ${r.quedarian ? `Quedarían <strong>${r.quedarian}</strong> para los días siguientes.` : ''}
+            No se ha mandado nada.</p>
+            <div style="font-size:11.5px;color:var(--grey-700);line-height:1.8">
+              ${r.muestra.map(m => `${esc(m.nombre || '(sin nombre)')} — +${esc(m.telefono)}`).join('<br>')}
+            </div>
+          </div>`;
+      } catch (e) { alert('No se pudo: ' + e.message); }
+      b.disabled = false; b.textContent = 'VER A QUIÉN';
+    });
+  });
+
+  contenido().querySelectorAll('[data-wa-enviar]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const ola = Number(b.dataset.waEnviar);
+      if (!confirm(`Vas a mandar WhatsApp a 50 creadoras reales de la ola ${ola}. No se puede deshacer. ¿Seguimos?`)) return;
+      b.disabled = true; b.textContent = 'ENVIANDO…';
+      try {
+        const r = await api('/whatsapp/enviar', { method: 'POST', body: JSON.stringify({ ola }) });
+        cajaWa().innerHTML = `
+          <div class="bloque" style="margin-top:14px;border-color:var(--lime)">
+            <div class="seccion-titulo" style="margin-top:0">Enviando ${r.se_enviaran} mensajes</div>
+            <p style="font-size:12.5px">Van saliendo despacio, uno cada segundo y medio.
+            ${r.quedaran ? `Quedan <strong>${r.quedaran}</strong> para mañana.` : ''}
+            <br><br>Recarga en unos minutos para ver el conteo.</p>
+          </div>`;
+      } catch (e) {
+        alert('No se pudo: ' + e.message);
+        b.disabled = false; b.textContent = 'ENVIAR 50';
+      }
+    });
+  });
+
 
   document.getElementById('inv-prueba-btn').addEventListener('click', async () => {
     const email = document.getElementById('inv-prueba-email').value.trim();
