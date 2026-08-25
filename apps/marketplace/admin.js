@@ -496,11 +496,49 @@ router.post('/creadoras/:id/aprobar', async (req, res) => {
     notificaciones.perfilAprobado({ creadora: c, codigoRef }).catch(e =>
       console.error('[notif] perfilAprobado:', e.message));
 
+    // Si vino por invitación de otra creadora, esa se entera ahora — no cuando
+    // la referida se registró. Lo que se celebra es haber traído a alguien que
+    // pasó el filtro, y de paso gana más invitaciones: el premio por traer
+    // gente buena es poder traer más.
+    if (c.referida_por) {
+      premiarAQuienLaTrajo(c).catch(e =>
+        console.error('[referidos] no se pudo premiar:', e.message));
+    }
+
     res.json({ ok: true, creadora: actualizada });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
+
+/**
+ * Le suma invitaciones a quien trajo a una creadora que quedó publicada, y se
+ * lo cuenta.
+ *
+ * Las gana solo cuando la referida pasa la revisión, no cuando se registra:
+ * así nadie invita por invitar, porque las que no pasan no suman nada.
+ */
+async function premiarAQuienLaTrajo(referida) {
+  const cfg = await db.getConfig();
+  const premio = Number(cfg.referidos_por_creadora ?? 2);
+
+  const madrina = await db.getUno('mk_creadoras', {
+    codigo_ref: `eq.${referidos.normalizar(referida.referida_por)}`,
+    select: 'id,email,nombre_publico,cupos_ref',
+  });
+  if (!madrina?.email) return;
+
+  const cupos = (madrina.cupos_ref || 2) + premio;
+  await db.updateCreadora(madrina.id, { cupos_ref: cupos });
+
+  const usados = await referidos.contarUsos(referida.referida_por);
+  await notificaciones.trajisteUna({
+    creadora: madrina,
+    nombreReferida: referida.nombre_publico,
+    restantes: Math.max(0, cupos - usados),
+    ganadas: premio,
+  });
+}
 
 router.post('/creadoras/:id/rechazar', async (req, res) => {
   try {

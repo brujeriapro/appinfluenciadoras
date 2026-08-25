@@ -352,6 +352,38 @@ function perfilAprobado({ creadora, codigoRef }) {
   );
 }
 
+/**
+ * Alguien entró por su invitación.
+ *
+ * Es el refuerzo que faltaba: sin esto una creadora comparte su enlace y nunca
+ * sabe si sirvió, así que no vuelve a compartirlo. Se manda cuando la referida
+ * queda publicada, no cuando se registra — para que lo que se celebre sea
+ * haber traído a alguien que sí pasó el filtro.
+ */
+function trajisteUna({ creadora, nombreReferida, restantes, ganadas }) {
+  return enviar(
+    creadora.email,
+    `${nombreReferida} entró por tu invitación`,
+    `<p style="font-size:16px;font-weight:800;letter-spacing:-0.4px;margin:0 0 14px">
+       Trajiste a una, ${esc(creadora.nombre_publico)}.</p>
+
+     <p><strong>${esc(nombreReferida)}</strong> creó su perfil con tu enlace y ya quedó
+     publicada en el banco. Eso dice mucho de tu ojo: no cualquiera pasa la revisión.</p>
+
+     ${ganadas ? `
+     <div style="border:2px solid #0E0E0E;background:#D6FF00;padding:15px 17px;margin:20px 0">
+       <div style="font-weight:800;letter-spacing:-0.3px;margin-bottom:7px">GANASTE ${ganadas} INVITACIONES MÁS</div>
+       <div style="font-size:12.5px;line-height:1.65">
+         Por traer a alguien que quedó adentro. Ahora te quedan
+         <strong>${restantes}</strong> por usar.
+       </div>
+     </div>` : `
+     <p>Te quedan <strong>${restantes}</strong> invitaciones por usar.</p>`}
+
+     ${boton('VER MI PERFIL', `${config.base_url}/creadora.html`)}`
+  );
+}
+
 /** Enlace para volver a entrar. Sirve para creadoras y para marcas. */
 function resetClave({ email, token, lado }) {
   const pagina = lado === 'marca' ? 'registro.html' : 'creadora.html';
@@ -473,7 +505,7 @@ function pagoLiberado({ trato, creadora }) {
 
 module.exports = {
   enviar,
-  invitacionCreadora, recordatorioPerfil,
+  invitacionCreadora, recordatorioPerfil, trajisteUna,
   bienvenidaCreadora, avisoPerfilNuevo, avisoListaParaRevisar, perfilAprobado, resetClave,
   nuevaSolicitud, tratoAceptado, tratoRechazado,
   pagoRetenido, contenidoEntregado, contenidoAprobado, pagoLiberado,

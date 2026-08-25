@@ -372,6 +372,10 @@
   /* Invitaciones: en lima porque es lo único del portal que le da algo, no
      que le pide algo. */
   .bloque-perfil--inv { border-color: var(--lime); }
+  .inv-premio { font-size: 11.5px; line-height: 1.6; color: var(--blue-text-softer);
+                border-left: 2px solid var(--lime); padding-left: 11px; margin-top: 12px; }
+  .inv-premio strong { color: var(--lime); }
+
   .inv-enlace { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
   .inv-enlace input { flex: 1; min-width: 200px; font-size: 11.5px; }
   .inv-traidas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px;
@@ -1579,7 +1583,14 @@ async function pintarInvitaciones() {
       <div class="bloque-perfil__nota">
         ${d.restantes
           ? 'Trae a creadoras que trabajen bien. Sabes mejor que nadie quiénes son.'
-          : 'Usaste tus dos invitaciones. Gracias por traer gente buena.'}
+          : 'Usaste todas tus invitaciones por ahora.'}
+      </div>
+
+      <!-- Que sepa qué gana ANTES de invitar. Sin esto comparte el enlace sin
+           saber que hay algo del otro lado, y no vuelve a hacerlo. -->
+      <div class="inv-premio">
+        Por cada creadora que traigas y quede publicada, <strong>ganas 2 invitaciones
+        más</strong>. Solo cuentan las que pasan la revisión.
       </div>
       ${d.restantes ? `
         <div class="inv-enlace">
