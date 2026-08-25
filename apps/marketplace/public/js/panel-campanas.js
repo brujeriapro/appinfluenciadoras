@@ -299,7 +299,9 @@ function pintarCampana() {
   const disponible = Math.round(c.tope_total / (1 + pct / 100));
   const comision = c.tope_total - disponible;
   const alcanza = Math.floor(c.tope_total / (c.tope_por_creadora * (1 + pct / 100)));
-  const califican = E.catalogo.filter(x => x.tarifa_min && x.tarifa_min <= c.tope_por_creadora).length;
+  // Quien no puso precio también cuenta: su tarifa se acuerda, así que puede
+  // caber en el presupuesto. Excluirla la haría invisible para las campañas.
+  const califican = E.catalogo.filter(x => !x.tarifa_min || x.tarifa_min <= c.tope_por_creadora).length;
 
   // El aviso cambia según lo que falte: es más útil que un texto fijo.
   let aviso;

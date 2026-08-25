@@ -407,15 +407,10 @@ router.post('/creadoras/:id/aprobar', async (req, res) => {
     const c = await db.getCreadoraCompleta(req.params.id);
     if (!c) return res.status(404).json({ error: 'No encontrada' });
 
-    // "Abierta a negociación" es una respuesta válida a cuánto cobra: la
-    // creadora dijo algo, y la marca sabe a qué atenerse. Lo que no sirve es el
-    // silencio, que deja a la marca adivinando.
-    const tarifas = await db.getTarifasDeCreadora(c.id);
-    if (!tarifas.some(t => t.activo !== false) && !c.tarifa_abierta) {
-      return res.status(409).json({
-        error: 'No dijo cuánto cobra. Pídele tarifas, o márcala como abierta a negociación.',
-      });
-    }
+    // El precio no es requisito para publicarse. Exigirlo dejaba perfiles
+    // buenos fuera del catálogo por el miedo a ponerse número, que es lo que
+    // más traba a una creadora nueva. Sin tarifa, la ficha dice "a convenir" y
+    // la conversación arranca igual.
     if (!(c.nicho || []).length) {
       return res.status(409).json({ error: 'Falta asignarle nicho antes de publicar.' });
     }

@@ -571,10 +571,11 @@ router.put('/tarifas', async (req, res) => {
     const actual = await db.getCreadoraCompleta(req.usuarioId);
     const cambios = { ...resumen };
 
-    // El perfil entra a la cola de revisión cuando ya no le falta nada: nicho,
-    // redes, tarifas y al menos una pieza de trabajo. Antes de eso, revisarlo
-    // sería hacerle perder el tiempo al equipo.
-    if (actual?.estado_perfil === 'nueva' && (resumen.tarifa_min || actual.tarifa_abierta)) {
+    // El perfil entra a la cola cuando tiene lo que una marca necesita para
+    // decidir: nicho, una red y algo de su trabajo. La tarifa no está en esa
+    // lista a propósito — se puede acordar después, y exigirla dejaba fuera a
+    // quien no sabía qué cobrar.
+    if (actual?.estado_perfil === 'nueva') {
       const [muestras, priv] = await Promise.all([
         db.getMuestrasDeCreadora(req.usuarioId),
         db.getPrivadoDeCreadora(req.usuarioId),

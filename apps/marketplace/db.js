@@ -151,7 +151,12 @@ async function getCatalogo({ categoria, nicho, rango_alcance, nivel_tarifa, pais
   if (ciudad)        params.ciudad = `eq.${ciudad}`;
   // "Muéstrame quién cabe en mi presupuesto": basta con que su entregable más
   // barato quepa, aunque tenga otros más caros.
-  if (presupuesto_max) params.tarifa_min = `lte.${presupuesto_max}`;
+  //
+  // Quien no publicó precio entra igual: su tarifa se acuerda, así que podría
+  // caber perfectamente. Filtrarla la volvería invisible para toda marca que
+  // use el filtro, que es justo lo contrario de lo que queremos ahora que la
+  // tarifa dejó de ser obligatoria.
+  if (presupuesto_max) params.or = `(tarifa_min.lte.${presupuesto_max},tarifa_min.is.null)`;
   return get('mk_creadoras', params);
 }
 

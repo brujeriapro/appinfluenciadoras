@@ -761,8 +761,8 @@ function filaHTML(c) {
         </div>
       </div>
       <div class="desde">
-        <div class="desde__valor">${c.tarifa_min ? COP(c.tarifa_min) : '—'}</div>
-        <div class="desde__label">Desde</div>
+        <div class="desde__valor">${c.tarifa_min ? COP(c.tarifa_min) : 'A convenir'}</div>
+        <div class="desde__label">${c.tarifa_min ? 'Desde' : 'Sin precio fijo'}</div>
       </div>
       <div class="triage">
         <button class="tri ${esPre(c.id) ? 'on-si' : ''}" data-si="${c.id}"
@@ -810,8 +810,8 @@ function tarjetaHTML(c) {
       </div>
       <div class="tarjeta__pie">
         <div class="desde">
-          <div class="desde__valor">${c.tarifa_min ? COP(c.tarifa_min) : '—'}</div>
-          <div class="desde__label">Desde</div>
+          <div class="desde__valor">${c.tarifa_min ? COP(c.tarifa_min) : 'A convenir'}</div>
+          <div class="desde__label">${c.tarifa_min ? 'Desde' : 'Sin precio fijo'}</div>
         </div>
         <button class="btn btn--sm" data-ficha="${c.id}">Ver ficha →</button>
       </div>
