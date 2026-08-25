@@ -1,0 +1,356 @@
+<title>Pricing de Creators Manager</title>
+<style>
+  /* Documento de decisión: se lee una vez con cuidado y se vuelve a él para
+     consultar una cifra. Misma identidad del producto. */
+
+  :root {
+    --tinta:      #0E0E0E;
+    --papel:      #ECECE9;
+    --superficie: #FFFFFF;
+    --texto:      #1C1C1E;
+    --texto-2:    #4A4A50;
+    --texto-3:    #6E6E76;
+    --borde:      #0E0E0E;
+    --borde-2:    #C9C9C4;
+    --borde-3:    #E3E3DF;
+
+    --lima:    #D6FF00;
+    --magenta: #FF2E9A;
+    --azul:    #2323F0;
+    --lima-t:  #0E0E0E;
+
+    --mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --tinta: #F2F2EF; --papel: #0B0B0C; --superficie: #151517;
+      --texto: #EDEDEA; --texto-2: #B6B6B2; --texto-3: #85858C;
+      --borde: #3C3C40; --borde-2: #2C2C30; --borde-3: #242427; --azul: #7B7BFF;
+    }
+  }
+  :root[data-theme="dark"] {
+    --tinta: #F2F2EF; --papel: #0B0B0C; --superficie: #151517;
+    --texto: #EDEDEA; --texto-2: #B6B6B2; --texto-3: #85858C;
+    --borde: #3C3C40; --borde-2: #2C2C30; --borde-3: #242427; --azul: #7B7BFF;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--papel); color: var(--texto); font-family: var(--sans);
+         font-size: 16px; line-height: 1.62; margin: 0; padding: 0 20px 100px;
+         -webkit-font-smoothing: antialiased; }
+  .hoja { max-width: 800px; margin: 0 auto; }
+
+  header { border: 2px solid var(--borde); background: var(--superficie);
+           padding: clamp(24px, 4.5vw, 38px); margin: clamp(26px, 5vw, 54px) 0 34px; }
+  .eyebrow { font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.6px;
+             text-transform: uppercase; color: var(--texto-3); margin-bottom: 15px; }
+  h1 { font-family: var(--mono); font-weight: 700; font-size: clamp(26px, 5vw, 40px);
+       line-height: 1.03; letter-spacing: -2px; text-transform: uppercase;
+       margin: 0 0 16px; color: var(--tinta); text-wrap: balance; }
+  header p { margin: 0; color: var(--texto-2); max-width: 60ch; }
+
+  section { margin-bottom: 52px; }
+  h2 { font-family: var(--mono); font-weight: 700; font-size: clamp(18px, 2.9vw, 24px);
+       line-height: 1.12; letter-spacing: -0.9px; text-transform: uppercase;
+       color: var(--tinta); margin: 0 0 6px; text-wrap: balance;
+       padding-top: 16px; border-top: 2px solid var(--borde); }
+  h2 .num { display: block; font-size: 10.5px; letter-spacing: 1.6px;
+            color: var(--texto-3); margin-bottom: 9px; font-weight: 400; }
+  h3 { font-family: var(--mono); font-weight: 700; font-size: 14px;
+       letter-spacing: -0.2px; color: var(--tinta); margin: 30px 0 10px; }
+
+  p { margin: 0 0 15px; max-width: 70ch; }
+  section > p:first-of-type { margin-top: 18px; }
+  strong { font-weight: 700; color: var(--tinta); }
+  em { color: var(--texto-2); }
+  ul, ol { margin: 0 0 17px; padding-left: 21px; max-width: 70ch; }
+  li { margin-bottom: 9px; }
+  li::marker { color: var(--texto-3); }
+  code { font-family: var(--mono); font-size: 0.87em; background: var(--borde-3);
+         padding: 2px 6px; border: 1px solid var(--borde-3); }
+
+  .tabla-wrap { overflow-x: auto; margin: 20px 0 24px; border: 2px solid var(--borde); }
+  table { width: 100%; border-collapse: collapse; background: var(--superficie); }
+  th { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.1px;
+       text-transform: uppercase; text-align: left; font-weight: 700;
+       padding: 11px 13px; border-bottom: 2px solid var(--borde);
+       color: var(--texto-3); white-space: nowrap; }
+  td { padding: 12px 13px; font-size: 14px; vertical-align: top;
+       border-bottom: 1px solid var(--borde-3); line-height: 1.5; }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { font-family: var(--mono); font-variant-numeric: tabular-nums;
+                   text-align: right; white-space: nowrap; }
+  td.plata { font-family: var(--mono); font-variant-numeric: tabular-nums;
+             text-align: right; white-space: nowrap; font-weight: 700; }
+  .destacada td { background: var(--borde-3); }
+  .plan-nombre { font-family: var(--mono); font-weight: 700; }
+
+  .cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 2px; background: var(--borde); border: 2px solid var(--borde);
+            margin: 22px 0 26px; }
+  .cifra { background: var(--superficie); padding: 16px 15px 14px; }
+  .cifra__v { font-family: var(--mono); font-weight: 700; font-size: 26px;
+              letter-spacing: -1.4px; line-height: 1; color: var(--tinta);
+              font-variant-numeric: tabular-nums; }
+  .cifra__l { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.1px;
+              text-transform: uppercase; color: var(--texto-3); margin-top: 8px; }
+  .cifra__n { font-size: 12px; color: var(--texto-2); margin-top: 6px; line-height: 1.45; }
+
+  .ojo { border: 2px solid var(--magenta); background: var(--superficie);
+         padding: 17px 19px; margin: 22px 0; }
+  .ojo__t { font-family: var(--mono); font-weight: 700; font-size: 10.5px;
+            letter-spacing: 1.2px; text-transform: uppercase;
+            color: var(--magenta); margin-bottom: 10px; }
+  .ojo p:last-child { margin-bottom: 0; }
+
+  .bloque { border: 2px solid var(--borde); background: var(--superficie);
+            padding: 18px 20px; margin: 22px 0; }
+  .bloque__t { font-family: var(--mono); font-weight: 700; font-size: 11px;
+               letter-spacing: 1.3px; text-transform: uppercase;
+               margin-bottom: 11px; color: var(--tinta); }
+  .bloque p:last-child, .bloque ul:last-child { margin-bottom: 0; }
+  .bloque--plata .bloque__t { background: var(--lima); color: var(--lima-t);
+                              display: inline-block; padding: 4px 9px; margin: -4px 0 12px -4px; }
+
+  .cierre { border: 2px solid var(--borde); background: var(--tinta); color: var(--papel);
+            padding: clamp(20px, 4vw, 32px); margin-top: 20px; }
+  .cierre h2 { color: var(--papel); border-top: none; padding-top: 0; margin-bottom: 14px; }
+  .cierre p, .cierre li { color: var(--papel); opacity: 0.88; }
+  .cierre strong { color: var(--lima); opacity: 1; }
+  .cierre li::marker { color: var(--lima); }
+
+  @media (max-width: 560px) { body { font-size: 15.5px; padding: 0 15px 70px; }
+                              td, th { padding: 10px 11px; } }
+</style>
+
+<div class="hoja">
+
+<header>
+  <div class="eyebrow">Creators Manager · Modelo de ingresos</div>
+  <h1>Pricing, replanteado</h1>
+  <p>Tres fuentes: la comisión por trato cerrado, una suscripción de marca escalonada por
+  propuestas, y un plan pago para creadoras. Todo calculado sobre las tarifas reales de tu
+  catálogo, no sobre supuestos.</p>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<section>
+<h2><span class="num">Punto de partida</span>Las cifras sobre las que se decide</h2>
+
+<div class="cifras">
+  <div class="cifra"><div class="cifra__v">$125.000</div><div class="cifra__l">Tarifa promedio</div>
+    <div class="cifra__n">Mediana $100.000</div></div>
+  <div class="cifra"><div class="cifra__v">$25.000</div><div class="cifra__l">Comisión por trato</div>
+    <div class="cifra__n">20% del promedio</div></div>
+  <div class="cifra"><div class="cifra__v">51</div><div class="cifra__l">Creadoras publicadas</div>
+    <div class="cifra__n">88 registradas</div></div>
+  <div class="cifra"><div class="cifra__v">2</div><div class="cifra__l">Marcas</div>
+    <div class="cifra__n">Y el primer trato</div></div>
+</div>
+
+<p>Ese <strong>$25.000 por trato</strong> es el número que ordena todo lo demás. Con tarifas
+de nano y micro creadoras, cada colaboración deja poco: el negocio se hace con volumen, y la
+suscripción existe para sostener el mientras tanto.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<section>
+<h2><span class="num">01</span>La comisión: sin cambios</h2>
+
+<p><strong>12% que paga la marca sobre el monto, 8% que se le descuenta a la creadora.</strong>
+Un trato de $125.000 le cuesta $140.000 a la marca, le deja $115.000 a la creadora, y te
+deja $25.000 a ti.</p>
+
+<p>No la tocaría. El 20% total está en línea con lo que cobra el mercado, se paga solo
+cuando algo salió bien —que es lo que la hace fácil de aceptar— y es tu ingreso principal
+hasta que haya muchas marcas suscritas.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<section>
+<h2><span class="num">02</span>Marcas: escalones por propuesta</h2>
+
+<p>Cambia la unidad. Hoy se cobra por <em>abrir fichas</em>, que se esquiva fácil —una marca
+mira diez, anota los códigos y vuelve el mes siguiente— y que además no es donde está el
+valor. Lo que de verdad le sirve a una marca es <strong>poder proponerle a una creadora</strong>,
+que es el paso que puede terminar en contenido.</p>
+
+<div class="tabla-wrap">
+<table>
+  <thead><tr>
+    <th>Plan</th><th class="num">Precio/mes</th><th class="num">Propuestas</th>
+    <th>Para quién</th><th class="num">$ por propuesta</th>
+  </tr></thead>
+  <tbody>
+    <tr>
+      <td class="plan-nombre">Explora</td><td class="plata">$0</td><td class="num">3</td>
+      <td>Probar de verdad: alcanza para cerrar una colaboración y ver que funciona</td>
+      <td class="num">—</td>
+    </tr>
+    <tr>
+      <td class="plan-nombre">Impulsa</td><td class="plata">$39.900</td><td class="num">12</td>
+      <td>Marca chica que hace contenido todos los meses</td>
+      <td class="num">$3.325</td>
+    </tr>
+    <tr class="destacada">
+      <td class="plan-nombre">Escala</td><td class="plata">$119.900</td><td class="num">40</td>
+      <td>Marca con campañas seguidas y varios productos</td>
+      <td class="num">$2.998</td>
+    </tr>
+    <tr>
+      <td class="plan-nombre">Agencia</td><td class="plata">$299.900</td><td class="num">Sin límite</td>
+      <td>Quien maneja varias marcas a la vez</td>
+      <td class="num">—</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Por qué esos números</h3>
+
+<ul>
+  <li><strong>El catálogo se abre completo en todos los planes.</strong> Limitar la búsqueda
+  no protege nada —lo que se ve se puede anotar— y en cambio impide que la marca encuentre a
+  la creadora por la que valdría la pena pagar.</li>
+  <li><strong>$3.300 por propuesta es barato para la marca.</strong> Si una de cada tres se
+  cierra, cada propuesta le trae $42.000 en contenido. Está pagando menos del 8% de lo que
+  recibe.</li>
+  <li><strong>Los saltos son de 3x, no de 5x.</strong> Hoy el brinco de $19.900 a $99.900 deja
+  fuera a quien necesita veinte fichas: se queda en el plan chico o se va. Con estos escalones
+  siempre hay un plan que le queda.</li>
+  <li><strong>El gratuito permite cerrar.</strong> Con una sola propuesta —como está hoy— una
+  marca que prueba nunca llega a ver el producto funcionando, y esa es la razón por la que
+  pagaría.</li>
+</ul>
+
+<div class="ojo">
+  <div class="ojo__t">El riesgo de cobrar por propuesta, en números</div>
+  <p>Cada propuesta que no se envía es comisión que no entra. Una propuesta vale
+  <strong>$8.300 de comisión esperada</strong> (un tercio de $25.000), así que un plan de
+  $39.900 equivale a cinco propuestas frenadas.</p>
+  <p>El modelo funciona si el tope <strong>empuja a subir de plan</strong>, y falla si hace
+  que la marca simplemente proponga menos. Por eso el escalón de arriba tiene que sentirse
+  cerca: de 12 a 40 propuestas por $80.000 más es una decisión fácil para quien ya está
+  cerrando tratos. Si ves que las marcas se quedan pegadas en el tope sin subir, hay que
+  soltar los límites y vivir de la comisión.</p>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<section>
+<h2><span class="num">03</span>Creadoras: el plan Pro</h2>
+
+<p>Una suscripción de <strong>$16.900 al mes</strong>. Barata a propósito: tus creadoras
+cobran $125.000 por pieza, así que cualquier cosa por encima de veinte mil se siente como un
+mordisco grande a un ingreso que todavía no es estable.</p>
+
+<div class="tabla-wrap">
+<table>
+  <thead><tr><th>Qué incluye</th><th>Gratis</th><th>Pro · $16.900</th></tr></thead>
+  <tbody>
+    <tr><td>Perfil, tarifas y recibir propuestas</td><td>Sí</td><td>Sí</td></tr>
+    <tr><td>Comisión sobre lo que gana</td><td>8%</td><td><strong>8%</strong></td></tr>
+    <tr><td>Piezas en el portafolio</td><td class="num">6</td><td class="num">15</td></tr>
+    <tr class="destacada">
+      <td><strong>Quién miró su perfil</strong><br>
+        <span style="font-size:12.5px;color:var(--texto-2)">Qué marcas abrieron su ficha y cuántas veces</span></td>
+      <td>—</td><td>Sí</td></tr>
+    <tr><td><strong>Campañas antes que las demás</strong><br>
+        <span style="font-size:12.5px;color:var(--texto-2)">24 horas de ventaja para postularse</span></td>
+      <td>—</td><td>Sí</td></tr>
+    <tr><td>Sello Pro en su ficha y en su historia</td><td>—</td><td>Sí</td></tr>
+    <tr><td>Invitaciones para traer creadoras</td><td class="num">2</td><td class="num">5</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="bloque">
+  <div class="bloque__t">Por qué el Pro NO baja la comisión</div>
+  <p>Es lo primero que uno piensa —cobrar $16.900 a cambio de bajarle el 8% al 4%— y es un
+  mal negocio para ti. Una creadora que hace tres tratos al mes te deja $30.000 de comisión;
+  si le cobras $16.900 y le perdonas la mitad, pierdes plata con la que más trabaja.</p>
+  <p>Y al revés tampoco sirve: quien hace un solo trato paga $10.000 de comisión, así que
+  una suscripción de $16.900 le sale más cara que el descuento. No lo compraría nadie salvo
+  las que más te dan.</p>
+  <p><strong>Por eso el Pro vende información y ventaja, no descuento.</strong> Saber qué
+  marcas la están mirando es lo que ninguna otra plataforma le da, y no te cuesta un peso.</p>
+</div>
+
+<h3>Cuánto puede rendir</h3>
+
+<p>Con 500 creadoras y una conversión del 8% al Pro —conservadora para este tipo de
+producto— son <strong>40 suscripciones, $676.000 al mes</strong>. No es la línea principal,
+pero es ingreso que no depende de que las marcas cierren tratos.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<section>
+<h2><span class="num">04</span>Cómo se ve armado</h2>
+
+<p>Un mes con 35 marcas activas, 70 tratos cerrados y 500 creadoras:</p>
+
+<div class="tabla-wrap">
+<table>
+  <thead><tr><th>Fuente</th><th>Supuesto</th><th class="num">Al mes</th></tr></thead>
+  <tbody>
+    <tr><td>Comisión por tratos</td><td>70 tratos × $25.000</td><td class="plata">$1.750.000</td></tr>
+    <tr><td>Suscripción de marcas</td><td>20 Impulsa · 12 Escala · 3 Agencia</td><td class="plata">$3.137.400</td></tr>
+    <tr><td>Pro de creadoras</td><td>40 de 500</td><td class="plata">$676.000</td></tr>
+    <tr class="destacada"><td colspan="2"><strong>Total</strong></td><td class="plata"><strong>$5.563.400</strong></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Fíjate en lo que cambia respecto a hoy: <strong>la suscripción pasa a ser la línea más
+grande</strong>. Con la comisión sola, esos mismos 70 tratos dejarían $1.750.000. El
+escalonado por propuestas es lo que triplica el ingreso sin pedirle más volumen al catálogo.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<section>
+<h2><span class="num">05</span>Qué hay que construir</h2>
+
+<p>De lo anterior, esto es lo que hoy no existe:</p>
+
+<ol>
+  <li><strong>Contar propuestas en vez de fichas.</strong> El límite ya existe pero mira las
+  fichas abiertas; hay que moverlo al envío de propuesta. Es lo primero y lo más rápido.</li>
+  <li><strong>El plan Pro de creadoras</strong>: cobro por Wompi, el sello, y subir el tope
+  de piezas de 6 a 15.</li>
+  <li><strong>"Quién miró tu perfil".</strong> Los datos ya se guardan en
+  <code>mk_fichas_vistas</code> — falta la pantalla que se los muestre a ella.</li>
+  <li><strong>Campañas abiertas a las que las creadoras se postulen.</strong> Es lo que hace
+  valiosa la ventaja de 24 horas, y hoy no existe: las marcas proponen, las creadoras no
+  aplican. Es la pieza más grande de las cuatro.</li>
+</ol>
+
+<p>Las tres primeras se pueden hacer en poco tiempo. La cuarta es un proyecto en sí mismo, y
+mientras no exista, la ventaja de 24 horas del Pro no se puede prometer.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<div class="cierre">
+<h2>Lo que decides tú</h2>
+<ol>
+  <li><strong>Si los precios de marca te cuadran</strong> — $39.900 / $119.900 / $299.900. Están
+  pensados para marcas pequeñas colombianas; si tu clienta objetivo es más grande, todo sube.</li>
+  <li><strong>Si el Pro de creadoras se lanza ahora o después.</strong> Yo esperaría: sin
+  campañas abiertas, la mitad de su valor no existe todavía, y cobrarles antes de que la
+  plataforma les traiga trabajo se siente mal.</li>
+  <li><strong>Qué pasa con las marcas que ya están.</strong> Con dos, no importa; pero define
+  desde ahora si las primeras se quedan con el precio de entrada para siempre.</li>
+</ol>
+<p style="margin-bottom:0">Dime qué ajustas y lo implemento — empezando por mover el conteo
+de fichas a propuestas, que es lo que cambia el modelo de verdad.</p>
+</div>
+
+</div>
