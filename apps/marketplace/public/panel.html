@@ -415,6 +415,38 @@ document.addEventListener('click', (ev) => {
   if (!ev.target.closest('.menu')) $('menu-bandejas').classList.remove('abierto');
 });
 
+/**
+ * Reproducir una pieza en video sin salir del catálogo.
+ *
+ * Va delegado porque las filas se vuelven a dibujar con cada filtro, y detiene
+ * la propagación para que darle play no cuente como "abrir la ficha" —que es
+ * lo que haría el clic en cualquier otra parte de la fila.
+ */
+document.addEventListener('click', (ev) => {
+  const marco = ev.target.closest('[data-video]');
+  if (!marco) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+
+  const v = marco.querySelector('video');
+  if (!v) return;
+
+  if (v.paused) {
+    // Solo una a la vez: cuatro videos sonando —aunque sean mudos— dejan la
+    // página pesada y confusa.
+    document.querySelectorAll('[data-video] video').forEach(otro => {
+      if (otro !== v) {
+        otro.pause();
+        otro.closest('[data-video]')?.classList.remove('corriendo');
+      }
+    });
+    v.play().then(() => marco.classList.add('corriendo')).catch(() => {});
+  } else {
+    v.pause();
+    marco.classList.remove('corriendo');
+  }
+});
+
 document.querySelectorAll('.menu__op').forEach(b => {
   b.addEventListener('click', (ev) => {
     ev.stopPropagation();
@@ -757,11 +789,14 @@ const pieza = (m) => {
   if (m.tipo === 'video') {
     // Envuelto en su propio marco: los contenedores de pieza no están
     // posicionados y el indicador de play se iría a otra parte de la página.
-    return `<span class="pieza-wrap">
-              <video src="${url}" preload="metadata" muted playsinline loop
-                     class="pieza-video" aria-label="Pieza de trabajo en video"></video>
+    // El "#t=1" pide el fotograma del segundo uno en vez del cero: casi todos
+    // los videos arrancan en negro o con la cámara todavía enfocando, y esa
+    // era la miniatura que estaba quedando.
+    return `<button type="button" class="pieza-wrap" data-video aria-label="Reproducir pieza de trabajo">
+              <video src="${url}#t=1" preload="metadata" muted playsinline loop
+                     class="pieza-video"></video>
               <span class="pieza-play" aria-hidden="true">▶</span>
-            </span>`;
+            </button>`;
   }
   return `<img src="${url}" alt="Pieza de trabajo" loading="lazy">`;
 };
