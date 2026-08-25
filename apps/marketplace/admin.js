@@ -822,10 +822,17 @@ router.get('/whatsapp', async (req, res) => {
       });
     }
 
+    // Se pregunta a Meta de verdad: tener las variables puestas no significa
+    // que el token siga vivo, y esa diferencia solo se descubre enviando.
+    const estado = whatsapp.configurado()
+      ? await whatsapp.verificar()
+      : { ok: false, motivo: 'Faltan WA_PHONE_NUMBER_ID, WA_TOKEN o WA_PLANTILLA' };
+
     res.json({
       olas,
       enviadas_total: previas.filter(p => p.enviada_at).length,
-      listo: whatsapp.configurado(),
+      listo: estado.ok,
+      estado,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

@@ -87,4 +87,47 @@ async function enviarPlantilla(telefono, variables = []) {
   }
 }
 
-module.exports = { configurado, normalizarTelefono, enviarPlantilla };
+/**
+ * ¿El token sirve todavía?
+ *
+ * Pregunta por el propio número, que es la llamada más barata que hay: no
+ * manda nada, no cuesta y no toca a ningún destinatario. Los tokens de Meta
+ * caducan sin aviso y cuando eso pasa los envíos fallan en silencio, así que
+ * conviene poder comprobarlo antes de una tanda y no a mitad.
+ */
+async function verificar() {
+  if (!config.whatsapp.phone_number_id || !config.whatsapp.token) {
+    return { ok: false, motivo: 'Falta WA_PHONE_NUMBER_ID o WA_TOKEN' };
+  }
+
+  try {
+    const r = await fetch(
+      `${API}/${config.whatsapp.phone_number_id}?fields=display_phone_number,verified_name,quality_rating`,
+      { headers: { 'Authorization': `Bearer ${config.whatsapp.token}` } }
+    );
+    const d = await r.json().catch(() => ({}));
+
+    if (!r.ok) {
+      const msg = d?.error?.message || `HTTP ${r.status}`;
+      const vencido = /expired|session has expired|invalid.*token|OAuth/i.test(msg);
+      return {
+        ok: false,
+        vencido,
+        motivo: vencido ? 'El token está vencido. Hay que generar uno nuevo.' : msg,
+      };
+    }
+
+    return {
+      ok: true,
+      numero: d.display_phone_number || null,
+      nombre: d.verified_name || null,
+      // Meta baja esta calificación cuando la gente reporta o bloquea. En
+      // rojo, los envíos se limitan solos.
+      calidad: d.quality_rating || null,
+    };
+  } catch (e) {
+    return { ok: false, motivo: e.message };
+  }
+}
+
+module.exports = { configurado, normalizarTelefono, enviarPlantilla, verificar };

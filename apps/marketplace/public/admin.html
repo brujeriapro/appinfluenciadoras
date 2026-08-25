@@ -1056,11 +1056,16 @@ VISTAS.invitaciones = async () => {
     ${wa ? `
       <div class="seccion-titulo" style="margin-top:34px">Por WhatsApp</div>
 
-      ${wa.listo ? '' : `
-        <div class="bloque" style="border-color:var(--magenta);margin-bottom:14px">
-          <strong style="color:var(--magenta)">WhatsApp sin configurar.</strong>
-          Faltan <code>WA_PHONE_NUMBER_ID</code>, <code>WA_TOKEN</code> y
-          <code>WA_PLANTILLA</code> en Railway. Puedes ver a cuántas llegaría, pero no enviar.
+      ${wa.listo ? `
+        <div class="bloque" style="border-color:var(--lime);margin-bottom:14px;font-size:12.5px">
+          <strong style="color:var(--lime)">Conectado.</strong>
+          Número ${esc(wa.estado.numero || '—')}${wa.estado.nombre ? ' · ' + esc(wa.estado.nombre) : ''}
+          ${wa.estado.calidad ? ' · calidad ' + esc(wa.estado.calidad) : ''}
+        </div>` : `
+        <div class="bloque" style="border-color:var(--magenta);margin-bottom:14px;font-size:12.5px">
+          <strong style="color:var(--magenta)">No se puede enviar.</strong>
+          ${esc(wa.estado?.motivo || 'Revisa la configuración.')}
+          ${wa.estado?.vencido ? '<br>Genera un token permanente con un usuario del sistema en Meta.' : ''}
         </div>`}
 
       <div class="bloque" style="margin-bottom:14px;font-size:12.5px;line-height:1.7">
