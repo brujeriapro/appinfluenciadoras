@@ -339,8 +339,10 @@ function perfilAprobado({ creadora, codigoRef }) {
      <div style="border:2px solid #0E0E0E;background:#D6FF00;padding:15px 17px;margin-top:24px">
        <div style="font-weight:800;letter-spacing:-0.3px;margin-bottom:7px">TIENES DOS INVITACIONES</div>
        <div style="font-size:12.5px;line-height:1.65">
-         Ahora que estás adentro puedes traer a dos creadoras. Sabes mejor que nadie
-         quién trabaja bien. Comparte tu enlace:<br>
+         Ahora que estás adentro puedes traer a dos creadoras. Y no es solo un favor:
+         <strong>cada una que traigas sube tu prioridad</strong>, que decide quién ve las
+         campañas primero y quién sale antes en el catálogo.<br><br>
+         Comparte tu enlace:<br>
          <span style="display:inline-block;background:#fff;border:1px solid #0E0E0E;padding:7px 10px;margin-top:9px;font-size:11.5px;word-break:break-all">${enlace}</span>
        </div>
      </div>` : ''}
@@ -360,7 +362,7 @@ function perfilAprobado({ creadora, codigoRef }) {
  * queda publicada, no cuando se registra — para que lo que se celebre sea
  * haber traído a alguien que sí pasó el filtro.
  */
-function trajisteUna({ creadora, nombreReferida, restantes, ganadas }) {
+function trajisteUna({ creadora, nombreReferida, restantes, prioridad, traidas }) {
   return enviar(
     creadora.email,
     `${nombreReferida} entró por tu invitación`,
@@ -370,15 +372,16 @@ function trajisteUna({ creadora, nombreReferida, restantes, ganadas }) {
      <p><strong>${esc(nombreReferida)}</strong> creó su perfil con tu enlace y ya quedó
      publicada en el banco. Eso dice mucho de tu ojo: no cualquiera pasa la revisión.</p>
 
-     ${ganadas ? `
      <div style="border:2px solid #0E0E0E;background:#D6FF00;padding:15px 17px;margin:20px 0">
-       <div style="font-weight:800;letter-spacing:-0.3px;margin-bottom:7px">GANASTE ${ganadas} INVITACIONES MÁS</div>
+       <div style="font-weight:800;letter-spacing:-0.3px;margin-bottom:7px">SUBISTE TU PRIORIDAD</div>
        <div style="font-size:12.5px;line-height:1.65">
-         Por traer a alguien que quedó adentro. Ahora te quedan
-         <strong>${restantes}</strong> por usar.
+         Ahora tienes <strong>${prioridad} puntos</strong>. La prioridad decide dos cosas:
+         quién ve las campañas primero cuando abramos a las marcas, y quién sale antes en
+         el catálogo entre perfiles parecidos.<br><br>
+         Llevas <strong>${traidas}</strong> ${traidas === 1 ? 'creadora traída' : 'creadoras traídas'}
+         y te quedan <strong>${restantes}</strong> invitaciones.
        </div>
-     </div>` : `
-     <p>Te quedan <strong>${restantes}</strong> invitaciones por usar.</p>`}
+     </div>
 
      ${boton('VER MI PERFIL', `${config.base_url}/creadora.html`)}`
   );

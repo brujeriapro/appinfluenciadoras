@@ -683,6 +683,7 @@ router.get('/mis-invitaciones', async (req, res) => {
       enlace: `${config.base_url}/invitacion.html?ref=${encodeURIComponent(codigo)}`,
       cupos,
       usados,
+      prioridad: c.prioridad || 0,
       restantes: Math.max(0, cupos - usados),
       traidas: traidas.map(t => ({ nombre: t.nombre_publico, publicada: t.visible })),
     });

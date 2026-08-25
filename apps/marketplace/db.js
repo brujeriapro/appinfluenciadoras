@@ -131,7 +131,7 @@ const COLS_CATALOGO = [
   'id', 'codigo', 'nombre_publico', 'foto_perfil_path', 'pais', 'departamento', 'ciudad',
   'categorias', 'nicho', 'rango_alcance', 'rango_instagram', 'rango_tiktok',
   'engagement_pct', 'dias_entrega', 'audiencia_mujeres', 'audiencia_pais',
-  'nivel_tarifa', 'tarifa_min', 'tarifa_max', 'tarifa_abierta',
+  'nivel_tarifa', 'tarifa_min', 'tarifa_max', 'tarifa_abierta', 'prioridad',
   'entregable_tipico', 'bio_corta', 'colaboraciones_completadas',
 ].join(',');
 
@@ -139,7 +139,11 @@ async function getCatalogo({ categoria, nicho, rango_alcance, nivel_tarifa, pais
   const params = {
     select: COLS_CATALOGO,
     visible: 'eq.true',
-    order: 'colaboraciones_completadas.desc',
+    // Primero lo que le importa a la marca —quién ha cumplido más—; la
+    // prioridad solo desempata entre perfiles equivalentes. Al revés le
+    // estaríamos mostrando peores opciones primero, que es exactamente lo que
+    // no puede pasar con quien paga.
+    order: 'colaboraciones_completadas.desc,prioridad.desc,created_at.desc',
   };
   // categorias y nicho son arrays en Postgres: "cs" = contains
   if (categoria)     params.categorias = `cs.{${categoria}}`;

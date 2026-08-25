@@ -1586,11 +1586,14 @@ async function pintarInvitaciones() {
           : 'Usaste todas tus invitaciones por ahora.'}
       </div>
 
-      <!-- Que sepa qué gana ANTES de invitar. Sin esto comparte el enlace sin
-           saber que hay algo del otro lado, y no vuelve a hacerlo. -->
+      <!-- Qué gana, antes de invitar. Es una promesa que el código cumple:
+           la prioridad ordena de verdad el catálogo y el acceso a campañas. -->
       <div class="inv-premio">
-        Por cada creadora que traigas y quede publicada, <strong>ganas 2 invitaciones
-        más</strong>. Solo cuentan las que pasan la revisión.
+        <strong>Traer creadoras sube tu prioridad.</strong> Con más prioridad ves las
+        campañas antes que las demás cuando abramos a las marcas, y sales primero en el
+        catálogo entre perfiles parecidos.
+        ${d.prioridad ? `<br><br>Tienes <strong>${d.prioridad} puntos</strong>.` : ''}
+        Solo cuentan las creadoras que pasan la revisión.
       </div>
       ${d.restantes ? `
         <div class="inv-enlace">

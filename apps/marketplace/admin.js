@@ -520,23 +520,26 @@ router.post('/creadoras/:id/aprobar', async (req, res) => {
  */
 async function premiarAQuienLaTrajo(referida) {
   const cfg = await db.getConfig();
-  const premio = Number(cfg.referidos_por_creadora ?? 2);
+  const puntos = Number(cfg.prioridad_por_referida ?? 10);
+  const cupos_extra = Number(cfg.referidos_por_creadora ?? 2);
 
   const madrina = await db.getUno('mk_creadoras', {
     codigo_ref: `eq.${referidos.normalizar(referida.referida_por)}`,
-    select: 'id,email,nombre_publico,cupos_ref',
+    select: 'id,email,nombre_publico,cupos_ref,prioridad',
   });
   if (!madrina?.email) return;
 
-  const cupos = (madrina.cupos_ref || 2) + premio;
-  await db.updateCreadora(madrina.id, { cupos_ref: cupos });
+  const prioridad = (madrina.prioridad || 0) + puntos;
+  const cupos = (madrina.cupos_ref || 2) + cupos_extra;
+  await db.updateCreadora(madrina.id, { prioridad, cupos_ref: cupos });
 
   const usados = await referidos.contarUsos(referida.referida_por);
   await notificaciones.trajisteUna({
     creadora: madrina,
     nombreReferida: referida.nombre_publico,
     restantes: Math.max(0, cupos - usados),
-    ganadas: premio,
+    prioridad,
+    traidas: usados,
   });
 }
 
