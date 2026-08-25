@@ -185,7 +185,7 @@ function invitacionCreadora({ email, nombre, status, codigoRef }) {
 
   return enviar(
     email,
-    'Fuiste seleccionada para el prelanzamiento en Colombia',
+    'Fuiste seleccionada para el prelanzamiento en Colombia - Creadores de Contenido',
     `<p style="font-size:13px;color:#5A5A5A;margin:0 0 16px">${esc(saludo)}</p>
 
      <p style="font-size:17px;font-weight:800;letter-spacing:-0.6px;line-height:1.3;margin:0 0 14px">
