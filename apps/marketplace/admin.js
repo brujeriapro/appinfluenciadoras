@@ -822,16 +822,18 @@ router.get('/whatsapp', async (req, res) => {
       });
     }
 
-    // Se pregunta a Meta de verdad: tener las variables puestas no significa
-    // que el token siga vivo, y esa diferencia solo se descubre enviando.
-    const estado = whatsapp.configurado()
-      ? await whatsapp.verificar()
-      : { ok: false, motivo: 'Faltan WA_PHONE_NUMBER_ID, WA_TOKEN o WA_PLANTILLA' };
+    // El token se comprueba aunque falte la plantilla: son dos cosas distintas
+    // y la plantilla tarda en aprobarse, así que hay que poder saber si la
+    // conexión sirve mientras tanto.
+    const estado = await whatsapp.verificar();
+    const falta_plantilla = !config.whatsapp.plantilla;
 
     res.json({
       olas,
       enviadas_total: previas.filter(p => p.enviada_at).length,
-      listo: estado.ok,
+      conectado: estado.ok,
+      falta_plantilla,
+      listo: estado.ok && !falta_plantilla,
       estado,
     });
   } catch (e) {

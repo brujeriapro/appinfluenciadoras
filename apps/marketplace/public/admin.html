@@ -1056,14 +1056,15 @@ VISTAS.invitaciones = async () => {
     ${wa ? `
       <div class="seccion-titulo" style="margin-top:34px">Por WhatsApp</div>
 
-      ${wa.listo ? `
-        <div class="bloque" style="border-color:var(--lime);margin-bottom:14px;font-size:12.5px">
-          <strong style="color:var(--lime)">Conectado.</strong>
+      ${wa.conectado ? `
+        <div class="bloque" style="border-color:${wa.listo ? 'var(--lime)' : 'var(--grey-700)'};margin-bottom:14px;font-size:12.5px">
+          <strong style="color:var(--lime)">Conexión OK · el token sirve.</strong>
           Número ${esc(wa.estado.numero || '—')}${wa.estado.nombre ? ' · ' + esc(wa.estado.nombre) : ''}
           ${wa.estado.calidad ? ' · calidad ' + esc(wa.estado.calidad) : ''}
+          ${wa.falta_plantilla ? '<br><br><strong>Falta la plantilla.</strong> Cuando Meta te la apruebe, pon su nombre en <code>WA_PLANTILLA</code> y ya puedes enviar.' : ''}
         </div>` : `
         <div class="bloque" style="border-color:var(--magenta);margin-bottom:14px;font-size:12.5px">
-          <strong style="color:var(--magenta)">No se puede enviar.</strong>
+          <strong style="color:var(--magenta)">La conexión no sirve.</strong>
           ${esc(wa.estado?.motivo || 'Revisa la configuración.')}
           ${wa.estado?.vencido ? '<br>Genera un token permanente con un usuario del sistema en Meta.' : ''}
         </div>`}
