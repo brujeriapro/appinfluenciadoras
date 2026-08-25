@@ -54,7 +54,9 @@ function normalizarTelefono(crudo) {
  * código equivocado devuelve "template name does not exist in the translation",
  * que suena a que la plantilla no existe cuando en realidad sí está.
  */
-const IDIOMAS_ES = ['es', 'es_ES', 'es_MX', 'es_AR', 'es_LA'];
+// es_CO primero: es el que ofrece Meta como "Spanish (COL)" y el que
+// naturalmente elige quien crea la plantilla desde Colombia.
+const IDIOMAS_ES = ['es_CO', 'es', 'es_ES', 'es_MX', 'es_AR', 'es_LA'];
 
 /** Una sola llamada a Meta con un idioma concreto. */
 async function intentarEnvio(numero, variables, idioma) {
