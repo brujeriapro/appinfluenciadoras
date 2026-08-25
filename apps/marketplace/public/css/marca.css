@@ -290,10 +290,13 @@ input[type=range]::-moz-range-thumb {
 .tira { display: flex; gap: 2px; padding: 2px 0 0;
         border-top: 1px solid var(--border-1); }
 .tira > * { flex: 1 1 0; max-width: 380px; height: 400px;
-            background: var(--border-3); min-width: 0; overflow: hidden;
+            background: var(--ink); min-width: 0; overflow: hidden;
             display: grid; place-items: center; font-size: 9px; color: var(--text-4);
             letter-spacing: 0.8px; }
-.tira img { width: 100%; height: 100%; object-fit: cover; }
+/* Igual que el video: completa sobre fondo oscuro. Recortando, una foto
+   vertical perdia la mitad del encuadre —y la mitad que se pierde suele ser
+   justo donde esta el producto o la cara—. */
+.tira img { width: 100%; height: 100%; object-fit: contain; background: var(--ink); }
 
 @media (max-width: 720px) {
   .tira > * { height: 230px; }
