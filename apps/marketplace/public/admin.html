@@ -1015,6 +1015,8 @@ VISTAS.invitaciones = async () => {
           <strong style="color:var(--lime)">Conexión OK · el token sirve.</strong>
           Número ${esc(wa.estado.numero || '—')}${wa.estado.nombre ? ' · ' + esc(wa.estado.nombre) : ''}
           ${wa.estado.calidad ? ' · calidad ' + esc(wa.estado.calidad) : ''}
+          ${wa.estado.limite ? ' · tope ' + esc(wa.estado.limite) : ''}
+          ${wa.estado.estado_numero ? ' · ' + esc(wa.estado.estado_numero) : ''}
           ${wa.falta_plantilla ? '<br><br><strong>Falta la plantilla.</strong> Cuando Meta te la apruebe, pon su nombre en <code>WA_PLANTILLA</code> y ya puedes enviar.' : ''}
         </div>` : `
         <div class="bloque" style="border-color:var(--magenta);margin-bottom:14px;font-size:12.5px">

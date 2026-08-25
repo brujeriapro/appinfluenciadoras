@@ -160,7 +160,7 @@ async function verificar() {
 
   try {
     const r = await fetch(
-      `${API}/${config.whatsapp.phone_number_id}?fields=display_phone_number,verified_name,quality_rating`,
+      `${API}/${config.whatsapp.phone_number_id}?fields=display_phone_number,verified_name,quality_rating,code_verification_status,status,messaging_limit_tier,platform_type,throughput`,
       { headers: { 'Authorization': `Bearer ${config.whatsapp.token}` } }
     );
     const d = await r.json().catch(() => ({}));
@@ -182,6 +182,14 @@ async function verificar() {
       // Meta baja esta calificación cuando la gente reporta o bloquea. En
       // rojo, los envíos se limitan solos.
       calidad: d.quality_rating || null,
+      // Cuántos destinatarios distintos deja alcanzar en 24 h. Un número sin
+      // verificación de negocio se queda en 250 y los demás mensajes se
+      // aceptan pero no se entregan — que es justo lo que parece un envío
+      // exitoso que nunca llega.
+      limite: d.messaging_limit_tier || null,
+      estado_numero: d.status || null,
+      verificacion: d.code_verification_status || null,
+      plataforma: d.platform_type || null,
     };
   } catch (e) {
     return { ok: false, motivo: e.message };
