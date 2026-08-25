@@ -1,0 +1,386 @@
+<title>Llenar el banco de creadoras</title>
+<style>
+  /* Plan operativo: se consulta durante semanas, no se lee una vez. Cada
+     palanca trae qué hacer, cuánto rinde y en qué orden. */
+
+  :root {
+    --tinta:      #0E0E0E;
+    --papel:      #ECECE9;
+    --superficie: #FFFFFF;
+    --texto:      #1C1C1E;
+    --texto-2:    #4A4A50;
+    --texto-3:    #6E6E76;
+    --borde:      #0E0E0E;
+    --borde-2:    #C9C9C4;
+    --borde-3:    #E3E3DF;
+
+    --lima:    #D6FF00;
+    --magenta: #FF2E9A;
+    --azul:    #2323F0;
+    --lima-t:  #0E0E0E;
+
+    --mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --tinta: #F2F2EF; --papel: #0B0B0C; --superficie: #151517;
+      --texto: #EDEDEA; --texto-2: #B6B6B2; --texto-3: #85858C;
+      --borde: #3C3C40; --borde-2: #2C2C30; --borde-3: #242427; --azul: #7B7BFF;
+    }
+  }
+  :root[data-theme="dark"] {
+    --tinta: #F2F2EF; --papel: #0B0B0C; --superficie: #151517;
+    --texto: #EDEDEA; --texto-2: #B6B6B2; --texto-3: #85858C;
+    --borde: #3C3C40; --borde-2: #2C2C30; --borde-3: #242427; --azul: #7B7BFF;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--papel); color: var(--texto); font-family: var(--sans);
+         font-size: 16px; line-height: 1.62; margin: 0; padding: 0 20px 100px;
+         -webkit-font-smoothing: antialiased; }
+  .hoja { max-width: 780px; margin: 0 auto; }
+
+  header { border: 2px solid var(--borde); background: var(--superficie);
+           padding: clamp(24px, 4.5vw, 38px); margin: clamp(26px, 5vw, 54px) 0 34px; }
+  .eyebrow { font-family: var(--mono); font-size: 10.5px; letter-spacing: 1.6px;
+             text-transform: uppercase; color: var(--texto-3); margin-bottom: 15px; }
+  h1 { font-family: var(--mono); font-weight: 700; font-size: clamp(26px, 5vw, 42px);
+       line-height: 1.03; letter-spacing: -2px; text-transform: uppercase;
+       margin: 0 0 16px; color: var(--tinta); text-wrap: balance; }
+  header p { margin: 0; color: var(--texto-2); max-width: 58ch; }
+
+  section { margin-bottom: 52px; }
+  h2 { font-family: var(--mono); font-weight: 700; font-size: clamp(18px, 2.9vw, 24px);
+       line-height: 1.12; letter-spacing: -0.9px; text-transform: uppercase;
+       color: var(--tinta); margin: 0 0 6px; text-wrap: balance;
+       padding-top: 16px; border-top: 2px solid var(--borde); }
+  h2 .num { display: block; font-size: 10.5px; letter-spacing: 1.6px;
+            color: var(--texto-3); margin-bottom: 9px; font-weight: 400; }
+  h3 { font-family: var(--mono); font-weight: 700; font-size: 14px;
+       letter-spacing: -0.2px; color: var(--tinta); margin: 30px 0 10px; }
+
+  p { margin: 0 0 15px; max-width: 68ch; }
+  section > p:first-of-type { margin-top: 18px; }
+  strong { font-weight: 700; color: var(--tinta); }
+  em { color: var(--texto-2); }
+  ul, ol { margin: 0 0 17px; padding-left: 21px; max-width: 68ch; }
+  li { margin-bottom: 9px; }
+  li::marker { color: var(--texto-3); }
+  code { font-family: var(--mono); font-size: 0.87em; background: var(--borde-3);
+         padding: 2px 6px; border: 1px solid var(--borde-3); }
+
+  .cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 2px; background: var(--borde); border: 2px solid var(--borde);
+            margin: 22px 0 26px; }
+  .cifra { background: var(--superficie); padding: 16px 15px 14px; }
+  .cifra__v { font-family: var(--mono); font-weight: 700; font-size: 28px;
+              letter-spacing: -1.5px; line-height: 1; color: var(--tinta);
+              font-variant-numeric: tabular-nums; }
+  .cifra__l { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.1px;
+              text-transform: uppercase; color: var(--texto-3); margin-top: 8px; }
+  .cifra__n { font-size: 12px; color: var(--texto-2); margin-top: 6px; line-height: 1.45; }
+
+  .tabla-wrap { overflow-x: auto; margin: 20px 0 24px; border: 2px solid var(--borde); }
+  table { width: 100%; border-collapse: collapse; background: var(--superficie); }
+  th { font-family: var(--mono); font-size: 9.5px; letter-spacing: 1.1px;
+       text-transform: uppercase; text-align: left; font-weight: 700;
+       padding: 11px 13px; border-bottom: 2px solid var(--borde);
+       color: var(--texto-3); white-space: nowrap; }
+  td { padding: 12px 13px; font-size: 14px; vertical-align: top;
+       border-bottom: 1px solid var(--borde-3); line-height: 1.5; }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { font-family: var(--mono); font-variant-numeric: tabular-nums;
+                   text-align: right; white-space: nowrap; }
+  .destacada td { background: var(--borde-3); }
+
+  .ojo { border: 2px solid var(--magenta); background: var(--superficie);
+         padding: 17px 19px; margin: 22px 0; }
+  .ojo__t { font-family: var(--mono); font-weight: 700; font-size: 10.5px;
+            letter-spacing: 1.2px; text-transform: uppercase;
+            color: var(--magenta); margin-bottom: 10px; }
+  .ojo p:last-child { margin-bottom: 0; }
+
+  .bloque { border: 2px solid var(--borde); background: var(--superficie);
+            padding: 18px 20px; margin: 22px 0; }
+  .bloque__t { font-family: var(--mono); font-weight: 700; font-size: 11px;
+               letter-spacing: 1.3px; text-transform: uppercase;
+               margin-bottom: 11px; color: var(--tinta); }
+  .bloque p:last-child, .bloque ul:last-child, .bloque ol:last-child { margin-bottom: 0; }
+  .bloque--plata .bloque__t { background: var(--lima); color: var(--lima-t);
+                              display: inline-block; padding: 4px 9px; margin: -4px 0 12px -4px; }
+
+  .guion { border-left: 3px solid var(--borde); background: var(--superficie);
+           padding: 15px 17px; margin: 16px 0; white-space: pre-wrap;
+           font-size: 14px; line-height: 1.65; }
+
+  .cierre { border: 2px solid var(--borde); background: var(--tinta); color: var(--papel);
+            padding: clamp(20px, 4vw, 32px); margin-top: 20px; }
+  .cierre h2 { color: var(--papel); border-top: none; padding-top: 0; margin-bottom: 14px; }
+  .cierre p, .cierre li { color: var(--papel); opacity: 0.88; }
+  .cierre strong { color: var(--lima); opacity: 1; }
+  .cierre li::marker { color: var(--lima); }
+
+  @media (max-width: 560px) { body { font-size: 15.5px; padding: 0 15px 70px; }
+                              td, th { padding: 10px 11px; } }
+</style>
+
+<div class="hoja">
+
+<header>
+  <div class="eyebrow">Creators Manager · Crecimiento de creadoras</div>
+  <h1>Llenar el banco, y que se hable de eso</h1>
+  <p>Plan de 30 días para pasar de 13 creadoras a un banco con masa suficiente, usando lo
+  que ya tienes construido. Ordenado por lo que más rinde primero.</p>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<section>
+<h2><span class="num">Punto de partida</span>Lo que dicen tus números hoy</h2>
+
+<div class="cifras">
+  <div class="cifra"><div class="cifra__v">114</div><div class="cifra__l">Invitadas</div>
+    <div class="cifra__n">Solo la ola 1, ayer</div></div>
+  <div class="cifra"><div class="cifra__v">13</div><div class="cifra__l">Se registraron</div>
+    <div class="cifra__n">11% en menos de un día</div></div>
+  <div class="cifra"><div class="cifra__v">5</div><div class="cifra__l">Publicadas</div>
+    <div class="cifra__n">Ya visibles para marcas</div></div>
+  <div class="cifra"><div class="cifra__v">595</div><div class="cifra__l">Sin invitar</div>
+    <div class="cifra__n">Olas 2, 3 y 4</div></div>
+</div>
+
+<p><strong>Un 11% de conversión en el primer día es bueno</strong>, y va a subir: la mayoría
+todavía no ha abierto el correo. Si el resto de las olas rinde parecido, las 595 pendientes
+te traen unas 90 creadoras más sin hacer nada nuevo.</p>
+
+<p>Eso es lo primero que hay que entender: <strong>la palanca más rentable que tienes ya
+está construida y sin usar.</strong> Antes de inventar campañas, hay que terminar de mandar
+lo que falta.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<section>
+<h2><span class="num">Antes de nada</span>El riesgo que puede matar el voz a voz</h2>
+
+<div class="ojo">
+  <div class="ojo__t">Hoy tienes 2 marcas y cero propuestas enviadas</div>
+  <p>Una creadora se registra, arma su portafolio, pone sus condiciones… y no pasa nada.
+  Ninguna marca le escribe. A las tres semanas concluye que esto no sirve.</p>
+  <p><strong>Ese es el voz a voz que de verdad se propaga.</strong> "Me metí y nunca me
+  llegó nada" viaja más rápido y más lejos que cualquier post. Y con las 112 que ya te
+  cumplieron, es la relación que menos te puedes permitir quemar.</p>
+</div>
+
+<p>No significa frenar el crecimiento. Significa que <strong>la meta no es "muchas
+creadoras" sino "creadoras que reciben propuestas"</strong>, y que hay una carrera contra
+el reloj: tienes unas tres o cuatro semanas desde que alguien se registra hasta que
+concluye que no pasa nada.</p>
+
+<p>Por eso el plan de abajo mete a Brujería Capilar publicando campañas reales en la
+semana 1. No es un adorno: es lo que hace que las primeras creadoras tengan algo que
+contar. Una creadora que recibe una propuesta —aunque no la acepte— es una creadora que
+le habla de esto a sus amigas.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<section>
+<h2><span class="num">Palanca 01</span>Terminar las olas · +90 creadoras</h2>
+
+<p>Lo más barato y lo más rentable. Ya está construido, probado y funcionando.</p>
+
+<div class="tabla-wrap">
+<table>
+  <thead><tr><th>Ola</th><th>Quiénes</th><th class="num">Cuántas</th><th>Cuándo</th><th class="num">Esperadas</th></tr></thead>
+  <tbody>
+    <tr><td>2</td><td>Recibieron kit</td><td class="num">170</td><td>Mañana</td><td class="num">~20</td></tr>
+    <tr><td>3a</td><td>Solo registradas</td><td class="num">175</td><td>Día 3</td><td class="num">~15</td></tr>
+    <tr><td>3b</td><td>Solo registradas</td><td class="num">176</td><td>Día 5</td><td class="num">~15</td></tr>
+    <tr><td>4</td><td>Descartadas y pausadas</td><td class="num">74</td><td>Día 7</td><td class="num">~6</td></tr>
+    <tr class="destacada"><td colspan="2"><strong>Total</strong></td><td class="num"><strong>595</strong></td><td></td><td class="num"><strong>~56</strong></td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Calculé con conversiones decrecientes: quien ya entregó contenido responde mucho más
+que quien solo se registró alguna vez. Si la ola 1 termina en 20%, todo esto sube.</p>
+
+<p class="nota"><strong>Cuidado con la cuota:</strong> son 300 correos diarios y las olas 3a
+y 3b están partidas justo por eso. No intentes mandar 351 de una.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<section>
+<h2><span class="num">Palanca 02</span>WhatsApp · la que no has usado</h2>
+
+<p>Tienes <strong>630 teléfonos</strong> en la base del Programa Creadoras. En Colombia un
+mensaje de WhatsApp se abre casi siempre; un correo, no. Es tu palanca más fuerte y está
+completamente sin tocar.</p>
+
+<div class="bloque bloque--plata">
+  <div class="bloque__t">Cuánto puede rendir</div>
+  <p>Si el correo convierte al 11%, WhatsApp bien hecho convierte entre <strong>25% y
+  40%</strong>. Sobre las mismas 630 personas, eso son entre 150 y 250 creadoras — más que
+  todas las olas de correo juntas.</p>
+</div>
+
+<h3>Cómo hacerlo sin que te bloqueen</h3>
+
+<ul>
+  <li><strong>Nunca desde tu número personal ni desde el de Brujería Capilar.</strong>
+  Enviar cientos de mensajes desde una línea normal termina en bloqueo, y te llevas por
+  delante el número que usas para trabajar.</li>
+  <li><strong>Usa la API de WhatsApp Business</strong>, que ya tienes montada en otras dos
+  apps tuyas. Hay que crear una plantilla y que Meta la apruebe — se demora un día o dos.</li>
+  <li><strong>Máximo 50 al día los primeros días</strong>, subiendo de a poco. Un número
+  nuevo que manda 600 mensajes el primer día se marca solo.</li>
+  <li><strong>Solo a quien ya tuvo relación contigo.</strong> Las de las olas 1 y 2 te
+  conocen; escribirle a alguien que nunca supo de ti es lo que produce reportes de spam.</li>
+</ul>
+
+<h3>El mensaje</h3>
+
+<div class="guion">Hola [nombre], te escribo de parte del equipo que hace el Programa Creadoras.
+
+Abrimos Creators Manager, una plataforma donde las marcas contratan creadoras directamente: armas tu portafolio, pones tus condiciones y te llegan propuestas concretas.
+
+Te guardamos un cupo del prelanzamiento, es gratis: [enlace]
+
+Si no te interesa, no te volvemos a escribir por esto 🙏</div>
+
+<p>Corto, dice de dónde viene, y ofrece la salida. Eso último importa: quien no quiere,
+simplemente no responde, y no te reporta.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<section>
+<h2><span class="num">Palanca 03</span>El voz a voz, en concreto</h2>
+
+<p>El voz a voz no se pide, se produce. Y se produce cuando pertenecer <strong>significa
+algo que se puede mostrar</strong>. Hoy una creadora aceptada no tiene nada que enseñar:
+entró a una plataforma que nadie conoce y ahí quedó.</p>
+
+<h3>Lo que hay que construir</h3>
+
+<ol>
+  <li><strong>Que las dos invitaciones funcionen para todas.</strong> Hoy solo tiene código
+  quien llegó por correo. Quien entre desde Instagram no puede invitar a nadie, y ese es
+  justo el mecanismo del voz a voz. Es lo primero que hay que arreglar.</li>
+  <li><strong>Un sello para su perfil.</strong> Una imagen que pueda poner en sus historias:
+  <em>"Creadora verificada · Creators Manager"</em>. Le da estatus y te hace publicidad
+  gratis en la audiencia exacta que quieres — otras creadoras.</li>
+  <li><strong>Avisarle cuando su perfil quede publicado.</strong> Hoy se aprueba y ella no
+  se entera de nada. Ese correo es el momento de mayor orgullo y el mejor para pedirle que
+  invite a dos.</li>
+  <li><strong>Un canal donde estén juntas.</strong> Un grupo o canal de WhatsApp de las
+  aprobadas: avisos de campañas nuevas, tips del oficio. Convierte una lista de usuarias en
+  una comunidad, y las comunidades hablan solas.</li>
+</ol>
+
+<div class="bloque">
+  <div class="bloque__t">Por qué el sello es la pieza clave</div>
+  <p>Una creadora que publica <em>"quedé seleccionada"</em> en sus historias le está
+  hablando a otras creadoras — que es exactamente tu público. Es la única forma de
+  crecimiento que se multiplica sola, y cuesta hacer una imagen.</p>
+</div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<section>
+<h2><span class="num">Palanca 04</span>Instagram · el que trae a las que no conoces</h2>
+
+<p>Los seis posts ya están escritos. Su trabajo no es traer registros directos —eso lo hacen
+mejor el correo y WhatsApp— sino <strong>darte existencia pública</strong>: cuando una
+creadora reciba el mensaje y busque "Creators Manager" para ver si esto es serio, tiene que
+encontrar algo.</p>
+
+<ul>
+  <li>Publica el <strong>01 y el 02 antes</strong> de mandar la ola 2. El perfil no puede
+  estar vacío cuando lleguen a mirarlo.</li>
+  <li>Los otros cuatro, uno cada dos o tres días.</li>
+  <li><strong>Responde todos los comentarios</strong> los primeros días. Con pocas
+  seguidoras, cada respuesta tuya vale más que cualquier post.</li>
+</ul>
+
+<p>Si vas a poner pauta, ponla en el <strong>01</strong> o el <strong>05</strong>, segmentada
+a mujeres de 18-35 en Colombia con intereses de creación de contenido. Con $200.000 al mes
+alcanza para saber si funciona.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<section>
+<h2><span class="num">Calendario</span>Las cuatro semanas</h2>
+
+<div class="tabla-wrap">
+<table>
+  <thead><tr><th>Semana</th><th>Qué haces</th><th class="num">Creadoras al cierre</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>1</strong></td>
+      <td>Olas 2, 3a, 3b y 4 por correo · Instagram posts 01 y 02 ·
+      <strong>Brujería Capilar publica su primera campaña real</strong> · arreglar las
+      invitaciones para todas</td>
+      <td class="num">~70</td>
+    </tr>
+    <tr>
+      <td><strong>2</strong></td>
+      <td>Plantilla de WhatsApp aprobada y primeros envíos (50/día) · sello para compartir ·
+      correo de "tu perfil quedó publicado"</td>
+      <td class="num">~110</td>
+    </tr>
+    <tr>
+      <td><strong>3</strong></td>
+      <td>WhatsApp a todo volumen · canal de creadoras aprobadas · posts 03 y 04 ·
+      primeras propuestas de otras marcas</td>
+      <td class="num">~170</td>
+    </tr>
+    <tr class="destacada">
+      <td><strong>4</strong></td>
+      <td>Cerrar WhatsApp · posts 05 y 06 · empujar referidos en el canal</td>
+      <td class="num"><strong>~220</strong></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>Doscientas creadoras publicadas en 30 días es una meta exigente pero alcanzable con lo
+que ya tienes. Y es más que suficiente para que el catálogo se vea lleno: recuerda que el
+plan de lanzamiento pedía 60 para poder invitar a la primera marca.</p>
+
+<h3>Lo único que hay que medir cada semana</h3>
+
+<ul>
+  <li><strong>Publicadas</strong>, no registradas. Una ficha a medias no le sirve a nadie.</li>
+  <li><strong>Cuántas llegaron referidas.</strong> Es el termómetro del voz a voz. Hoy
+  llevas 1. Si en la semana 3 no pasa de 10, el mecanismo no está funcionando y hay que
+  mirarlo.</li>
+  <li><strong>Cuántas recibieron al menos una propuesta.</strong> Es el número que decide si
+  esto se sostiene. Si crece el banco y este no se mueve, estás llenando un cementerio.</li>
+</ul>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<div class="cierre">
+<h2>Por dónde empezar hoy</h2>
+<ol>
+  <li><strong>Manda la ola 2.</strong> Son 170 y ya tienes la cuota del día. Es lo de mayor
+  retorno por menos esfuerzo, y no depende de nada nuevo.</li>
+  <li><strong>Publica el post 01 en Instagram.</strong> Para que quien te busque encuentre algo.</li>
+  <li><strong>Decide si Brujería Capilar publica campaña esta semana.</strong> Es lo que
+  separa un banco vivo de una lista de correos.</li>
+</ol>
+<p style="margin-bottom:0">Y dime cuándo arreglo las dos cosas técnicas que bloquean el voz
+a voz: que toda creadora aprobada tenga sus invitaciones, y el correo que le avisa que ya
+está publicada. Son las dos piezas que hacen que el crecimiento se multiplique en vez de
+sumar.</p>
+</div>
+
+</div>
