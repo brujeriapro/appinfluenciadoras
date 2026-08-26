@@ -262,16 +262,20 @@ solicitado → aceptado → pago_retenido → entregado → aprobado → pagado 
                     ↘ rechazado / cancelado ↙
 ```
 
-La marca envía brief + monto; la creadora acepta viendo su neto; el admin registra el pago de la marca (escrow manual, sin pasarela); ahí se revela el contacto; la creadora entrega; la marca aprueba; el admin registra el pago a la creadora.
+La marca envía brief + monto; la creadora acepta viendo su neto; la marca paga con tarjeta y el webhook de Wompi confirma el escrow —o el admin lo registra a mano si el cobro está apagado—; ahí se revela el contacto; la creadora entrega; la marca aprueba; el admin registra el pago a la creadora.
 
-### Las cuatro reglas que no se rompen
+**La salida del dinero sigue siendo manual**: pagarle a la creadora lo hace una persona desde el panel. El portal promete "48 horas después de aprobado" y ese plazo lo cumple el equipo, no un proceso.
 
-1. **El handle no vive en la tabla del catálogo.** `mk_creadoras` guarda un alias (`nombre_publico`); el `instagram_handle` está en `influencers` y solo lo lee `db.getContactoCreadora()`. Es un control estructural, no de presentación: si el catálogo tuviera un bug de `select *`, no hay nada sensible que filtrar.
+### Las reglas que no se rompen
+
+1. **El handle no vive donde lee el catálogo.** `mk_creadoras` guarda un alias (`nombre_publico`); los `@usuario` están en `mk_creadora_redes` y el catálogo lee la vista `mk_redes_publicas`, que **no tiene esa columna**. Es un control estructural, no de presentación: si se colara un `select *`, ahí no hay nada sensible que filtrar.
 2. **Los porcentajes de comisión se congelan dentro de cada trato.** Cambiar la comisión en `mk_config` no altera tratos ya creados.
 3. **El contacto se revela con el pago retenido, no al aceptar.** Es lo que hace exigible la cláusula de no-circunvalación de los términos.
 4. **Las muestras se sirven por proxy** (`/media/:id`) desde un bucket privado, nunca con la URL del CDN de Instagram, que delataría el perfil.
-5. **Registrarse no es entrar al catálogo.** Las creadoras se registran solas, pero el perfil nace oculto: sale publicado solo cuando ella pone tarifas y una persona del equipo verifica sus cuentas y aprueba. Los datos sensibles (handle, nombre real, cuenta bancaria) viven en `mk_creadora_privado`, nunca en `mk_creadoras`.
-6. **La tarifa la pone la creadora**, no la plataforma: `mk_tarifas` guarda su precio por tipo de entregable y `tarifa_min`/`tarifa_max`/`nivel_tarifa` son derivados que el admin no edita. Un perfil sin tarifas no se puede publicar.
+5. **Registrarse no es entrar al catálogo.** Las creadoras se registran solas, pero el perfil nace oculto: sale publicado cuando el equipo verifica y aprueba. Los datos sensibles (handle, nombre real, cuenta bancaria) viven en `mk_creadora_privado`.
+6. **La tarifa la pone la creadora**, no la plataforma: `mk_tarifas` guarda su precio por entregable y `tarifa_min`/`tarifa_max`/`nivel_tarifa` son derivados que el admin no edita. Desde mk_016 la tarifa puede quedar **abierta a negociación**, así que un perfil sin precio sí se puede publicar.
+7. **El número exacto de seguidores no viaja al catálogo**, solo el rango y el nivel: buscar "12.483 seguidores" lleva al perfil real y derrota el catálogo ciego. Las **vistas promedio sí viajan** — deciden la contratación y no sirven para encontrar a nadie.
+8. **Creators Manager no se cuelga de Brujería Capilar.** Ni en la interfaz, ni en los correos, ni en los mensajes de error. Son marcas distintas y cuentas separadas.
 
 ### Nichos
 
@@ -283,27 +287,71 @@ Taxonomía de dos niveles en `mk_config.nichos`: 15 categorías madre (belleza, 
 cd apps/marketplace
 npm install
 node index.js       # http://localhost:3040
-npm test            # 47 pruebas: comisiones, máquina de estados, tarifas y pagos con Wompi
+npm test            # 97 pruebas: comisiones, estados, tarifas, Wompi, plazos, correo y análisis
 ```
 
-Migraciones (a mano en el SQL Editor de Supabase, en orden): `mk_001_init.sql`, `mk_002_seed_config.sql`, `mk_003_nichos_y_tarifas.sql`, `mk_004_portal_creadora.sql`, `mk_005_registro_creadoras.sql`, `mk_006_perfil_creadora.sql`, `mk_007_paises.sql`, `mk_008_seguidores_por_red.sql`, `mk_009_departamentos.sql`, `mk_010_panel_marca.sql`, `mk_011_wompi_y_planes.sql`, `mk_012_foto_perfil.sql`, `mk_013_registro_marcas_abierto.sql`. Además, crear el bucket privado `mk-muestras` en Storage.
+**Migraciones:** los archivos de `apps/marketplace/migrations/` en orden numérico, en el SQL Editor de Supabase. Van por `mk_037`. Además, crear el bucket privado `mk-muestras` en Storage.
+
+**Scripts que se corren a mano** (necesitan las mismas variables que el servidor):
+
+```bash
+node scripts/generar-portadas.js       # portada de cada video — repetir cuando entren piezas nuevas
+node scripts/analizar-contenido.js 400 # etiqueta el contenido con IA (pide ANTHROPIC_API_KEY)
+curl -u admin:CLAVE -X POST "$URL/api/cron/plazos"   # cierra propuestas vencidas
+```
 
 ### Identidad visual
 
 Brutalismo digital / Y2K editorial, definido en el handoff de Claude Design y codificado en `public/css/tokens.css`: negro `#0E0E0E`, lima `#D6FF00`, magenta `#FF2E9A`, azul `#2323F0`; Martian Mono + Space Mono; `border-radius: 0` en todo, sin sombras, sin gradientes, bordes duros de 2px. **Nada de la identidad mística de Brujería Capilar.**
 
+### La promesa del producto
+
+Las demás plataformas dicen **quién es** una creadora: seguidores, nicho, ciudad. Creators Manager dice **cómo trabaja y si cumple**. Es lo que no se copia, porque sale de datos que solo se acumulan operando.
+
+- **Si cumple** — la vista `mk_cumplimiento` calcula el historial real cruzando el Programa Creadoras (kit despachado contra fecha de publicación) y los tratos del marketplace (plazo pactado contra entrega). Hoy 40 creadoras con entrega comprobada. **No existe sello negativo público:** marcar a alguien frente a todas las marcas sería una condena sin descargo; el dato pesa en el orden del catálogo y lo ve el equipo, pero no se exhibe.
+- **Cómo trabaja** — `analisis.js` etiqueta cada pieza con un modelo de visión (dónde graba, luz, formato, producción) y la ficha muestra los formatos que **repite**, no los que hizo una vez. ⚠️ Construido pero **sin correr**: faltan `ANTHROPIC_API_KEY` y ejecutar el script.
+
+### Redes y niveles
+
+Una creadora declara **las redes que trabaja** (`mk_creadora_redes`), no dos columnas fijas: Instagram, TikTok, YouTube, Facebook, Kwai, Pinterest, Twitch y LinkedIn, editables desde `mk_config.redes`.
+
+El **nivel se calcula por red**, no sobre la suma: hay creadoras micro en Instagram y media en TikTok, y contratarlas para TikTok con el número de Instagram es contratar a ciegas.
+
+| Nivel | Seguidores | Qué vende |
+|---|---|---|
+| **UGC** | menos de 3.000 | Contenido para los canales de la marca, no alcance propio |
+| Nano | 3.000 – 10.000 | Comunidad pequeña y cercana |
+| Micro | 10.000 – 50.000 | Donde mejor convierte una recomendación |
+| Media | 50.000 – 200.000 | Alcance amplio con nicho definido |
+| Macro | +200.000 | Alcance masivo |
+
+UGC no es el escalón de las que no llegaron: es otro trabajo, se produce distinto y se cobra distinto. Los cortes viven en `mk_tier_de()` **y** en `mk_config.tiers` — misma verdad en dos sitios, así que mover uno exige mover el otro.
+
+### Métricas: declaradas, verificadas o conectadas
+
+`metricas_estado` tiene tres niveles y el catálogo muestra la diferencia — sin eso, nadie se molestaría en verificarse. La creadora sube una **captura de sus estadísticas** y una persona la compara desde la pestaña *Verificar métricas*. Se hace por captura y no solo conectando Instagram porque su API exige cuenta Business o Creator, y buena parte del catálogo es nano.
+
+⚠️ **Cambiar un número tumba la verificación**: si pudiera verificarse en 3.000 y editarlo a 30.000 conservando el sello, el sello no valdría nada. El nivel `conectado` (API de Meta) todavía no está construido.
+
+### Correo
+
+`correo.js` aísla al proveedor: cambiarlo es poner otra llave. Soporta **ZeptoMail** (el que corre hoy), Resend y Brevo; gana el primero con llave salvo que `MK_CORREO_PROVEEDOR` diga otra cosa.
+
+⚠️ **Railway bloquea el SMTP saliente.** Todo sale por API web.
+
+⚠️ **El envío falla en silencio a propósito** — un correo caído no puede tumbar un registro — así que un problema es invisible hasta que alguien se queja. Ajustes abre con el estado del correo y un botón de prueba que devuelve el error real del proveedor.
+
+**Hay tope diario de envíos masivos** (`correos_por_dia`, arranca en 100). Se agregó porque 353 correos en un día con un plan de 300 dejó a 16 creadoras dos días sin poder entrar. No toca los correos de uno en uno: bloquear un "recuperar contraseña" por haber mandado muchas invitaciones sería cobrárselo a quien no tiene nada que ver.
+
 ### Estado
 
-- Backend completo y probado; landing pública portada del handoff; **panel admin operativo** en `/admin.html` (tratos, registro de pagos, curaduría del catálogo, ajustes de comisión, export CSV) y **portal de la creadora** en `/creadora.html` (perfil autogestionado con nicho, redes y su trabajo; tarifas con deslizador; propuestas con el neto siempre visible; entrega de contenido).
-- Lado marca completo en `/panel.html`: catálogo con cinco filtros y triage ✓/✕, ficha con panel de tarifas, modal de propuesta con el dinero en vivo, campañas, línea de tiempo del trato y perfil de marca.
-- En el catálogo una creadora se identifica con **alias descriptivo + código** (`RIZOS DE MEDELLÍN · C-0412`), nunca con nombre de persona: un nombre abreviado más ciudad y nicho permite encontrarla.
-- ⚠️ Hay **país** en el perfil (20 países) pero la **moneda es COP para todos**. Una creadora en México cobra y recibe en pesos colombianos, y la interfaz lo dice explícitamente. Multi-moneda es un proyecto aparte: exige conversión, pagos internacionales y repensar el escrow.
-- ⚠️ Las métricas de alcance son **declaradas** por la creadora, no verificadas. Los campos para verificarlas vía Instagram existen (`fuente_metricas`) pero la conexión con Meta no está construida. Al hacerla: nunca embeber el feed —muestra el @usuario— y recordar que la API exige cuenta Business o Creator.
-- ⚠️ El portal promete plazos (72h para responder, 48h para aprobar, pago 48h después) que **hoy solo se muestran**: no hay cron que los ejecute. Ver README de la app.
-- El dominio es **`creatorsmanager.com`** (comprado el 24-ago-2026). Falta apuntarlo a Railway y declarar `MK_BASE_URL`; mientras tanto corre sobre la URL de Railway. El producto se llamaba Creadores.app y se renombró a **Creators Manager** para que el nombre y el dominio digan lo mismo.
-- **Pagos con Wompi**: la marca paga el trato con tarjeta y el webhook confirma el escrow. Sin llaves configuradas, sigue el registro manual desde el panel.
-- **Planes de suscripción**: demo (3 fichas), Emprende $19.900 (10), Marca $99.900 (60), Agencia $199.900 (sin límite). Se limita abrir fichas, **nunca** enviar propuestas: cada propuesta deja comisión.
-- **El registro de marcas es abierto y mínimo**: cuatro campos — marca, teléfono, correo y clave. Ni código de invitación, ni NIT, ni ciudad, ni persona de contacto: eso se pide en el perfil del panel, cuando ya hay cuenta que perder. Lo que sostiene la calidad del banco es el plan — quien entra ve 3 fichas y para ver más tiene que poner tarjeta. El código sigue existiendo y se reactiva apagando `registro_marcas_abierto` en `mk_config`, sin desplegar nada.
+- **233 creadoras · 220 visibles · 2 marcas · 1 trato · 421 piezas.** El cuello de botella son las marcas, no el producto.
+- Dominio **`creatorsmanager.com`** conectado y en producción, con `/precios` público.
+- **Planes por propuesta, no por búsqueda:** Explora $0 (3 propuestas/mes), Impulsa $39.900 (12), Escala $119.900 (40), Agencia $299.900 (sin tope). El catálogo se ve **completo en todos**: limitar la búsqueda no protegía nada —lo que se ve se anota— e impedía encontrar a la creadora por la que valdría la pena pagar. El tope vive donde está el valor: al enviar la propuesta.
+- **Pagos con Wompi** configurados en producción. ⚠️ **Nunca se ha probado una compra real** — hay 1 transacción registrada.
+- **Los plazos ya se cumplen solos** (`plazos.js`): las propuestas sin responder se cierran a las 72h, avisando antes. La auto-aprobación existe pero está **apagada** — libera dinero, así que encenderla es decisión de negocio. ⚠️ Falta programar el cron en Railway.
+- ⚠️ Hay **país** en el perfil (20 países) pero la **moneda es COP para todos**. Multi-moneda es un proyecto aparte: exige conversión, pagos internacionales y repensar el escrow.
+- El **registro de marcas es abierto y mínimo**: marca, teléfono, correo y clave. El código de invitación sigue existiendo y se reactiva apagando `registro_marcas_abierto`, sin desplegar.
 - Sin marca de agua en esta fase, por decisión de producto.
 
 ---
