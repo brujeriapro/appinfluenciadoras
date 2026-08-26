@@ -2388,6 +2388,18 @@ async function verPropuesta(id) {
         <span class="desglose__label">Comisión Creators Manager ${t.comision_creadora_pct}%</span>
         <span class="desglose__valor desglose__valor--resta">−${COP(t.comision_creadora_valor)}</span>
       </div>
+      <!-- El costo de transferir va como línea aparte y no sumado a la
+           comisión: son cosas distintas, y mezclarlas haría que su comisión
+           pareciera del 11% cuando el trato dice 8%. Aparece aquí —antes de
+           aceptar— porque enterarse del descuento al momento de cobrar es lo
+           que rompe la confianza. -->
+      ${Number(t.costo_desembolso_valor) > 0 ? `
+        <div class="desglose__fila">
+          <span class="desglose__label">Costo de transferencia ${t.costo_desembolso_pct}%
+            <span style="display:block;font-size:10.5px;color:#7A7A7A;margin-top:2px">Lo que cobra la pasarela por pasarte el dinero</span>
+          </span>
+          <span class="desglose__valor desglose__valor--resta">−${COP(t.costo_desembolso_valor)}</span>
+        </div>` : ''}
       <div class="desglose__neto">
         <div class="desglose__neto-label">Tu neto</div>
         <div class="desglose__neto-valor">${COP(t.neto_a_recibir_creadora)}</div>

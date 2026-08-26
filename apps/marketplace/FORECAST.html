@@ -1,0 +1,391 @@
+<title>El Margen Real</title>
+<style>
+  /* Documento de decisión financiera. Mismo sistema que PRICING y
+     DIFERENCIADOR: se lee una vez con cuidado y se vuelve por una cifra. */
+
+  :root {
+    --tinta:      #0E0E0E;
+    --papel:      #ECECE9;
+    --superficie: #FFFFFF;
+    --texto:      #1C1C1E;
+    --texto-2:    #4A4A50;
+    --texto-3:    #6E6E76;
+    --borde:      #0E0E0E;
+    --borde-2:    #C9C9C4;
+    --borde-3:    #E3E3DF;
+
+    --lima:    #D6FF00;
+    --magenta: #FF2E9A;
+    --azul:    #2323F0;
+    --lima-t:  #0E0E0E;
+
+    --mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --tinta: #F2F2EF; --papel: #0B0B0C; --superficie: #151517;
+      --texto: #EDEDEA; --texto-2: #B6B6B2; --texto-3: #85858C;
+      --borde: #3C3C40; --borde-2: #2C2C30; --borde-3: #242427; --azul: #7B7BFF;
+    }
+  }
+  :root[data-theme="dark"] {
+    --tinta: #F2F2EF; --papel: #0B0B0C; --superficie: #151517;
+    --texto: #EDEDEA; --texto-2: #B6B6B2; --texto-3: #85858C;
+    --borde: #3C3C40; --borde-2: #2C2C30; --borde-3: #242427; --azul: #7B7BFF;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--papel); color: var(--texto); font-family: var(--sans);
+    margin: 0; line-height: 1.6; -webkit-font-smoothing: antialiased;
+  }
+  .env { max-width: 60rem; margin: 0 auto; padding: 0 1.5rem 6rem; }
+
+  header { padding: 4rem 0 2.5rem; border-bottom: 2px solid var(--borde); }
+  .kicker {
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--texto-3); margin: 0 0 1.2rem;
+  }
+  h1 {
+    font-family: var(--mono); font-weight: 700; font-size: clamp(2rem, 5vw, 3.2rem);
+    line-height: 1.05; letter-spacing: -.03em; margin: 0; text-wrap: balance;
+  }
+  .bajada { font-size: clamp(1rem, 2vw, 1.15rem); color: var(--texto-2); max-width: 50ch; margin: 1.4rem 0 0; }
+
+  section { padding-top: 3.2rem; }
+  h2 {
+    font-family: var(--mono); font-size: 1.3rem; letter-spacing: -.02em;
+    margin: 0 0 .4rem; text-wrap: balance;
+  }
+  h2 .n { color: var(--texto-3); font-weight: 400; font-size: .8em; margin-right: .6rem; }
+  .sub { color: var(--texto-3); margin: 0 0 1.6rem; font-size: .95rem; }
+  p { margin: 0 0 1.1rem; max-width: 66ch; }
+  em { font-style: normal; background: var(--lima); color: var(--lima-t); padding: 0 .2em; }
+
+  /* La cascada de lo que queda de un trato */
+  .cascada { border: 2px solid var(--borde); background: var(--superficie); margin-bottom: 1.2rem; }
+  .fila {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+    padding: .85rem 1.1rem; border-bottom: 1px solid var(--borde-3);
+  }
+  .fila:last-child { border-bottom: none; }
+  .fila__que { font-size: .93rem; }
+  .fila__que span { display: block; font-size: .78rem; color: var(--texto-3); margin-top: .1rem; }
+  .fila__cuanto { font-family: var(--mono); font-variant-numeric: tabular-nums;
+                  white-space: nowrap; font-size: 1rem; }
+  .fila--resta .fila__cuanto { color: var(--magenta); }
+  .fila--total { background: var(--tinta); color: var(--papel); }
+  .fila--total .fila__que span { color: #B6B6B2; }
+  .fila--total .fila__cuanto { color: var(--lima); font-weight: 700; font-size: 1.25rem; }
+  .fila--suma { background: var(--borde-3); }
+
+  .equilibrio {
+    border: 2px solid var(--borde); background: var(--tinta); color: var(--papel);
+    padding: 2rem 1.6rem; margin: 1.6rem 0;
+  }
+  .equilibrio .rot { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+                     text-transform: uppercase; color: #85858C; margin: 0 0 .8rem; }
+  .equilibrio .grande { font-family: var(--mono); font-size: clamp(2.2rem, 6vw, 3.4rem);
+                        font-weight: 800; letter-spacing: -.05em; line-height: 1; color: var(--lima); }
+  .equilibrio p { color: #C8C8C4; margin: .9rem 0 0; max-width: 54ch; }
+  .equilibrio strong { color: #fff; }
+
+  .tabla-env { overflow-x: auto; border: 2px solid var(--borde); background: var(--superficie); }
+  table { border-collapse: collapse; width: 100%; min-width: 34rem; }
+  th, td { text-align: left; padding: .8rem .9rem; border-bottom: 1px solid var(--borde-3); font-size: .92rem; }
+  th { font-family: var(--mono); font-size: .66rem; letter-spacing: .12em;
+       text-transform: uppercase; color: var(--texto-3); border-bottom: 2px solid var(--borde-2); }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tbody tr:last-child td { border-bottom: none; }
+  tr.destacada td { background: var(--lima); color: var(--lima-t); font-weight: 600; }
+  .escenario { font-weight: 650; }
+  .escenario span { display: block; font-weight: 400; font-size: .8rem; color: var(--texto-3); margin-top: .15rem; }
+  tr.destacada .escenario span { color: #4A4A50; }
+
+  .aviso {
+    border-left: 4px solid var(--magenta); padding: .2rem 0 .2rem 1.1rem;
+    margin: 1.4rem 0; max-width: 66ch;
+  }
+  .aviso strong { color: var(--magenta); }
+
+  .confirmar {
+    border: 2px dashed var(--borde-2); background: var(--superficie);
+    padding: 1.3rem 1.4rem; margin-top: 1.4rem;
+  }
+  .confirmar h3 { font-family: var(--mono); font-size: .95rem; margin: 0 0 .8rem; }
+  .confirmar ul { margin: 0; padding-left: 1.1rem; }
+  .confirmar li { font-size: .89rem; margin-bottom: .55rem; color: var(--texto-2); }
+  .confirmar li strong { color: var(--texto); }
+
+  .palanca {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 2px; background: var(--borde-2); border: 2px solid var(--borde); margin-top: 1.4rem;
+  }
+  .palanca > div { background: var(--superficie); padding: 1.2rem; }
+  .palanca h3 { font-family: var(--mono); font-size: .95rem; margin: 0 0 .5rem; }
+  .palanca p { font-size: .88rem; margin: 0; }
+
+  .cierre {
+    border: 2px solid var(--borde); background: var(--lima); color: var(--lima-t);
+    padding: 2rem 1.6rem; margin-top: 3.2rem;
+  }
+  .cierre .rot { font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+                 text-transform: uppercase; color: #4A4A50; margin: 0 0 1rem; }
+  .cierre p { font-family: var(--mono); font-size: clamp(1rem, 2.2vw, 1.3rem);
+              line-height: 1.45; margin: 0; letter-spacing: -.02em; max-width: 46ch; color: var(--lima-t); }
+
+  .nota { border-top: 1px solid var(--borde-2); margin-top: 2.6rem; padding-top: 1.2rem;
+          font-size: .85rem; color: var(--texto-3); }
+  .nota p { max-width: 72ch; }
+</style>
+
+<div class="env">
+
+<header>
+  <p class="kicker">Creators Manager · Modelo financiero · 26 ago 2026</p>
+  <h1>De cada $40.000<br>de comisión, quedan<br>$32.000.</h1>
+  <p class="bajada">
+    Y eso antes de pagarle a nadie. Este documento desarma el ingreso hasta el fondo,
+    porque el sistema muestra la comisión bruta y es fácil confundirla con lo que entra
+    al bolsillo.
+  </p>
+</header>
+
+<section>
+  <h2><span class="n">01</span>Lo que el sistema no te está contando</h2>
+  <p class="sub">Hallazgo al revisar el código: no existe en ninguna parte.</p>
+
+  <p>
+    El panel calcula la comisión —12% a la marca, 8% a la creadora— y la muestra como
+    ingreso. <strong>No descuenta la pasarela, ni los impuestos, ni nada.</strong> Es un
+    número bruto presentado como si fuera neto.
+  </p>
+  <p>
+    No es un error de cálculo: sencillamente esos conceptos <em>no están modelados</em> en el
+    sistema. Ni una línea. Así que cualquier lectura de "cuánto llevo ganado" desde el panel
+    está inflada.
+  </p>
+</section>
+
+<section>
+  <h2><span class="n">02</span>Qué queda de un trato de $200.000</h2>
+  <p class="sub">El ticket típico, según las 673 tarifas publicadas por las creadoras.</p>
+
+  <div class="cascada">
+    <div class="fila fila--suma">
+      <div class="fila__que">La marca paga<span>Tarifa $200.000 + 12% de comisión</span></div>
+      <div class="fila__cuanto">$224.000</div>
+    </div>
+    <div class="fila">
+      <div class="fila__que">Comisión bruta<span>12% de la marca + 8% de la creadora</span></div>
+      <div class="fila__cuanto">$40.000</div>
+    </div>
+    <div class="fila fila--resta">
+      <div class="fila__que">Se lleva Wompi<span>~2,65% + $700, más IVA, sobre los $224.000 que pasan</span></div>
+      <div class="fila__cuanto">−$7.897</div>
+    </div>
+    <div class="fila fila--total">
+      <div class="fila__que">Queda<span>Antes de impuestos y de pagarle a nadie</span></div>
+      <div class="fila__cuanto">$32.103</div>
+    </div>
+  </div>
+
+  <div class="aviso">
+    <p>
+      <strong>La pasarela se come el 20% de la comisión.</strong> No el 2,65% — ese porcentaje
+      es sobre los $224.000 que atraviesan la pasarela, mientras que tú solo te quedas con
+      $40.000 de esa transacción. Es la trampa aritmética de todo marketplace: pagas comisión
+      sobre plata que no es tuya.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">03</span>Los gastos, uno por uno</h2>
+  <p class="sub">Ordenados por cuánto pesan de verdad, no por cuánto se notan.</p>
+
+  <div class="tabla-env">
+    <table>
+      <thead>
+        <tr><th>Gasto</th><th>Cuánto</th><th>Estado</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="escenario">Tu tiempo<span>Revisar perfiles, vender, pagar a mano a las creadoras, soporte</span></td>
+          <td class="num">El más grande</td>
+          <td>No se está contando</td>
+        </tr>
+        <tr>
+          <td class="escenario">Pasarela de pagos<span>Wompi, por cada trato cobrado</span></td>
+          <td class="num">~$7.900 / trato</td>
+          <td>Real, no modelado</td>
+        </tr>
+        <tr>
+          <td class="escenario">IVA sobre la comisión<span>19%, si no se factura aparte al cliente</span></td>
+          <td class="num">~$7.600 / trato</td>
+          <td>Por confirmar</td>
+        </tr>
+        <tr>
+          <td class="escenario">Infraestructura<span>Railway, Supabase, ZeptoMail, dominio</span></td>
+          <td class="num">~$200.000 / mes</td>
+          <td>Estimado</td>
+        </tr>
+        <tr>
+          <td class="escenario">Dispersión a creadoras<span>Transferencia por cada pago de salida</span></td>
+          <td class="num">$0 – $8.000 / pago</td>
+          <td>Por confirmar</td>
+        </tr>
+        <tr>
+          <td class="escenario">Análisis con IA<span>Solo si se enciende</span></td>
+          <td class="num">~$40.000 una vez</td>
+          <td>Aplazado</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="confirmar">
+    <h3>Lo que hay que confirmar antes de creerle a este modelo</h3>
+    <ul>
+      <li><strong>Las tarifas reales de Wompi.</strong> Usé ~2,65% + $700 + IVA, que es lo
+        típico en Colombia para tarjetas. Tu contrato puede ser distinto, y PSE cobra otra
+        cosa. Míralo en tu panel de Wompi.</li>
+      <li><strong>Si la comisión incluye IVA o va aparte.</strong> Es la diferencia entre que
+        te queden $32.000 o $24.500 por trato — una cuarta parte del margen. Pregúntale a la
+        contadora antes de facturar la primera.</li>
+      <li><strong>Las facturas de Railway y Supabase.</strong> Los $200.000 son estimación:
+        si están en planes gratuitos es mucho menos; si Supabase pasó a Pro, más.</li>
+      <li><strong>ReteFuente e ICA.</strong> Las marcas que sean agentes retenedores van a
+        retenerte sobre la factura. No cambia lo que ganas al final del año, pero sí el flujo
+        de caja mes a mes.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">04</span>Cuántos tratos para no perder plata</h2>
+  <p class="sub">La respuesta depende enteramente de si tu tiempo cuenta como gasto.</p>
+
+  <div class="equilibrio">
+    <p class="rot">Si solo cuentas la infraestructura</p>
+    <div class="grande">7 tratos al mes</div>
+    <p>
+      Cubre los ~$200.000 de servidores y correo. Es el umbral de
+      <strong>"el proyecto no me cuesta plata"</strong>, no el de que sea un negocio.
+    </p>
+  </div>
+
+  <div class="equilibrio">
+    <p class="rot">Si te pagas a ti media jornada</p>
+    <div class="grande">85 tratos al mes</div>
+    <p>
+      Sumando ~$2.500.000 de sueldo. Son <strong>28 marcas activas</strong> cerrando 3 tratos
+      cada una — muy por encima de cualquier escenario a dos meses.
+    </p>
+  </div>
+
+  <div class="aviso">
+    <p>
+      <strong>Ese salto de 7 a 85 es lo más importante de este documento.</strong> Significa
+      que Creators Manager <em>no puede pagarle un sueldo a nadie en el horizonte cercano</em>.
+      Es viable como proyecto que se sostiene mientras lo llevas en paralelo, y deja de serlo
+      el día que tenga que sostener a una persona.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">05</span>Tres futuros, ya con la pasarela descontada</h2>
+  <p class="sub">Lo que cambia entre uno y otro no es el producto: es cuánta venta se haga.</p>
+
+  <div class="tabla-env">
+    <table>
+      <thead>
+        <tr>
+          <th>Escenario</th>
+          <th>Marcas</th>
+          <th>Tratos/mes</th>
+          <th>Neto mes 2</th>
+          <th>¿Cubre servidores?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="escenario">Si nada cambia<span>Las marcas llegan solas a la landing</span></td>
+          <td class="num">2</td>
+          <td class="num">2</td>
+          <td class="num">$64.000</td>
+          <td>No</td>
+        </tr>
+        <tr class="destacada">
+          <td class="escenario">Venta constante<span>Contactar marcas todas las semanas</span></td>
+          <td class="num">6</td>
+          <td class="num">18</td>
+          <td class="num">$654.000</td>
+          <td>Sí, con holgura</td>
+        </tr>
+        <tr>
+          <td class="escenario">Con tracción<span>Las marcas repiten y recomiendan</span></td>
+          <td class="num">12</td>
+          <td class="num">48</td>
+          <td class="num">$1.693.000</td>
+          <td>Sí</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="margin-top:1.2rem">
+    Incluye las suscripciones (asumiendo que un tercio de las marcas paga plan) y descuenta
+    Wompi. <strong>No</strong> descuenta tu tiempo ni el IVA.
+  </p>
+</section>
+
+<section>
+  <h2><span class="n">06</span>Dónde está el margen que falta</h2>
+  <p class="sub">Dos cosas mueven más el resultado que conseguir más marcas.</p>
+
+  <div class="palanca">
+    <div>
+      <h3>Tickets más grandes</h3>
+      <p>
+        La pasarela cobra un fijo de $700 por transacción, así que <strong>castiga los tratos
+        pequeños</strong>. Un acuerdo de embajadora de $500.000 deja $100.000 de comisión y
+        paga casi el mismo fijo: el margen sube del 80% al 86%. Empujar campañas grandes
+        mejora el margen sin conseguir una marca más.
+      </p>
+    </div>
+    <div>
+      <h3>Suscripciones, no comisiones</h3>
+      <p>
+        Un plan Escala de $119.900 <strong>no pasa por la aritmética del trato</strong>: la
+        pasarela cobra sobre $119.900, no sobre $224.000. Deja ~$115.000 limpios, el
+        equivalente a 3,6 tratos. Cinco marcas en Escala cubren los servidores sin cerrar
+        un solo trato.
+      </p>
+    </div>
+  </div>
+</section>
+
+<div class="cierre">
+  <p class="rot">Lo que este análisis cambia</p>
+  <p>
+    La comisión sola no sostiene el negocio. Las suscripciones sí — y ninguna
+    marca ha pagado una todavía.
+  </p>
+</div>
+
+<div class="nota">
+  <p>
+    <strong>Base, verificada en la base de datos el 26 de agosto de 2026:</strong>
+    249 creadoras · 220 visibles · 2 marcas · 1 trato cerrado por $220.000 con comisión de
+    $44.000 · 673 tarifas publicadas, mediana $200.000 en los entregables más pedidos y
+    $500.000 en embajadora.
+    Las tarifas de Wompi, el tratamiento del IVA y los costos de infraestructura son
+    estimaciones señaladas como tales — confirmarlas cambia las cifras, no las conclusiones.
+  </p>
+</div>
+
+</div>

@@ -24,7 +24,10 @@
  * @param {number} p.comision_creadora_pct % que se descuenta a la creadora
  * @param {boolean} [p.es_bruja_embajadora] Si es true, ambos porcentajes pasan a 0
  */
-function calcularTrato({ monto, comision_marca_pct, comision_creadora_pct, es_bruja_embajadora = false }) {
+function calcularTrato({
+  monto, comision_marca_pct, comision_creadora_pct,
+  costo_desembolso_pct = 0, es_bruja_embajadora = false,
+}) {
   const base = Number(monto);
   if (!Number.isFinite(base) || base <= 0) {
     throw new Error('El monto debe ser un número positivo');
@@ -32,9 +35,13 @@ function calcularTrato({ monto, comision_marca_pct, comision_creadora_pct, es_br
 
   const pctMarca    = es_bruja_embajadora ? 0 : Number(comision_marca_pct) || 0;
   const pctCreadora = es_bruja_embajadora ? 0 : Number(comision_creadora_pct) || 0;
+  const pctDesembolso = es_bruja_embajadora ? 0 : Number(costo_desembolso_pct) || 0;
 
   if (pctMarca < 0 || pctMarca > 100 || pctCreadora < 0 || pctCreadora > 100) {
     throw new Error('Los porcentajes de comisión deben estar entre 0 y 100');
+  }
+  if (pctDesembolso < 0 || pctDesembolso > 100) {
+    throw new Error('El costo de desembolso debe estar entre 0 y 100');
   }
 
   // El peso colombiano no usa decimales. Se redondea el VALOR DE LA COMISIÓN,
@@ -42,6 +49,16 @@ function calcularTrato({ monto, comision_marca_pct, comision_creadora_pct, es_br
   // aparecen diferencias de un peso al conciliar con el banco.
   const comision_marca_valor    = Math.round(base * pctMarca / 100);
   const comision_creadora_valor = Math.round(base * pctCreadora / 100);
+
+  // Lo que cuesta pasarle la plata a la creadora, que la pasarela cobra al
+  // dispersar. Se calcula sobre lo que ella recibe de verdad —ya descontada su
+  // comisión— porque es sobre eso que se hace la transferencia.
+  //
+  // Va en su propio campo y no sumado a la comisión a propósito: son cosas
+  // distintas y ella tiene derecho a ver cuál es cuál. Mezclarlas haría que su
+  // comisión pareciera del 11% cuando el trato dice 8%.
+  const antesDeDesembolso = base - comision_creadora_valor;
+  const costo_desembolso_valor = Math.round(antesDeDesembolso * pctDesembolso / 100);
 
   return {
     monto_creadora:           base,
@@ -51,7 +68,12 @@ function calcularTrato({ monto, comision_marca_pct, comision_creadora_pct, es_br
     comision_creadora_valor,
     comision_total_valor:     comision_marca_valor + comision_creadora_valor,
     total_a_pagar_marca:      base + comision_marca_valor,
-    neto_a_recibir_creadora:  base - comision_creadora_valor,
+    costo_desembolso_pct:     pctDesembolso,
+    costo_desembolso_valor:   costo_desembolso_valor,
+    // Lo que de verdad le llega a la cuenta. Es el número que ella ve al
+    // decidir si acepta, y por eso incluye el desembolso: enterarse del
+    // descuento al cobrar sería justo lo que rompe la confianza.
+    neto_a_recibir_creadora:  antesDeDesembolso - costo_desembolso_valor,
   };
 }
 

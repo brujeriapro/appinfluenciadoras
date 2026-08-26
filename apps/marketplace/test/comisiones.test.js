@@ -113,3 +113,67 @@ test('formato de pesos colombianos', () => {
   assert.strictEqual(formatearCOP(1_250_000), '$1.250.000');
   assert.strictEqual(formatearCOP(0), '$0');
 });
+
+// ── Costo de desembolso ──
+//
+// Lo que la pasarela cobra por pasarle la plata a la creadora. Es el descuento
+// que ella ve al decidir si acepta, así que un error aquí le promete un número
+// y le paga otro.
+
+test('el desembolso se calcula sobre lo que ella recibe, no sobre el bruto', () => {
+  // 3% de $184.000 —ya descontada su comisión— son $5.520.
+  // Si se calculara sobre los $200.000 serían $6.000: 480 pesos de más por trato.
+  const r = calcularTrato({
+    monto: 200_000, comision_marca_pct: 12, comision_creadora_pct: 8,
+    costo_desembolso_pct: 3,
+  });
+  assert.strictEqual(r.comision_creadora_valor, 16_000);
+  assert.strictEqual(r.costo_desembolso_valor, 5_520);
+  assert.strictEqual(r.neto_a_recibir_creadora, 178_480);
+});
+
+test('sin costo de desembolso, el neto no cambia', () => {
+  // Los tratos creados antes de esta función tienen 0 y deben seguir cuadrando.
+  const r = calcularTrato({ monto: 200_000, comision_marca_pct: 12, comision_creadora_pct: 8 });
+  assert.strictEqual(r.costo_desembolso_valor, 0);
+  assert.strictEqual(r.neto_a_recibir_creadora, 184_000);
+});
+
+test('el desembolso no toca lo que paga la marca', () => {
+  // Es un costo de ella, no de la marca: el total a pagar tiene que ser igual
+  // con y sin desembolso, o la marca estaría cubriendo algo que no le dijeron.
+  const con = calcularTrato({ monto: 200_000, comision_marca_pct: 12, comision_creadora_pct: 8, costo_desembolso_pct: 3 });
+  const sin = calcularTrato({ monto: 200_000, comision_marca_pct: 12, comision_creadora_pct: 8 });
+  assert.strictEqual(con.total_a_pagar_marca, sin.total_a_pagar_marca);
+  assert.strictEqual(con.comision_total_valor, sin.comision_total_valor);
+});
+
+test('la embajadora no paga desembolso, igual que no paga comisión', () => {
+  const r = calcularTrato({
+    monto: 500_000, comision_marca_pct: 12, comision_creadora_pct: 8,
+    costo_desembolso_pct: 3, es_bruja_embajadora: true,
+  });
+  assert.strictEqual(r.costo_desembolso_valor, 0);
+  assert.strictEqual(r.neto_a_recibir_creadora, 500_000, 'recibe todo lo acordado');
+});
+
+test('un porcentaje de desembolso imposible se rechaza', () => {
+  assert.throws(() => calcularTrato({
+    monto: 100_000, comision_marca_pct: 12, comision_creadora_pct: 8, costo_desembolso_pct: 120,
+  }), /desembolso/);
+  assert.throws(() => calcularTrato({
+    monto: 100_000, comision_marca_pct: 12, comision_creadora_pct: 8, costo_desembolso_pct: -5,
+  }), /desembolso/);
+});
+
+test('las cuentas cierran sin pesos sueltos', () => {
+  // Con un monto que no divide bonito, la suma de las partes tiene que dar
+  // exactamente el monto: un peso perdido aquí es un descuadre en el banco.
+  const r = calcularTrato({
+    monto: 333_333, comision_marca_pct: 12, comision_creadora_pct: 8, costo_desembolso_pct: 3,
+  });
+  assert.strictEqual(
+    r.neto_a_recibir_creadora + r.comision_creadora_valor + r.costo_desembolso_valor,
+    r.monto_creadora
+  );
+});

@@ -482,6 +482,10 @@ router.post('/tratos', rateLimit({ max: 20 }), async (req, res) => {
       monto: Number(monto),
       comision_marca_pct: Number(cfg.comision_marca_pct ?? 12),
       comision_creadora_pct: Number(cfg.comision_creadora_pct ?? 8),
+      // Lo que cobra la pasarela por dispersar. Se congela igual que las
+      // comisiones: subirlo mañana no puede cambiar lo que ya se le prometió
+      // a alguien que aceptó hoy.
+      costo_desembolso_pct: Number(cfg.costo_desembolso_pct ?? 0),
       es_bruja_embajadora: creadora.es_bruja_embajadora === true,
     });
 
