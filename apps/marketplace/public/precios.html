@@ -100,20 +100,6 @@
   .plan--destacado .btn-plan:hover { background: #fff; border-color: #fff; }
   .btn-plan:disabled { opacity: .5; cursor: default; }
 
-  /* Comisión: es la parte del modelo que más se malinterpreta, así que va
-     explicada con un ejemplo en pesos y no solo con el porcentaje. */
-  .comision { padding: clamp(34px, 4.5vw, 60px) var(--pad-x); background: var(--ink); }
-  .comision__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-                    gap: 2px; background: var(--border-dark);
-                    border: 2px solid var(--border-dark); margin-top: 24px; }
-  .comision__grid > div { background: var(--ink); padding: 22px 20px; }
-  .cuenta { display: grid; gap: 8px; margin-top: 14px; font-size: 13.5px; }
-  .cuenta__fila { display: flex; justify-content: space-between; gap: 14px;
-                  padding-bottom: 8px; border-bottom: 1px solid var(--border-dark); }
-  .cuenta__fila:last-child { border-bottom: none; padding-top: 4px; }
-  .cuenta__fila--total { font-family: var(--mono-title); font-weight: 800; color: var(--lime); }
-  .cuenta__num { font-family: var(--mono-title); font-variant-numeric: tabular-nums; }
-
   .preguntas { padding: clamp(34px, 4.5vw, 60px) var(--pad-x);
                background: var(--off-white); color: var(--ink); }
   .pregunta { border-top: 1px solid #D8D8D4; padding: 18px 0; }
@@ -185,60 +171,6 @@
   <div id="aviso-pago"></div>
 </section>
 
-<section class="comision">
-  <span class="tag tag--lime">{LA COMISIÓN}</span>
-  <h2 class="h2" style="margin-top:16px;max-width:24ch;color:#fff">
-    APARTE DEL PLAN, UNA COMISIÓN POR TRATO CERRADO<span class="punto">.</span></h2>
-  <p class="p p--lg" style="color:var(--grey-600);max-width:60ch;margin-top:16px">
-    Es lo que paga el escrow: el dinero queda retenido hasta que la creadora entregue
-    y tú apruebes. Ninguna de las dos partes queda expuesta.
-  </p>
-
-  <div class="comision__grid">
-    <div>
-      <div class="promesa__titulo">Cómo se reparte</div>
-      <p class="p" style="font-size:13px">
-        La comisión se divide entre las dos partes: tú pagas un
-        <strong id="pct-marca">12</strong>% sobre el valor del trato y la creadora aporta
-        un <strong id="pct-creadora">8</strong>% de lo que recibe.
-      </p>
-      <p class="p" style="font-size:13px;margin-top:10px">
-        Los porcentajes se congelan al crear el trato: si cambian después, el tuyo
-        se respeta hasta cerrarlo.
-      </p>
-    </div>
-    <div>
-      <div class="promesa__titulo">Un trato de $500.000</div>
-      <div class="cuenta">
-        <div class="cuenta__fila">
-          <span>Tarifa de la creadora</span>
-          <span class="cuenta__num">$500.000</span>
-        </div>
-        <div class="cuenta__fila">
-          <span>Comisión de la plataforma</span>
-          <span class="cuenta__num" id="ej-comision">$60.000</span>
-        </div>
-        <div class="cuenta__fila cuenta__fila--total">
-          <span>Tú pagas</span>
-          <span class="cuenta__num" id="ej-total">$560.000</span>
-        </div>
-        <div class="cuenta__fila">
-          <span style="color:var(--grey-700)">Ella recibe</span>
-          <span class="cuenta__num" style="color:var(--grey-700)" id="ej-neto">$460.000</span>
-        </div>
-      </div>
-    </div>
-    <div>
-      <div class="promesa__titulo">Qué incluye</div>
-      <ul class="plan__lista" style="margin-bottom:0">
-        <li>Pago retenido hasta que apruebes el contenido</li>
-        <li>Contrato y condiciones registrados antes de empezar</li>
-        <li>Historial de cumplimiento de cada creadora</li>
-        <li>Soporte si algo se sale del acuerdo</li>
-      </ul>
-    </div>
-  </div>
-</section>
 
 <section class="preguntas">
   <span class="tag">{DUDAS FRECUENTES}</span>
@@ -322,7 +254,7 @@ const RETRATO = {
   },
 };
 
-function planHTML(p) {
+function planHTML(p, comisionPct) {
   const r = RETRATO[p.clave] || { para: '', extras: [] };
   const gratis = p.precio_mes <= 0;
   const propuestas = p.propuestas_mes == null
@@ -339,6 +271,11 @@ function planHTML(p) {
     <ul class="plan__lista">
       <li>${propuestas}</li>
       ${r.extras.map(e => `<li>${esc(e)}</li>`).join('')}
+      <!-- La comisión va como una línea más, igual en todos los planes. Tenía
+           una sección entera para ella sola y eso la volvía el tema de la
+           página: quien llega a mirar precios termina pensando en lo que le
+           cobran en vez de en lo que se lleva. -->
+      <li>${comisionPct}% de comisión por trato cerrado</li>
     </ul>
     <div class="plan__btn">
       ${gratis
@@ -370,22 +307,12 @@ function irAComprar(clave) {
     const d = await (await fetch('/api/landing/planes')).json();
     if (d.error) throw new Error(d.error);
 
-    $('planes').innerHTML = d.planes.map(planHTML).join('');
+    // La comisión sale de la configuración real y no de un número escrito
+    // aquí: si mañana cambia, esta página no puede quedar prometiendo la vieja.
+    $('planes').innerHTML = d.planes.map(p => planHTML(p, d.comision_marca_pct)).join('');
     $('planes').querySelectorAll('[data-plan]').forEach(b => {
       b.addEventListener('click', () => irAComprar(b.dataset.plan));
     });
-
-    // Las comisiones y el ejemplo salen de la configuración real, no de
-    // números escritos aquí: si mañana cambia la comisión, esta página no
-    // puede quedar prometiendo la vieja.
-    const pm = d.comision_marca_pct, pc = d.comision_creadora_pct;
-    $('pct-marca').textContent = pm;
-    $('pct-creadora').textContent = pc;
-
-    const base = 500000;
-    $('ej-comision').textContent = COP(base * pm / 100);
-    $('ej-total').textContent    = COP(base * (1 + pm / 100));
-    $('ej-neto').textContent     = COP(base * (1 - pc / 100));
 
     if (!d.pagos_activos) {
       $('aviso-pago').innerHTML = `
