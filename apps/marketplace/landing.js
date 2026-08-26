@@ -60,10 +60,41 @@ router.get('/', async (req, res) => {
 
     if (demo) banco = BANCO_DEMO;
 
+    // Las cifras del hero salen de la base, no de un valor escrito a mano.
+    //
+    // Estaban en mk_config.landing_metricas con "420+" perfiles cuando el
+    // catálogo tenía 220 visibles. Una marca que entra por ese número y
+    // encuentra la mitad se siente engañada — y es justo la confianza que el
+    // escrow intenta construir la que se pierde.
+    const metricas = { ...(cfg.landing_metricas || {}) };
+    try {
+      const visibles = await db.get('mk_creadoras', { select: 'ciudad', visible: 'eq.true' });
+      if (visibles.length) {
+        metricas.perfiles = String(visibles.length);
+
+        // Solo las ciudades donde hay de dónde escoger.
+        //
+        // Contarlas todas daría 57, pero en 34 de ellas hay una sola creadora:
+        // prometer esa cobertura es prometer que la marca de Sincelejo va a
+        // encontrar a alguien, cuando si esa persona no le sirve no hay
+        // alternativa. Con tres o más, la promesa se sostiene.
+        const porCiudad = {};
+        visibles.forEach(c => {
+          const ciudad = String(c.ciudad || '').trim().toLowerCase();
+          if (ciudad) porCiudad[ciudad] = (porCiudad[ciudad] || 0) + 1;
+        });
+        metricas.ciudades = Object.values(porCiudad).filter(n => n >= 3).length;
+      }
+    } catch (e) {
+      // Si falla el conteo se queda lo de config: la landing nunca se cae por
+      // una cifra.
+      console.warn('[landing] no se pudieron contar los perfiles:', e.message);
+    }
+
     res.json({
       comision_marca_pct: Number(cfg.comision_marca_pct ?? 12),
       comision_creadora_pct: Number(cfg.comision_creadora_pct ?? 8),
-      metricas: cfg.landing_metricas || {},
+      metricas,
       banco,
       demo,
     });
