@@ -118,15 +118,19 @@ router.get('/:id', async (req, res) => {
 
     await anotarVista(req.usuarioId, req.params.id);
 
-    const [muestras, tarifas, cumplimiento] = await Promise.all([
+    const [muestras, tarifas, cumplimiento, contenido] = await Promise.all([
       db.getMuestrasDeCreadora(creadora.id),
       db.getTarifasDeCreadora(creadora.id),
       db.getCumplimientoDeUna(creadora.id),
+      db.getPerfilContenidoDeUna(creadora.id),
     ]);
 
     res.json({
       ...creadora,
       cumplimiento: cumplimiento || { confianza: 'sin_historial' },
+      // Cómo trabaja: sale del análisis de sus piezas. Va null mientras no se
+      // hayan analizado, y la ficha lo omite en vez de inventar un perfil.
+      contenido: contenido || null,
       muestras: muestras.map(m => ({ id: m.id, tipo: m.tipo })),
       // Solo las que ella tiene publicadas.
       tarifas: tarifas

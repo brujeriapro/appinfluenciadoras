@@ -19,6 +19,69 @@ let TARIFA_SEL = null; // entregable elegido en el panel de la derecha
  * Cuando no hay historial se dice sin rodeos y se explica por qué, en vez de
  * mostrar un cuadro de ceros que se lee como un mal antecedente.
  */
+/**
+ * Cómo trabaja: el retrato de su estilo, sacado de analizar sus piezas.
+ *
+ * Es la respuesta a "¿su contenido le va a servir a mi producto?", que hoy una
+ * marca solo puede contestar abriendo video por video.
+ *
+ * Solo se afirma lo que se repite: un formato entra aquí si aparece en un
+ * tercio o más de sus piezas, y hacen falta al menos dos piezas analizadas
+ * para hablar de estilo. Con una sola no hay patrón, hay una casualidad.
+ */
+const NOMBRE_FORMATO = {
+  habla_camara: 'Habla a cámara', voz_en_off: 'Voz en off', sin_voz: 'Sin voz',
+  tutorial: 'Tutorial', antes_despues: 'Antes y después', unboxing: 'Unboxing',
+  rutina: 'Rutina', resena: 'Reseña', grwm: 'Arréglate conmigo', trend: 'Trends',
+  otro: 'Otros formatos',
+};
+const NOMBRE_ESCENARIO = {
+  'baño': 'Baño', cocina: 'Cocina', dormitorio: 'Dormitorio', sala: 'Sala',
+  exterior: 'Exterior', estudio: 'Estudio', calle: 'Calle', gimnasio: 'Gimnasio',
+  carro: 'Carro', otro: 'Otros',
+};
+const NOMBRE_PRODUCCION = {
+  casera: 'Casera y natural', cuidada: 'Cuidada', profesional: 'Profesional',
+};
+const NOMBRE_LUZ = {
+  natural: 'Luz natural', artificial_calida: 'Luz cálida',
+  artificial_fria: 'Luz fría', anillo: 'Aro de luz', mixta: 'Luz mixta',
+};
+
+function contenidoHTML(perfil) {
+  if (!perfil || !perfil.piezas_analizadas) return '';
+
+  const chips = (lista, dic) => (lista || [])
+    .map(v => `<span class="chip-claro">${esc(dic[v] || v)}</span>`).join('');
+
+  const formatos   = chips(perfil.formatos, NOMBRE_FORMATO);
+  const escenarios = chips(perfil.escenarios, NOMBRE_ESCENARIO);
+  const estilo     = [NOMBRE_PRODUCCION[perfil.produccion], NOMBRE_LUZ[perfil.luz]]
+    .filter(Boolean)
+    .map(t => `<span class="chip-claro">${esc(t)}</span>`).join('');
+
+  if (!formatos && !escenarios && !estilo) return '';
+
+  return `
+  <div class="historial">
+    <div class="h-sec" style="font-size:11.5px;margin-bottom:10px">Cómo trabaja</div>
+    ${formatos ? `
+      <div class="etiqueta" style="margin-bottom:5px">Formatos que domina</div>
+      <div class="tarjeta__chips" style="margin-bottom:12px">${formatos}</div>` : ''}
+    ${escenarios ? `
+      <div class="etiqueta" style="margin-bottom:5px">Dónde graba</div>
+      <div class="tarjeta__chips" style="margin-bottom:12px">${escenarios}</div>` : ''}
+    ${estilo ? `
+      <div class="etiqueta" style="margin-bottom:5px">Estilo</div>
+      <div class="tarjeta__chips">${estilo}</div>` : ''}
+    <p class="p" style="font-size:11px;color:var(--text-3);margin-top:12px">
+      Leído de sus ${perfil.piezas_analizadas} pieza${perfil.piezas_analizadas === 1 ? '' : 's'}
+      publicadas${perfil.calidad_tecnica ? ` · calidad técnica ${perfil.calidad_tecnica}/5` : ''}.
+      Solo se listan los formatos que repite, no los que hizo una vez.
+    </p>
+  </div>`;
+}
+
 function historialHTML(cump) {
   const c = cump || {};
   const entregas = Number(c.entregas || 0);
@@ -120,6 +183,7 @@ async function vistaFicha(c) {
         ${selloHTML(FICHA.cumplimiento)}
       </div>
 
+      ${contenidoHTML(FICHA.contenido)}
       ${historialHTML(FICHA.cumplimiento)}
 
       <div class="aviso-anon">

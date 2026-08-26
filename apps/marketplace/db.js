@@ -38,14 +38,19 @@ async function getUno(tabla, params = {}) {
   return filas[0] || null;
 }
 
-async function post(tabla, data) {
+// `extra` permite cabeceras por llamada, como el Prefer que convierte este
+// POST en un upsert. Sin argumento se comporta igual que siempre.
+async function post(tabla, data, extra = null) {
   const res = await fetch(`${BASE_URL}/${tabla}`, {
     method: 'POST',
-    headers: HEADERS,
+    headers: extra ? { ...HEADERS, ...extra } : HEADERS,
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error(`Supabase POST ${tabla}: ${res.status} ${await res.text()}`);
-  const filas = await res.json();
+  // Con `return=minimal` la respuesta viene vacía y res.json() reventaría.
+  const cuerpo = await res.text();
+  if (!cuerpo) return null;
+  const filas = JSON.parse(cuerpo);
   return Array.isArray(filas) ? filas[0] : filas;
 }
 
@@ -497,6 +502,44 @@ async function getCumplimientoDeVarias(ids = []) {
 const getCumplimientoDeUna = (id) =>
   getUno('mk_cumplimiento', { creadora_id: `eq.${id}`, select: COLS_CUMPLIMIENTO });
 
+// ── Análisis de contenido ───────────────────────────────────────────────────
+
+// Guarda el análisis de una pieza. Es upsert porque re-analizar una pieza —al
+// cambiar de modelo o de vocabulario— tiene que pisar el resultado viejo, no
+// acumular dos verdades para el mismo archivo.
+const guardarAnalisis = (fila) =>
+  post('mk_analisis_pieza', fila, { 'Prefer': 'resolution=merge-duplicates,return=minimal' });
+
+/** Piezas que todavía no se han analizado, las más recientes primero. */
+async function getMuestrasSinAnalizar(limite = 50) {
+  const filas = await get('mk_muestras', {
+    select: 'id,creadora_id,tipo,mime,storage_path',
+    order: 'created_at.desc',
+    limit: String(limite * 4),
+  });
+  const yaHechas = new Set(
+    (await get('mk_analisis_pieza', { select: 'muestra_id' })).map(a => a.muestra_id)
+  );
+  return filas.filter(m => !yaHechas.has(m.id)).slice(0, limite);
+}
+
+const COLS_PERFIL =
+  'creadora_id,piezas_analizadas,calidad_tecnica,con_producto,con_subtitulos,formatos,escenarios,produccion,luz';
+
+async function getPerfilContenidoDeVarias(ids = []) {
+  if (!ids.length) return {};
+  const filas = await get('mk_perfil_contenido', {
+    creadora_id: `in.(${ids.join(',')})`,
+    select: COLS_PERFIL,
+  });
+  const porCreadora = {};
+  filas.forEach(f => { porCreadora[f.creadora_id] = f; });
+  return porCreadora;
+}
+
+const getPerfilContenidoDeUna = (id) =>
+  getUno('mk_perfil_contenido', { creadora_id: `eq.${id}`, select: COLS_PERFIL });
+
 // ── Tratos ──────────────────────────────────────────────────────────────────
 
 const insertTrato = (data) => post('mk_tratos', data);
@@ -706,6 +749,8 @@ module.exports = {
   siguienteCodigoCreadora,
   getMuestrasDeCreadora, getMuestra, insertMuestra, borrarMuestra, getMuestrasDeVarias,
   getCumplimientoDeVarias, getCumplimientoDeUna,
+  guardarAnalisis, getMuestrasSinAnalizar,
+  getPerfilContenidoDeVarias, getPerfilContenidoDeUna,
   insertTrato, getTratoById, updateTrato, getTratosDeMarca, getTratosDeCreadora,
   getTratosAdmin, siguienteCodigoTrato, contarTratosPrevios,
   insertEvento, getEventosDeTrato,

@@ -215,6 +215,52 @@ Dos cosas a tener en cuenta cuando se implemente:
 - **La API vieja de Instagram (Basic Display) está descontinuada** desde finales de 2024. La que sirve es *Instagram API con Instagram Login*, y exige cuenta Business o Creator. Quien tenga cuenta personal se queda en modo declarado hasta que cambie — que es gratis y toma un minuto.
 - **Nunca embeber el feed de Instagram.** El widget muestra el @usuario y tumba la promesa de identidad oculta. El contenido se descarga por API y se re-aloja en el bucket, igual que las piezas que ella sube a mano.
 
+## Cómo trabaja y si cumple
+
+Es la promesa central del producto y la razón por la que una marca elegiría este catálogo sobre una lista de seguidores. Las otras plataformas dicen **quién es** una creadora; esto dice **cómo trabaja y si entrega**. Son dos sistemas distintos.
+
+### Si cumple — `mk_cumplimiento`
+
+Vista que calcula en vivo el historial real de entregas, cruzando dos fuentes: el Programa Creadoras (kit despachado contra fecha de publicación) y los tratos del marketplace (plazo pactado contra fecha de entrega). Nada es declarado por la creadora.
+
+Depende de que `mk_creadoras.influencer_id` esté poblado — es el puente entre las dos tablas, y hasta la migración `mk_024` estaba vacío para las 167 creadoras, así que el catálogo mostraba "0 tratos cerrados" a todo el mundo.
+
+Reglas, escritas para poder defenderlas si una creadora pregunta:
+
+| Regla | Definición |
+|---|---|
+| A tiempo (gifting) | Publicó dentro de 30 días de despachado el kit. La mediana real es 20 días, así que 30 es holgado. |
+| A tiempo (trato) | Entregó en o antes de `fecha_entrega_esperada`. |
+| Incumplida | Pasaron más de 45 días desde el envío y nunca publicó. |
+| No se cuenta | Ella reportó que el paquete no llegó. No se castiga una falla de la transportadora. |
+
+**No existe sello negativo público.** Que alguien no haya publicado puede deberse a razones que no conocemos, y marcarla frente a todas las marcas sería una condena sin descargo. El dato existe, pesa en el orden del catálogo y lo ve el equipo — pero no se exhibe. Se destaca a quien cumple en vez de señalar a quien no.
+
+Quien no tiene historial lo dice en gris y explica por qué. Rellenar con ceros la haría parecer incumplida cuando solo es nueva.
+
+`colaboraciones_completadas` —la columna por la que ordena el catálogo— se sincroniza desde la vista con `SELECT mk_sincronizar_colaboraciones();`. Es idempotente.
+
+### Cómo trabaja — `analisis.js` y `mk_perfil_contenido`
+
+Un modelo de visión lee cada pieza y la etiqueta: dónde graba, tipo de luz, qué tan producida es, qué formato, si el producto se ve. La ficha muestra los **formatos que domina**, definido como los que aparecen en un tercio o más de sus piezas, con mínimo 2 piezas analizadas. Con una sola no hay patrón, hay una casualidad.
+
+Dos decisiones de diseño:
+
+- **El vocabulario es cerrado.** Con texto libre, "baño" y "el baño de su casa" serían categorías distintas y ningún filtro agruparía nada. `interpretarRespuesta()` valida contra `VOCAB` y descarta a null lo que no esté en la lista: un valor inventado no rompe nada visible, y esos son los errores que más tardan en descubrirse.
+- **Los videos se analizan por fotogramas**, tres repartidos al 15%, 50% y 80% de la pieza. No al principio, porque los primeros cuadros de un reel suelen ser una portada o un fundido a negro. Lo que un cuadro no puede decir —si habla a cámara, el ritmo del montaje— el prompt permite responderlo como null.
+
+Corre **fuera del servidor web**, como script:
+
+```bash
+node scripts/analizar-contenido.js            # 25 piezas
+node scripts/analizar-contenido.js 400        # todo el backlog
+node scripts/analizar-contenido.js 5 --prueba # sin guardar, para ver qué sale
+```
+
+Necesita `ANTHROPIC_API_KEY` además de las variables de siempre. Es seguro correrlo cuantas veces se quiera: solo toca lo que falta. Una pieza se analiza una vez y no vuelve a cambiar, por eso el resultado se guarda en tabla y no en vista.
+
+⚠️ **Cambiar un vocabulario de `VOCAB` invalida las filas ya analizadas**: los valores viejos siguen en la tabla pero dejan de coincidir con los filtros. Si se cambia, hay que re-analizar.
+
 ## Nichos y tarifas
 
 **Taxonomía de dos niveles**, en `mk_config.nichos`: 15 categorías madre (belleza, moda, salud y fitness, comida, hogar, familia, mascotas, viajes, tecnología, gaming, finanzas, educación, entretenimiento, autos y movilidad, estilo de vida) con sus subnichos. La creadora elige hasta 3 subnichos; la categoría madre se deduce sola. La marca filtra por categoría o afina por subnicho.
