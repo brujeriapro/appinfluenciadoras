@@ -11,6 +11,7 @@ const config = require('./config');
 const referidos = require('./referidos');
 const maquina = require('./tratos');
 const { resumirTarifas, rangoAlcance, resumirAlcance } = require('./comisiones');
+const { normalizarIncluye, conAhorro } = require('./paquetes');
 const { creadoraAuth, firmarToken, rateLimit } = require('./auth');
 const notificaciones = require('./notificaciones');
 const { subirMuestra, borrarMuestra, subirArchivo, borrarArchivo } = require('./muestras');
@@ -693,6 +694,127 @@ router.delete('/muestras/:id', async (req, res) => {
  * Lo que necesita la pantalla del control deslizante: los entregables
  * disponibles, los límites del slider y lo que ella ya tiene publicado.
  */
+// ── Sus paquetes ────────────────────────────────────────────────────────────
+//
+// "2 reels + 4 historias por $650.000". Suben el ticket sin que la plataforma
+// empuje a nadie: ella arma la combinación que sabe que funciona, y a la marca
+// le sale más barato que comprarlo suelto.
+
+router.get('/paquetes', async (req, res) => {
+  try {
+    const [cfg, paquetes, tarifas] = await Promise.all([
+      db.getConfig(),
+      db.getPaquetesDeCreadora(req.usuarioId),
+      db.getTarifasDeCreadora(req.usuarioId),
+    ]);
+    res.json({
+      paquetes: paquetes.map(p => conAhorro(p, tarifas)),
+      entregables: cfg.entregables || [],
+      maximo: Number(cfg.max_paquetes_creadora ?? 4),
+      // Sus tarifas sueltas, para que el formulario le muestre cuánto costaría
+      // suelto mientras arma el paquete.
+      tarifas: tarifas.filter(t => t.activo !== false)
+                      .map(t => ({ entregable: t.entregable, precio: t.precio })),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/paquetes', async (req, res) => {
+  try {
+    const cfg = await db.getConfig();
+    const maximo = Number(cfg.max_paquetes_creadora ?? 4);
+    const suyos = await db.getPaquetesDeCreadora(req.usuarioId);
+    if (suyos.length >= maximo) {
+      return res.status(400).json({
+        error: `Puedes tener hasta ${maximo} paquetes. Borra uno para crear otro — `
+             + 'pocos y buenos se comparan mejor que muchos.',
+      });
+    }
+
+    const nombre = String(req.body.nombre || '').trim().slice(0, 60);
+    if (!nombre) return res.status(400).json({ error: 'Ponle un nombre al paquete' });
+
+    const precio = Number(req.body.precio);
+    if (!Number.isFinite(precio) || precio <= 0) {
+      return res.status(400).json({ error: 'El precio tiene que ser mayor que cero' });
+    }
+
+    const { incluye, error } = normalizarIncluye(
+      req.body.incluye, (cfg.entregables || []).map(e => e.clave));
+    if (error) return res.status(400).json({ error });
+
+    const creado = await db.insertPaquete({
+      creadora_id: req.usuarioId,
+      nombre,
+      descripcion: String(req.body.descripcion || '').trim().slice(0, 240) || null,
+      precio: Math.round(precio),
+      incluye,
+      orden: suyos.length,
+    });
+    res.json({ ok: true, paquete: creado });
+  } catch (e) {
+    console.error('[creadoras/paquetes]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.put('/paquetes/:id', async (req, res) => {
+  try {
+    const p = await db.getPaquete(req.params.id);
+    if (!p || p.creadora_id !== req.usuarioId) {
+      return res.status(404).json({ error: 'Paquete no encontrado' });
+    }
+
+    const cfg = await db.getConfig();
+    const data = {};
+
+    if (req.body.nombre !== undefined) {
+      const n = String(req.body.nombre).trim().slice(0, 60);
+      if (!n) return res.status(400).json({ error: 'El nombre no puede quedar vacío' });
+      data.nombre = n;
+    }
+    if (req.body.descripcion !== undefined) {
+      data.descripcion = String(req.body.descripcion).trim().slice(0, 240) || null;
+    }
+    if (req.body.precio !== undefined) {
+      const precio = Number(req.body.precio);
+      if (!Number.isFinite(precio) || precio <= 0) {
+        return res.status(400).json({ error: 'El precio tiene que ser mayor que cero' });
+      }
+      data.precio = Math.round(precio);
+    }
+    if (req.body.incluye !== undefined) {
+      const { incluye, error } = normalizarIncluye(
+        req.body.incluye, (cfg.entregables || []).map(e => e.clave));
+      if (error) return res.status(400).json({ error });
+      data.incluye = incluye;
+    }
+    if (req.body.activo !== undefined) data.activo = Boolean(req.body.activo);
+
+    res.json({ ok: true, paquete: await db.updatePaquete(p.id, data) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.delete('/paquetes/:id', async (req, res) => {
+  try {
+    const p = await db.getPaquete(req.params.id);
+    if (!p || p.creadora_id !== req.usuarioId) {
+      return res.status(404).json({ error: 'Paquete no encontrado' });
+    }
+    // Se borra de verdad: un paquete no contratado no deja rastro que valga la
+    // pena guardar. Los tratos que nacieron de él conservan su propia copia de
+    // lo acordado, así que no se rompe nada.
+    await db.borrarPaquete(p.id);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.get('/tarifas', async (req, res) => {
   try {
     const [cfg, tarifas] = await Promise.all([

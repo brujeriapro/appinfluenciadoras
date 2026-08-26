@@ -508,6 +508,39 @@ async function getCumplimientoDeVarias(ids = []) {
 const getCumplimientoDeUna = (id) =>
   getUno('mk_cumplimiento', { creadora_id: `eq.${id}`, select: COLS_CUMPLIMIENTO });
 
+// ── Paquetes ────────────────────────────────────────────────────────────────
+
+const COLS_PAQUETE = 'id,creadora_id,nombre,descripcion,precio,incluye,activo,orden';
+
+const getPaquetesDeCreadora = (creadora_id, { soloActivos = false } = {}) => {
+  const p = { creadora_id: `eq.${creadora_id}`, select: COLS_PAQUETE, order: 'orden.asc,precio.asc' };
+  if (soloActivos) p.activo = 'eq.true';
+  return get('mk_paquetes', p);
+};
+
+async function getPaquetesDeVarias(ids = []) {
+  if (!ids.length) return {};
+  const filas = await get('mk_paquetes', {
+    creadora_id: `in.(${ids.join(',')})`,
+    select: COLS_PAQUETE, activo: 'eq.true', order: 'precio.asc',
+  });
+  const porCreadora = {};
+  filas.forEach(f => { (porCreadora[f.creadora_id] = porCreadora[f.creadora_id] || []).push(f); });
+  return porCreadora;
+}
+
+const getPaquete = (id) => getUno('mk_paquetes', { id: `eq.${id}`, select: '*' });
+const insertPaquete = (data) => post('mk_paquetes', data);
+const updatePaquete = (id, data) => patch('mk_paquetes', { id }, data);
+
+async function borrarPaquete(id) {
+  const url = new URL(`${BASE_URL}/mk_paquetes`);
+  url.searchParams.set('id', `eq.${id}`);
+  const res = await fetch(url.toString(), { method: 'DELETE', headers: HEADERS });
+  if (!res.ok) throw new Error(`Supabase DELETE mk_paquetes: ${res.status}`);
+  return null;
+}
+
 // ── Redes de la creadora ────────────────────────────────────────────────────
 
 // Se lee de mk_redes_publicas, NO de mk_creadora_redes. La diferencia es que la
@@ -823,6 +856,8 @@ module.exports = {
   getMuestrasDeCreadora, getMuestra, insertMuestra, borrarMuestra, getMuestrasDeVarias,
   getCumplimientoDeVarias, getCumplimientoDeUna,
   getRedesDeVarias, getRedesDeCreadora, getRedesPrivadas, guardarRedesDeCreadora,
+  getPaquetesDeCreadora, getPaquetesDeVarias, getPaquete,
+  insertPaquete, updatePaquete, borrarPaquete,
   guardarAnalisis, getMuestrasSinAnalizar,
   getPerfilContenidoDeVarias, getPerfilContenidoDeUna,
   insertTrato, getTratoById, updateTrato, getTratosDeMarca, getTratosDeCreadora,

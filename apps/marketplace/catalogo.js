@@ -10,6 +10,7 @@
 const express = require('express');
 const db = require('./db');
 const { marcaAuth } = require('./auth');
+const { conAhorro } = require('./paquetes');
 
 const router = express.Router();
 
@@ -208,11 +209,12 @@ router.get('/:id', async (req, res) => {
 
     await anotarVista(req.usuarioId, req.params.id);
 
-    const [muestras, tarifas, cumplimiento, contenido] = await Promise.all([
+    const [muestras, tarifas, cumplimiento, contenido, paquetes] = await Promise.all([
       db.getMuestrasDeCreadora(creadora.id),
       db.getTarifasDeCreadora(creadora.id),
       db.getCumplimientoDeUna(creadora.id),
       db.getPerfilContenidoDeUna(creadora.id),
+      db.getPaquetesDeCreadora(creadora.id, { soloActivos: true }),
     ]);
 
     res.json({
@@ -222,13 +224,19 @@ router.get('/:id', async (req, res) => {
       // hayan analizado, y la ficha lo omite en vez de inventar un perfil.
       contenido: contenido || null,
       muestras: muestras.map(m => ({ id: m.id, tipo: m.tipo, poster: Boolean(m.poster_path) })),
+      // Sus paquetes, con lo que costaría suelto para que la marca vea la
+      // diferencia. El ahorro se calcula contra las tarifas de ella misma, así
+      // que es real y no un descuento que la plataforma inventó.
+      paquetes: paquetes.map(p => conAhorro(p, tarifas)),
       // Solo las que ella tiene publicadas.
       tarifas: tarifas
         .filter(t => t.activo !== false)
         .map(t => ({ entregable: t.entregable, precio: t.precio })),
-      plan: limite.plan,
-      fichas_vistas: limite.vistas,
-      fichas_tope: limite.tope,
+      // Sin `plan`, `fichas_vistas` ni `fichas_tope`: quedaron de cuando el
+      // plan limitaba cuántas fichas se podían abrir. Desde mk_022 el tope está
+      // en las propuestas y el catálogo se ve completo, pero las tres líneas se
+      // quedaron leyendo una variable que ya no existía — y reventaban CADA
+      // apertura de ficha con "limite is not defined".
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
