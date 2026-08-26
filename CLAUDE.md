@@ -309,7 +309,7 @@ Brutalismo digital / Y2K editorial, definido en el handoff de Claude Design y co
 Las demás plataformas dicen **quién es** una creadora: seguidores, nicho, ciudad. Creators Manager dice **cómo trabaja y si cumple**. Es lo que no se copia, porque sale de datos que solo se acumulan operando.
 
 - **Si cumple** — la vista `mk_cumplimiento` calcula el historial real cruzando el Programa Creadoras (kit despachado contra fecha de publicación) y los tratos del marketplace (plazo pactado contra entrega). Hoy 40 creadoras con entrega comprobada. **No existe sello negativo público:** marcar a alguien frente a todas las marcas sería una condena sin descargo; el dato pesa en el orden del catálogo y lo ve el equipo, pero no se exhibe.
-- **Cómo trabaja** — `analisis.js` etiqueta cada pieza con un modelo de visión (dónde graba, luz, formato, producción) y la ficha muestra los formatos que **repite**, no los que hizo una vez. ⚠️ Construido pero **sin correr**: faltan `ANTHROPIC_API_KEY` y ejecutar el script.
+- **Cómo trabaja** — `analisis.js` etiqueta cada pieza con un modelo de visión (dónde graba, luz, formato, producción) y la ficha muestra los formatos que **repite**, no los que hizo una vez. ⚠️ Construido pero **sin correr**, y es una decisión, no un olvido: pasar las 421 piezas cuesta unos 5–10 USD de una vez y se aplazó (26-ago-2026) hasta que el negocio lo justifique. Para encenderlo: `ANTHROPIC_API_KEY` en Railway y correr el script. Conviene ponerle tope de gasto mensual en console.anthropic.com.
 
 ### Redes y niveles
 

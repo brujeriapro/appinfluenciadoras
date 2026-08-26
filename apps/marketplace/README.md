@@ -320,6 +320,12 @@ El portal promete plazos a las dos partes. `plazos.js` es lo que los hace cumpli
 | "La marca tiene 48h para aprobar" | Auto-aprobación, **solo si `auto_aprobar_entrega` está en `true`** (hoy `false`) |
 | "A tu cuenta 48h después de aprobado" | ⚠️ Sigue siendo manual: el pago lo registra el equipo desde el panel |
 
+**Corre solo.** La app lo ejecuta cada 6 horas desde dentro, dos minutos después de arrancar. No hay cron externo que configurar ni servicio que contratar: si la promesa de las 72 horas dependiera de que alguien monte un cron en Railway, duraría lo que dure la memoria de quien lo montó.
+
+Se apaga con `MK_PLAZOS_AUTO=0` — útil en local, para no tocar datos reales mientras se desarrolla.
+
+También se puede disparar a mano:
+
 ```bash
 # Qué haría, sin tocar nada
 curl -u admin:CLAVE -X POST "https://www.creatorsmanager.com/api/cron/plazos?dry_run=1"
@@ -327,7 +333,7 @@ curl -u admin:CLAVE -X POST "https://www.creatorsmanager.com/api/cron/plazos?dry
 curl -u admin:CLAVE -X POST "https://www.creatorsmanager.com/api/cron/plazos"
 ```
 
-Conviene programarlo en Railway una o dos veces al día. Es idempotente: correrlo dos veces seguidas no repite nada.
+Es idempotente: correrlo dos veces seguidas no repite nada, así que dos instancias de Railway pisándose no cierran nada dos veces.
 
 Tres decisiones que conviene conocer antes de tocarlo:
 

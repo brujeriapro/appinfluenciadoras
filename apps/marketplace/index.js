@@ -146,10 +146,55 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ error: err.message || 'Error interno' });
 });
 
+/**
+ * Los plazos se ejecutan solos, sin cron externo.
+ *
+ * El portal le promete a la marca respuesta en 72 horas. Si eso depende de que
+ * alguien configure un cron en Railway —o se acuerde de llamar una URL— la
+ * promesa dura lo que dure la memoria de quien la montó. Metiéndolo dentro de
+ * la app, funciona desde el momento en que se despliega y no hay nada que
+ * mantener aparte.
+ *
+ * Correrlo de más no hace daño: `plazos.ejecutar()` es idempotente, así que dos
+ * instancias de Railway pisándose una a otra no cierran nada dos veces.
+ *
+ * Se apaga con MK_PLAZOS_AUTO=0 (útil en local, para no tocar datos reales
+ * mientras se desarrolla).
+ */
+function programarPlazos() {
+  if (process.env.MK_PLAZOS_AUTO === '0' || process.env.NODE_ENV === 'test') return;
+
+  // Configurables para poder probar el ciclo en segundos en vez de esperar dos
+  // minutos cada vez. En producción se dejan como están.
+  const CADA = Number(process.env.MK_PLAZOS_CADA_MS) || 6 * 3600_000;
+  const ESPERA_INICIAL = Number(process.env.MK_PLAZOS_ESPERA_MS) || 120_000;
+
+  const correr = async () => {
+    try {
+      const r = await require('./plazos').ejecutar();
+      // Solo se escribe en el log si de verdad pasó algo. Una línea cada seis
+      // horas diciendo "no hice nada" solo entierra lo que sí importa.
+      if (r.avisadas || r.expiradas || r.aprobadas || r.errores.length) {
+        console.log('[plazos]', JSON.stringify(r));
+      }
+    } catch (e) {
+      console.error('[plazos] falló la pasada:', e.message);
+    }
+  };
+
+  // Sin unref(): mantener vivo el reloj es justo lo que se quiere en un
+  // servidor que corre indefinidamente, y con unref el ciclo no llegaba a
+  // dispararse.
+  setTimeout(correr, ESPERA_INICIAL);
+  setInterval(correr, CADA);
+  console.log(`[plazos] revisión automática cada ${Math.round(CADA / 60000)} min`);
+}
+
 app.listen(config.puerto, () => {
   console.log(`Creators Manager escuchando en http://localhost:${config.puerto}`);
   console.log(`  Landing:  ${config.base_url}/`);
   console.log(`  Admin:    ${config.base_url}/admin.html`);
+  programarPlazos();
 });
 
 module.exports = app;
