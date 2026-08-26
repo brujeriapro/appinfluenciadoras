@@ -537,6 +537,27 @@ const getRedesDeCreadora = (creadora_id) =>
 const getRedesPrivadas = (creadora_id) =>
   get('mk_creadora_redes', { creadora_id: `eq.${creadora_id}`, select: '*', order: 'es_principal.desc' });
 
+/**
+ * Reemplaza las redes de una creadora por la lista que envió.
+ *
+ * Se borra y se vuelve a insertar en vez de ir fila por fila porque la lista es
+ * la verdad completa: si quitó YouTube de su perfil, la fila de YouTube tiene
+ * que desaparecer, y un upsert por elemento la dejaría ahí para siempre.
+ *
+ * El borrado va primero por el índice único de "una sola principal": al mover
+ * la principal de Instagram a TikTok, insertar antes de borrar chocaría con la
+ * fila vieja.
+ */
+async function guardarRedesDeCreadora(creadora_id, redes = []) {
+  const url = new URL(`${BASE_URL}/mk_creadora_redes`);
+  url.searchParams.set('creadora_id', `eq.${creadora_id}`);
+  const borrado = await fetch(url.toString(), { method: 'DELETE', headers: HEADERS });
+  if (!borrado.ok) throw new Error(`Supabase DELETE mk_creadora_redes: ${borrado.status}`);
+
+  if (!redes.length) return [];
+  return post('mk_creadora_redes', redes.map(r => ({ ...r, creadora_id })));
+}
+
 // ── Análisis de contenido ───────────────────────────────────────────────────
 
 // Guarda el análisis de una pieza. Es upsert porque re-analizar una pieza —al
@@ -784,7 +805,7 @@ module.exports = {
   siguienteCodigoCreadora,
   getMuestrasDeCreadora, getMuestra, insertMuestra, borrarMuestra, getMuestrasDeVarias,
   getCumplimientoDeVarias, getCumplimientoDeUna,
-  getRedesDeVarias, getRedesDeCreadora, getRedesPrivadas,
+  getRedesDeVarias, getRedesDeCreadora, getRedesPrivadas, guardarRedesDeCreadora,
   guardarAnalisis, getMuestrasSinAnalizar,
   getPerfilContenidoDeVarias, getPerfilContenidoDeUna,
   insertTrato, getTratoById, updateTrato, getTratosDeMarca, getTratosDeCreadora,

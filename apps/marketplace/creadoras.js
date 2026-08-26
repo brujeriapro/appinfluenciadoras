@@ -124,6 +124,24 @@ router.post('/registro', rateLimit({ windowMs: 600_000, max: 5 }), async (req, r
       tiktok_handle: tk,
     });
 
+    // Sus redes, que es de donde sale el nivel que verá la marca. Sin esto una
+    // creadora recién registrada aparecería en el catálogo sin nivel ninguno,
+    // porque mk_clasificacion no tendría de dónde calcularlo.
+    //
+    // El registro sigue pidiendo solo Instagram y TikTok para no alargarlo: las
+    // demás las agrega desde su perfil, que es donde tiene tiempo de pensarlo.
+    const redesIniciales = [];
+    const segIG = Number(seguidores_instagram) || 0;
+    const segTK = Number(seguidores_tiktok) || 0;
+    if (segIG > 0) redesIniciales.push({ red: 'instagram', handle: ig, seguidores: segIG, es_principal: segIG >= segTK });
+    if (segTK > 0) redesIniciales.push({ red: 'tiktok', handle: tk, seguidores: segTK, es_principal: segTK > segIG });
+    if (redesIniciales.length) {
+      // Que esto falle no puede tumbar un registro que ya quedó hecho: se
+      // arregla desde su perfil, y perder la cuenta entera sería mucho peor.
+      await db.guardarRedesDeCreadora(creadora.id, redesIniciales).catch(e =>
+        console.error('[creadoras/registro] redes iniciales:', e.message));
+    }
+
     notificaciones.bienvenidaCreadora({ creadora }).catch(e =>
       console.error('[notif] bienvenidaCreadora:', e.message));
     notificaciones.avisoPerfilNuevo({ creadora, instagram: ig, tiktok: tk, alcance: alcance.alcance_total }).catch(e =>
@@ -420,25 +438,116 @@ router.put('/perfil', async (req, res) => {
   }
 });
 
-/** Sus redes, para poder mostrárselas en el formulario. */
+/**
+ * Sus redes, con el nivel que le da cada una.
+ *
+ * Devuelve también el catálogo de redes disponibles para que el formulario se
+ * arme solo: abrir una red nueva es agregar una fila en mk_config, sin tocar
+ * este archivo ni el HTML.
+ */
 router.get('/redes', async (req, res) => {
   try {
-    const [priv, c] = await Promise.all([
-      db.getPrivadoDeCreadora(req.usuarioId),
+    const [redes, c, cfg] = await Promise.all([
+      db.getRedesPrivadas(req.usuarioId),
       db.getCreadoraCompleta(req.usuarioId),
+      db.getConfig(),
     ]);
+
     res.json({
-      instagram: priv?.instagram_handle || null,
-      tiktok: priv?.tiktok_handle || null,
+      // Aquí sí va el handle: es su propio perfil, no el catálogo.
+      redes: redes.map(r => ({
+        red: r.red, handle: r.handle, seguidores: r.seguidores, es_principal: r.es_principal,
+      })),
+      disponibles: cfg.redes || [],
+      tiers: cfg.tiers || [],
       fuente_metricas: c?.fuente_metricas || 'declarado',
-      seguidores_instagram: c?.seguidores_instagram || null,
-      seguidores_tiktok: c?.seguidores_tiktok || null,
-      alcance_total: c?.alcance_total || null,
       // La conexión con Meta todavía no existe: el portal usa esto para
       // mostrar el botón o un "próximamente".
-      conexion_disponible: (await db.getConfig()).instagram_conexion_activa === true,
+      conexion_disponible: cfg.instagram_conexion_activa === true,
     });
   } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Guarda la lista completa de sus redes.
+ *
+ * Recibe la lista entera y no cambios sueltos: así quitar una red es no
+ * mandarla, que es como se comporta el formulario, y no hace falta un endpoint
+ * de borrado aparte.
+ *
+ * Mientras exista código que lea seguidores_instagram / rango_tiktok, esas
+ * columnas se siguen escribiendo desde aquí. Son un espejo, no la verdad: la
+ * verdad es mk_creadora_redes. Se retiran cuando ya nadie las consulte.
+ */
+router.put('/redes', async (req, res) => {
+  try {
+    const entrada = Array.isArray(req.body.redes) ? req.body.redes : null;
+    if (!entrada) return res.status(400).json({ error: 'Falta la lista de redes' });
+
+    const cfg = await db.getConfig();
+    const validas = new Set((cfg.redes || []).map(r => r.clave));
+    const limpio = (h) => h ? String(h).replace(/^@+/, '').toLowerCase().trim().slice(0, 80) : null;
+
+    const vistas = new Set();
+    const redes = [];
+    for (const r of entrada) {
+      const red = String(r.red || '').trim();
+      if (!validas.has(red) || vistas.has(red)) continue;   // desconocida o repetida
+      vistas.add(red);
+
+      const n = Number(r.seguidores);
+      redes.push({
+        red,
+        handle: limpio(r.handle),
+        seguidores: Number.isFinite(n) && n >= 0 ? Math.round(n) : null,
+        es_principal: false,   // se decide abajo, nunca se confía en lo que llegue
+      });
+    }
+
+    if (!redes.length) {
+      return res.status(400).json({ error: 'Tienes que dejar al menos una red' });
+    }
+
+    // Exactamente una principal. Si la que marcó no vino o vino más de una, se
+    // toma la de más seguidores: es mejor un valor sensato que rechazar el
+    // guardado por algo que el formulario debió resolver.
+    const pedida = entrada.find(r => r.es_principal)?.red;
+    const principal = redes.find(r => r.red === pedida)
+      || redes.slice().sort((a, b) => (b.seguidores || 0) - (a.seguidores || 0))[0];
+    principal.es_principal = true;
+
+    // Que no reclame un @usuario de Instagram que ya tiene otra creadora.
+    const ig = redes.find(r => r.red === 'instagram');
+    if (ig?.handle) {
+      const dueno = await db.getCreadoraPorHandle(ig.handle);
+      if (dueno && dueno !== req.usuarioId) {
+        return res.status(409).json({
+          error: 'Ese usuario de Instagram ya está registrado por otra creadora.',
+        });
+      }
+    }
+
+    await db.guardarRedesDeCreadora(req.usuarioId, redes);
+
+    // Espejo hacia las columnas viejas, para no romper lo que todavía las lee.
+    const actual = await db.getCreadoraCompleta(req.usuarioId);
+    if (actual?.fuente_metricas !== 'verificado') {
+      const tk = redes.find(r => r.red === 'tiktok');
+      await db.updateCreadora(req.usuarioId, resumirAlcance({
+        instagram: ig?.seguidores || null,
+        tiktok: tk?.seguidores || null,
+      }, cfg.rangos_alcance || []));
+    }
+    await db.guardarPrivadoDeCreadora(req.usuarioId, {
+      instagram_handle: ig?.handle || null,
+      tiktok_handle: redes.find(r => r.red === 'tiktok')?.handle || null,
+    });
+
+    res.json({ ok: true, redes: await db.getRedesDeCreadora(req.usuarioId) });
+  } catch (e) {
+    console.error('[creadoras/redes]', e.message);
     res.status(500).json({ error: e.message });
   }
 });

@@ -448,6 +448,26 @@
   .campo-p input::placeholder, .campo-p textarea::placeholder { color: #9A9A9A; }
   .campos-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
 
+  /* Una red del perfil. La principal lleva borde grueso porque de ella sale el
+     nivel que ve la marca: es la decisión con consecuencia de este bloque. */
+  .red-fila { border: 1px solid var(--border-2); padding: 12px 13px; margin-bottom: 10px; }
+  .red-fila--principal { border: 2px solid var(--ink); }
+  .red-fila__cab { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+  .red-fila__cab strong { font-family: var(--mono-title); font-size: 12.5px; letter-spacing: -0.2px; }
+  .red-tier { background: var(--lime); color: var(--ink); font-family: var(--mono-title);
+              font-size: 9px; font-weight: 800; letter-spacing: 0.6px;
+              text-transform: uppercase; padding: 3px 6px; }
+  .red-quitar { margin-left: auto; background: none; border: none; color: #8A8A8A;
+                font-size: 15px; line-height: 1; cursor: pointer; padding: 2px 4px; }
+  .red-quitar:hover { color: var(--magenta); }
+  .red-principal { display: flex; align-items: center; gap: 7px; margin-top: 10px;
+                   font-size: 11.5px; color: #5A5A5A; cursor: pointer; }
+  .red-principal input { width: 14px; height: 14px; accent-color: var(--ink); }
+
+  .agregar-red { display: flex; gap: 8px; align-items: center; margin-top: 4px; flex-wrap: wrap; }
+  .agregar-red select { flex: 1; min-width: 150px; }
+  .agregar-red .btn-portal { width: auto; flex: none; padding: 11px 16px; font-size: 11px; }
+
   .grupo-nicho { margin-bottom: 14px; }
   .grupo-nicho__titulo { font-size: 9.5px; letter-spacing: 1.1px; color: #5A5A5A;
                          text-transform: uppercase; margin-bottom: 6px; font-weight: 700; }
@@ -1354,22 +1374,16 @@ async function vistaPerfil() {
 
     <div class="bloque-perfil">
       <div class="bloque-perfil__titulo">Tus redes</div>
-      <div class="bloque-perfil__nota">Las usamos para verificarte. Las marcas no las ven.</div>
-      <div class="campos-2">
-        <div class="campo-p"><label>Instagram</label>
-          <input id="p-ig" value="${redes.instagram ? '@' + esc(redes.instagram) : ''}" placeholder="@tucuenta"></div>
-        <div class="campo-p"><label>TikTok</label>
-          <input id="p-tk" value="${redes.tiktok ? '@' + esc(redes.tiktok) : ''}" placeholder="@tucuenta"></div>
+      <div class="bloque-perfil__nota">
+        Agrega solo las que trabajas de verdad. Marca cuál es tu principal: de esa sale
+        el nivel que ve la marca. Tu @usuario nos sirve para verificarte y las marcas no lo ven.
       </div>
-      <div class="campos-2">
-        <div class="campo-p">
-          <label>Seguidores en Instagram ${verificado ? '· verificados' : ''}</label>
-          <input id="p-seg-ig" type="number" value="${redes.seguidores_instagram || ''}" ${verificado ? 'disabled' : ''}>
-        </div>
-        <div class="campo-p">
-          <label>Seguidores en TikTok</label>
-          <input id="p-seg-tk" type="number" value="${redes.seguidores_tiktok || ''}" ${verificado ? 'disabled' : ''}>
-        </div>
+
+      <div id="lista-redes"></div>
+
+      <div class="agregar-red">
+        <select id="red-nueva"></select>
+        <button type="button" class="btn-portal btn-portal--sec" id="btn-agregar-red">AGREGAR RED</button>
       </div>
 
       <div class="verificacion">
@@ -1416,6 +1430,15 @@ async function vistaPerfil() {
 
   pintarNichos();
   pintarGaleria(muestras.muestras, muestras.maximo);
+
+  REDES_CATALOGO = redes.disponibles || [];
+  REDES = (redes.redes || []).map(r => ({
+    red: r.red, handle: r.handle || '',
+    seguidores: r.seguidores == null ? '' : r.seguidores,
+    es_principal: Boolean(r.es_principal),
+  }));
+  pintarRedes();
+  conectarRedes();
 
   pintarInvitaciones();
 
@@ -1584,6 +1607,149 @@ function pintarGaleria(muestras, maximo) {
   });
 }
 
+// ── Sus redes ───────────────────────────────────────────────────────────────
+//
+// Antes eran dos campos fijos, Instagram y TikTok, y se notaba en los datos:
+// 185 de 192 creadoras habían llenado los dos. No es que todas trabajaran
+// ambas — es que no había otra salida, así que rellenaron. Y quien vive de
+// YouTube no tenía dónde ponerlo.
+//
+// La lista se edita en memoria y se manda entera al guardar. Quitar una red es
+// no mandarla, que es exactamente lo que la persona espera al pulsar la equis.
+
+let REDES = [];          // [{red, handle, seguidores, es_principal}]
+let REDES_CATALOGO = []; // el catálogo viene del servidor, no está aquí en duro
+
+/** Nivel que le corresponde a un número. Refleja mk_tier_de() en la base. */
+function tierDe(n) {
+  const s = Number(n);
+  if (!Number.isFinite(s) || s <= 0) return null;
+  if (s < 3000)   return 'UGC';
+  if (s < 10000)  return 'Nano';
+  if (s < 50000)  return 'Micro';
+  if (s < 200000) return 'Media';
+  return 'Macro';
+}
+
+function pintarRedes() {
+  const cont = $('lista-redes');
+  if (!cont) return;
+
+  const nombreDe = (clave) =>
+    (REDES_CATALOGO.find(r => r.clave === clave) || {}).nombre || clave;
+
+  cont.innerHTML = REDES.length ? REDES.map((r, i) => {
+    const tier = tierDe(r.seguidores);
+    return `
+    <div class="red-fila${r.es_principal ? ' red-fila--principal' : ''}">
+      <div class="red-fila__cab">
+        <strong>${esc(nombreDe(r.red))}</strong>
+        ${tier ? `<span class="red-tier">${esc(tier)}</span>` : ''}
+        <button type="button" class="red-quitar" data-quitar="${i}"
+                aria-label="Quitar ${esc(nombreDe(r.red))}">✕</button>
+      </div>
+      <div class="campos-2">
+        <div class="campo-p">
+          <label>Tu usuario</label>
+          <input data-handle="${i}" value="${r.handle ? '@' + esc(r.handle) : ''}" placeholder="@tucuenta">
+        </div>
+        <div class="campo-p">
+          <label>Seguidores</label>
+          <input data-seg="${i}" type="number" inputmode="numeric"
+                 value="${r.seguidores || ''}" placeholder="12000">
+        </div>
+      </div>
+      <label class="red-principal">
+        <input type="radio" name="red-principal" data-principal="${i}" ${r.es_principal ? 'checked' : ''}>
+        <span>Esta es mi red principal</span>
+      </label>
+    </div>`;
+  }).join('') : `
+    <p class="p" style="font-size:12px;color:var(--text-3)">
+      Todavía no has agregado ninguna red. Agrega al menos una para que las marcas
+      sepan dónde publicas.
+    </p>`;
+
+  // El desplegable solo ofrece lo que todavía no tiene.
+  const sel = $('red-nueva');
+  if (sel) {
+    const puestas = new Set(REDES.map(r => r.red));
+    const libres = REDES_CATALOGO.filter(r => !puestas.has(r.clave));
+    sel.innerHTML = libres.length
+      ? libres.map(r => `<option value="${esc(r.clave)}">${esc(r.nombre)}</option>`).join('')
+      : '<option value="">Ya agregaste todas</option>';
+    sel.disabled = !libres.length;
+    const btn = $('btn-agregar-red');
+    if (btn) btn.disabled = !libres.length;
+  }
+
+  // Los valores se guardan al escribir para que no se pierdan al repintar.
+  cont.querySelectorAll('[data-handle]').forEach(inp => {
+    inp.addEventListener('input', () => { REDES[+inp.dataset.handle].handle = inp.value; });
+  });
+  cont.querySelectorAll('[data-seg]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      REDES[+inp.dataset.seg].seguidores = inp.value;
+      // Solo se repinta la etiqueta del nivel: repintar todo aquí le quitaría
+      // el foco al campo en mitad de la escritura.
+      const fila = inp.closest('.red-fila');
+      const et = fila && fila.querySelector('.red-tier');
+      const t = tierDe(inp.value);
+      if (et) { et.textContent = t || ''; et.style.display = t ? '' : 'none'; }
+      else if (t) {
+        const cab = fila && fila.querySelector('.red-fila__cab strong');
+        if (cab) cab.insertAdjacentHTML('afterend', `<span class="red-tier">${esc(t)}</span>`);
+      }
+    });
+  });
+  cont.querySelectorAll('[data-principal]').forEach(rad => {
+    rad.addEventListener('change', () => {
+      REDES.forEach((r, i) => { r.es_principal = i === +rad.dataset.principal; });
+      pintarRedes();
+    });
+  });
+  cont.querySelectorAll('[data-quitar]').forEach(b => {
+    b.addEventListener('click', () => {
+      const i = +b.dataset.quitar;
+      const eraPrincipal = REDES[i].es_principal;
+      REDES.splice(i, 1);
+      // Si se fue la principal, la corona pasa a la de más seguidores en vez de
+      // quedar sin ninguna, que dejaría a la creadora sin nivel.
+      if (eraPrincipal && REDES.length) {
+        const mejor = REDES.reduce((a, b2) => (+b2.seguidores || 0) > (+a.seguidores || 0) ? b2 : a);
+        REDES.forEach(r => { r.es_principal = r === mejor; });
+      }
+      pintarRedes();
+    });
+  });
+}
+
+function conectarRedes() {
+  const btn = $('btn-agregar-red');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const clave = $('red-nueva').value;
+    if (!clave || REDES.some(r => r.red === clave)) return;
+    REDES.push({ red: clave, handle: '', seguidores: '', es_principal: !REDES.length });
+    pintarRedes();
+  });
+}
+
+async function guardarRedes() {
+  if (!REDES.length) return;
+  await api('/redes', {
+    method: 'PUT',
+    body: JSON.stringify({
+      redes: REDES.map(r => ({
+        red: r.red,
+        handle: r.handle,
+        seguidores: r.seguidores === '' ? null : r.seguidores,
+        es_principal: r.es_principal,
+      })),
+    }),
+  });
+}
+
 async function guardarPerfil() {
   const btn = $('btn-guardar-perfil');
   const msg = $('perfil-msg');
@@ -1598,17 +1764,16 @@ async function guardarPerfil() {
         bio_corta: $('p-bio').value,
         pais: $('p-pais').value,
         whatsapp: $('p-whatsapp').value,
-        instagram: $('p-ig').value,
-        tiktok: $('p-tk').value,
         departamento: $('p-campo-depto').classList.contains('oculto') ? null : $('p-depto').value,
         ciudad: ciudadPerfil(),
-        seguidores_instagram: $('p-seg-ig').disabled ? undefined : $('p-seg-ig').value,
-        seguidores_tiktok: $('p-seg-tk').disabled ? undefined : $('p-seg-tk').value,
       }),
     });
     if (NICHO_SEL.length) {
       await api('/nichos', { method: 'PUT', body: JSON.stringify({ nicho: NICHO_SEL }) });
     }
+    // Las redes van por su propia ruta: son una lista, no campos sueltos del
+    // perfil, y quitar una es no mandarla.
+    await guardarRedes();
     ESTADO = await api('/estado').catch(() => ESTADO);
     msg.className = 'aviso aviso--ok';
     msg.textContent = 'Guardado.';
