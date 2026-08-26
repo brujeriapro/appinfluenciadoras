@@ -1194,18 +1194,24 @@ router.get('/bloqueadas', async (req, res) => {
       order: 'created_at.desc',
     });
 
+    // Lo que decide si sigue bloqueada es su ÚLTIMO enlace, no si alguna vez
+    // usó alguno.
+    //
+    // Mirar "usó alguno" deja fuera para siempre a quien recuperó su clave hace
+    // meses y la volvió a olvidar: pide un enlace nuevo, no lo recibe, y el
+    // panel la da por resuelta. Ya pasó una vez.
     const porCreadora = new Map();
     for (const t of tokens) {
-      const p = porCreadora.get(t.usuario_id) || { intentos: 0, ultimo: null, entro: false };
+      const p = porCreadora.get(t.usuario_id) || { intentos: 0, ultimo: null, ultimoUsado: false };
       p.intentos++;
-      if (!p.ultimo || t.created_at > p.ultimo) p.ultimo = t.created_at;
-      if (t.usado_at) p.entro = true;
+      if (!p.ultimo || t.created_at > p.ultimo) {
+        p.ultimo = t.created_at;
+        p.ultimoUsado = Boolean(t.usado_at);
+      }
       porCreadora.set(t.usuario_id, p);
     }
 
-    // Quien ya usó un enlace resolvió su problema: sacarla de la lista evita
-    // volver a escribirle sin motivo.
-    const pendientes = [...porCreadora.entries()].filter(([, p]) => !p.entro);
+    const pendientes = [...porCreadora.entries()].filter(([, p]) => !p.ultimoUsado);
     if (!pendientes.length) return res.json({ bloqueadas: [] });
 
     const creadoras = await db.get('mk_creadoras', {
@@ -1275,11 +1281,15 @@ router.post('/bloqueadas/reenviar', async (req, res) => {
       });
     }
 
+    // Mismo criterio que /bloqueadas: manda el último enlace de cada una, no
+    // si alguna vez usó alguno. Quien recuperó su clave hace meses y la volvió
+    // a olvidar tiene que poder recibir el correo otra vez.
     const tokens = await db.get('mk_tokens_reset', {
-      select: 'usuario_id,usado_at', tipo: 'eq.creadora',
+      select: 'usuario_id,usado_at,created_at', tipo: 'eq.creadora', order: 'created_at.asc',
     });
-    const conEntrada = new Set(tokens.filter(t => t.usado_at).map(t => t.usuario_id));
-    const ids = [...new Set(tokens.map(t => t.usuario_id))].filter(id => !conEntrada.has(id));
+    const ultimoDe = new Map();
+    tokens.forEach(t => ultimoDe.set(t.usuario_id, t));   // asc: el último gana
+    const ids = [...ultimoDe.entries()].filter(([, t]) => !t.usado_at).map(([id]) => id);
 
     if (!ids.length) return res.json({ ok: true, enviados: 0, mensaje: 'Ninguna sigue bloqueada.' });
 
