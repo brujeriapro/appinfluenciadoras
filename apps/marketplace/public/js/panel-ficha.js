@@ -8,6 +8,56 @@
 let FICHA = null;      // datos de la creadora abierta
 let TARIFA_SEL = null; // entregable elegido en el panel de la derecha
 
+/**
+ * Historial de entregas, con el detalle que no cabe en el sello del catálogo.
+ *
+ * Es lo que sostiene la mitad "si cumple" de lo que le prometemos a la marca,
+ * así que cada número aquí sale de una fecha real: el día que se despachó su
+ * kit y el día que publicó, o el plazo pactado en un trato y el día que
+ * entregó. Nada es estimado.
+ *
+ * Cuando no hay historial se dice sin rodeos y se explica por qué, en vez de
+ * mostrar un cuadro de ceros que se lee como un mal antecedente.
+ */
+function historialHTML(cump) {
+  const c = cump || {};
+  const entregas = Number(c.entregas || 0);
+
+  if (!entregas) {
+    return `
+    <div class="historial historial--vacio">
+      <div class="h-sec" style="font-size:11.5px;margin-bottom:6px">Sin historial todavía</div>
+      <p class="p" style="font-size:11.5px">Todavía no ha completado colaboraciones en la
+      plataforma, así que no tenemos con qué responderte si entrega a tiempo. No es una
+      señal en contra: la mayoría de perfiles nuevos empieza aquí.</p>
+    </div>`;
+  }
+
+  const aTiempo = Number(c.entregas_a_tiempo || 0);
+  const dias    = c.dias_primera_entrega;
+  const piezas  = Number(c.piezas_publicadas || 0);
+
+  const celda = (valor, label) => `
+    <div class="historial__dato">
+      <div class="historial__valor">${esc(String(valor))}</div>
+      <div class="metrica__label">${esc(label)}</div>
+    </div>`;
+
+  return `
+  <div class="historial">
+    <div class="h-sec" style="font-size:11.5px;margin-bottom:10px">Historial verificado</div>
+    <div class="historial__grid">
+      ${celda(entregas, entregas === 1 ? 'Colaboración' : 'Colaboraciones')}
+      ${celda(`${aTiempo} de ${entregas}`, 'A tiempo')}
+      ${dias != null ? celda(dias + ' días', 'Tardó en publicar') : ''}
+      ${piezas ? celda(piezas, piezas === 1 ? 'Pieza publicada' : 'Piezas publicadas') : ''}
+    </div>
+    <p class="p" style="font-size:11px;color:var(--text-3);margin-top:10px">
+      Calculado sobre entregas reales registradas en la plataforma, no sobre lo que ella declara.
+    </p>
+  </div>`;
+}
+
 async function vistaFicha(c) {
   c.innerHTML = '<p class="p">Cargando…</p>';
   try {
@@ -67,8 +117,10 @@ async function vistaFicha(c) {
       <div class="tarjeta__chips" style="margin-top:14px">
         ${(FICHA.nicho || []).map(n => `<span class="chip-claro chip-nicho">${esc(n)}</span>`).join('')}
         ${FICHA.ciudad ? `<span class="chip-claro">${esc(FICHA.ciudad)}</span>` : ''}
-        <span class="chip-claro">${FICHA.colaboraciones_completadas || 0} tratos cerrados</span>
+        ${selloHTML(FICHA.cumplimiento)}
       </div>
+
+      ${historialHTML(FICHA.cumplimiento)}
 
       <div class="aviso-anon">
         <div class="aviso-anon__cuadro">!</div>

@@ -1,0 +1,476 @@
+<title>Cómo Trabaja, No Cuántos Tiene</title>
+<style>
+  /* Documento de decisión de producto. Mismo sistema que PRICING.html:
+     se lee una vez con cuidado y se vuelve para consultar una cifra. */
+
+  :root {
+    --tinta:      #0E0E0E;
+    --papel:      #ECECE9;
+    --superficie: #FFFFFF;
+    --texto:      #1C1C1E;
+    --texto-2:    #4A4A50;
+    --texto-3:    #6E6E76;
+    --borde:      #0E0E0E;
+    --borde-2:    #C9C9C4;
+    --borde-3:    #E3E3DF;
+
+    --lima:    #D6FF00;
+    --magenta: #FF2E9A;
+    --azul:    #2323F0;
+    --lima-t:  #0E0E0E;
+
+    --mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --tinta: #F2F2EF; --papel: #0B0B0C; --superficie: #151517;
+      --texto: #EDEDEA; --texto-2: #B6B6B2; --texto-3: #85858C;
+      --borde: #3C3C40; --borde-2: #2C2C30; --borde-3: #242427; --azul: #7B7BFF;
+    }
+  }
+  :root[data-theme="dark"] {
+    --tinta: #F2F2EF; --papel: #0B0B0C; --superficie: #151517;
+    --texto: #EDEDEA; --texto-2: #B6B6B2; --texto-3: #85858C;
+    --borde: #3C3C40; --borde-2: #2C2C30; --borde-3: #242427; --azul: #7B7BFF;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--papel); color: var(--texto); font-family: var(--sans);
+    margin: 0; padding: 0; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .env { max-width: 62rem; margin: 0 auto; padding: 0 1.5rem 6rem; }
+
+  /* ---- Portada ---- */
+  header { padding: 4.5rem 0 3rem; border-bottom: 2px solid var(--borde); }
+  .kicker {
+    font-family: var(--mono); font-size: .7rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--texto-3); margin: 0 0 1.25rem;
+  }
+  h1 {
+    font-family: var(--mono); font-weight: 700; font-size: clamp(2rem, 5.5vw, 3.4rem);
+    line-height: 1.04; letter-spacing: -.03em; margin: 0; text-wrap: balance;
+  }
+  h1 .no { color: var(--magenta); }
+  .bajada {
+    font-size: clamp(1rem, 2vw, 1.2rem); color: var(--texto-2);
+    max-width: 46ch; margin: 1.5rem 0 0;
+  }
+
+  /* ---- Secciones ---- */
+  section { padding-top: 3.5rem; }
+  h2 {
+    font-family: var(--mono); font-size: 1.35rem; letter-spacing: -.02em;
+    margin: 0 0 .4rem; text-wrap: balance;
+  }
+  h2 .n {
+    color: var(--texto-3); font-weight: 400; font-size: .8em;
+    margin-right: .6rem;
+  }
+  .sub { color: var(--texto-3); margin: 0 0 1.75rem; font-size: .95rem; }
+  p { margin: 0 0 1.1rem; max-width: 68ch; }
+  strong { font-weight: 650; }
+  em { font-style: normal; background: var(--lima); color: var(--lima-t);
+       padding: 0 .2em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+
+  /* ---- Tarjeta de activos ---- */
+  .activos {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 2px; background: var(--borde-2); border: 2px solid var(--borde); margin: 0 0 1.5rem;
+  }
+  .activo { background: var(--superficie); padding: 1.1rem 1.15rem; }
+  .activo .cifra {
+    font-family: var(--mono); font-size: 1.9rem; font-weight: 700;
+    letter-spacing: -.04em; display: block; line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+  .activo .que { font-size: .82rem; color: var(--texto-2); margin-top: .3rem; display: block; }
+
+  /* ---- Comparación ---- */
+  .contraste {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 2px;
+    background: var(--borde-2); border: 2px solid var(--borde); margin: 1.5rem 0;
+  }
+  .contraste > div { background: var(--superficie); padding: 1.3rem 1.25rem; }
+  .contraste .eti {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; margin: 0 0 .7rem; color: var(--texto-3);
+  }
+  .contraste .ellos .eti { color: var(--magenta); }
+  .contraste p { margin: 0; font-size: .95rem; }
+  .contraste .dato { font-family: var(--mono); font-size: 1.05rem; line-height: 1.5; }
+  @media (max-width: 34rem) { .contraste { grid-template-columns: 1fr; } }
+
+  /* ---- Features ---- */
+  .feat {
+    border: 2px solid var(--borde); background: var(--superficie);
+    padding: 1.4rem 1.4rem 1.5rem; margin: 0 0 1.25rem;
+  }
+  .feat-cab { display: flex; align-items: baseline; gap: .8rem; flex-wrap: wrap; margin-bottom: .8rem; }
+  .feat h3 {
+    font-family: var(--mono); font-size: 1.05rem; margin: 0;
+    letter-spacing: -.01em; flex: 1 1 16rem;
+  }
+  .tag {
+    font-family: var(--mono); font-size: .62rem; letter-spacing: .12em;
+    text-transform: uppercase; padding: .28em .6em; border: 1px solid var(--borde-2);
+    color: var(--texto-3); white-space: nowrap;
+  }
+  .tag.ya { background: var(--lima); color: var(--lima-t); border-color: var(--lima); }
+  .tag.unico { background: var(--tinta); color: var(--papel); border-color: var(--tinta); }
+  .feat p { font-size: .95rem; }
+  .feat p:last-child { margin-bottom: 0; }
+  .porque {
+    border-left: 3px solid var(--lima); padding-left: .9rem; margin-top: 1rem;
+    font-size: .9rem; color: var(--texto-2);
+  }
+  .porque b { font-family: var(--mono); font-size: .68rem; letter-spacing: .12em;
+              text-transform: uppercase; display: block; color: var(--texto-3); margin-bottom: .25rem; }
+
+  /* ---- Ejemplo de búsqueda ---- */
+  .demo {
+    font-family: var(--mono); font-size: .88rem; background: var(--tinta);
+    color: var(--papel); padding: 1.1rem 1.2rem; margin: 1rem 0 0;
+    overflow-x: auto; line-height: 1.7;
+  }
+  .demo .q { color: var(--lima); }
+  .demo .r { color: #9A9A94; }
+
+  /* ---- Tabla de orden ---- */
+  .tabla-env { overflow-x: auto; border: 2px solid var(--borde); background: var(--superficie); }
+  table { border-collapse: collapse; width: 100%; min-width: 34rem; }
+  th, td { text-align: left; padding: .75rem .9rem; border-bottom: 1px solid var(--borde-3); font-size: .9rem; }
+  th {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--texto-3); border-bottom: 2px solid var(--borde-2);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.cuando { font-family: var(--mono); white-space: nowrap; color: var(--texto-2); }
+  td.esf { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ---- Cierre ---- */
+  .tesis {
+    border: 2px solid var(--borde); background: var(--tinta); color: var(--papel);
+    padding: 2rem 1.6rem; margin-top: 3.5rem;
+  }
+  .tesis .eti {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .14em;
+    text-transform: uppercase; color: #85858C; margin: 0 0 1rem;
+  }
+  .tesis p {
+    font-family: var(--mono); font-size: clamp(1.05rem, 2.4vw, 1.5rem);
+    line-height: 1.4; margin: 0; letter-spacing: -.02em; max-width: 40ch; color: var(--papel);
+  }
+  .tesis .lima { color: var(--lima); }
+
+  .nota {
+    border-top: 1px solid var(--borde-2); margin-top: 3rem; padding-top: 1.25rem;
+    font-size: .87rem; color: var(--texto-3);
+  }
+  .nota p { max-width: 72ch; }
+</style>
+
+<div class="env">
+
+<header>
+  <p class="kicker">Creators Manager · Decisión de producto · 26 ago 2026</p>
+  <h1>Cómo trabaja,<br><span class="no">no</span> cuántos tiene</h1>
+  <p class="bajada">
+    Dónde está la ventaja que nadie puede copiarnos, qué features salen de ahí,
+    y en qué orden construirlas.
+  </p>
+</header>
+
+<section>
+  <h2><span class="n">01</span>Primero, lo incómodo</h2>
+  <p class="sub">Para no gastar meses en la dirección equivocada.</p>
+
+  <p>
+    <strong>La IA no va a ser nuestro diferenciador.</strong> Hoy cualquier plataforma le pega
+    un chat a su buscador en un fin de semana. Si nuestra respuesta a “¿por qué ustedes?”
+    es “tenemos inteligencia artificial”, en tres meses la tiene el competidor y volvimos a cero.
+  </p>
+  <p>
+    Lo que no se copia es <em>la información que solo nosotros tenemos</em>. La IA no es la ventaja:
+    es lo que convierte esa información en algo que la marca puede usar. Ese orden importa,
+    porque define qué construimos primero.
+  </p>
+</section>
+
+<section>
+  <h2><span class="n">02</span>Lo que ya tenemos y nadie más tiene</h2>
+  <p class="sub">Todo esto está hoy en la base de datos. No hay que salir a conseguirlo.</p>
+
+  <div class="activos">
+    <div class="activo">
+      <span class="cifra">112</span>
+      <span class="que">creadoras con entrega comprobada — sabemos quién cumplió y quién no</span>
+    </div>
+    <div class="activo">
+      <span class="cifra">307</span>
+      <span class="que">piezas de contenido real subidas (160 video · 147 foto)</span>
+    </div>
+    <div class="activo">
+      <span class="cifra">136</span>
+      <span class="que">piezas donde conocemos el contenido y las vistas que hizo</span>
+    </div>
+    <div class="activo">
+      <span class="cifra">484</span>
+      <span class="que">tarifas reales declaradas, en 9 tipos de entregable</span>
+    </div>
+  </div>
+
+  <p>
+    Hay un quinto activo que no está en ninguna tabla: <strong>operamos una marca real</strong>.
+    Brujería Capilar contrató, pagó, recibió contenido bueno y contenido malo, y midió si vendió.
+    Sabemos cómo se siente el problema desde el lado que paga. Ninguna agencia de software lo sabe.
+  </p>
+  <p>
+    Estos cinco activos no se compran: se acumulan trato por trato. Un competidor que arranque
+    hoy necesita <strong>dos años de operación real</strong> para tener lo que ya está en nuestra base.
+    <em>Ahí está la ventaja</em>, y crece sola cada semana que operamos.
+  </p>
+</section>
+
+<section>
+  <h2><span class="n">03</span>La diferencia, en una frase</h2>
+  <p class="sub">Esto es lo que se le dice a una marca en la primera reunión.</p>
+
+  <div class="contraste">
+    <div class="ellos">
+      <p class="eti">Todas las plataformas</p>
+      <p class="dato">Te dicen <strong>quién es</strong>.</p>
+      <p style="margin-top:.6rem;color:var(--texto-2)">
+        Seguidores, nicho, ciudad, engagement. Datos de una ficha.
+        Con eso escoges a ciegas y rezas.
+      </p>
+    </div>
+    <div>
+      <p class="eti">Creators Manager</p>
+      <p class="dato">Te decimos <strong>cómo trabaja y si cumple</strong>.</p>
+      <p style="margin-top:.6rem;color:var(--texto-2)">
+        Cómo se ve su contenido de verdad, qué formatos domina,
+        si entregó a tiempo las veces anteriores.
+      </p>
+    </div>
+  </div>
+
+  <p>
+    Para una marca que va a pagar $400.000, el número de seguidores es lo que <em>menos</em> le
+    resuelve el miedo. Su miedo real es: “¿me va a entregar?” y “¿el video va a quedar bien?”.
+    Nadie le responde esas dos preguntas hoy. Nosotros ya tenemos con qué.
+  </p>
+</section>
+
+<section>
+  <h2><span class="n">04</span>Las seis features</h2>
+  <p class="sub">
+    Ordenadas por cuánto nos diferencian. Las etiquetas dicen si la información ya existe
+    y si alguien más en Colombia lo hace.
+  </p>
+
+  <div class="feat">
+    <div class="feat-cab">
+      <h3>1 · Sello de cumplimiento</h3>
+      <span class="tag ya">Datos listos</span>
+      <span class="tag unico">Nadie lo tiene</span>
+    </div>
+    <p>
+      En la ficha aparece el historial real: <strong>cuántas colaboraciones completó, si entregó
+      dentro del plazo, si hubo que perseguirla</strong>. No es una reseña que se pueda comprar:
+      sale de tratos que pasaron por la plataforma.
+    </p>
+    <p>
+      Empieza con las 112 del Programa Creadoras — ellas ya tienen historial. Una creadora nueva
+      arranca sin sello y se lo gana entregando. Eso además le da una razón fuerte para quedarse
+      en la plataforma en vez de cerrar por fuera: <strong>su historial no se lo puede llevar</strong>.
+    </p>
+    <div class="porque">
+      <b>Por qué es la primera</b>
+      Es la que más miedo le quita a la marca, y la información ya está. Es casi solo mostrarla.
+    </div>
+  </div>
+
+  <div class="feat">
+    <div class="feat-cab">
+      <h3>2 · Búsqueda por cómo se ve el contenido</h3>
+      <span class="tag ya">307 piezas listas</span>
+      <span class="tag unico">Nadie lo tiene</span>
+    </div>
+    <p>
+      La IA mira los 160 videos que ya tenemos y los etiqueta por lo que realmente importa:
+      dónde graba, si habla a cámara, qué tan producido es, tipo de luz, ritmo de edición,
+      si el producto se ve bien, el tono. Después la marca busca <strong>en su propio idioma</strong>.
+    </p>
+    <div class="demo">
+      <span class="q">“alguien que grabe en su baño con luz natural,<br>
+      &nbsp;&nbsp;que hable a cámara, tono cercano, sin producción”</span><br>
+      <span class="r">→ 14 creadoras · ordenadas por qué tan cerca están de eso</span>
+    </div>
+    <p style="margin-top:1.1rem">
+      Hoy una marca ve 50 fichas y abre video por video. Esto es la diferencia entre
+      buscar en Google y buscar en una carpeta.
+    </p>
+    <div class="porque">
+      <b>Por qué no nos la pueden copiar</b>
+      Requiere tener el contenido. Nosotros lo tenemos porque las creadoras ya lo subieron.
+      Un competidor tendría que convencerlas de subirlo primero.
+    </div>
+  </div>
+
+  <div class="feat">
+    <div class="feat-cab">
+      <h3>3 · Precio justo con datos reales</h3>
+      <span class="tag ya">484 tarifas listas</span>
+    </div>
+    <p>
+      Le sirve a los dos lados. A la marca: “para un reel de belleza con este perfil,
+      el mercado está entre $X y $Y — te están pidiendo $Z”. A la creadora:
+      <strong>“estás cobrando 40% por debajo de tus pares”</strong>.
+    </p>
+    <p>
+      Nadie en Colombia puede decir eso, porque nadie más tiene 484 tarifas reales del mercado.
+      Es el dato que toda creadora quiere y que hoy solo se consigue preguntando en grupos de WhatsApp.
+    </p>
+  </div>
+
+  <div class="feat">
+    <div class="feat-cab">
+      <h3>4 · Coach de contenido (plan Pro)</h3>
+      <span class="tag ya">136 piezas con desempeño</span>
+    </div>
+    <p>
+      Analiza el contenido <strong>de ella</strong> contra lo que funcionó en la plataforma:
+      “tus videos que abren con una pregunta hacen 3× más vistas”, “tus mejores piezas duran
+      menos de 20 segundos”, “nunca has hecho formato rutina y es lo que más piden las marcas”.
+    </p>
+    <p>
+      Esto es lo que hace que el Pro valga la pena de verdad, y no un descuento disfrazado.
+      Con 136 piezas ya se puede empezar; mejora sola con cada entrega.
+    </p>
+  </div>
+
+  <div class="feat">
+    <div class="feat-cab">
+      <h3>5 · Encaje marca–creadora explicado</h3>
+      <span class="tag">Necesita volumen</span>
+    </div>
+    <p>
+      La marca describe su producto y el sistema propone perfiles <strong>diciendo por qué</strong>:
+      “ya hizo tres piezas de rutina capilar, que es el formato que necesitas; su audiencia está
+      en Medellín, donde tienes punto de venta”.
+    </p>
+    <p>
+      La explicación es la mitad del valor: una recomendación sin razón no genera confianza.
+      Depende de las features 1 y 2 — sin contenido etiquetado no hay con qué explicar.
+    </p>
+  </div>
+
+  <div class="feat">
+    <div class="feat-cab">
+      <h3>6 · Detector de perfiles inflados</h3>
+      <span class="tag">Necesita métricas verificadas</span>
+    </div>
+    <p>
+      Cruza seguidores declarados contra engagement real y calidad del contenido, y marca las
+      incoherencias. Protege a la marca de pagar por audiencia comprada, y de paso protege a las
+      creadoras honestas de competir contra números falsos.
+    </p>
+    <p>
+      Se apoya en el trabajo de métricas verificadas que ya está a medio camino en la base.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">05</span>En qué orden, y por qué ese</h2>
+  <p class="sub">Con 2 marcas y 1 trato cerrado, el orden no es opcional.</p>
+
+  <div class="tabla-env">
+    <table>
+      <thead>
+        <tr><th>Cuándo</th><th>Qué</th><th>Por qué ahí</th><th>Esfuerzo</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="cuando">Esta semana</td>
+          <td><strong>Sello de cumplimiento</strong></td>
+          <td>Los datos ya están. Es el argumento más fuerte para traer marcas.</td>
+          <td class="esf">2–3 días</td>
+        </tr>
+        <tr>
+          <td class="cuando">Semanas 2–3</td>
+          <td><strong>Etiquetado del contenido</strong></td>
+          <td>Es la feature que nadie tiene. Hay que correrla sobre las 307 piezas.</td>
+          <td class="esf">1 semana</td>
+        </tr>
+        <tr>
+          <td class="cuando">Semana 4</td>
+          <td><strong>Búsqueda en lenguaje natural</strong></td>
+          <td>Sale casi gratis una vez el contenido está etiquetado.</td>
+          <td class="esf">3–4 días</td>
+        </tr>
+        <tr>
+          <td class="cuando">Mes 2</td>
+          <td><strong>Precio justo + Coach Pro</strong></td>
+          <td>Son las que sostienen el plan Pro de creadoras.</td>
+          <td class="esf">2 semanas</td>
+        </tr>
+        <tr>
+          <td class="cuando">Mes 3</td>
+          <td><strong>Encaje explicado</strong></td>
+          <td>Necesita las anteriores funcionando y más tratos cerrados.</td>
+          <td class="esf">1–2 semanas</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="margin-top:1.5rem">
+    <strong>Una advertencia honesta sobre el orden.</strong> Hoy el cuello de botella del negocio
+    no es que falten features: es que <strong>hay 2 marcas</strong>. Construir tres meses de IA
+    con 2 marcas sería construir para nadie.
+  </p>
+  <p>
+    Lo que salva ese riesgo es que <em>las features 1 y 2 son el argumento de venta</em> para
+    conseguir marcas. No son una distracción de vender: son con qué vender. Por eso van primero,
+    y por eso son las dos más baratas de las seis.
+  </p>
+</section>
+
+<section>
+  <h2><span class="n">06</span>Lo que cuesta</h2>
+  <p class="sub">Para que no haya sorpresas.</p>
+  <p>
+    Analizar las 307 piezas con un modelo de visión es una operación de una sola vez y de
+    <strong>costo bajo</strong> — decenas de miles de pesos, no millones. Después solo se analiza
+    lo nuevo, unas pocas piezas al día.
+  </p>
+  <p>
+    El costo que sí hay que vigilar es el del coach y el buscador, porque se usan muchas veces.
+    Se controla igual que cualquier otro: guardando el análisis en la base en vez de recalcularlo,
+    y dejando el coach dentro del plan Pro, que es pago.
+  </p>
+</section>
+
+<div class="tesis">
+  <p class="eti">La frase que hay que poder decir en diez segundos</p>
+  <p>
+    Las demás plataformas te muestran <span class="lima">una ficha</span>.<br>
+    Nosotros te mostramos <span class="lima">cómo trabaja</span> y
+    <span class="lima">si cumple</span>.
+  </p>
+</div>
+
+<div class="nota">
+  <p>
+    <strong>Estado al 26 de agosto de 2026:</strong> 88 creadoras registradas, 51 con perfil publicado,
+    25 listas para aprobar, 2 marcas, 1 trato cerrado. Tarifa promedio declarada $124.815.
+    Las cifras de activos salen de la base compartida con el Programa Creadoras.
+  </p>
+</div>
+
+</div>

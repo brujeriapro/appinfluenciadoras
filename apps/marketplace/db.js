@@ -471,6 +471,32 @@ async function getMuestrasDeVarias(ids = []) {
   return porCreadora;
 }
 
+// ── Cumplimiento ────────────────────────────────────────────────────────────
+
+// Historial real de entregas, calculado por la vista `mk_cumplimiento` a partir
+// del Programa Creadoras y de los tratos del marketplace.
+//
+// Es la mitad de la promesa que le hacemos a la marca —"te decimos si cumple"—
+// así que lo que se muestre aquí tiene que salir de hechos, nunca de una
+// estimación. La vista solo devuelve conteos y el id de la creadora: no hay
+// nada que pueda identificarla, y por eso puede viajar al catálogo público.
+const COLS_CUMPLIMIENTO =
+  'creadora_id,entregas,entregas_a_tiempo,incumplidas,dias_primera_entrega,piezas_publicadas,confianza';
+
+async function getCumplimientoDeVarias(ids = []) {
+  if (!ids.length) return {};
+  const filas = await get('mk_cumplimiento', {
+    creadora_id: `in.(${ids.join(',')})`,
+    select: COLS_CUMPLIMIENTO,
+  });
+  const porCreadora = {};
+  filas.forEach(f => { porCreadora[f.creadora_id] = f; });
+  return porCreadora;
+}
+
+const getCumplimientoDeUna = (id) =>
+  getUno('mk_cumplimiento', { creadora_id: `eq.${id}`, select: COLS_CUMPLIMIENTO });
+
 // ── Tratos ──────────────────────────────────────────────────────────────────
 
 const insertTrato = (data) => post('mk_tratos', data);
@@ -679,6 +705,7 @@ module.exports = {
   getProductosDeMarca, getProductoMarca, insertProductoMarca, borrarProductoMarca,
   siguienteCodigoCreadora,
   getMuestrasDeCreadora, getMuestra, insertMuestra, borrarMuestra, getMuestrasDeVarias,
+  getCumplimientoDeVarias, getCumplimientoDeUna,
   insertTrato, getTratoById, updateTrato, getTratosDeMarca, getTratosDeCreadora,
   getTratosAdmin, siguienteCodigoTrato, contarTratosPrevios,
   insertEvento, getEventosDeTrato,

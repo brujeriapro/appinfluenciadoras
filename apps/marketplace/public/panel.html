@@ -829,6 +829,37 @@ const avatarDe = (c) => c.foto_perfil_path
   : `<span style="font-family:var(--mono-t);font-weight:800;font-size:13px;color:var(--text-3)">${
       esc((c.nombre_publico || '?').slice(0, 2).toUpperCase())}</span>`;
 
+/**
+ * Sello de cumplimiento: la respuesta a "¿esta persona me va a entregar?".
+ *
+ * Sale de hechos verificables —kit despachado, contenido publicado, trato
+ * cerrado— y nunca de una estimación. Tres reglas de redacción:
+ *
+ *   1. Se dice la cuenta completa ("2 de 2"), no un porcentaje. Un 100% sobre
+ *      una sola entrega suena a más de lo que es.
+ *   2. Quien no tiene historial lo dice en gris. Rellenar con ceros la haría
+ *      parecer incumplida cuando solo es nueva.
+ *   3. NO existe sello negativo público. Que alguien no haya publicado puede
+ *      deberse a mil razones que no conocemos, y marcarla a la vista de todas
+ *      las marcas sería una condena sin descargo. El dato existe, lo ve el
+ *      equipo en el panel admin, y pesa en el orden del catálogo — pero no se
+ *      exhibe. Destacamos a quien cumple en vez de señalar a quien no.
+ */
+function selloHTML(cump) {
+  const c = cump || {};
+  const entregas = Number(c.entregas || 0);
+
+  if (entregas > 0) {
+    const aTiempo = Number(c.entregas_a_tiempo || 0);
+    const texto = aTiempo === entregas
+      ? `Entregó a tiempo · ${entregas} de ${entregas}`
+      : `Entregó ${aTiempo} de ${entregas} a tiempo`;
+    return `<span class="sello sello--cumple" title="Historial verificado en la plataforma">
+              <span class="sello__marca">✓</span>${esc(texto)}</span>`;
+  }
+  return `<span class="sello" title="Todavía no ha completado colaboraciones aquí">Sin historial aún</span>`;
+}
+
 function filaHTML(c) {
   const ms = c.muestras || [];
   return `
@@ -838,6 +869,7 @@ function filaHTML(c) {
       <div class="fila__id">
         <div class="alias">${esc(c.nombre_publico)}</div>
         <div class="sub-id">${esc([c.codigo, (c.nicho || [])[0], c.ciudad].filter(Boolean).join(' · '))}</div>
+        <div style="margin-top:6px">${selloHTML(c.cumplimiento)}</div>
       </div>
       <div class="metricas">
         <div class="metrica">
@@ -889,6 +921,7 @@ function tarjetaHTML(c) {
         ${(c.nicho || []).slice(0, 1).map(n => `<span class="chip-claro chip-nicho">${esc(n)}</span>`).join('')}
         ${c.ciudad ? `<span class="chip-claro">${esc(c.ciudad)}</span>` : ''}
       </div>
+      <div style="margin-top:8px">${selloHTML(c.cumplimiento)}</div>
       <div class="tarjeta__metricas">
         <div><div class="metrica__valor">${esc(c.rango_instagram || '—')}</div>
              <div class="metrica__label">Instagram</div></div>

@@ -76,15 +76,19 @@ router.get('/', async (req, res) => {
 
     const ids = creadoras.map(c => c.id);
     // Las muestras se adjuntan como ids: el binario se pide después a /media/:id.
-    const [muestras, tarifas] = await Promise.all([
+    const [muestras, tarifas, cumplimiento] = await Promise.all([
       db.getMuestrasDeVarias(ids),
       db.getTarifasDeVarias(ids),
+      db.getCumplimientoDeVarias(ids),
     ]);
 
     let resultado = creadoras.map(c => ({
       ...c,
       muestras: (muestras[c.id] || []).map(m => ({ id: m.id, tipo: m.tipo })),
       tarifas: (tarifas[c.id] || []).map(t => ({ entregable: t.entregable, precio: t.precio })),
+      // Quien no tiene historial lo dice; no se rellena con ceros, que se leen
+      // como "cumplió cero veces" cuando en realidad nunca la han contratado.
+      cumplimiento: cumplimiento[c.id] || { confianza: 'sin_historial' },
     }));
 
     // "Quiero un reel": se filtra en memoria porque depende de la tabla de
@@ -114,13 +118,15 @@ router.get('/:id', async (req, res) => {
 
     await anotarVista(req.usuarioId, req.params.id);
 
-    const [muestras, tarifas] = await Promise.all([
+    const [muestras, tarifas, cumplimiento] = await Promise.all([
       db.getMuestrasDeCreadora(creadora.id),
       db.getTarifasDeCreadora(creadora.id),
+      db.getCumplimientoDeUna(creadora.id),
     ]);
 
     res.json({
       ...creadora,
+      cumplimiento: cumplimiento || { confianza: 'sin_historial' },
       muestras: muestras.map(m => ({ id: m.id, tipo: m.tipo })),
       // Solo las que ella tiene publicadas.
       tarifas: tarifas
