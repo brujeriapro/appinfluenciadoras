@@ -339,6 +339,20 @@ input[type=range]::-moz-range-thumb {
 .sello--cumple { background: var(--lima); border-color: var(--ink); color: var(--ink); }
 .sello__marca { font-size: 11px; line-height: 1; }
 
+/* Paquetes en la ficha. Van antes del trabajo porque es la oferta que más
+   conviene a las dos partes: menos fricción para la marca, trato más grande
+   para ella. */
+.paquetes-ficha { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+.paq-card { border: 2px solid var(--ink); padding: 13px 14px; display: flex; flex-direction: column; }
+.paq-card__cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.paq-card__nombre { font-family: var(--mono-t); font-weight: 800; font-size: 13px; letter-spacing: -0.3px; }
+.paq-card__desc { font-size: 11.5px; color: var(--text-3); margin-top: 3px; line-height: 1.5; }
+.paq-card__precio { font-family: var(--mono-t); font-weight: 800; font-size: 16px;
+                    letter-spacing: -0.7px; white-space: nowrap; }
+.paq-card__incluye { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
+.paq-card__ahorro { font-size: 11px; background: var(--lima); color: var(--ink);
+                    padding: 6px 8px; margin-top: auto; line-height: 1.45; }
+
 /* Bloque de historial en la ficha ampliada. */
 .historial { border: 2px solid var(--ink); padding: 14px 15px; margin-top: 18px; }
 .historial--vacio { border-color: var(--border-2); }

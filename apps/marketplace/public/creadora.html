@@ -468,6 +468,48 @@
   .agregar-red select { flex: 1; min-width: 150px; }
   .agregar-red .btn-portal { width: auto; flex: none; padding: 11px 16px; font-size: 11px; }
 
+  /* Paquetes. Van bajo las tarifas porque el ahorro se calcula contra ellas. */
+  .sec-paquetes { margin-top: 34px; padding-top: 26px; border-top: 2px solid var(--ink); }
+  .sec-paquetes__cab { display: flex; justify-content: space-between; align-items: flex-start;
+                       gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .sec-paquetes__titulo { font-family: var(--mono-title); font-size: 17px; letter-spacing: -0.5px; margin: 0; }
+  .sec-paquetes__nota { font-size: 12.5px; color: #5A5A5A; margin: 6px 0 0; max-width: 52ch; line-height: 1.6; }
+  .sec-paquetes__cab .btn-portal { width: auto; flex: none; padding: 11px 16px; font-size: 11px; }
+
+  .paquete { border: 2px solid var(--ink); padding: 14px 15px; margin-bottom: 12px; }
+  .paquete--off { border-color: var(--border-2); opacity: .6; }
+  .paquete__cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .paquete__nombre { font-family: var(--mono-title); font-weight: 800; font-size: 14px; letter-spacing: -0.3px; }
+  .paquete__desc { font-size: 12px; color: #5A5A5A; margin-top: 3px; }
+  .paquete__precio { font-family: var(--mono-title); font-weight: 800; font-size: 18px;
+                     letter-spacing: -0.8px; white-space: nowrap; }
+  .paquete__incluye { display: flex; flex-wrap: wrap; gap: 6px; margin: 11px 0; }
+  .paq-chip { font-size: 11px; font-weight: 700; letter-spacing: .3px;
+              border: 1px solid var(--border-2); padding: 4px 7px; }
+  .paquete__ahorro { font-size: 11.5px; background: var(--lime); color: var(--ink);
+                     padding: 7px 9px; line-height: 1.5; }
+  .paquete__ahorro--neutro { background: none; color: #7A7A7A; padding: 4px 0; }
+  .paquete__pie { display: flex; justify-content: space-between; align-items: center;
+                  gap: 10px; margin-top: 11px; padding-top: 10px; border-top: 1px solid var(--border-3); }
+  .paq-toggle { display: flex; align-items: center; gap: 7px; font-size: 11.5px;
+                color: #5A5A5A; cursor: pointer; }
+  .paq-toggle input { width: 14px; height: 14px; accent-color: var(--ink); }
+  .paq-borrar { background: none; border: none; color: #8A8A8A; font-size: 11.5px;
+                text-decoration: underline; cursor: pointer; padding: 2px 0; }
+  .paq-borrar:hover { color: var(--magenta); }
+
+  .paq-form { border: 2px solid var(--ink); padding: 16px; margin-top: 6px; }
+  .paq-lineas { margin-top: 14px; }
+  .paq-linea { display: flex; justify-content: space-between; align-items: center;
+               gap: 12px; padding: 8px 10px; border: 1px solid var(--border-3); margin-bottom: 6px; }
+  .paq-linea--on { border-color: var(--ink); border-width: 2px; }
+  .paq-linea__nombre { font-size: 12.5px; }
+  .paq-cant { display: flex; align-items: center; gap: 10px; }
+  .paq-cant span { font-family: var(--mono-title); font-weight: 800; min-width: 16px; text-align: center; }
+  .paq-cant button { width: 26px; height: 26px; border: 1px solid var(--ink); background: none;
+                     font-size: 15px; line-height: 1; cursor: pointer; font-family: var(--mono-title); }
+  .paq-cant button:hover { background: var(--ink); color: var(--lime); }
+
   .grupo-nicho { margin-bottom: 14px; }
   .grupo-nicho__titulo { font-size: 9.5px; letter-spacing: 1.1px; color: #5A5A5A;
                          text-transform: uppercase; margin-bottom: 6px; font-weight: 700; }
@@ -2132,9 +2174,15 @@ async function vistaTarifas() {
       <span class="nota-pie">Los cambios se ven en tu perfil público al guardar</span>
     </div>
     <div class="error oculto" id="tarifas-msg"></div>
+
+    <!-- Los paquetes van debajo de las tarifas y no en otra pantalla porque
+         solo tienen sentido con ellas al lado: el ahorro que ve la marca se
+         calcula contra estos mismos precios. -->
+    <div id="zona-paquetes"></div>
   `;
 
   pintarFilas();
+  cargarPaquetes();
   $('btn-guardar').addEventListener('click', guardarTarifas);
 
   $('chk-abierta').addEventListener('change', async (e) => {
@@ -2148,6 +2196,238 @@ async function vistaTarifas() {
       $('bloque-abierta').classList.toggle('elegida', !abierta);
       alert('No se pudo guardar: ' + err.message);
     }
+  });
+}
+
+// ── Sus paquetes ────────────────────────────────────────────────────────────
+//
+// "2 reels + 4 historias por $500.000". Existen porque un entregable suelto
+// deja poco margen a las dos partes: el paquete sube lo que ella cobra de una
+// vez y a la marca le sale más barato que comprarlo pieza por pieza.
+//
+// El ahorro no lo inventa la plataforma: se calcula contra las tarifas que ella
+// misma acaba de poner arriba. Por eso esto vive en la misma pantalla.
+
+let PAQUETES = [];
+let PAQ_CFG = { entregables: [], tarifas: [], maximo: 4 };
+let PAQ_BORRADOR = null;   // el que se está armando; null = formulario cerrado
+
+async function cargarPaquetes() {
+  try {
+    const d = await api('/paquetes');
+    PAQUETES = d.paquetes || [];
+    PAQ_CFG = {
+      entregables: d.entregables || [],
+      tarifas: d.tarifas || [],
+      maximo: d.maximo ?? 4,
+    };
+    pintarPaquetes();
+  } catch (e) {
+    $('zona-paquetes').innerHTML = '';   // sin paquetes la pantalla sigue sirviendo
+  }
+}
+
+/** Cuánto costaría suelto lo que lleva el borrador, con SUS tarifas. */
+function sueltoDelBorrador() {
+  const precios = new Map(PAQ_CFG.tarifas.map(t => [t.entregable, Number(t.precio)]));
+  let total = 0;
+  for (const l of (PAQ_BORRADOR?.incluye || [])) {
+    const p = precios.get(l.entregable);
+    if (!p) return null;      // sin una tarifa no se inventa el total
+    total += p * l.cantidad;
+  }
+  return total || null;
+}
+
+function pintarPaquetes() {
+  const nombreDe = (c) => (PAQ_CFG.entregables.find(e => e.clave === c) || {}).nombre || c;
+
+  const tarjetas = PAQUETES.map(p => `
+    <div class="paquete ${p.activo === false ? 'paquete--off' : ''}">
+      <div class="paquete__cab">
+        <div>
+          <div class="paquete__nombre">${esc(p.nombre)}</div>
+          ${p.descripcion ? `<div class="paquete__desc">${esc(p.descripcion)}</div>` : ''}
+        </div>
+        <div class="paquete__precio">${COP(p.precio)}</div>
+      </div>
+      <div class="paquete__incluye">
+        ${(p.incluye || []).map(l =>
+          `<span class="paq-chip">${l.cantidad}× ${esc(nombreDe(l.entregable))}</span>`).join('')}
+      </div>
+      ${p.ahorro ? `
+        <div class="paquete__ahorro">
+          Suelto costaría ${COP(p.precio_suelto)} · la marca ahorra
+          <strong>${COP(p.ahorro)}</strong> (${p.ahorro_pct}%)
+        </div>` : `
+        <div class="paquete__ahorro paquete__ahorro--neutro">
+          ${PAQ_CFG.tarifas.length
+            ? 'No sale más barato que comprarlo suelto, así que no se anuncia ahorro.'
+            : 'Pon tus tarifas de arriba y calculamos cuánto ahorra la marca.'}
+        </div>`}
+      <div class="paquete__pie">
+        <label class="paq-toggle">
+          <input type="checkbox" data-paq-activo="${p.id}" ${p.activo !== false ? 'checked' : ''}>
+          <span>${p.activo !== false ? 'Visible en tu perfil' : 'Oculto'}</span>
+        </label>
+        <button type="button" class="paq-borrar" data-paq-borrar="${p.id}">Borrar</button>
+      </div>
+    </div>`).join('');
+
+  const lleno = PAQUETES.length >= PAQ_CFG.maximo;
+  const suelto = sueltoDelBorrador();
+
+  $('zona-paquetes').innerHTML = `
+    <div class="sec-paquetes">
+      <div class="sec-paquetes__cab">
+        <div>
+          <h2 class="sec-paquetes__titulo">Tus paquetes</h2>
+          <p class="sec-paquetes__nota">
+            Junta varias piezas en una sola oferta. A la marca le sale mejor que comprarlas
+            sueltas, y a ti te deja un trato más grande de una sola vez.
+          </p>
+        </div>
+        ${PAQ_BORRADOR || lleno ? '' :
+          '<button type="button" class="btn-portal btn-portal--sec" id="btn-nuevo-paq">CREAR PAQUETE</button>'}
+      </div>
+
+      ${tarjetas || (PAQ_BORRADOR ? '' : `
+        <p class="p" style="font-size:12.5px;color:var(--text-3);margin:0 0 14px">
+          Todavía no tienes ninguno. Un paquete típico: <strong>2 reels + 4 historias</strong>
+          por un precio cerrado.
+        </p>`)}
+
+      ${lleno && !PAQ_BORRADOR ? `
+        <p class="pista" style="margin-top:4px">Llegaste al máximo de ${PAQ_CFG.maximo}.
+        Borra uno para crear otro — pocos y buenos se comparan mejor que muchos.</p>` : ''}
+
+      ${PAQ_BORRADOR ? `
+        <div class="paq-form">
+          <div class="campos-2">
+            <div class="campo-p">
+              <label for="paq-nombre">Nombre del paquete</label>
+              <input id="paq-nombre" value="${esc(PAQ_BORRADOR.nombre)}" placeholder="Pack lanzamiento" maxlength="60">
+            </div>
+            <div class="campo-p">
+              <label for="paq-precio">Precio cerrado</label>
+              <input id="paq-precio" type="number" inputmode="numeric"
+                     value="${PAQ_BORRADOR.precio || ''}" placeholder="500000">
+              ${suelto ? `<div class="pista">Suelto costaría ${COP(suelto)}</div>` : ''}
+            </div>
+          </div>
+          <div class="campo-p">
+            <label for="paq-desc">En una línea, ¿para qué sirve? <span style="font-weight:400;color:var(--text-3)">(opcional)</span></label>
+            <input id="paq-desc" value="${esc(PAQ_BORRADOR.descripcion)}"
+                   placeholder="Para presentar un producto nuevo" maxlength="240">
+          </div>
+
+          <div class="paq-lineas">
+            <div class="etiqueta" style="margin-bottom:8px">Qué incluye</div>
+            ${PAQ_CFG.entregables.map(e => {
+              const linea = PAQ_BORRADOR.incluye.find(l => l.entregable === e.clave);
+              const n = linea ? linea.cantidad : 0;
+              return `
+              <div class="paq-linea ${n ? 'paq-linea--on' : ''}">
+                <span class="paq-linea__nombre">${esc(e.nombre || e.clave)}</span>
+                <div class="paq-cant">
+                  <button type="button" data-paq-menos="${e.clave}" aria-label="Quitar uno">−</button>
+                  <span>${n}</span>
+                  <button type="button" data-paq-mas="${e.clave}" aria-label="Agregar uno">+</button>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+
+          <div class="acciones" style="margin-top:14px">
+            <button class="btn-portal" id="btn-guardar-paq">GUARDAR PAQUETE →</button>
+            <button type="button" class="paq-borrar" id="btn-cancelar-paq">Cancelar</button>
+          </div>
+          <div id="paq-msg" style="font-size:12px;margin-top:8px"></div>
+        </div>` : ''}
+    </div>`;
+
+  conectarPaquetes();
+}
+
+function conectarPaquetes() {
+  const z = $('zona-paquetes');
+
+  $('btn-nuevo-paq')?.addEventListener('click', () => {
+    PAQ_BORRADOR = { nombre: '', descripcion: '', precio: '', incluye: [] };
+    pintarPaquetes();
+  });
+  $('btn-cancelar-paq')?.addEventListener('click', () => {
+    PAQ_BORRADOR = null;
+    pintarPaquetes();
+  });
+
+  // Lo escrito se guarda en el borrador para que no se pierda al repintar,
+  // que pasa cada vez que se toca una cantidad.
+  ['nombre', 'descripcion', 'precio'].forEach(campo => {
+    const id = campo === 'descripcion' ? 'paq-desc' : 'paq-' + campo;
+    $(id)?.addEventListener('input', (e) => { PAQ_BORRADOR[campo] = e.target.value; });
+  });
+
+  const mover = (clave, delta) => {
+    const i = PAQ_BORRADOR.incluye.findIndex(l => l.entregable === clave);
+    if (i === -1) {
+      if (delta > 0) PAQ_BORRADOR.incluye.push({ entregable: clave, cantidad: 1 });
+    } else {
+      PAQ_BORRADOR.incluye[i].cantidad += delta;
+      if (PAQ_BORRADOR.incluye[i].cantidad < 1) PAQ_BORRADOR.incluye.splice(i, 1);
+    }
+    pintarPaquetes();
+  };
+  z.querySelectorAll('[data-paq-mas]').forEach(b =>
+    b.addEventListener('click', () => mover(b.dataset.paqMas, 1)));
+  z.querySelectorAll('[data-paq-menos]').forEach(b =>
+    b.addEventListener('click', () => mover(b.dataset.paqMenos, -1)));
+
+  $('btn-guardar-paq')?.addEventListener('click', async () => {
+    const btn = $('btn-guardar-paq');
+    const msg = $('paq-msg');
+    btn.disabled = true; btn.textContent = 'GUARDANDO…';
+    try {
+      await api('/paquetes', {
+        method: 'POST',
+        body: JSON.stringify({
+          nombre: PAQ_BORRADOR.nombre,
+          descripcion: PAQ_BORRADOR.descripcion,
+          precio: PAQ_BORRADOR.precio,
+          incluye: PAQ_BORRADOR.incluye,
+        }),
+      });
+      PAQ_BORRADOR = null;
+      await cargarPaquetes();
+    } catch (e) {
+      msg.style.color = 'var(--magenta)';
+      msg.textContent = e.message;
+      btn.disabled = false; btn.textContent = 'GUARDAR PAQUETE →';
+    }
+  });
+
+  z.querySelectorAll('[data-paq-activo]').forEach(chk => {
+    chk.addEventListener('change', async () => {
+      try {
+        await api('/paquetes/' + chk.dataset.paqActivo, {
+          method: 'PUT', body: JSON.stringify({ activo: chk.checked }),
+        });
+        await cargarPaquetes();
+      } catch (e) {
+        chk.checked = !chk.checked;
+        alert('No se pudo: ' + e.message);
+      }
+    });
+  });
+
+  z.querySelectorAll('[data-paq-borrar]').forEach(b => {
+    b.addEventListener('click', async () => {
+      if (!confirm('¿Borrar este paquete? No se puede deshacer.')) return;
+      try {
+        await api('/paquetes/' + b.dataset.paqBorrar, { method: 'DELETE' });
+        await cargarPaquetes();
+      } catch (e) { alert('No se pudo: ' + e.message); }
+    });
   });
 }
 

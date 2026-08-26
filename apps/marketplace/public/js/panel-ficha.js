@@ -48,6 +48,50 @@ const NOMBRE_LUZ = {
   artificial_fria: 'Luz fría', anillo: 'Aro de luz', mixta: 'Luz mixta',
 };
 
+/**
+ * Los paquetes que ella misma armó.
+ *
+ * Se muestran antes que su trabajo y que las tarifas sueltas porque es la
+ * oferta que le conviene a las dos partes: a la marca le sale más barato que
+ * comprar pieza por pieza, y cierra un trato más grande de una sola vez.
+ *
+ * El ahorro que se anuncia sale de comparar contra las tarifas de ELLA, no de
+ * un descuento inventado por la plataforma. Cuando no hay ahorro real, no se
+ * dice nada — un "ahorra $0" sería peor que el silencio.
+ */
+function paquetesHTML(paquetes, entregables = []) {
+  const lista = (paquetes || []).filter(p => p.activo !== false);
+  if (!lista.length) return '';
+
+  const nombreDe = (c) => (entregables.find(e => e.clave === c) || {}).nombre || c;
+
+  return `
+  <div class="h-sec" style="margin:26px 0 4px">Sus paquetes</div>
+  <div class="etiqueta" style="margin-bottom:12px">
+    Varias piezas por un precio cerrado, armadas por ella
+  </div>
+  <div class="paquetes-ficha">
+    ${lista.map(p => `
+      <div class="paq-card">
+        <div class="paq-card__cab">
+          <div>
+            <div class="paq-card__nombre">${esc(p.nombre)}</div>
+            ${p.descripcion ? `<div class="paq-card__desc">${esc(p.descripcion)}</div>` : ''}
+          </div>
+          <div class="paq-card__precio">${COP(p.precio)}</div>
+        </div>
+        <div class="paq-card__incluye">
+          ${(p.incluye || []).map(l =>
+            `<span class="chip-claro">${l.cantidad}× ${esc(nombreDe(l.entregable))}</span>`).join('')}
+        </div>
+        ${p.ahorro ? `
+          <div class="paq-card__ahorro">
+            Suelto: ${COP(p.precio_suelto)} · <strong>ahorras ${COP(p.ahorro)}</strong>
+          </div>` : ''}
+      </div>`).join('')}
+  </div>`;
+}
+
 function contenidoHTML(perfil) {
   if (!perfil || !perfil.piezas_analizadas) return '';
 
@@ -196,6 +240,8 @@ async function vistaFicha(c) {
           No tienes que pedirlo ni ella tiene que enviarlo.</p>
         </div>
       </div>
+
+      ${paquetesHTML(FICHA.paquetes, E.cfg.entregables)}
 
       <div class="h-sec" style="margin:26px 0 4px">Su trabajo</div>
       <div class="etiqueta" style="margin-bottom:12px">${ms.length} pieza${ms.length === 1 ? '' : 's'} publicadas</div>
