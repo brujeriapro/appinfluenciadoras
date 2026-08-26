@@ -50,6 +50,40 @@ router.get('/perfil/:creadoraId', sesionAuth, async (req, res) => {
   }
 });
 
+/**
+ * Portada de un video.
+ *
+ * Va antes de /:id porque Express reparte por orden y "/algo/poster" también
+ * casa con "/:id" si este se declara primero.
+ *
+ * Se cachea mucho más que la pieza: una portada no cambia nunca —se regenera
+ * con otro nombre— así que el navegador puede quedársela sin riesgo de mostrar
+ * algo viejo. Eso es justo lo que hace que el catálogo se sienta rápido al
+ * volver a él.
+ */
+router.get('/:id/poster', sesionAuth, async (req, res) => {
+  try {
+    const muestra = await db.getMuestra(req.params.id);
+    if (!muestra || !muestra.poster_path) return res.status(404).send('Sin portada');
+
+    const url = `${STORAGE_URL}/${config.supabase.bucket_muestras}/${muestra.poster_path}`;
+    const upstream = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${config.supabase.service_role_key}` },
+    });
+    if (!upstream.ok) return res.status(404).send('No disponible');
+
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Robots-Tag', 'noindex, noimageindex');
+    upstream.body.pipe(res);
+  } catch (e) {
+    console.error('[media/poster]', e.message);
+    res.status(500).send('Error');
+  }
+});
+
 router.get('/:id', sesionAuth, async (req, res) => {
   try {
     const muestra = await db.getMuestra(req.params.id);

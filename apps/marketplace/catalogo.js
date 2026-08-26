@@ -105,20 +105,55 @@ router.get('/', async (req, res) => {
 
     const ids = creadoras.map(c => c.id);
     // Las muestras se adjuntan como ids: el binario se pide después a /media/:id.
-    const [muestras, tarifas, cumplimiento] = await Promise.all([
+    const [muestras, tarifas, cumplimiento, redes] = await Promise.all([
       db.getMuestrasDeVarias(ids),
       db.getTarifasDeVarias(ids),
       db.getCumplimientoDeVarias(ids),
+      db.getRedesDeVarias(ids),
     ]);
 
     let resultado = creadoras.map(c => ({
       ...c,
-      muestras: (muestras[c.id] || []).map(m => ({ id: m.id, tipo: m.tipo })),
+      muestras: (muestras[c.id] || []).map(m => ({
+        id: m.id, tipo: m.tipo, poster: Boolean(m.poster_path),
+      })),
       tarifas: (tarifas[c.id] || []).map(t => ({ entregable: t.entregable, precio: t.precio })),
       // Quien no tiene historial lo dice; no se rellena con ceros, que se leen
       // como "cumplió cero veces" cuando en realidad nunca la han contratado.
       cumplimiento: cumplimiento[c.id] || { confianza: 'sin_historial' },
+      // Sus redes con el nivel de cada una. Sin seguidores exactos y sin
+      // handle: el número exacto la vuelve identificable con una búsqueda, que
+      // es justo lo que el catálogo ciego existe para evitar.
+      redes: (redes[c.id] || []).map(r => ({
+        red: r.red, tier: r.tier, principal: r.es_principal,
+      })),
     }));
+
+    // Los perfiles a medias van al final.
+    //
+    // Un perfil sin una sola pieza de trabajo intercalado entre los buenos hace
+    // que el catálogo entero se lea como descuidado, y son 31 de 123. En vez de
+    // esconderlos —lo que costaría tamaño de catálogo justo cuando hace falta—
+    // se ordenan por qué tan completos están, así lo primero que ve la marca es
+    // lo mejor que hay.
+    //
+    // Se ordena aquí y no en la consulta porque depende de las piezas y las
+    // tarifas, que viven en otras tablas.
+    const queTanCompleto = (c) => {
+      const piezas = c.muestras.length;
+      return (piezas ? 100 : 0)                      // tener trabajo pesa más que todo lo demás
+           + Math.min(piezas, 4) * 10                // hasta cuatro piezas suman
+           + (c.cumplimiento?.entregas ? 25 : 0)     // historial comprobado
+           + (c.foto_perfil_path ? 8 : 0)
+           + (c.tarifas.length ? 6 : 0)
+           + (c.bio_corta ? 4 : 0);
+    };
+    resultado.sort((a, b) => {
+      const d = queTanCompleto(b) - queTanCompleto(a);
+      // Con el mismo nivel de perfil manda el orden que ya traía la consulta
+      // (colaboraciones, prioridad, fecha), que es el que decidió el negocio.
+      return d !== 0 ? d : 0;
+    });
 
     // "Quiero un reel": se filtra en memoria porque depende de la tabla de
     // tarifas, no de una columna de mk_creadoras.
@@ -160,7 +195,7 @@ router.get('/:id', async (req, res) => {
       // Cómo trabaja: sale del análisis de sus piezas. Va null mientras no se
       // hayan analizado, y la ficha lo omite en vez de inventar un perfil.
       contenido: contenido || null,
-      muestras: muestras.map(m => ({ id: m.id, tipo: m.tipo })),
+      muestras: muestras.map(m => ({ id: m.id, tipo: m.tipo, poster: Boolean(m.poster_path) })),
       // Solo las que ella tiene publicadas.
       tarifas: tarifas
         .filter(t => t.activo !== false)

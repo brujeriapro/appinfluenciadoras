@@ -806,12 +806,19 @@ const pieza = (m) => {
   if (m.tipo === 'video') {
     // Envuelto en su propio marco: los contenedores de pieza no están
     // posicionados y el indicador de play se iría a otra parte de la página.
-    // El "#t=1" pide el fotograma del segundo uno en vez del cero: casi todos
-    // los videos arrancan en negro o con la cámara todavía enfocando, y esa
-    // era la miniatura que estaba quedando.
+    //
+    // La portada es lo que salvó esta pantalla. Antes se cargaba el video con
+    // preload="metadata" y "#t=1" para que el navegador sacara la miniatura
+    // solo, pero mientras la sacaba —o si no podía— pintaba un rectángulo
+    // negro. Con tres videos por fila, el catálogo entero parecía vacío.
+    //
+    // Ahora la portada es un JPEG de unos KB que aparece de inmediato, y el
+    // video no se descarga hasta que le den play: la pantalla se ve llena y
+    // además carga mucho más rápido.
+    const poster = m.poster ? ` poster="/media/${m.id}/poster?t=${TOKEN}"` : '';
     return `<button type="button" class="pieza-wrap" data-video aria-label="Reproducir pieza de trabajo">
-              <video src="${url}#t=1" preload="metadata" muted playsinline loop
-                     class="pieza-video"></video>
+              <video src="${url}#t=1"${poster} preload="${m.poster ? 'none' : 'metadata'}"
+                     muted playsinline loop class="pieza-video"></video>
               <span class="pieza-play" aria-hidden="true">▶</span>
             </button>`;
   }
@@ -851,13 +858,55 @@ function selloHTML(cump) {
 
   if (entregas > 0) {
     const aTiempo = Number(c.entregas_a_tiempo || 0);
-    const texto = aTiempo === entregas
-      ? `Entregó a tiempo · ${entregas} de ${entregas}`
-      : `Entregó ${aTiempo} de ${entregas} a tiempo`;
-    return `<span class="sello sello--cumple" title="Historial verificado en la plataforma">
-              <span class="sello__marca">✓</span>${esc(texto)}</span>`;
+
+    // Quien entregó todo dentro del plazo se lleva el sello en lima con su
+    // palomita. Los demás van en gris y sin palomita: un "✓ entregó 0 de 1 a
+    // tiempo" en color de premio dice dos cosas opuestas a la vez y deja a la
+    // marca sin saber cuál creer.
+    if (aTiempo === entregas) {
+      return `<span class="sello sello--cumple" title="Historial verificado en la plataforma">
+                <span class="sello__marca">✓</span>Entregó a tiempo · ${entregas} de ${entregas}</span>`;
+    }
+    // Entregó, pero tarde. Se dice sin adornos y sin castigo: el trabajo salió,
+    // que es lo que a la mayoría de marcas le importa primero.
+    const texto = aTiempo
+      ? `${aTiempo} de ${entregas} a tiempo`
+      : `Entregó ${entregas === 1 ? 'con retraso' : `${entregas} veces, con retraso`}`;
+    return `<span class="sello" title="Entregó fuera del plazo de 30 días">${esc(texto)}</span>`;
   }
   return `<span class="sello" title="Todavía no ha completado colaboraciones aquí">Sin historial aún</span>`;
+}
+
+/**
+ * Sus redes con el nivel de cada una.
+ *
+ * Antes esta zona mostraba "1K-10K INSTAGRAM · 1K-10K TIKTOK": el mismo rango
+ * repetido, sin decir en cuál trabaja de verdad ni qué esperar de ella. Y solo
+ * entendía dos redes, así que quien vive de YouTube aparecía vacía.
+ *
+ * El nivel se calcula POR RED, que es como funciona de verdad: hay creadoras
+ * micro en Instagram y media en TikTok, y contratarlas para TikTok con el
+ * número de Instagram es contratar a ciegas.
+ */
+const NOMBRE_RED = {
+  instagram: 'Instagram', tiktok: 'TikTok', youtube: 'YouTube', facebook: 'Facebook',
+  kwai: 'Kwai', pinterest: 'Pinterest', twitch: 'Twitch', linkedin: 'LinkedIn',
+};
+const NOMBRE_TIER = {
+  ugc: 'UGC', nano: 'Nano', micro: 'Micro', media: 'Media', macro: 'Macro',
+};
+
+function redesHTML(redes, tope = 3) {
+  const lista = (redes || []).filter(r => r.tier);
+  if (!lista.length) return `
+    <div class="metrica"><div class="metrica__valor">—</div>
+    <div class="metrica__label">Sin redes</div></div>`;
+
+  return lista.slice(0, tope).map(r => `
+    <div class="metrica">
+      <div class="metrica__valor">${esc(NOMBRE_TIER[r.tier] || r.tier)}</div>
+      <div class="metrica__label">${esc(NOMBRE_RED[r.red] || r.red)}${r.principal ? ' ·' : ''}</div>
+    </div>`).join('');
 }
 
 function filaHTML(c) {
@@ -871,16 +920,7 @@ function filaHTML(c) {
         <div class="sub-id">${esc([c.codigo, (c.nicho || [])[0], c.ciudad].filter(Boolean).join(' · '))}</div>
         <div style="margin-top:6px">${selloHTML(c.cumplimiento)}</div>
       </div>
-      <div class="metricas">
-        <div class="metrica">
-          <div class="metrica__valor">${esc(c.rango_instagram || '—')}</div>
-          <div class="metrica__label">Instagram</div>
-        </div>
-        <div class="metrica">
-          <div class="metrica__valor">${esc(c.rango_tiktok || '—')}</div>
-          <div class="metrica__label">TikTok</div>
-        </div>
-      </div>
+      <div class="metricas">${redesHTML(c.redes)}</div>
       <div class="desde">
         <div class="desde__valor">${c.tarifa_min ? COP(c.tarifa_min) : 'A convenir'}</div>
         <div class="desde__label">${c.tarifa_min ? 'Desde' : 'Sin precio fijo'}</div>
@@ -923,10 +963,7 @@ function tarjetaHTML(c) {
       </div>
       <div style="margin-top:8px">${selloHTML(c.cumplimiento)}</div>
       <div class="tarjeta__metricas">
-        <div><div class="metrica__valor">${esc(c.rango_instagram || '—')}</div>
-             <div class="metrica__label">Instagram</div></div>
-        <div><div class="metrica__valor">${esc(c.rango_tiktok || '—')}</div>
-             <div class="metrica__label">TikTok</div></div>
+        ${redesHTML(c.redes, 2)}
         <div><div class="metrica__valor">${c.dias_entrega ? c.dias_entrega + ' días' : '—'}</div>
              <div class="metrica__label">Entrega</div></div>
       </div>

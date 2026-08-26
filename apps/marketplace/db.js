@@ -445,7 +445,7 @@ async function guardarTarifas(creadora_id, tarifas = []) {
 const getMuestrasDeCreadora = (creadora_id) =>
   get('mk_muestras', {
     creadora_id: `eq.${creadora_id}`,
-    select: 'id,tipo,orden,titulo,subida_por',
+    select: 'id,tipo,orden,titulo,subida_por,poster_path',
     order: 'orden.asc',
   });
 
@@ -466,7 +466,9 @@ async function getMuestrasDeVarias(ids = []) {
   if (!ids.length) return {};
   const filas = await get('mk_muestras', {
     creadora_id: `in.(${ids.join(',')})`,
-    select: 'id,creadora_id,tipo,orden',
+    // poster_path solo para saber SI hay portada. El nombre del archivo no
+    // viaja: se pide por /media/:id/poster, igual que la pieza.
+    select: 'id,creadora_id,tipo,orden,poster_path',
     order: 'orden.asc',
   });
   const porCreadora = {};
@@ -501,6 +503,39 @@ async function getCumplimientoDeVarias(ids = []) {
 
 const getCumplimientoDeUna = (id) =>
   getUno('mk_cumplimiento', { creadora_id: `eq.${id}`, select: COLS_CUMPLIMIENTO });
+
+// ── Redes de la creadora ────────────────────────────────────────────────────
+
+// Se lee de mk_redes_publicas, NO de mk_creadora_redes. La diferencia es que la
+// vista no tiene la columna `handle`, que es lo único de esa tabla capaz de
+// romper la identidad oculta del catálogo. Es la misma protección estructural
+// que mantiene instagram_handle fuera de mk_creadoras: si algún día se cuela un
+// select ancho, aquí no hay nada que filtrar.
+const COLS_REDES = 'creadora_id,red,es_principal,tier,seguidores';
+
+async function getRedesDeVarias(ids = []) {
+  if (!ids.length) return {};
+  const filas = await get('mk_redes_publicas', {
+    creadora_id: `in.(${ids.join(',')})`,
+    // Sin `seguidores`: en el listado basta el nivel. El número exacto la
+    // vuelve buscable —"12.483 seguidores" lleva a su perfil— y eso derrota
+    // el catálogo ciego.
+    select: 'creadora_id,red,es_principal,tier',
+    order: 'es_principal.desc',
+  });
+  const porCreadora = {};
+  filas.forEach(f => { (porCreadora[f.creadora_id] = porCreadora[f.creadora_id] || []).push(f); });
+  return porCreadora;
+}
+
+const getRedesDeCreadora = (creadora_id) =>
+  get('mk_redes_publicas', {
+    creadora_id: `eq.${creadora_id}`, select: COLS_REDES, order: 'es_principal.desc',
+  });
+
+/** Con handle: SOLO para la propia creadora y para el panel admin. */
+const getRedesPrivadas = (creadora_id) =>
+  get('mk_creadora_redes', { creadora_id: `eq.${creadora_id}`, select: '*', order: 'es_principal.desc' });
 
 // ── Análisis de contenido ───────────────────────────────────────────────────
 
@@ -749,6 +784,7 @@ module.exports = {
   siguienteCodigoCreadora,
   getMuestrasDeCreadora, getMuestra, insertMuestra, borrarMuestra, getMuestrasDeVarias,
   getCumplimientoDeVarias, getCumplimientoDeUna,
+  getRedesDeVarias, getRedesDeCreadora, getRedesPrivadas,
   guardarAnalisis, getMuestrasSinAnalizar,
   getPerfilContenidoDeVarias, getPerfilContenidoDeUna,
   insertTrato, getTratoById, updateTrato, getTratosDeMarca, getTratosDeCreadora,
