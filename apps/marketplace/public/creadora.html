@@ -1308,6 +1308,8 @@ async function vistaPerfil() {
   TAXONOMIA = nichos.categorias || [];
   NICHO_SEL = [...(perfil.nicho || [])];
   const verificado = redes.fuente_metricas === 'verificado';
+  const metricasVerificadas = redes.metricas_estado === 'verificado'
+                           || redes.metricas_estado === 'conectado';
 
   $('principal').innerHTML =
     cabecera('Mi perfil', 'Esto es lo que ven las marcas cuando te buscan.', 'perfil', true) +
@@ -1386,20 +1388,34 @@ async function vistaPerfil() {
         <button type="button" class="btn-portal btn-portal--sec" id="btn-agregar-red">AGREGAR RED</button>
       </div>
 
+      <!-- Verificación por captura y no solo por conexión con Instagram.
+           Su API únicamente entrega métricas de cuentas Business o Creator, y
+           buena parte del catálogo es nano, donde la cuenta personal es lo
+           normal. Un sistema que solo aceptara la conexión automática dejaría
+           fuera justo a quienes más necesitan demostrar que sus números son
+           reales. -->
       <div class="verificacion">
-        <span style="font-size:16px;line-height:1">${verificado ? '✓' : '○'}</span>
+        <span style="font-size:16px;line-height:1">${metricasVerificadas ? '✓' : '○'}</span>
         <div class="verificacion__texto">
-          ${verificado
-            ? 'Tus números están verificados con Instagram. Las marcas ven ese distintivo en tu perfil.'
-            : `Por ahora tus números son los que tú declaras.
-               ${redes.conexion_disponible
-                 ? 'Conecta tu Instagram y quedan verificados: las marcas confían más en un perfil verificado.'
-                 : 'Pronto vas a poder conectar tu Instagram para que queden verificados.'}`}
+          ${metricasVerificadas
+            ? 'Tus números están verificados. Las marcas ven ese distintivo en tu perfil y confían más en lo que declaras.'
+            : redes.tiene_captura
+              ? 'Recibimos tu captura. Alguien del equipo la está revisando; te avisamos cuando quede verificado.'
+              : `Por ahora tus números son los que tú declaras. Sube una captura de tus
+                 estadísticas y los verificamos: un perfil verificado recibe más propuestas
+                 porque la marca sabe que el alcance es real.`}
         </div>
       </div>
-      ${!verificado && redes.conexion_disponible
-        ? '<button class="btn-portal btn-portal--sec" style="margin-top:12px" id="btn-conectar-ig">CONECTAR INSTAGRAM</button>'
-        : ''}
+      ${metricasVerificadas ? '' : `
+        <label class="btn-portal btn-portal--sec" style="margin-top:12px;display:block;text-align:center;cursor:pointer">
+          ${redes.tiene_captura ? 'CAMBIAR LA CAPTURA' : 'SUBIR CAPTURA DE MIS ESTADÍSTICAS'}
+          <input type="file" id="archivo-captura" accept="image/*" style="display:none">
+        </label>
+        <div class="pista" style="margin-top:8px">
+          Sirve la pantalla de "Estadísticas" o "Insights" de tu app, donde se vean tus
+          seguidores y las vistas de tus últimas publicaciones. Solo la ve el equipo.
+        </div>
+        <div id="msg-captura" style="font-size:12px;margin-top:8px"></div>`}
     </div>
 
     <div class="bloque-perfil">
@@ -1435,12 +1451,33 @@ async function vistaPerfil() {
   REDES = (redes.redes || []).map(r => ({
     red: r.red, handle: r.handle || '',
     seguidores: r.seguidores == null ? '' : r.seguidores,
+    vistas_promedio: r.vistas_promedio == null ? '' : r.vistas_promedio,
     es_principal: Boolean(r.es_principal),
   }));
   pintarRedes();
   conectarRedes();
 
   pintarInvitaciones();
+
+  $('archivo-captura')?.addEventListener('change', async (e) => {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+    const msg = $('msg-captura');
+    msg.style.color = '';
+    msg.textContent = 'Subiendo…';
+    try {
+      const { base64, mime } = await prepararArchivo(archivo);
+      await api('/captura-metricas', {
+        method: 'PUT', body: JSON.stringify({ archivo_base64: base64, mime }),
+      });
+      vistaPerfil($('principal'));
+    } catch (err) {
+      msg.style.color = 'var(--magenta)';
+      msg.textContent = err.message;
+    } finally {
+      e.target.value = '';
+    }
+  });
 
   $('archivo-foto')?.addEventListener('change', async (e) => {
     const archivo = e.target.files[0];
@@ -1658,6 +1695,12 @@ function pintarRedes() {
           <input data-seg="${i}" type="number" inputmode="numeric"
                  value="${r.seguidores || ''}" placeholder="12000">
         </div>
+        <div class="campo-p">
+          <label>Vistas promedio por publicación</label>
+          <input data-vistas="${i}" type="number" inputmode="numeric"
+                 value="${r.vistas_promedio || ''}" placeholder="4500">
+          <div class="pista">Es el dato que más miran las marcas. Sácalo de tus estadísticas.</div>
+        </div>
       </div>
       <label class="red-principal">
         <input type="radio" name="red-principal" data-principal="${i}" ${r.es_principal ? 'checked' : ''}>
@@ -1686,6 +1729,11 @@ function pintarRedes() {
   // Los valores se guardan al escribir para que no se pierdan al repintar.
   cont.querySelectorAll('[data-handle]').forEach(inp => {
     inp.addEventListener('input', () => { REDES[+inp.dataset.handle].handle = inp.value; });
+  });
+  cont.querySelectorAll('[data-vistas]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      REDES[+inp.dataset.vistas].vistas_promedio = inp.value;
+    });
   });
   cont.querySelectorAll('[data-seg]').forEach(inp => {
     inp.addEventListener('input', () => {
@@ -1744,6 +1792,7 @@ async function guardarRedes() {
         red: r.red,
         handle: r.handle,
         seguidores: r.seguidores === '' ? null : r.seguidores,
+        vistas_promedio: r.vistas_promedio === '' ? null : r.vistas_promedio,
         es_principal: r.es_principal,
       })),
     }),

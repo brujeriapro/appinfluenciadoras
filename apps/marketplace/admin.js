@@ -1160,6 +1160,70 @@ router.post('/invitaciones/enviar', async (req, res) => {
   }
 });
 
+// ── Verificar métricas ──────────────────────────────────────────────────────
+
+/**
+ * Creadoras que subieron captura de sus Insights y esperan que alguien compare.
+ *
+ * El sello de "métricas verificadas" es una promesa que le hacemos a la marca,
+ * así que lo pone una persona mirando la captura, no el sistema confiando en lo
+ * que la creadora escribió.
+ */
+router.get('/metricas/cola', async (req, res) => {
+  try {
+    const pendientes = await db.get('mk_creadoras', {
+      select: 'id,codigo,nombre_publico,metricas_estado,metricas_captura_path,estado_perfil',
+      metricas_captura_path: 'not.is.null',
+      metricas_estado: 'eq.declarado',
+      order: 'created_at.asc',
+    });
+
+    // Sus números declarados, para poder compararlos contra la captura sin
+    // tener que abrir cada perfil.
+    const conRedes = await Promise.all(pendientes.map(async (c) => ({
+      ...c,
+      redes: await db.getRedesPrivadas(c.id).catch(() => []),
+    })));
+
+    res.json({
+      pendientes: conRedes,
+      verificadas: (await db.get('mk_creadoras', {
+        select: 'id', metricas_estado: 'eq.verificado',
+      })).length,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Marca las métricas de una creadora como verificadas, o las devuelve a
+ * declaradas si la captura no cuadra.
+ */
+router.post('/metricas/:id', async (req, res) => {
+  try {
+    const aprobar = req.body.aprobar !== false;
+    const c = await db.getCreadoraCompleta(req.params.id);
+    if (!c) return res.status(404).json({ error: 'Creadora no encontrada' });
+
+    if (aprobar && !c.metricas_captura_path) {
+      return res.status(400).json({
+        error: 'No subió captura. Verificar sin verla contra qué sería firmar en blanco.',
+      });
+    }
+
+    await db.updateCreadora(c.id, aprobar
+      ? { metricas_estado: 'verificado', metricas_verificadas_at: new Date().toISOString() }
+      : { metricas_estado: 'declarado', metricas_verificadas_at: null,
+          notas_admin: [c.notas_admin, req.body.motivo].filter(Boolean).join(' · ') || null });
+
+    res.json({ ok: true, estado: aprobar ? 'verificado' : 'declarado' });
+  } catch (e) {
+    console.error('[admin/metricas]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 /**
  * Segundo toque: quién recibió invitación y nunca creó su perfil.
  *

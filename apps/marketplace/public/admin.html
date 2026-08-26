@@ -205,6 +205,7 @@
       <button class="tab" data-vista="tratos">Tratos</button>
       <button class="tab" data-vista="creadoras">Creadoras</button>
       <button class="tab" data-vista="marcas">Marcas</button>
+      <button class="tab" data-vista="metricas">Verificar métricas</button>
       <button class="tab" data-vista="invitaciones">Invitaciones</button>
       <button class="tab" data-vista="ajustes">Ajustes</button>
     </div>
@@ -1026,6 +1027,100 @@ VISTAS.marcas = async () => {
 
 
 // ── Vista: Invitaciones ─────────────────────────────────────────────────────
+
+// ── Vista: Verificar métricas ───────────────────────────────────────────────
+//
+// El sello de "métricas verificadas" es una promesa que le hacemos a la marca,
+// así que lo pone una persona comparando la captura contra lo declarado. Si lo
+// pusiera el sistema confiando en lo que la creadora escribió, no significaría
+// nada distinto a "declarado".
+
+const NOMBRE_RED_ADMIN = {
+  instagram: 'Instagram', tiktok: 'TikTok', youtube: 'YouTube', facebook: 'Facebook',
+  kwai: 'Kwai', pinterest: 'Pinterest', twitch: 'Twitch', linkedin: 'LinkedIn',
+};
+
+VISTAS.metricas = async () => {
+  const d = await api('/metricas/cola');
+
+  const filas = (d.pendientes || []).map(c => `
+    <div class="bloque" style="margin-bottom:16px">
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
+        <div style="flex:1;min-width:250px">
+          <div class="bloque__titulo">${esc(c.nombre_publico)} · ${esc(c.codigo || '')}</div>
+          <p style="font-size:12px;color:var(--grey-700);margin:0 0 12px">
+            Compara lo que declaró contra su captura. Si no cuadra, devuélvela.
+          </p>
+          <div class="tabla-wrap"><table>
+            <thead><tr><th>Red</th><th>Seguidores</th><th>Vistas promedio</th></tr></thead>
+            <tbody>${(c.redes || []).map(r => `
+              <tr>
+                <td>${esc(NOMBRE_RED_ADMIN[r.red] || r.red)}${r.es_principal ? ' ·' : ''}</td>
+                <td class="num">${r.seguidores ? Number(r.seguidores).toLocaleString('es-CO') : '—'}</td>
+                <td class="num">${r.vistas_promedio ? Number(r.vistas_promedio).toLocaleString('es-CO') : '—'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table></div>
+          <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-mini" data-verificar="${c.id}">VERIFICAR</button>
+            <button class="btn-mini" data-rechazar="${c.id}">NO CUADRA</button>
+          </div>
+        </div>
+        <a href="/media/captura/${c.id}" target="_blank" rel="noopener"
+           style="flex:none;width:220px;border:2px solid var(--ink);display:block">
+          <img src="/media/captura/${c.id}" alt="Captura de estadísticas"
+               style="width:100%;display:block" loading="lazy">
+        </a>
+      </div>
+    </div>`).join('');
+
+  contenido().innerHTML = `
+    <div class="seccion-titulo">Verificar métricas</div>
+
+    <div class="kpis" style="margin-bottom:18px">
+      <div class="kpi"><div class="kpi__label">Esperando revisión</div>
+        <div class="kpi__valor">${(d.pendientes || []).length}</div>
+        <div class="kpi__nota">Subieron captura y falta compararla</div></div>
+      <div class="kpi"><div class="kpi__label">Ya verificadas</div>
+        <div class="kpi__valor kpi__valor--lima">${d.verificadas || 0}</div>
+        <div class="kpi__nota">Llevan el distintivo en el catálogo</div></div>
+    </div>
+
+    <div class="bloque" style="margin-bottom:18px;font-size:12.5px;line-height:1.7">
+      <strong>Qué mirar.</strong> Que el @usuario de la captura sea el que declaró, y que
+      los seguidores y las vistas se parezcan a lo que escribió. No tiene que cuadrar al
+      número exacto —las cifras cambian todos los días— pero sí en el orden de magnitud:
+      alguien que declara 50.000 y muestra 5.000 no está redondeando.
+      <br><br>
+      Si cambia sus números después, el sello se cae solo y vuelve a esta cola.
+    </div>
+
+    ${filas || `<div class="bloque"><p style="font-size:13px;margin:0">
+      Nadie está esperando revisión. Cuando una creadora suba su captura, aparece aquí.
+    </p></div>`}`;
+
+  const actuar = async (id, aprobar, btn) => {
+    btn.disabled = true;
+    btn.textContent = aprobar ? 'VERIFICANDO…' : 'DEVOLVIENDO…';
+    try {
+      const motivo = aprobar ? null
+        : prompt('¿Qué no cuadra? (queda en sus notas internas)') || 'La captura no coincide con lo declarado';
+      await api('/metricas/' + id, {
+        method: 'POST', body: JSON.stringify({ aprobar, motivo }),
+      });
+      VISTAS.metricas();
+    } catch (e) {
+      alert('No se pudo: ' + e.message);
+      btn.disabled = false;
+      btn.textContent = aprobar ? 'VERIFICAR' : 'NO CUADRA';
+    }
+  };
+
+  contenido().querySelectorAll('[data-verificar]').forEach(b =>
+    b.addEventListener('click', () => actuar(b.dataset.verificar, true, b)));
+  contenido().querySelectorAll('[data-rechazar]').forEach(b =>
+    b.addEventListener('click', () => actuar(b.dataset.rechazar, false, b)));
+};
 
 VISTAS.invitaciones = async () => {
   const [d, wa, seg, ref] = await Promise.all([

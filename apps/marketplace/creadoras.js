@@ -456,8 +456,11 @@ router.get('/redes', async (req, res) => {
     res.json({
       // Aquí sí va el handle: es su propio perfil, no el catálogo.
       redes: redes.map(r => ({
-        red: r.red, handle: r.handle, seguidores: r.seguidores, es_principal: r.es_principal,
+        red: r.red, handle: r.handle, seguidores: r.seguidores,
+        vistas_promedio: r.vistas_promedio, es_principal: r.es_principal,
       })),
+      metricas_estado: c?.metricas_estado || 'declarado',
+      tiene_captura: Boolean(c?.metricas_captura_path),
       disponibles: cfg.redes || [],
       tiers: cfg.tiers || [],
       fuente_metricas: c?.fuente_metricas || 'declarado',
@@ -498,10 +501,15 @@ router.put('/redes', async (req, res) => {
       vistas.add(red);
 
       const n = Number(r.seguidores);
+      const v = Number(r.vistas_promedio);
       redes.push({
         red,
         handle: limpio(r.handle),
         seguidores: Number.isFinite(n) && n >= 0 ? Math.round(n) : null,
+        // Cuánta gente ve de verdad cada publicación. Vale más que los
+        // seguidores para decidir un pago: comprar seguidores es fácil,
+        // sostener vistas no.
+        vistas_promedio: Number.isFinite(v) && v >= 0 ? Math.round(v) : null,
         es_principal: false,   // se decide abajo, nunca se confía en lo que llegue
       });
     }
@@ -529,10 +537,29 @@ router.put('/redes', async (req, res) => {
       }
     }
 
+    // Si cambió algún número, la verificación se cae.
+    //
+    // Verificar es comparar lo que declaró contra una captura de sus Insights.
+    // Si después puede editar el número y conservar el sello, el sello no
+    // significa nada: bastaría con verificarse en 3.000 y subirlo a 30.000.
+    // Se compara antes de escribir, mientras las filas viejas siguen ahí.
+    const previas = await db.getRedesPrivadas(req.usuarioId);
+    const huella = (lista) => lista
+      .map(r => `${r.red}:${r.seguidores ?? ''}:${r.vistas_promedio ?? ''}`)
+      .sort().join('|');
+    const cambiaronLosNumeros = huella(previas) !== huella(redes);
+
     await db.guardarRedesDeCreadora(req.usuarioId, redes);
 
     // Espejo hacia las columnas viejas, para no romper lo que todavía las lee.
     const actual = await db.getCreadoraCompleta(req.usuarioId);
+
+    if (cambiaronLosNumeros && actual?.metricas_estado === 'verificado') {
+      await db.updateCreadora(req.usuarioId, {
+        metricas_estado: 'declarado',
+        metricas_verificadas_at: null,
+      });
+    }
     if (actual?.fuente_metricas !== 'verificado') {
       const tk = redes.find(r => r.red === 'tiktok');
       await db.updateCreadora(req.usuarioId, resumirAlcance({
@@ -572,6 +599,41 @@ router.put('/foto', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error('[creadoras/foto]', e.message);
+    res.status(e.status || 500).json({ error: e.message });
+  }
+});
+
+/**
+ * Captura de sus Insights, para que alguien del equipo verifique sus números.
+ *
+ * Es el camino que sirve HOY. Conectar Instagram sería mejor, pero su API solo
+ * entrega métricas de cuentas Business o Creator, y buena parte del catálogo es
+ * nano, donde la cuenta personal es lo normal. Un sistema que solo aceptara la
+ * conexión automática dejaría fuera justo a quienes más necesitan demostrar que
+ * sus números son reales.
+ *
+ * Subirla no verifica nada por sí sola: deja el perfil en cola para que una
+ * persona compare la captura contra lo declarado.
+ */
+router.put('/captura-metricas', async (req, res) => {
+  try {
+    const actual = await db.getCreadoraCompleta(req.usuarioId);
+    if (!actual) return res.status(404).json({ error: 'Perfil no encontrado' });
+
+    const { storage_path } = await subirArchivo(req.body);
+
+    await db.updateCreadora(req.usuarioId, {
+      metricas_captura_path: storage_path,
+      // Vuelve a la cola aunque ya estuviera verificada: si sube una captura
+      // nueva es porque sus números cambiaron.
+      metricas_estado: 'declarado',
+      metricas_verificadas_at: null,
+    });
+
+    if (actual.metricas_captura_path) borrarArchivo(actual.metricas_captura_path);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[creadoras/captura-metricas]', e.message);
     res.status(e.status || 500).json({ error: e.message });
   }
 });

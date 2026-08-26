@@ -15,7 +15,7 @@ const express = require('express');
 const fetch = require('node-fetch');
 const db = require('./db');
 const config = require('./config');
-const { sesionAuth } = require('./auth');
+const { sesionAuth, adminAuth } = require('./auth');
 
 const router = express.Router();
 
@@ -61,6 +61,36 @@ router.get('/perfil/:creadoraId', sesionAuth, async (req, res) => {
  * algo viejo. Eso es justo lo que hace que el catálogo se sienta rápido al
  * volver a él.
  */
+/**
+ * Captura de estadísticas de una creadora.
+ *
+ * Solo admin: es una pantalla de su app personal, con su @usuario a la vista.
+ * Dársela a una marca rompería la identidad oculta del catálogo de la forma más
+ * directa posible.
+ */
+router.get('/captura/:creadoraId', adminAuth, async (req, res) => {
+  try {
+    const c = await db.getCreadoraCompleta(req.params.creadoraId);
+    if (!c || !c.metricas_captura_path) return res.status(404).send('Sin captura');
+
+    const url = `${STORAGE_URL}/${config.supabase.bucket_muestras}/${c.metricas_captura_path}`;
+    const upstream = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${config.supabase.service_role_key}` },
+    });
+    if (!upstream.ok) return res.status(404).send('No disponible');
+
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Robots-Tag', 'noindex, noimageindex');
+    upstream.body.pipe(res);
+  } catch (e) {
+    console.error('[media/captura]', e.message);
+    res.status(500).send('Error');
+  }
+});
+
 router.get('/:id/poster', sesionAuth, async (req, res) => {
   try {
     const muestra = await db.getMuestra(req.params.id);

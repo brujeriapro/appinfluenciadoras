@@ -129,6 +129,7 @@ router.get('/', async (req, res) => {
       // es justo lo que el catálogo ciego existe para evitar.
       redes: (redes[c.id] || []).map(r => ({
         red: r.red, tier: r.tier, principal: r.es_principal,
+        vistas: r.vistas_promedio,
       })),
     }));
 

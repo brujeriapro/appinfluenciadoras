@@ -947,17 +947,47 @@ const NOMBRE_TIER = {
   ugc: 'UGC', nano: 'Nano', micro: 'Micro', media: 'Media', macro: 'Macro',
 };
 
+/** 12.400 → 12,4K. Un número redondo se lee de un vistazo en una grilla. */
+const corto = (n) => {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v <= 0) return null;
+  if (v >= 1000) return (v / 1000).toFixed(v >= 10000 ? 0 : 1).replace('.', ',') + 'K';
+  return String(v);
+};
+
 function redesHTML(redes, tope = 3) {
   const lista = (redes || []).filter(r => r.tier);
   if (!lista.length) return `
     <div class="metrica"><div class="metrica__valor">—</div>
     <div class="metrica__label">Sin redes</div></div>`;
 
-  return lista.slice(0, tope).map(r => `
+  return lista.slice(0, tope).map(r => {
+    // Las vistas mandan sobre el nivel cuando existen: es el número que decide
+    // una contratación. Los seguidores dicen a cuánta gente podría llegar; las
+    // vistas, a cuánta llega de verdad.
+    const vistas = corto(r.vistas);
+    return `
     <div class="metrica">
-      <div class="metrica__valor">${esc(NOMBRE_TIER[r.tier] || r.tier)}</div>
-      <div class="metrica__label">${esc(NOMBRE_RED[r.red] || r.red)}${r.principal ? ' ·' : ''}</div>
-    </div>`).join('');
+      <div class="metrica__valor">${vistas ? esc(vistas) : esc(NOMBRE_TIER[r.tier] || r.tier)}</div>
+      <div class="metrica__label">${esc(NOMBRE_RED[r.red] || r.red)}${
+        vistas ? ' · vistas' : ''}${r.principal && !vistas ? ' ·' : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+/**
+ * De dónde salen los números de esta creadora.
+ *
+ * Es lo que hace que verificarse valga la pena: si un perfil verificado se ve
+ * igual que uno declarado, nadie va a molestarse en subir su captura. Y una
+ * marca que va a pagar merece saber si el alcance que ve lo comprobó alguien.
+ */
+function metricasHTML(estado) {
+  if (estado === 'verificado' || estado === 'conectado') {
+    return `<span class="sello sello--cumple" title="Alguien del equipo comparó estos números contra sus estadísticas">
+              <span class="sello__marca">✓</span>Métricas verificadas</span>`;
+  }
+  return `<span class="sello" title="Los números los declara la creadora; nadie los ha comprobado">Métricas declaradas</span>`;
 }
 
 function filaHTML(c) {

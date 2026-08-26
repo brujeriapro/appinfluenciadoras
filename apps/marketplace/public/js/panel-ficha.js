@@ -181,6 +181,7 @@ async function vistaFicha(c) {
         ${(FICHA.nicho || []).map(n => `<span class="chip-claro chip-nicho">${esc(n)}</span>`).join('')}
         ${FICHA.ciudad ? `<span class="chip-claro">${esc(FICHA.ciudad)}</span>` : ''}
         ${selloHTML(FICHA.cumplimiento)}
+        ${metricasHTML(FICHA.metricas_estado)}
       </div>
 
       ${contenidoHTML(FICHA.contenido)}

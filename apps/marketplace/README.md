@@ -206,13 +206,28 @@ Multi-moneda de verdad exige conversión, pagos internacionales y repensar el es
 
 ## Métricas declaradas y verificadas
 
-Hoy los seguidores los escribe la creadora: `fuente_metricas = 'declarado'`. La landing promete *"métricas reales, no capturas"*, y mientras todo sea declarado eso no se cumple.
+`mk_creadoras.metricas_estado` tiene tres niveles y el catálogo muestra la diferencia, que es lo que hace que verificarse valga la pena:
 
-El plan es conectar Instagram con OAuth para que el alcance y el engagement vengan de Meta (`fuente_metricas = 'verificado'`), y mostrar un distintivo en el catálogo. Los campos ya existen; la conexión no. Se enciende con `instagram_conexion_activa`.
+| Estado | Qué significa |
+|---|---|
+| `declarado` | Los números los escribió ella. Nadie los comprobó. |
+| `verificado` | Alguien del equipo comparó una captura de sus estadísticas contra lo declarado |
+| `conectado` | Vendrían de la API de Instagram — **todavía no está construido** |
 
-Dos cosas a tener en cuenta cuando se implemente:
+**Por qué la captura y no solo la conexión automática:** la API de Instagram únicamente entrega métricas de cuentas Business o Creator, y buena parte del catálogo es nano, donde la cuenta personal es lo normal. Un sistema que solo aceptara la conexión dejaría fuera justo a quienes más necesitan demostrar que sus números son reales.
 
-- **La API vieja de Instagram (Basic Display) está descontinuada** desde finales de 2024. La que sirve es *Instagram API con Instagram Login*, y exige cuenta Business o Creator. Quien tenga cuenta personal se queda en modo declarado hasta que cambie — que es gratis y toma un minuto.
+El flujo: la creadora sube su captura desde el portal → cae en la cola de **Verificar métricas** del panel admin → una persona compara y aprueba o devuelve.
+
+Dos reglas que sostienen que el sello signifique algo:
+
+- **Cambiar un número tumba la verificación.** Si pudiera verificarse en 3.000 seguidores y luego editarlo a 30.000 conservando el sello, el sello no valdría nada. Se compara la huella de todas sus redes antes de guardar.
+- **La captura solo la ve admin** (`/media/captura/:id`). Es una pantalla de su app personal con su @usuario a la vista: dársela a una marca rompería la identidad oculta de la forma más directa posible.
+
+**Las vistas promedio pesan más que los seguidores** y por eso el catálogo las muestra en su lugar cuando existen. Comprar seguidores es fácil; sostener vistas, no. Viven en `mk_creadora_redes.vistas_promedio`, una por red, y sí viajan al catálogo — a diferencia del número exacto de seguidores, que vuelve buscable a la creadora.
+
+Cuando se construya `conectado`, dos cosas a tener en cuenta:
+
+- **La API vieja de Instagram (Basic Display) está descontinuada** desde finales de 2024. La que sirve es *Instagram API con Instagram Login*, y exige cuenta Business o Creator.
 - **Nunca embeber el feed de Instagram.** El widget muestra el @usuario y tumba la promesa de identidad oculta. El contenido se descarga por API y se re-aloja en el bucket, igual que las piezas que ella sube a mano.
 
 ## Cómo trabaja y si cumple

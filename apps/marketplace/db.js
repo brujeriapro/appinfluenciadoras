@@ -138,6 +138,10 @@ const COLS_CATALOGO = [
   'engagement_pct', 'dias_entrega', 'audiencia_mujeres', 'audiencia_pais',
   'nivel_tarifa', 'tarifa_min', 'tarifa_max', 'tarifa_abierta', 'prioridad',
   'entregable_tipico', 'bio_corta', 'colaboraciones_completadas',
+  // De dónde salen sus números: declarados por ella, verificados por el equipo
+  // contra una captura, o traídos de la API. La marca merece saberlo antes de
+  // pagar, y es lo que hace que verificarse valga la pena.
+  'metricas_estado',
 ].join(',');
 
 async function getCatalogo({ categoria, nicho, rango_alcance, nivel_tarifa, pais, departamento, ciudad, presupuesto_max } = {}) {
@@ -511,16 +515,18 @@ const getCumplimientoDeUna = (id) =>
 // romper la identidad oculta del catálogo. Es la misma protección estructural
 // que mantiene instagram_handle fuera de mk_creadoras: si algún día se cuela un
 // select ancho, aquí no hay nada que filtrar.
-const COLS_REDES = 'creadora_id,red,es_principal,tier,seguidores';
+const COLS_REDES = 'creadora_id,red,es_principal,tier,seguidores,vistas_promedio';
 
 async function getRedesDeVarias(ids = []) {
   if (!ids.length) return {};
   const filas = await get('mk_redes_publicas', {
     creadora_id: `in.(${ids.join(',')})`,
-    // Sin `seguidores`: en el listado basta el nivel. El número exacto la
-    // vuelve buscable —"12.483 seguidores" lleva a su perfil— y eso derrota
-    // el catálogo ciego.
-    select: 'creadora_id,red,es_principal,tier',
+    // Sin `seguidores`: el número exacto la vuelve buscable —"12.483
+    // seguidores" lleva a su perfil— y eso derrota el catálogo ciego.
+    //
+    // Las vistas sí van: son el dato que de verdad decide una contratación y no
+    // sirven para encontrar a nadie, porque no aparecen escritas en su perfil.
+    select: 'creadora_id,red,es_principal,tier,vistas_promedio',
     order: 'es_principal.desc',
   });
   const porCreadora = {};
