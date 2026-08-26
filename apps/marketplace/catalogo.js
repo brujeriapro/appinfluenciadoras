@@ -71,6 +71,9 @@ router.get('/filtros', async (req, res) => {
       paises: cfg.paises || [],
       departamentos_co: cfg.departamentos_co || [],
       entregables: cfg.entregables || [],
+      // Para filtrar por red. Abrir una red nueva es agregar una fila en
+      // mk_config: los chips del filtro salen de aquí.
+      redes: cfg.redes || [],
       rangos_alcance: (cfg.rangos_alcance || []).map(r => r.clave),
       niveles_tarifa: Object.entries(cfg.niveles_tarifa || {}).map(([clave, n]) => ({
         clave,
@@ -98,7 +101,7 @@ router.get('/filtros', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { categoria, nicho, rango_alcance, nivel_tarifa, pais, departamento,
-            ciudad, presupuesto_max, entregable } = req.query;
+            ciudad, presupuesto_max, entregable, tier, red } = req.query;
     let creadoras = await db.getCatalogo({
       categoria, nicho, rango_alcance, nivel_tarifa, pais, departamento, ciudad, presupuesto_max,
     });
@@ -159,6 +162,28 @@ router.get('/', async (req, res) => {
     // tarifas, no de una columna de mk_creadoras.
     if (entregable) {
       resultado = resultado.filter(c => c.tarifas.some(t => t.entregable === entregable));
+    }
+
+    // Nivel y red.
+    //
+    // Con red elegida, las dos condiciones se exigen sobre la MISMA red: "micro
+    // en TikTok" no puede devolver a quien es micro en Instagram y además tiene
+    // un TikTok cualquiera.
+    //
+    // Sin red elegida, el nivel se mide sobre su RED PRINCIPAL y no sobre
+    // cualquiera que tenga. Si no, pedir "UGC" devolvía a casi todo el catálogo:
+    // una macro de Instagram con 500 seguidores en Kwai tiene una red UGC, pero
+    // no es una creadora UGC, y ofrecérsela a quien busca UGC es hacerle perder
+    // el tiempo a las dos.
+    if (red) {
+      resultado = resultado.filter(c => (c.redes || []).some(r =>
+        r.red === red && (!tier || r.tier === tier)
+      ));
+    } else if (tier) {
+      resultado = resultado.filter(c => {
+        const principal = (c.redes || []).find(r => r.principal);
+        return principal ? principal.tier === tier : false;
+      });
     }
 
     res.json({ total: resultado.length, creadoras: resultado });

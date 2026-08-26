@@ -371,7 +371,7 @@ const E = {
   vista: 'catalogo',
   layout: localStorage.getItem('mk_layout') || 'filas',
   bandeja: 'todas',
-  filtros: { nicho: '', ciudad: '', rango_alcance: '', entregable: '', presupuesto: null },
+  filtros: { nicho: '', ciudad: '', tier: '', red: '', entregable: '', presupuesto: null },
   cfg: null,
   catalogo: [],
   plan: null,
@@ -474,10 +474,22 @@ function ir(vista, id) {
 
 // ── Filtros ─────────────────────────────────────────────────────────────────
 
+// Los niveles del filtro, con lo que significa cada uno al pasar el mouse.
+//
+// El orden importa: va de menor a mayor alcance, que es como la marca los
+// compara. Los cortes viven en la base (mk_tier_de) — aquí solo está la
+// etiqueta, para no tener el mismo número escrito en tres sitios.
+const TIERS_FILTRO = [
+  { v: 'ugc',   t: 'UGC',   ayuda: 'Menos de 3.000 · produce contenido para tus canales, no vende alcance' },
+  { v: 'nano',  t: 'Nano',  ayuda: '3.000 a 10.000 · comunidad pequeña y muy cercana' },
+  { v: 'micro', t: 'Micro', ayuda: '10.000 a 50.000 · donde mejor convierte una recomendación' },
+  { v: 'media', t: 'Media', ayuda: '50.000 a 200.000 · alcance amplio con nicho definido' },
+  { v: 'macro', t: 'Macro', ayuda: 'Más de 200.000 · alcance masivo' },
+];
+
 function pintarFiltros() {
   const cfg = E.cfg || {};
   const nichos = (cfg.categorias || []).map(c => ({ v: c.clave, t: c.nombre }));
-  const rangos = (cfg.rangos_alcance || []).map(r => ({ v: r, t: r }));
   const entregables = (cfg.entregables || []).map(e => ({ v: e.clave, t: e.nombre }));
 
   // Solo se ofrecen las ciudades donde de verdad hay creadoras: una lista de
@@ -502,13 +514,29 @@ function pintarFiltros() {
 
   $('grupos-filtro').innerHTML =
     grupo('Nicho', 'nicho', nichos, 'Todos') +
+    // Nivel y red, y no el rango de seguidores que había antes.
+    //
+    // Los rangos (1K-3K, 3K-6K…) eran una lista larga que obligaba a la marca a
+    // pensar en números cuando lo que tiene en la cabeza es "quiero una micro
+    // de TikTok". Y como el nivel se calcula por red, los dos filtros juntos
+    // dicen algo que antes no se podía preguntar.
     `<div class="filtros__grupo">
-      <div class="filtros__label">Alcance por red</div>
+      <div class="filtros__label">Nivel</div>
       <div class="chips">
-        <button class="chip ${!E.filtros.rango_alcance ? 'on' : ''}" data-f="rango_alcance" data-v="">Todo</button>
-        ${rangos.map(o => `
-          <button class="chip ${E.filtros.rango_alcance === o.v ? 'on' : ''}"
-                  data-f="rango_alcance" data-v="${esc(o.v)}">${esc(o.t)}</button>`).join('')}
+        <button class="chip ${!E.filtros.tier ? 'on' : ''}" data-f="tier" data-v="">Todos</button>
+        ${TIERS_FILTRO.map(o => `
+          <button class="chip ${E.filtros.tier === o.v ? 'on' : ''}"
+                  data-f="tier" data-v="${esc(o.v)}" title="${esc(o.ayuda)}">${esc(o.t)}</button>`).join('')}
+      </div>
+      <div class="filtros__nota">UGC produce contenido para tus canales; el resto publica en los suyos.</div>
+    </div>
+    <div class="filtros__grupo">
+      <div class="filtros__label">Red</div>
+      <div class="chips">
+        <button class="chip ${!E.filtros.red ? 'on' : ''}" data-f="red" data-v="">Todas</button>
+        ${(E.cfg.redes || []).map(o => `
+          <button class="chip ${E.filtros.red === o.clave ? 'on' : ''}"
+                  data-f="red" data-v="${esc(o.clave)}">${esc(o.nombre)}</button>`).join('')}
       </div>
     </div>` +
     grupo('Ciudad', 'ciudad', ciudades.map(c => ({ v: c, t: c })), 'Todas') + `
@@ -548,7 +576,7 @@ function pintarFiltros() {
 }
 
 $('limpiar').addEventListener('click', () => {
-  E.filtros = { nicho: '', ciudad: '', rango_alcance: '', entregable: '', presupuesto: null };
+  E.filtros = { nicho: '', ciudad: '', tier: '', red: '', entregable: '', presupuesto: null };
   cargarCatalogo();
 });
 
@@ -562,7 +590,8 @@ async function cargarCatalogo() {
     const q = new URLSearchParams();
     if (E.filtros.nicho)         q.set('categoria', E.filtros.nicho);
     if (E.filtros.ciudad)        q.set('ciudad', E.filtros.ciudad);
-    if (E.filtros.rango_alcance) q.set('rango_alcance', E.filtros.rango_alcance);
+    if (E.filtros.tier)          q.set('tier', E.filtros.tier);
+    if (E.filtros.red)           q.set('red', E.filtros.red);
     if (E.filtros.entregable)    q.set('entregable', E.filtros.entregable);
     if (E.filtros.presupuesto)   q.set('presupuesto_max', E.filtros.presupuesto);
 
