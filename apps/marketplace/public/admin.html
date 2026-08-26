@@ -205,6 +205,7 @@
       <button class="tab" data-vista="tratos">Tratos</button>
       <button class="tab" data-vista="creadoras">Creadoras</button>
       <button class="tab" data-vista="marcas">Marcas</button>
+      <button class="tab" data-vista="bloqueadas">No pueden entrar</button>
       <button class="tab" data-vista="metricas">Verificar métricas</button>
       <button class="tab" data-vista="invitaciones">Invitaciones</button>
       <button class="tab" data-vista="ajustes">Ajustes</button>
@@ -1027,6 +1028,126 @@ VISTAS.marcas = async () => {
 
 
 // ── Vista: Invitaciones ─────────────────────────────────────────────────────
+
+// ── Vista: No pueden entrar ─────────────────────────────────────────────────
+//
+// Nace de un caso real: 16 creadoras pidiendo el enlace de recuperación hasta
+// 13 veces cada una mientras el correo no salía. Ellas no podían saber que el
+// problema no era suyo, y desde el panel no había forma de ayudarlas.
+//
+// El enlace copiable es lo que resuelve el caso HOY: no depende de que el
+// correo funcione, se pega en WhatsApp y listo.
+
+VISTAS.bloqueadas = async () => {
+  const [d, correo] = await Promise.all([
+    api('/bloqueadas'),
+    api('/diagnostico-correo').catch(() => null),
+  ]);
+  const lista = d.bloqueadas || [];
+
+  const filas = lista.map(c => `
+    <tr>
+      <td>
+        <strong>${esc(c.nombre_publico)}</strong>
+        <div style="font-size:11px;color:var(--grey-700)">${esc(c.email)}</div>
+      </td>
+      <td class="num">${c.intentos}</td>
+      <td>${esc(String(c.ultimo || '').slice(0, 16).replace('T', ' '))}</td>
+      <td>${c.whatsapp ? esc(c.whatsapp) : '<span style="color:var(--grey-700)">sin WhatsApp</span>'}</td>
+      <td><button class="btn-mini" data-enlace="${c.id}">GENERAR ENLACE</button></td>
+    </tr>
+    <tr id="enlace-${c.id}" class="oculto"><td colspan="5" style="background:#111"></td></tr>`).join('');
+
+  contenido().innerHTML = `
+    <div class="seccion-titulo">Creadoras que no pueden entrar</div>
+
+    ${correo && !correo.ok ? `
+      <div class="bloque" style="border-color:var(--magenta);margin-bottom:16px;font-size:12.5px;line-height:1.7">
+        <strong style="color:var(--magenta)">El correo no está saliendo.</strong>
+        ${esc(correo.motivo || '')}
+        <br><br>
+        Por eso pidieron el enlace tantas veces: nunca les llegó. Mientras se arregla,
+        <strong>genera el enlace y pásaselo por WhatsApp</strong> — funciona igual y no
+        depende del correo.
+      </div>` : ''}
+
+    <div class="bloque" style="margin-bottom:18px;font-size:12.5px;line-height:1.7">
+      Estas pidieron recuperar su contraseña y todavía no han vuelto a entrar.
+      El enlace que generes <strong>dura 48 horas</strong> y sirve una sola vez:
+      con él escoge una contraseña nueva y entra.
+      <br><br>
+      Cuando alguna entre, desaparece sola de esta lista.
+    </div>
+
+    ${lista.length ? `
+      <div style="margin-bottom:16px">
+        <button class="btn-mini" id="btn-reenviar-todas">REENVIAR CORREO A LAS ${lista.length}</button>
+        <span style="font-size:11.5px;color:var(--grey-700);margin-left:10px">
+          Solo funciona si el correo está saliendo.</span>
+      </div>
+      <div id="msg-reenvio" style="font-size:12.5px;margin-bottom:14px"></div>
+
+      <div class="tabla-wrap"><table>
+        <thead><tr><th>Creadora</th><th>Intentos</th><th>Último</th><th>WhatsApp</th><th></th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table></div>`
+      : `<div class="bloque"><p style="font-size:13px;margin:0">
+           Nadie está bloqueada ahora mismo.
+         </p></div>`}`;
+
+  contenido().querySelectorAll('[data-enlace]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const id = b.dataset.enlace;
+      b.disabled = true; b.textContent = 'GENERANDO…';
+      try {
+        const r = await api('/creadoras/' + id + '/enlace-acceso', { method: 'POST' });
+        // El mensaje va listo para pegar: escribirlo a mano 16 veces es donde
+        // se cometen los errores y donde se abandona la tarea.
+        const wa = r.whatsapp ? String(r.whatsapp).replace(/\D/g, '') : '';
+        const texto = `Hola ${r.nombre}, soy de Creators Manager. `
+          + `Tuvimos un problema con los correos y por eso no te llegó el enlace. `
+          + `Entra por aquí y escoge tu contraseña: ${r.url}`;
+        const fila = $('enlace-' + id);
+        fila.classList.remove('oculto');
+        fila.querySelector('td').innerHTML = `
+          <div style="padding:14px">
+            <div style="font-size:11px;color:var(--lime);letter-spacing:1px;margin-bottom:8px">
+              ENLACE PARA ${esc(r.nombre.toUpperCase())} · VENCE EN ${r.vence_en_horas} HORAS</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <input readonly value="${esc(r.url)}" style="flex:1;min-width:260px;font-size:11px"
+                     onclick="this.select()">
+              <button class="btn-mini" data-copiar="${esc(texto).replace(/"/g, '&quot;')}">COPIAR MENSAJE</button>
+              ${wa ? `<a class="btn-mini" style="text-decoration:none" target="_blank" rel="noopener"
+                  href="https://wa.me/${wa}?text=${encodeURIComponent(texto)}">ABRIR WHATSAPP</a>` : ''}
+            </div>
+          </div>`;
+        fila.querySelectorAll('[data-copiar]').forEach(cb => {
+          cb.addEventListener('click', async () => {
+            await navigator.clipboard.writeText(cb.dataset.copiar);
+            cb.textContent = 'COPIADO ✓';
+          });
+        });
+      } catch (e) { alert('No se pudo: ' + e.message); }
+      b.disabled = false; b.textContent = 'GENERAR OTRO';
+    });
+  });
+
+  $('btn-reenviar-todas')?.addEventListener('click', async () => {
+    const btn = $('btn-reenviar-todas');
+    const msg = $('msg-reenvio');
+    btn.disabled = true; btn.textContent = 'ENVIANDO…';
+    try {
+      const r = await api('/bloqueadas/reenviar', { method: 'POST' });
+      msg.style.color = 'var(--lime)';
+      msg.textContent = `Enviados ${r.enviados} por ${r.via}.`
+        + (r.fallidos ? ` Fallaron ${r.fallidos}.` : '');
+    } catch (e) {
+      msg.style.color = 'var(--magenta)';
+      msg.textContent = e.message;
+    }
+    btn.disabled = false; btn.textContent = 'REENVIAR CORREO A TODAS';
+  });
+};
 
 // ── Vista: Verificar métricas ───────────────────────────────────────────────
 //

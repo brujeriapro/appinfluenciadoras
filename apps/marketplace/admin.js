@@ -1177,6 +1177,140 @@ router.post('/invitaciones/enviar', async (req, res) => {
   }
 });
 
+// ── Creadoras que no pueden entrar ──────────────────────────────────────────
+
+/**
+ * Quién pidió recuperar su contraseña y sigue sin poder entrar.
+ *
+ * Existe por un caso real: 16 creadoras pidiendo el enlace hasta 13 veces cada
+ * una, mientras el correo no salía. Ellas no tenían forma de saber que el
+ * problema no era suyo, y desde aquí no había forma de ayudarlas.
+ */
+router.get('/bloqueadas', async (req, res) => {
+  try {
+    const tokens = await db.get('mk_tokens_reset', {
+      select: 'usuario_id,tipo,created_at,usado_at',
+      tipo: 'eq.creadora',
+      order: 'created_at.desc',
+    });
+
+    const porCreadora = new Map();
+    for (const t of tokens) {
+      const p = porCreadora.get(t.usuario_id) || { intentos: 0, ultimo: null, entro: false };
+      p.intentos++;
+      if (!p.ultimo || t.created_at > p.ultimo) p.ultimo = t.created_at;
+      if (t.usado_at) p.entro = true;
+      porCreadora.set(t.usuario_id, p);
+    }
+
+    // Quien ya usó un enlace resolvió su problema: sacarla de la lista evita
+    // volver a escribirle sin motivo.
+    const pendientes = [...porCreadora.entries()].filter(([, p]) => !p.entro);
+    if (!pendientes.length) return res.json({ bloqueadas: [] });
+
+    const creadoras = await db.get('mk_creadoras', {
+      select: 'id,codigo,nombre_publico,email,whatsapp,estado_perfil',
+      id: `in.(${pendientes.map(([id]) => id).join(',')})`,
+    });
+
+    res.json({
+      bloqueadas: creadoras
+        .map(c => ({ ...c, ...porCreadora.get(c.id) }))
+        .sort((a, b) => b.intentos - a.intentos),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Genera un enlace para que una creadora vuelva a entrar, y lo devuelve para
+ * copiarlo.
+ *
+ * Sirve cuando el correo no está saliendo: el equipo se lo pasa por WhatsApp o
+ * por donde la tenga. Es el mismo mecanismo del "olvidé mi contraseña", solo
+ * que quien lo dispara es el equipo y el enlace se entrega a mano.
+ *
+ * Dura 48 horas en vez de una: va a viajar por WhatsApp y puede que ella no lo
+ * abra de inmediato. Un enlace vencido la devolvería justo al problema del que
+ * la estamos sacando.
+ */
+router.post('/creadoras/:id/enlace-acceso', async (req, res) => {
+  try {
+    const c = await db.getCreadoraCompleta(req.params.id);
+    if (!c) return res.status(404).json({ error: 'Creadora no encontrada' });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    await db.crearTokenReset({
+      token,
+      tipo: 'creadora',
+      usuario_id: c.id,
+      expira_at: new Date(Date.now() + 48 * 3600_000).toISOString(),
+    });
+
+    res.json({
+      ok: true,
+      nombre: c.nombre_publico,
+      whatsapp: c.whatsapp || null,
+      email: c.email,
+      url: `${config.base_url}/creadora.html#recuperar=${token}`,
+      vence_en_horas: 48,
+    });
+  } catch (e) {
+    console.error('[admin/enlace-acceso]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** Reenvía el correo de recuperación a todas las que siguen bloqueadas. */
+router.post('/bloqueadas/reenviar', async (req, res) => {
+  try {
+    // Si el correo no está saliendo, mandar 16 más solo gasta cuota y deja a
+    // todo el mundo esperando otra vez. Se comprueba antes de empezar.
+    const estado = await notificaciones.diagnostico();
+    if (!estado.ok) {
+      return res.status(503).json({
+        error: `El correo no está saliendo, así que reenviar no serviría. ${estado.motivo || ''}`.trim(),
+        diagnostico: estado,
+      });
+    }
+
+    const tokens = await db.get('mk_tokens_reset', {
+      select: 'usuario_id,usado_at', tipo: 'eq.creadora',
+    });
+    const conEntrada = new Set(tokens.filter(t => t.usado_at).map(t => t.usuario_id));
+    const ids = [...new Set(tokens.map(t => t.usuario_id))].filter(id => !conEntrada.has(id));
+
+    if (!ids.length) return res.json({ ok: true, enviados: 0, mensaje: 'Ninguna sigue bloqueada.' });
+
+    const creadoras = await db.get('mk_creadoras', {
+      select: 'id,email,nombre_publico', id: `in.(${ids.join(',')})`,
+    });
+
+    let ok = 0;
+    const fallos = [];
+    for (const c of creadoras) {
+      try {
+        const token = crypto.randomBytes(32).toString('hex');
+        await db.crearTokenReset({
+          token, tipo: 'creadora', usuario_id: c.id,
+          expira_at: new Date(Date.now() + 48 * 3600_000).toISOString(),
+        });
+        const salio = await notificaciones.resetClave({ email: c.email, token, lado: 'creadora' });
+        salio ? ok++ : fallos.push(c.nombre_publico);
+      } catch (e) {
+        fallos.push(`${c.nombre_publico}: ${e.message}`);
+      }
+      await dormir(400);
+    }
+
+    res.json({ ok: true, enviados: ok, fallidos: fallos.length, detalle: fallos.slice(0, 8), via: estado.via });
+  } catch (e) {
+    console.error('[admin/bloqueadas/reenviar]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Verificar métricas ──────────────────────────────────────────────────────
 
 /**
