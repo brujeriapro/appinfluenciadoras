@@ -37,7 +37,11 @@ const TRANSICIONES = {
   solicitado: {
     aceptado:  ['creadora'],
     rechazado: ['creadora'],
-    cancelado: ['marca', 'admin'],
+    // 'sistema' cierra las propuestas que la creadora nunca contestó. El portal
+    // le promete a la marca que tiene respuesta en 72 horas; sin esto la
+    // propuesta se queda ahí para siempre y la promesa es falsa.
+    // No hay dinero en juego todavía: el pago ocurre después de aceptar.
+    cancelado: ['marca', 'admin', 'sistema'],
   },
   aceptado: {
     pago_retenido: ['admin'],           // solo admin, al confirmar la transferencia
@@ -48,7 +52,10 @@ const TRANSICIONES = {
     cancelado: ['admin'],               // devolver la plata es decisión de admin
   },
   entregado: {
-    aprobado:      ['marca', 'admin'],
+    // 'sistema' solo entra aquí con auto_aprobar_entrega encendido: aprobar
+    // libera el dinero de la creadora, y eso no puede pasar por descuido de
+    // configuración. Ver plazos.js.
+    aprobado:      ['marca', 'admin', 'sistema'],
     pago_retenido: ['marca', 'admin'],  // pedir cambios: vuelve un paso atrás
   },
   aprobado: {

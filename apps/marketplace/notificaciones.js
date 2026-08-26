@@ -506,6 +506,52 @@ function activarReferidos({ creadora, codigoRef, restantes, traidas = 0 }) {
   );
 }
 
+/**
+ * A la creadora: tiene una propuesta a punto de cerrarse.
+ *
+ * Se manda cuando queda un tercio del plazo, no cuando ya venció. Cerrarle una
+ * propuesta sin haberle avisado sería quitarle un trabajo por no haber abierto
+ * la app, y casi siempre lo que pasa es eso y no que no le interese.
+ */
+function propuestaPorVencer({ trato, creadora, marca, horasRestantes }) {
+  return enviar(
+    creadora.email,
+    `Te quedan ${horasRestantes} horas para responder una propuesta`,
+    `<p style="font-size:16px;font-weight:800;letter-spacing:-0.4px;margin:0 0 14px">
+       Tienes una propuesta esperando.</p>
+
+     <p><strong>${esc(marca?.nombre_empresa || 'Una marca')}</strong> te mandó una propuesta
+     de <strong>${formatearCOP(trato.neto_a_recibir_creadora)}</strong> netos y todavía no la
+     has contestado.</p>
+
+     <p>Si no respondes en las próximas <strong>${horasRestantes} horas</strong> se cierra sola
+     y la marca puede buscar a otra persona. Responder que no también sirve: le deja el
+     campo libre y a ti no te afecta en nada.</p>
+
+     ${boton('VER LA PROPUESTA', `${config.base_url}/creadora.html`)}`
+  );
+}
+
+/** A la marca: la creadora nunca respondió y la propuesta se cerró. */
+function propuestaExpirada({ trato, marca }) {
+  if (!marca?.email) return Promise.resolve(false);
+  return enviar(
+    marca.email,
+    `La propuesta ${trato.codigo || ''} se cerró sin respuesta`.trim(),
+    `<p style="font-size:16px;font-weight:800;letter-spacing:-0.4px;margin:0 0 14px">
+       Nadie respondió, así que la cerramos.</p>
+
+     <p>La creadora no contestó dentro del plazo, así que la propuesta
+     <strong>${esc(trato.codigo || '')}</strong> quedó cerrada y no ocupa uno de tus cupos
+     del mes.</p>
+
+     <p>No se te cobró nada: la comisión solo aplica sobre tratos que se cierran de verdad.
+     Puedes proponerle a otra creadora cuando quieras.</p>
+
+     ${boton('VOLVER AL CATÁLOGO', `${config.base_url}/panel.html`)}`
+  );
+}
+
 /** Enlace para volver a entrar. Sirve para creadoras y para marcas. */
 function resetClave({ email, token, lado }) {
   const pagina = lado === 'marca' ? 'registro.html' : 'creadora.html';
@@ -629,6 +675,7 @@ module.exports = {
   enviar,
   invitacionCreadora, invitacionSegundoToque, activarReferidos,
   recordatorioPerfil, trajisteUna,
+  propuestaPorVencer, propuestaExpirada,
   bienvenidaCreadora, avisoPerfilNuevo, avisoListaParaRevisar, perfilAprobado, resetClave,
   nuevaSolicitud, tratoAceptado, tratoRechazado,
   pagoRetenido, contenidoEntregado, contenidoAprobado, pagoLiberado,

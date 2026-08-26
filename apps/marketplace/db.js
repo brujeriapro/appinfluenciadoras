@@ -620,6 +620,17 @@ const getTratosDeCreadora = (creadora_id) =>
     order: 'created_at.desc',
   });
 
+/**
+ * Tratos en cualquiera de varios estados. Lo usa el proceso de plazos, que
+ * necesita mirar de una todo lo que está esperando respuesta o revisión.
+ */
+const getTratosPorEstados = (estados = []) =>
+  get('mk_tratos', {
+    select: '*',
+    estado: `in.(${estados.join(',')})`,
+    order: 'fecha_solicitud.asc',
+  });
+
 function getTratosAdmin({ estado } = {}) {
   const params = {
     select: '*,mk_marcas(nombre_empresa,email,nit),mk_creadoras(nombre_publico,es_bruja_embajadora)',
@@ -809,7 +820,7 @@ module.exports = {
   guardarAnalisis, getMuestrasSinAnalizar,
   getPerfilContenidoDeVarias, getPerfilContenidoDeUna,
   insertTrato, getTratoById, updateTrato, getTratosDeMarca, getTratosDeCreadora,
-  getTratosAdmin, siguienteCodigoTrato, contarTratosPrevios,
+  getTratosAdmin, getTratosPorEstados, siguienteCodigoTrato, contarTratosPrevios,
   insertEvento, getEventosDeTrato,
   insertPago, getPagosDeTrato, getTodosLosPagos,
   insertEntrega, getEntregasDeTrato, updateEntrega,

@@ -98,6 +98,30 @@ app.use('/media', require('./media'));
 // Basic Auth aplicado por router, no globalmente con lista blanca: es más
 // difícil dejar por accidente una ruta admin abierta.
 
+/**
+ * Ejecuta los plazos que la interfaz promete: cierra propuestas sin responder
+ * y —si está encendido— aprueba entregas que la marca no revisó.
+ *
+ * Se protege con el mismo usuario y clave del panel admin en vez de un secreto
+ * aparte: es una credencial menos que rotar, y Railway puede mandarla en la
+ * cabecera igual que lo hace el navegador.
+ *
+ * Con ?dry_run=1 dice qué haría sin tocar nada. Conviene mirarlo así la
+ * primera vez, porque de aquí en adelante esto cancela tratos solo.
+ */
+app.post('/api/cron/plazos', adminAuth, async (req, res) => {
+  try {
+    const resumen = await require('./plazos').ejecutar({
+      simulacro: req.query.dry_run === '1' || req.body?.dry_run === true,
+    });
+    console.log('[cron/plazos]', JSON.stringify(resumen));
+    res.json(resumen);
+  } catch (e) {
+    console.error('[cron/plazos]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.use('/api/admin', adminAuth, require('./admin'));
 
 // admin.html se sirve sin auth a propósito: es una cáscara vacía, no contiene

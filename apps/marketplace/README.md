@@ -278,17 +278,30 @@ Necesita `ANTHROPIC_API_KEY` además de las variables de siempre. Es seguro corr
 - **Sin bloqueo optimista en las transiciones.** Dos admins simultáneos podrían registrar dos pagos de salida sobre el mismo trato. Con un equipo de una o dos personas es aceptable.
 - **El texto de los términos está pendiente de revisión jurídica.** Sirve para los pilotos; debe pasar por abogada antes de operar con marcas externas en volumen.
 
-## Plazos que la interfaz promete y todavía no se cumplen solos
+## Plazos automáticos
 
-El portal de la creadora muestra tres promesas que vienen del diseño y quedaron guardadas en `mk_config`, pero **hoy solo se muestran: no hay proceso que las ejecute**.
+El portal promete plazos a las dos partes. `plazos.js` es lo que los hace cumplir; sin él eran texto decorativo, y prometer un plazo que no se cumple es peor que no prometerlo.
 
-| Promesa | Estado real |
+| Promesa | Cómo se cumple |
 |---|---|
-| "Tienes 72 horas para responder" | La propuesta no expira sola |
-| "La marca tiene 48h para aprobar" | No hay auto-aprobación (`auto_aprobar_entrega` está en `false`) |
-| "A tu cuenta 48h después de aprobado" | El pago lo hace el equipo a mano desde el panel |
+| "Tienes 72 horas para responder" | La propuesta se cancela sola. Se avisa antes, cuando queda un tercio del plazo. |
+| "La marca tiene 48h para aprobar" | Auto-aprobación, **solo si `auto_aprobar_entrega` está en `true`** (hoy `false`) |
+| "A tu cuenta 48h después de aprobado" | ⚠️ Sigue siendo manual: el pago lo registra el equipo desde el panel |
 
-Antes de abrir a creadoras que no sean del círculo cercano hay que implementar el proceso que las haga cumplir, o bajar ese texto de la interfaz. Prometer un plazo que no se cumple es peor que no prometerlo.
+```bash
+# Qué haría, sin tocar nada
+curl -u admin:CLAVE -X POST "https://www.creatorsmanager.com/api/cron/plazos?dry_run=1"
+# De verdad
+curl -u admin:CLAVE -X POST "https://www.creatorsmanager.com/api/cron/plazos"
+```
+
+Conviene programarlo en Railway una o dos veces al día. Es idempotente: correrlo dos veces seguidas no repite nada.
+
+Tres decisiones que conviene conocer antes de tocarlo:
+
+- **Se avisa antes de cerrar.** Cerrarle una propuesta a una creadora sin haberle recordado que la tiene sería quitarle un trabajo por no haber abierto la app, que es casi siempre lo que pasa. `aviso_plazo_at` garantiza un solo aviso por trato.
+- **Auto-aprobar libera dinero**, así que está detrás de su propio interruptor y apagado por defecto. Encenderlo es una decisión de negocio, no de configuración.
+- **Solo se cancelan propuestas en `solicitado`**, donde todavía no hay plata de por medio. Un trato con pago retenido nunca se cancela solo: esa decisión es de una persona.
 
 ## Pendiente contable (no bloquea desarrollo)
 
