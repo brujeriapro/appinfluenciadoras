@@ -603,48 +603,97 @@ function subirEnElCatalogo({ creadora, falta = [], codigoRef, cupos = 0 }) {
     ? `${config.base_url}/invitacion.html?ref=${encodeURIComponent(codigoRef)}`
     : null;
 
-  const punto = (titulo, texto) => `
-    <div style="border-left:3px solid #0E0E0E;padding-left:14px;margin-bottom:16px">
-      <div style="font-weight:700;margin-bottom:4px">${esc(titulo)}</div>
-      <div style="font-size:12.5px;line-height:1.65;color:#4A4A50">${texto}</div>
+  // Cuánto le falta, en cuadritos.
+  //
+  // Un marcador visible mueve más que una lista: se ve de un vistazo cuánto
+  // falta para llenarlo, y llenarlo se vuelve el objetivo. Son celdas de tabla
+  // y no divs porque Outlook ignora display:inline-block a discreción, y una
+  // barra rota es peor que no ponerla.
+  const TOTAL = 5;
+  const hechas = TOTAL - falta.length;
+  const cuadritos = Array.from({ length: TOTAL }, (_, i) => `
+    <td width="34" height="14" bgcolor="${i < hechas ? '#D6FF00' : '#FFFFFF'}"
+        style="border:2px solid #0E0E0E;font-size:0;line-height:0">&nbsp;</td>
+    ${i < TOTAL - 1 ? '<td width="4" style="font-size:0;line-height:0">&nbsp;</td>' : ''}`).join('');
+
+  const marcador = `
+    <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 6px">
+      <tr>${cuadritos}</tr>
+    </table>
+    <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1.5px;color:#6E6E76">
+      ${hechas} DE ${TOTAL} · ${falta.length === 0 ? 'PERFIL COMPLETO' : `TE FALTAN ${falta.length}`}
     </div>`;
 
-  const lista = falta.map(f => punto(f.titulo, f.texto)).join('');
+  // Cada consejo numerado, con el número en un cuadro negro que hace de ancla
+  // visual. Tabla de dos columnas: es lo único que se comporta igual en todos
+  // los clientes de correo.
+  const punto = (n, titulo, texto, color) => `
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom:14px">
+      <tr>
+        <td width="40" valign="top">
+          <div style="width:32px;height:32px;background:#0E0E0E;color:${color};
+                      font-family:'Space Mono',monospace;font-weight:800;font-size:15px;
+                      text-align:center;line-height:32px">${n}</div>
+        </td>
+        <td valign="top" style="padding-left:12px">
+          <div style="font-weight:800;letter-spacing:-0.3px;font-size:14px;margin-bottom:3px">${esc(titulo)}</div>
+          <div style="font-size:12.5px;line-height:1.6;color:#4A4A50">${texto}</div>
+        </td>
+      </tr>
+    </table>`;
+
+  // Los acentos rotan entre los tres colores de la marca en vez de repetir
+  // lima: cinco bloques idénticos se leen como una sola mancha.
+  const ACENTOS = ['#D6FF00', '#FF2E9A', '#2323F0', '#D6FF00', '#FF2E9A'];
+  const lista = falta.length
+    ? falta.map((f, i) => punto(i + 1, f.titulo, f.texto, ACENTOS[i % ACENTOS.length])).join('')
+    : `<div style="border:2px solid #0E0E0E;background:#D6FF00;padding:14px 16px;margin-bottom:14px">
+         <div style="font-weight:800;letter-spacing:-0.3px">Tu perfil está completo.</div>
+         <div style="font-size:12.5px;line-height:1.6;margin-top:4px">Ya tienes todo lo que
+         sube un perfil en el catálogo. Lo de abajo es lo único que te queda.</div>
+       </div>`;
 
   return enviar(
     creadora.email,
     `${nombre}, así sales primero cuando una marca busca`,
-    `<p style="font-size:17px;font-weight:800;letter-spacing:-0.6px;line-height:1.3;margin:0 0 14px">
-       Tu perfil ya está publicado. Ahora se trata de que te vean.</p>
+    `<div style="border-bottom:2px solid #0E0E0E;padding-bottom:18px;margin-bottom:20px">
+       <div style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:2px;
+                   color:#6E6E76;margin-bottom:10px">TU POSICIÓN EN EL CATÁLOGO</div>
+       <div style="font-size:26px;font-weight:800;letter-spacing:-1.4px;line-height:1.1;margin-bottom:14px">
+         ${esc(nombre)}, esto es lo<br>que te falta.</div>
+       ${marcador}
+     </div>
 
-     <p>Cuando una marca entra al catálogo no ve a todas en el mismo orden.
-     Primero salen los perfiles más completos: los que tienen trabajo publicado,
-     precio y una cara detrás. No es un algoritmo misterioso — es esto:</p>
+     <p style="margin:0 0 20px">Cuando una marca entra al catálogo no ve a todas en el mismo
+     orden. Primero salen los perfiles más completos. No es un algoritmo misterioso — es esto:</p>
 
-     ${lista || punto('Tu perfil está completo',
-        'Ya tienes todo lo que sube un perfil en el catálogo. Lo único que te queda '
-        + 'por hacer es lo de abajo.')}
+     ${lista}
 
      ${urlRef && cupos > 0 ? `
-       <div style="border:2px solid #0E0E0E;background:#D6FF00;padding:16px 18px;margin:22px 0">
-         <div style="font-weight:800;letter-spacing:-0.3px;margin-bottom:8px">
-           TE QUEDAN ${cupos} ${cupos === 1 ? 'INVITACIÓN' : 'INVITACIONES'}</div>
-         <div style="font-size:12.5px;line-height:1.65">
-           Cada creadora que traigas y quede publicada <strong>te sube la prioridad</strong>,
-           que decide dos cosas concretas: quién ve las campañas primero cuando abramos
-           a las marcas, y quién sale antes entre perfiles parecidos.<br><br>
-           Este es tu enlace:
-           <span style="display:inline-block;background:#fff;border:1px solid #0E0E0E;padding:7px 10px;margin-top:8px;font-size:11.5px;word-break:break-all">${urlRef}</span>
-           <br><br>
-           <span style="font-size:11.5px;color:#3A3A3A">Funciona mejor mandárselo por
-           mensaje directo a dos personas que publicarlo en historias: entra quien de
-           verdad va a crear su perfil, y esas son las que te suman.</span>
-         </div>
-       </div>` : ''}
+       <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:24px 0">
+         <tr><td style="background:#0E0E0E;padding:18px 20px">
+           <div style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:2px;
+                       color:#D6FF00;margin-bottom:8px">Y ALGO QUE NADIE ESTÁ USANDO</div>
+           <div style="color:#FFFFFF;font-size:20px;font-weight:800;letter-spacing:-1px;line-height:1.15;margin-bottom:12px">
+             Te ${cupos === 1 ? 'queda' : 'quedan'} ${cupos} ${cupos === 1 ? 'invitación' : 'invitaciones'}<br>sin usar.</div>
+           <div style="color:#C8C8C4;font-size:12.5px;line-height:1.65;margin-bottom:14px">
+             Cada creadora que traigas y quede publicada
+             <span style="color:#D6FF00;font-weight:700">te sube la prioridad</span>: quién ve
+             las campañas primero cuando abramos a las marcas, y quién sale antes entre
+             perfiles parecidos.
+           </div>
+           <div style="background:#FFFFFF;border:2px solid #D6FF00;padding:9px 11px;
+                       font-size:11.5px;word-break:break-all;font-family:'Space Mono',monospace">${urlRef}</div>
+           <div style="color:#8A8A86;font-size:11px;line-height:1.6;margin-top:11px">
+             Mándaselo por mensaje directo a dos personas en vez de publicarlo en historias.
+             Entra quien de verdad va a crear su perfil, y esas son las que te suman.
+           </div>
+         </td></tr>
+       </table>` : ''}
 
-     ${boton('IR A MI PERFIL', urlPerfil)}
+     ${boton('COMPLETAR MI PERFIL', urlPerfil)}
 
-     <p style="margin-top:22px;font-size:11.5px;color:#7A7A7A;line-height:1.6">
+     <p style="margin-top:22px;font-size:11px;color:#7A7A7A;line-height:1.6">
        Te llega porque tu perfil está publicado en Creators Manager.
      </p>`
   );
