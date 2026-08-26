@@ -109,6 +109,78 @@ async function enviar(para, asunto, cuerpoHTML) {
   }
 }
 
+/**
+ * ¿Puede este servicio mandar correo ahora mismo?
+ *
+ * Existe porque el envío falla en silencio a propósito —un correo caído no
+ * puede tumbar un registro— y el error real se queda en los logs de Railway,
+ * que no siempre están a mano. Sin esto, "no me llegó el correo" es
+ * indistinguible de "el correo salió y se fue a spam".
+ *
+ * Lo que más veces va a explicar el problema es la cuota: el plan gratuito de
+ * Brevo son 300 correos al día, y una tanda de invitaciones se los come.
+ */
+async function diagnostico() {
+  if (!config.brevo_api_key) {
+    return {
+      ok: false,
+      via: config.smtp.user ? 'smtp' : 'ninguna',
+      motivo: config.smtp.user
+        ? 'No hay MK_BREVO_API_KEY: se intenta por SMTP, que Railway bloquea.'
+        : 'No hay ni MK_BREVO_API_KEY ni SMTP. No sale ningún correo.',
+    };
+  }
+
+  try {
+    const r = await fetch('https://api.brevo.com/v3/account', {
+      headers: { 'api-key': config.brevo_api_key, 'accept': 'application/json' },
+    });
+    const d = await r.json().catch(() => ({}));
+
+    if (!r.ok) {
+      return {
+        ok: false, via: 'brevo',
+        motivo: `Brevo rechazó la llave (HTTP ${r.status}). ${d?.message || ''}`.trim(),
+      };
+    }
+
+    // Brevo devuelve los créditos dentro de plan[]. El de tipo "free" es el que
+    // manda en la cuenta gratuita.
+    const planes = Array.isArray(d.plan) ? d.plan : [];
+    const correo = planes.find(p => p.type === 'free' || p.credits != null) || {};
+    const restantes = correo.credits ?? null;
+
+    return {
+      ok: restantes === null || restantes > 0,
+      via: 'brevo',
+      cuenta: d.email || null,
+      remitente: remitente(),
+      creditos_restantes: restantes,
+      plan: correo.type || null,
+      motivo: restantes === 0
+        ? 'Se acabaron los correos del día. Brevo los repone cada 24 horas; '
+          + 'mientras tanto no sale ninguno, ni siquiera los de recuperar contraseña.'
+        : null,
+    };
+  } catch (e) {
+    return { ok: false, via: 'brevo', motivo: e.message };
+  }
+}
+
+/** Manda un correo de prueba y devuelve el error real si falla. */
+async function probar(para) {
+  if (!para) return { ok: false, error: 'Falta el correo de destino' };
+  try {
+    if (!config.brevo_api_key) return { ok: false, error: 'No hay MK_BREVO_API_KEY configurada' };
+    await enviarPorApi(para, 'Prueba de correo · Creators Manager',
+      '<p>Si estás leyendo esto, el correo del marketplace está saliendo bien.</p>');
+    return { ok: true };
+  } catch (e) {
+    // A diferencia de enviar(), aquí el error sube: es justo lo que se vino a ver.
+    return { ok: false, error: e.message };
+  }
+}
+
 // Envoltura visual mínima, en el sistema del handoff: negro, lima, monoespaciada.
 function plantilla(contenido) {
   return `
@@ -672,7 +744,7 @@ function pagoLiberado({ trato, creadora }) {
 }
 
 module.exports = {
-  enviar,
+  enviar, diagnostico, probar,
   invitacionCreadora, invitacionSegundoToque, activarReferidos,
   recordatorioPerfil, trajisteUna,
   propuestaPorVencer, propuestaExpirada,

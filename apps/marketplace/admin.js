@@ -108,6 +108,22 @@ router.get('/diagnostico-wa', async (req, res) => {
   });
 });
 
+/**
+ * ¿Está saliendo el correo?
+ *
+ * Se agregó después de encontrar 57 solicitudes de recuperar contraseña sin que
+ * ninguna se usara: los tokens se creaban bien y el correo nunca llegaba. El
+ * envío falla en silencio a propósito —no puede tumbar un registro— así que sin
+ * esta pantalla el problema es invisible hasta que alguien se queja.
+ */
+router.get('/diagnostico-correo', async (req, res) => {
+  res.json(await notificaciones.diagnostico());
+});
+
+router.post('/diagnostico-correo/probar', async (req, res) => {
+  res.json(await notificaciones.probar(req.body.email));
+});
+
 router.get('/diagnostico', async (req, res) => {
   const llave = String(config.supabase.service_role_key || '');
   const forma = {

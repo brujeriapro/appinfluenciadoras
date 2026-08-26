@@ -1519,7 +1519,38 @@ VISTAS.ajustes = async () => {
   const hoy = new Date().toISOString().slice(0, 10);
   const inicioMes = hoy.slice(0, 8) + '01';
 
+  // El estado del correo va primero y no escondido al final: cuando deja de
+  // salir, nadie puede entrar a su cuenta ni recibir una propuesta, y el
+  // sistema no avisa por su cuenta porque el envío falla en silencio.
+  const correo = await api('/diagnostico-correo').catch(() => null);
+
   contenido().innerHTML = `
+    ${correo ? `
+      <div class="seccion-titulo">Correo</div>
+      <div class="bloque" style="margin-bottom:20px;border-color:${correo.ok ? 'var(--lime)' : 'var(--magenta)'}">
+        <div class="bloque__titulo" style="color:${correo.ok ? 'var(--lime)' : 'var(--magenta)'}">
+          ${correo.ok ? 'El correo está saliendo' : 'El correo NO está saliendo'}
+        </div>
+        <div class="dato"><span>Vía</span><span>${esc(correo.via || '—')}</span></div>
+        ${correo.cuenta ? `<div class="dato"><span>Cuenta</span><span>${esc(correo.cuenta)}</span></div>` : ''}
+        ${correo.creditos_restantes != null
+          ? `<div class="dato"><span>Correos que quedan hoy</span>
+               <span class="num" style="color:${correo.creditos_restantes > 20 ? 'var(--lime)' : 'var(--magenta)'}">
+                 ${correo.creditos_restantes}</span></div>`
+          : ''}
+        ${correo.motivo ? `
+          <div class="aviso" style="margin-top:12px">${esc(correo.motivo)}</div>` : ''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px">
+          <input id="correo-prueba" placeholder="tu@correo.com" style="flex:1;min-width:200px">
+          <button class="btn-mini" id="btn-correo-prueba">MANDARME UNA PRUEBA</button>
+        </div>
+        <div id="correo-prueba-msg" style="font-size:12px;margin-top:10px"></div>
+        <p style="font-size:11.5px;color:var(--grey-700);margin:12px 0 0;line-height:1.6">
+          Si esto falla, deja de funcionar recuperar contraseña, los avisos de propuesta
+          y las invitaciones — todo en silencio, sin ningún error visible.
+        </p>
+      </div>` : ''}
+
     <div class="seccion-titulo">Comisiones</div>
     <div class="bloque">
       <div class="campos-fila">
@@ -1557,6 +1588,30 @@ VISTAS.ajustes = async () => {
       <button class="btn-mini" id="btn-export">DESCARGAR CSV →</button>
     </div>
   `;
+
+  $('btn-correo-prueba')?.addEventListener('click', async () => {
+    const btn = $('btn-correo-prueba');
+    const msg = $('correo-prueba-msg');
+    const email = $('correo-prueba').value.trim();
+    if (!email) { msg.style.color = 'var(--magenta)'; msg.textContent = 'Escribe un correo.'; return; }
+    btn.disabled = true; btn.textContent = 'MANDANDO…';
+    try {
+      const r = await api('/diagnostico-correo/probar', {
+        method: 'POST', body: JSON.stringify({ email }),
+      });
+      msg.style.color = r.ok ? 'var(--lime)' : 'var(--magenta)';
+      // El error de Brevo se muestra tal cual: dice exactamente qué pasó
+      // —cuota agotada, remitente sin verificar, llave mala— y traducirlo a
+      // "no se pudo enviar" es justo lo que deja a alguien adivinando.
+      msg.textContent = r.ok
+        ? 'Enviado. Revisa tu bandeja y también spam.'
+        : r.error;
+    } catch (e) {
+      msg.style.color = 'var(--magenta)';
+      msg.textContent = e.message;
+    }
+    btn.disabled = false; btn.textContent = 'MANDARME UNA PRUEBA';
+  });
 
   $('btn-guardar-cfg').addEventListener('click', async () => {
     try {
