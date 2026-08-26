@@ -1292,9 +1292,24 @@ VISTAS.invitaciones = async () => {
         <div class="kpi__nota">Sumando las cuatro olas</div></div>
     </div>
 
+    ${d.cupo ? `
+      <div class="bloque" style="margin-bottom:18px;border-color:${d.cupo.libre > 0 ? 'var(--lime)' : 'var(--magenta)'}">
+        <div class="bloque__titulo">Cupo de hoy</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:13px;margin-bottom:8px">
+          <span>Enviados hoy: <strong>${d.cupo.usados}</strong></span>
+          <span>Tope: <strong>${d.cupo.tope}</strong></span>
+          <span>Quedan: <strong style="color:${d.cupo.libre > 0 ? 'var(--lime)' : 'var(--magenta)'}">${d.cupo.libre}</strong></span>
+        </div>
+        <p style="font-size:11.5px;color:var(--grey-700);margin:0;line-height:1.6">
+          ${d.cupo.libre > 0
+            ? 'Lo que no quepa hoy queda para mañana; el botón recorta la tanda solo.'
+            : 'Ya se llegó al tope. Los envíos de hoy se detienen aquí — vuelve mañana.'}
+          El tope se cambia en Ajustes.
+        </p>
+      </div>` : ''}
+
     <div class="bloque" style="margin-bottom:18px;font-size:12.5px;line-height:1.7">
-      <strong>Una ola por día, no todas de una.</strong> El proveedor deja 300 correos
-      diarios, pero el motivo de fondo es otro: un dominio nuevo que manda cientos de
+      <strong>Una ola por día, no todas de una.</strong> Un dominio nuevo que manda cientos de
       mensajes de golpe se ve como spam y esa reputación se le queda pegada. Las olas van
       de mayor a menor cercanía con la marca, para que las primeras en abrir sean las que
       ya te conocen.
@@ -1661,7 +1676,22 @@ VISTAS.ajustes = async () => {
           : ''}
         ${correo.motivo ? `
           <div class="aviso" style="margin-top:12px">${esc(correo.motivo)}</div>` : ''}
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px">
+        <div class="campos-fila" style="margin-top:14px">
+          <div class="campo">
+            <label>Tope de correos masivos al día</label>
+            <input id="cfg-por-dia" type="number" min="10" max="5000"
+                   value="${cfg.correos_por_dia ?? 100}">
+          </div>
+          <div style="flex:1;min-width:200px;font-size:11.5px;color:var(--grey-700);line-height:1.6;align-self:end;padding-bottom:8px">
+            Súbelo de a poco mientras el proveedor sea nuevo: 100 la primera semana,
+            200 la siguiente. Solo limita los envíos en tanda — recuperar contraseña
+            y los avisos de propuesta salen siempre.
+          </div>
+        </div>
+        <button class="btn-mini" id="btn-guardar-pordia" style="margin-top:4px">GUARDAR TOPE →</button>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:16px;
+                    padding-top:14px;border-top:1px solid var(--grey-900)">
           <input id="correo-prueba" placeholder="tu@correo.com" style="flex:1;min-width:200px">
           <button class="btn-mini" id="btn-correo-prueba">MANDARME UNA PRUEBA</button>
         </div>
@@ -1709,6 +1739,22 @@ VISTAS.ajustes = async () => {
       <button class="btn-mini" id="btn-export">DESCARGAR CSV →</button>
     </div>
   `;
+
+  $('btn-guardar-pordia')?.addEventListener('click', async () => {
+    const btn = $('btn-guardar-pordia');
+    btn.disabled = true; btn.textContent = 'GUARDANDO…';
+    try {
+      await api('/config', {
+        method: 'PATCH',
+        body: JSON.stringify({ correos_por_dia: Number($('cfg-por-dia').value) }),
+      });
+      btn.textContent = 'GUARDADO ✓';
+      setTimeout(() => { btn.disabled = false; btn.textContent = 'GUARDAR TOPE →'; }, 1500);
+    } catch (e) {
+      alert('No se pudo: ' + e.message);
+      btn.disabled = false; btn.textContent = 'GUARDAR TOPE →';
+    }
+  });
 
   $('btn-correo-prueba')?.addEventListener('click', async () => {
     const btn = $('btn-correo-prueba');

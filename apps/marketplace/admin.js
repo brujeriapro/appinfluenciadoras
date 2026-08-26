@@ -894,6 +894,46 @@ router.get('/export/comisiones.csv', async (req, res) => {
 
 const dormir = (ms) => new Promise(r => setTimeout(r, ms));
 
+// ── Cuánto correo masivo se puede mandar hoy ────────────────────────────────
+//
+// Los topes por tanda no protegen de nada: nada impide dar tres tandas de 250
+// el mismo día. Y eso es exactamente lo que tumbó el correo — 353 envíos en un
+// día con un plan de 300 dejó sin enlace a 16 creadoras.
+//
+// Un proveedor recién estrenado es aún más delicado: una cuenta nueva que
+// arranca disparando cientos parece spam aunque no lo sea, y el corte no avisa.
+// Lo que se hace es calentar el dominio: empezar bajo y subir de a poco.
+//
+// El tope NO toca los correos de uno en uno —recuperar contraseña, avisos de
+// propuesta, plazos—. Bloquear un reset por haber mandado muchas invitaciones
+// sería castigar a quien no tiene nada que ver.
+
+const TOPE_DIARIO_DEFAULT = 100;
+
+/** Cuántos correos masivos salieron hoy, contando lo que ya queda registrado. */
+async function correosMasivosDeHoy() {
+  const hoy = new Date().toISOString().slice(0, 10);
+  const desde = `${hoy}T00:00:00Z`;
+
+  const [invitaciones, segundos, empujones] = await Promise.all([
+    db.get('mk_invitaciones', { select: 'email', enviada_at: `gte.${desde}` }),
+    db.get('mk_invitaciones', { select: 'email', segundo_toque_at: `gte.${desde}` }),
+    db.get('mk_creadoras', { select: 'id', referidos_empujon_at: `gte.${desde}` }),
+  ]);
+  return invitaciones.length + segundos.length + empujones.length;
+}
+
+/**
+ * Cuánto cabe todavía hoy. Devuelve el lote recortado y qué queda para mañana.
+ */
+async function cupoDeHoy(pedido) {
+  const cfg = await db.getConfig();
+  const tope = Number(cfg.correos_por_dia ?? TOPE_DIARIO_DEFAULT);
+  const usados = await correosMasivosDeHoy();
+  const libre = Math.max(0, tope - usados);
+  return { tope, usados, libre, cabe: Math.min(pedido, libre) };
+}
+
 async function candidatasDeOla(estados) {
   const filas = await db.get('influencers', {
     select: 'id,nombre,email,status',
@@ -1082,6 +1122,9 @@ router.get('/invitaciones', async (req, res) => {
       enviadas_total: enviadas.length,
       se_registraron: seRegistraron,
       correo_listo: Boolean(correo.activo() || config.smtp.user),
+      // Cuánto cabe todavía hoy, para que la pantalla lo diga antes de que
+      // alguien apriete el botón y se lleve un 429.
+      cupo: await cupoDeHoy(0),
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1128,13 +1171,26 @@ router.post('/invitaciones/enviar', async (req, res) => {
     const previas = await db.get('mk_invitaciones', { select: 'email' });
     const todas = await candidatasDeOla(OLAS[ola].estados);
     const pendientes = pendientesDe(todas, previas);
-    const lote = pendientes.slice(0, limite);
+
+    // El tope del día manda sobre el de la tanda: lo que no cabe hoy queda
+    // para mañana en vez de gastarse la reputación del dominio de una.
+    const cupo = await cupoDeHoy(Math.min(limite, pendientes.length));
+    const lote = pendientes.slice(0, cupo.cabe);
+
+    if (!lote.length) {
+      return res.status(429).json({
+        error: `Ya salieron ${cupo.usados} correos hoy y el tope está en ${cupo.tope}. `
+             + 'Quedan para mañana: mandar de más es lo que hace que el proveedor corte.',
+        cupo,
+      });
+    }
 
     if (simulacro) {
       return res.json({
         simulacro: true, ola, en_la_ola: todas.length,
         ya_invitadas: todas.length - pendientes.length,
         se_enviarian: lote.length, quedarian: Math.max(0, pendientes.length - lote.length),
+        cupo,
         muestra: lote.slice(0, 8).map(c => ({ nombre: c.nombre, email: c.email })),
       });
     }
@@ -1440,11 +1496,19 @@ router.post('/invitaciones/segundo-toque', async (req, res) => {
 
     const registradas = new Set(creadoras.map(c => String(c.email || '').toLowerCase().trim()));
     const pendientes = invs.filter(i => !registradas.has(String(i.email || '').toLowerCase().trim()));
-    const lote = pendientes.slice(0, limite);
+
+    const cupo = await cupoDeHoy(Math.min(limite, pendientes.length));
+    const lote = pendientes.slice(0, cupo.cabe);
+    if (!lote.length) {
+      return res.status(429).json({
+        error: `Ya salieron ${cupo.usados} correos hoy y el tope está en ${cupo.tope}. Sigue mañana.`,
+        cupo,
+      });
+    }
 
     if (simulacro) {
       return res.json({
-        simulacro: true, sin_registrar: pendientes.length, se_enviarian: lote.length,
+        simulacro: true, sin_registrar: pendientes.length, se_enviarian: lote.length, cupo,
         quedarian: Math.max(0, pendientes.length - lote.length),
         muestra: lote.slice(0, 8).map(c => ({ nombre: c.nombre, email: c.email })),
       });
@@ -1516,11 +1580,19 @@ router.post('/referidos/empujon', async (req, res) => {
     });
 
     const pendientes = creadoras.filter(c => c.email && c.codigo_ref && (c.cupos_ref || 0) > 0);
-    const lote = pendientes.slice(0, limite);
+
+    const cupo = await cupoDeHoy(Math.min(limite, pendientes.length));
+    const lote = pendientes.slice(0, cupo.cabe);
+    if (!lote.length) {
+      return res.status(429).json({
+        error: `Ya salieron ${cupo.usados} correos hoy y el tope está en ${cupo.tope}. Sigue mañana.`,
+        cupo,
+      });
+    }
 
     if (simulacro) {
       return res.json({
-        simulacro: true, con_cupos: pendientes.length, se_enviarian: lote.length,
+        simulacro: true, con_cupos: pendientes.length, se_enviarian: lote.length, cupo,
         quedarian: Math.max(0, pendientes.length - lote.length),
         muestra: lote.slice(0, 8).map(c => ({ nombre: c.nombre_publico, cupos: c.cupos_ref })),
       });
