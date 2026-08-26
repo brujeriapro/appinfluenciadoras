@@ -21,6 +21,7 @@ const correo = require('./correo');
 const { OLAS, filtrarCandidatas, pendientesDe, filtroDeEstados } = require('./invitaciones');
 const referidos = require('./referidos');
 const whatsapp = require('./whatsapp');
+const { queLeFalta } = require('./ranking');
 
 const router = express.Router();
 
@@ -1230,6 +1231,123 @@ router.post('/invitaciones/enviar', async (req, res) => {
     console.log(`[invitaciones] Ola ${ola}: ${ok} enviadas, ${fallos} fallidas`);
   } catch (e) {
     console.error('[invitaciones]', e.message);
+  }
+});
+
+// ── Cómo subir en el catálogo ───────────────────────────────────────────────
+
+/**
+ * Le dice a cada creadora aprobada qué le falta para salir primero, y de paso
+ * le recuerda que puede traer creadoras.
+ *
+ * Es el correo que más sirve para crecer: no busca gente nueva afuera, sino que
+ * activa los cupos de referido de quien ya está adentro — que a su vez traen los
+ * suyos. Es la única palanca que crece sola.
+ *
+ * Cada correo lista SOLO lo que a esa persona le falta. Un correo genérico que
+ * le pide una foto a quien ya la subió enseña a no abrir los siguientes.
+ */
+router.get('/ranking/pendientes', async (req, res) => {
+  try {
+    const creadoras = await db.get('mk_creadoras', {
+      select: 'id,nombre_publico,email,foto_perfil_path,bio_corta,tarifa_min,tarifa_abierta,'
+            + 'metricas_estado,codigo_ref,cupos_ref,ranking_aviso_at',
+      estado_perfil: 'eq.aprobada',
+    });
+    const piezas = await db.getMuestrasDeVarias(creadoras.map(c => c.id));
+
+    const conFalta = creadoras.map(c => ({
+      id: c.id,
+      nombre_publico: c.nombre_publico,
+      ya_avisada: Boolean(c.ranking_aviso_at),
+      cupos: c.cupos_ref || 0,
+      falta: queLeFalta(c, (piezas[c.id] || []).length).map(f => f.clave),
+    }));
+
+    res.json({
+      aprobadas: creadoras.length,
+      pendientes: conFalta.filter(c => !c.ya_avisada).length,
+      ya_avisadas: conFalta.filter(c => c.ya_avisada).length,
+      cupos_sin_usar: creadoras.reduce((s, c) => s + (c.cupos_ref || 0), 0),
+      // Qué le falta al catálogo en conjunto: sirve para saber en qué insistir.
+      resumen: ['piezas', 'foto', 'tarifa', 'bio', 'metricas'].map(k => ({
+        que: k, cuantas: conFalta.filter(c => c.falta.includes(k)).length,
+      })),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/ranking/enviar', async (req, res) => {
+  try {
+    const simulacro = req.body.dry_run === true;
+    const limite = Math.min(Number(req.body.limite) || 200, 300);
+
+    if (!correo.activo() && !config.smtp.user) {
+      return res.status(400).json({ error: 'No hay correo configurado: no se enviaría nada' });
+    }
+
+    const creadoras = await db.get('mk_creadoras', {
+      select: 'id,nombre_publico,email,foto_perfil_path,bio_corta,tarifa_min,tarifa_abierta,'
+            + 'metricas_estado,codigo_ref,cupos_ref',
+      estado_perfil: 'eq.aprobada',
+      ranking_aviso_at: 'is.null',
+    });
+    const conCorreo = creadoras.filter(c => c.email);
+
+    const cupo = await cupoDeHoy(Math.min(limite, conCorreo.length));
+    const lote = conCorreo.slice(0, cupo.cabe);
+    if (!lote.length) {
+      return res.status(429).json({
+        error: cupo.libre === 0
+          ? `Ya salieron ${cupo.usados} correos hoy y el tope está en ${cupo.tope}. Sigue mañana.`
+          : 'No hay a quién enviarle: todas las aprobadas ya recibieron este correo.',
+        cupo,
+      });
+    }
+
+    const piezas = await db.getMuestrasDeVarias(lote.map(c => c.id));
+
+    if (simulacro) {
+      return res.json({
+        simulacro: true, se_enviarian: lote.length,
+        quedarian: Math.max(0, conCorreo.length - lote.length), cupo,
+        muestra: lote.slice(0, 6).map(c => ({
+          nombre: c.nombre_publico,
+          le_falta: queLeFalta(c, (piezas[c.id] || []).length).map(f => f.clave),
+          cupos: c.cupos_ref || 0,
+        })),
+      });
+    }
+
+    res.json({ ok: true, se_enviaran: lote.length, quedaran: Math.max(0, conCorreo.length - lote.length), cupo });
+
+    let ok = 0, fallos = 0;
+    for (const [i, c] of lote.entries()) {
+      try {
+        // Se marca antes de enviar: si el proceso muere a mitad, lo peor es que
+        // alguien no reciba el consejo. Al revés le llegaría dos veces.
+        await db.updateCreadora(c.id, { ranking_aviso_at: new Date().toISOString() });
+
+        const codigoRef = await referidos.asegurarCodigoDeCreadora(c);
+        const salio = await notificaciones.subirEnElCatalogo({
+          creadora: c,
+          falta: queLeFalta(c, (piezas[c.id] || []).length),
+          codigoRef,
+          cupos: c.cupos_ref || 0,
+        });
+        salio ? ok++ : fallos++;
+      } catch (e) {
+        fallos++;
+        console.error('[ranking]', c.nombre_publico, e.message);
+      }
+      if (i < lote.length - 1) await dormir(900);
+    }
+    console.log(`[ranking] ${ok} enviados, ${fallos} fallidos`);
+  } catch (e) {
+    console.error('[ranking/enviar]', e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 

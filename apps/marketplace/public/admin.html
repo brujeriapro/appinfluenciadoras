@@ -1244,7 +1244,7 @@ VISTAS.metricas = async () => {
 };
 
 VISTAS.invitaciones = async () => {
-  const [d, wa, seg, ref] = await Promise.all([
+  const [d, wa, seg, ref, rank] = await Promise.all([
     api('/invitaciones'),
     api('/whatsapp').catch(() => null),
     // Las dos palancas de recuperación. Si la migración mk_029 todavía no se
@@ -1252,6 +1252,7 @@ VISTAS.invitaciones = async () => {
     // el envío de olas es lo importante y no depende de ellas.
     api('/invitaciones/sin-registrar').catch(() => null),
     api('/referidos/dormidos').catch(() => null),
+    api('/ranking/pendientes').catch(() => null),
   ]);
 
   const filas = d.olas.map(o => `
@@ -1344,6 +1345,32 @@ VISTAS.invitaciones = async () => {
       <div class="bloque" style="margin-bottom:14px;font-size:12.5px;line-height:1.7">
         Estas dos no buscan gente nueva: van por las que ya tocaste. Son las más
         baratas que hay, porque el trabajo de convencerlas ya está hecho a medias.
+      </div>` : ''}
+
+    ${rank ? `
+      <div class="bloque" style="margin-bottom:14px">
+        <div class="bloque__titulo">Cómo subir en el catálogo · a las aprobadas</div>
+        <p style="font-size:12.5px;margin:0 0 12px;line-height:1.7">
+          A cada una le dice <strong>solo lo que a ella le falta</strong> para salir primero,
+          y le recuerda que puede traer creadoras. Es el correo que más sirve para crecer:
+          no busca gente nueva afuera, activa los cupos de quien ya está adentro — y esas
+          traen los suyos.
+          <br><br>
+          Hay <strong>${rank.cupos_sin_usar} invitaciones de referido sin usar</strong> entre
+          las ${rank.aprobadas} aprobadas.
+        </p>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin-bottom:12px">
+          <span>Pendientes: <strong style="color:var(--lime)">${rank.pendientes}</strong></span>
+          <span>Ya avisadas: <strong>${rank.ya_avisadas}</strong></span>
+        </div>
+        <div style="font-size:11.5px;color:var(--grey-700);margin-bottom:12px;line-height:1.7">
+          Qué le falta al catálogo:
+          ${(rank.resumen || []).map(r => `${r.cuantas} sin ${esc(r.que)}`).join(' · ')}
+        </div>
+        ${rank.pendientes ? `
+          <button class="btn-mini" data-rank-simular="1">VER A QUIÉN</button>
+          <button class="btn-mini" data-rank-enviar="1">ENVIAR TANDA</button>`
+          : '<span style="color:var(--grey-700);font-size:11px">ya se les avisó a todas</span>'}
       </div>` : ''}
 
     ${seg ? `
@@ -1600,6 +1627,9 @@ VISTAS.invitaciones = async () => {
               <div style="font-size:11.5px;color:var(--grey-700);line-height:1.8">
                 ${(r.muestra || []).map(m =>
                   `${esc(m.nombre || '(sin nombre)')}${m.email ? ' — ' + esc(m.email) : ''}${m.cupos ? ` · ${m.cupos} cupos` : ''}`
+                  // Qué le va a decir a cada una: sin esto, el simulacro solo
+                  // enseña nombres y no deja revisar el contenido antes de mandarlo.
+                  + (m.le_falta ? ` · le falta: ${esc(m.le_falta.join(', ') || 'nada')}` : '')
                 ).join('<br>')}
                 ${r.se_enviarian > 8 ? `<br>… y ${r.se_enviarian - 8} más` : ''}
               </div>
@@ -1644,6 +1674,13 @@ VISTAS.invitaciones = async () => {
     ruta: '/referidos/empujon',
     titulo: 'invitaciones de referido sin usar',
     etiqueta: 'creadoras aprobadas con cupos de referido libres',
+  });
+
+  conectarTanda({
+    attrSimular: 'data-rank-simular', attrEnviar: 'data-rank-enviar',
+    ruta: '/ranking/enviar',
+    titulo: 'cómo subir en el catálogo',
+    etiqueta: 'creadoras aprobadas, con lo que a cada una le falta',
   });
 };
 

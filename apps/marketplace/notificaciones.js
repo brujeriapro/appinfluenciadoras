@@ -583,6 +583,73 @@ function propuestaExpirada({ trato, marca }) {
   );
 }
 
+/**
+ * Cómo salir primero en el catálogo.
+ *
+ * Va solo a perfiles aprobados, y solo lista lo que a ESA creadora le falta:
+ * decirle que suba una foto a quien ya la tiene convierte el correo en ruido y
+ * enseña a no abrirlos.
+ *
+ * Todo lo que promete es cierto y verificable en el código: el orden del
+ * catálogo sale de `queTanCompleto()` en catalogo.js, que pesa tener trabajo
+ * publicado por encima de todo lo demás, y la prioridad —que sube al traer
+ * creadoras— desempata entre perfiles parecidos. No hay nada aquí que sea un
+ * incentivo inventado.
+ */
+function subirEnElCatalogo({ creadora, falta = [], codigoRef, cupos = 0 }) {
+  const nombre = String(creadora.nombre_publico || '').split(' ')[0] || 'Hola';
+  const urlPerfil = `${config.base_url}/creadora.html`;
+  const urlRef = codigoRef
+    ? `${config.base_url}/invitacion.html?ref=${encodeURIComponent(codigoRef)}`
+    : null;
+
+  const punto = (titulo, texto) => `
+    <div style="border-left:3px solid #0E0E0E;padding-left:14px;margin-bottom:16px">
+      <div style="font-weight:700;margin-bottom:4px">${esc(titulo)}</div>
+      <div style="font-size:12.5px;line-height:1.65;color:#4A4A50">${texto}</div>
+    </div>`;
+
+  const lista = falta.map(f => punto(f.titulo, f.texto)).join('');
+
+  return enviar(
+    creadora.email,
+    `${nombre}, así sales primero cuando una marca busca`,
+    `<p style="font-size:17px;font-weight:800;letter-spacing:-0.6px;line-height:1.3;margin:0 0 14px">
+       Tu perfil ya está publicado. Ahora se trata de que te vean.</p>
+
+     <p>Cuando una marca entra al catálogo no ve a todas en el mismo orden.
+     Primero salen los perfiles más completos: los que tienen trabajo publicado,
+     precio y una cara detrás. No es un algoritmo misterioso — es esto:</p>
+
+     ${lista || punto('Tu perfil está completo',
+        'Ya tienes todo lo que sube un perfil en el catálogo. Lo único que te queda '
+        + 'por hacer es lo de abajo.')}
+
+     ${urlRef && cupos > 0 ? `
+       <div style="border:2px solid #0E0E0E;background:#D6FF00;padding:16px 18px;margin:22px 0">
+         <div style="font-weight:800;letter-spacing:-0.3px;margin-bottom:8px">
+           TE QUEDAN ${cupos} ${cupos === 1 ? 'INVITACIÓN' : 'INVITACIONES'}</div>
+         <div style="font-size:12.5px;line-height:1.65">
+           Cada creadora que traigas y quede publicada <strong>te sube la prioridad</strong>,
+           que decide dos cosas concretas: quién ve las campañas primero cuando abramos
+           a las marcas, y quién sale antes entre perfiles parecidos.<br><br>
+           Este es tu enlace:
+           <span style="display:inline-block;background:#fff;border:1px solid #0E0E0E;padding:7px 10px;margin-top:8px;font-size:11.5px;word-break:break-all">${urlRef}</span>
+           <br><br>
+           <span style="font-size:11.5px;color:#3A3A3A">Funciona mejor mandárselo por
+           mensaje directo a dos personas que publicarlo en historias: entra quien de
+           verdad va a crear su perfil, y esas son las que te suman.</span>
+         </div>
+       </div>` : ''}
+
+     ${boton('IR A MI PERFIL', urlPerfil)}
+
+     <p style="margin-top:22px;font-size:11.5px;color:#7A7A7A;line-height:1.6">
+       Te llega porque tu perfil está publicado en Creators Manager.
+     </p>`
+  );
+}
+
 /** Enlace para volver a entrar. Sirve para creadoras y para marcas. */
 function resetClave({ email, token, lado }) {
   const pagina = lado === 'marca' ? 'registro.html' : 'creadora.html';
@@ -706,7 +773,7 @@ module.exports = {
   enviar, diagnostico, probar,
   invitacionCreadora, invitacionSegundoToque, activarReferidos,
   recordatorioPerfil, trajisteUna,
-  propuestaPorVencer, propuestaExpirada,
+  propuestaPorVencer, propuestaExpirada, subirEnElCatalogo,
   bienvenidaCreadora, avisoPerfilNuevo, avisoListaParaRevisar, perfilAprobado, resetClave,
   nuevaSolicitud, tratoAceptado, tratoRechazado,
   pagoRetenido, contenidoEntregado, contenidoAprobado, pagoLiberado,
