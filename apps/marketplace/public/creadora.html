@@ -758,12 +758,13 @@
       <button type="button" class="cambiar-modo" data-modo="olvide">Olvidé mi contraseña</button>
     </div>
 
-    <!-- Se dice antes de que falle, no solo después. La mayoría de creadoras
-         que no lograban entrar venían del Programa Creadoras y probaban esa
-         contraseña aquí; una lo intentó trece veces. -->
+    <!-- Se dice antes de que falle, no solo después: mucha gente llega
+         probando la contraseña de otra plataforma y la da por buena.
+         Nombrar de dónde vienen queda fuera a propósito — Creators Manager
+         es una marca aparte y no se cuelga de ninguna otra. -->
     <p class="pista" id="aviso-cuentas" style="margin-top:14px;line-height:1.6">
-      ¿Vienes del Programa Creadoras de Brujería Capilar? Tu cuenta aquí es
-      <strong>distinta</strong>, con su propia contraseña.
+      Tu cuenta de Creators Manager tiene su <strong>propia contraseña</strong>,
+      la que escogiste al registrarte aquí.
     </p>
   </form>
 </div>
@@ -1057,19 +1058,18 @@ $('login-form').addEventListener('submit', async (e) => {
 
     // Si la clave no cuadra, ofrecer la salida ahí mismo.
     //
-    // 13 de las 16 creadoras que quedaron bloqueadas también tienen cuenta en
-    // el Programa Creadoras de Brujería Capilar, y estaban entrando con ESA
-    // contraseña. Son sistemas distintos, así que el rechazo es correcto — pero
-    // decirles solo "contraseña incorrecta" las deja intentando la misma clave
-    // una y otra vez. Una de ellas lo hizo trece veces.
+    // Sin esto, quien llega probando la contraseña de otra plataforma la repite
+    // una y otra vez: una creadora lo intentó trece veces antes de rendirse.
+    // El camino de salida existía —"olvidé mi contraseña"— pero era un enlace
+    // pequeño al pie, y nadie lo ve cuando está convencido de que su clave es
+    // la correcta.
     //
     // El botón no confirma si el correo existe: aparece igual siempre, así que
     // no le dice nada a un extraño que esté probando direcciones.
     if (modo === 'login' && /incorrect/i.test(e.message)) {
       err.innerHTML = `${esc(e.message)}
         <div style="margin-top:10px;font-weight:400;color:#5A5A5A;font-size:11.5px;line-height:1.6">
-          Si tienes cuenta en el <strong>Programa Creadoras de Brujería Capilar</strong>,
-          esa contraseña no sirve aquí: son cuentas separadas.
+          Si no la recuerdas, te mandamos un enlace para crear una nueva.
         </div>
         <button type="button" id="ir-olvide" class="btn-portal btn-portal--sec"
                 style="margin-top:10px;width:100%">MÁNDAME UN ENLACE PARA ENTRAR</button>`;
