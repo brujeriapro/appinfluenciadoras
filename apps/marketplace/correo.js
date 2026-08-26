@@ -33,6 +33,18 @@ function partirRemitente(texto) {
     : { nombre: 'Creators Manager', email: String(texto || '').trim() };
 }
 
+/**
+ * La cabecera de ZeptoMail, venga la llave con prefijo o sin él.
+ *
+ * Su panel muestra el token unas veces solo y otras precedido de
+ * "Zoho-enczapikey". Copiar la línea entera es lo natural, y duplicar el
+ * prefijo da un error de autenticación que no dice nada sobre la causa.
+ */
+function llaveZepto() {
+  const k = String(config.zeptomail_api_key || '').trim();
+  return /^Zoho-enczapikey\s/i.test(k) ? k : `Zoho-enczapikey ${k}`;
+}
+
 const PROVEEDORES = {
   // Orden de preferencia: el primero con llave gana si nadie eligió.
   // ZeptoMail va antes que Brevo porque es el que conviene por precio; quien
@@ -49,7 +61,12 @@ const PROVEEDORES = {
         headers: {
           // El prefijo no es opcional y no es "Bearer": ZeptoMail rechaza la
           // llave sin él con un error que no explica por qué.
-          'Authorization': `Zoho-enczapikey ${config.zeptomail_api_key}`,
+          //
+          // Y su panel a veces muestra el token con el prefijo ya incluido, así
+          // que se acepta de las dos formas. Sin esto, copiar la línea completa
+          // —lo natural— produce "Zoho-enczapikey Zoho-enczapikey ..." y un
+          // fallo de autenticación imposible de adivinar mirando la variable.
+          'Authorization': llaveZepto(),
           'content-type': 'application/json',
           'accept': 'application/json',
         },

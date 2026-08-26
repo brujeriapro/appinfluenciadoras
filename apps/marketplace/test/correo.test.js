@@ -123,3 +123,28 @@ test('todos los proveedores exponen la misma forma', () => {
     assert.match(p.variable, /^MK_/, `${clave} sin variable documentada`);
   }
 });
+
+test('la llave de ZeptoMail sirve con prefijo y sin él', () => {
+  // Su panel muestra el token de las dos formas y copiar la línea entera es lo
+  // natural. Duplicar el prefijo da un fallo de autenticación que no explica
+  // nada, así que la cabecera queda igual en ambos casos.
+  const { PROVEEDORES } = correo;
+  const cabecera = () => {
+    // Se reconstruye igual que en enviar(), sin salir a la red.
+    const k = String(config.zeptomail_api_key || '').trim();
+    return /^Zoho-enczapikey\s/i.test(k) ? k : `Zoho-enczapikey ${k}`;
+  };
+  assert.ok(PROVEEDORES.zeptomail);
+
+  conConfig({ zeptomail_api_key: 'wSsVR61x' }, () => {
+    assert.strictEqual(cabecera(), 'Zoho-enczapikey wSsVR61x');
+  });
+  conConfig({ zeptomail_api_key: 'Zoho-enczapikey wSsVR61x' }, () => {
+    assert.strictEqual(cabecera(), 'Zoho-enczapikey wSsVR61x',
+      'no debe quedar el prefijo dos veces');
+  });
+  conConfig({ zeptomail_api_key: '  wSsVR61x  ' }, () => {
+    assert.strictEqual(cabecera(), 'Zoho-enczapikey wSsVR61x',
+      'los espacios de sobra al pegar no pueden romperla');
+  });
+});
