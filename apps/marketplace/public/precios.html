@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Precios · Creators Manager</title>
+<meta name="description" content="Planes de Creators Manager para marcas colombianas. Empieza gratis con 3 propuestas al mes. Sin permanencia y sin costo por buscar: el catálogo completo se ve en todos los planes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/tokens.css">
+<style>
+  /* Página de precios. El sistema visual vive en tokens.css; aquí solo lo
+     propio de esta pantalla. */
+
+  .header {
+    position: sticky; top: 0; z-index: 40;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 20px; flex-wrap: wrap;
+    padding: 14px var(--pad-x);
+    background: var(--ink);
+    border-bottom: 2px solid var(--border-dark);
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo__marca {
+    width: 26px; height: 26px; background: var(--lime);
+    display: grid; place-items: center;
+    color: var(--ink); font-family: var(--mono-title); font-weight: 800; font-size: 13px;
+  }
+  .logo__texto { font-family: var(--mono-title); font-weight: 800; font-size: 14.5px; letter-spacing: -0.5px; }
+  .nav { display: flex; align-items: center; gap: clamp(12px, 2vw, 26px); flex-wrap: wrap;
+         font-size: 13px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
+  .nav a { color: var(--off-white); border-bottom: 1px solid transparent; }
+  .nav a:hover { color: var(--lime); border-bottom-color: var(--lime); }
+
+  .intro { background: var(--ink); padding: clamp(38px, 5vw, 70px) var(--pad-x) clamp(30px, 4vw, 52px); }
+  .intro h1 { color: var(--lime); margin: 18px 0 0; max-width: 20ch; }
+  .intro .p { color: var(--grey-600); max-width: 58ch; margin-top: 18px; }
+
+  /* La promesa que hace distinta la estructura: buscar nunca se cobra. */
+  .promesa {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 2px; background: var(--border-dark);
+    border: 2px solid var(--border-dark); margin-top: clamp(26px, 3.5vw, 40px);
+  }
+  .promesa > div { background: var(--ink); padding: 20px 18px; }
+  .promesa__titulo { font-family: var(--mono-title); font-weight: 800; font-size: 13px;
+                     letter-spacing: -0.3px; color: var(--lime); margin-bottom: 8px; }
+  .promesa .p { font-size: 13px; margin: 0; max-width: none; }
+
+  /* El body de tokens.css es oscuro con texto claro, así que toda sección de
+     fondo claro tiene que invertir el color del texto explícitamente. Sin esto
+     los planes salen en gris pálido sobre blanco, ilegibles. */
+  .planes-seccion { padding: clamp(34px, 4.5vw, 60px) var(--pad-x);
+                    background: var(--off-white); color: var(--ink); }
+  .planes-seccion .p, .preguntas .p { color: var(--ink); }
+  .planes {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 2px; background: var(--ink); border: 2px solid var(--ink); margin-top: 26px;
+  }
+  .plan { background: #fff; color: var(--ink); padding: 26px 22px;
+          display: flex; flex-direction: column; }
+  .plan .plan__periodo { color: #6E6E76; }
+  /* El recomendado va en negro para que la vista caiga ahí primero. No es el
+     más caro a propósito: es el que le sirve a la mayoría. */
+  .plan--destacado { background: var(--ink); color: var(--off-white); }
+  .plan__cinta { font-family: var(--mono-title); font-size: 9.5px; font-weight: 800;
+                 letter-spacing: 1.2px; text-transform: uppercase;
+                 background: var(--lime); color: var(--ink);
+                 padding: 4px 8px; align-self: flex-start; margin-bottom: 12px; }
+  .plan__nombre { font-family: var(--mono-title); font-weight: 800; font-size: 17px;
+                  letter-spacing: -0.6px; }
+  .plan__precio { font-family: var(--mono-title); font-weight: 800;
+                  font-size: clamp(28px, 3.4vw, 40px); letter-spacing: -2px;
+                  margin: 14px 0 2px; line-height: 1; }
+  .plan--destacado .plan__precio { color: var(--lime); }
+  .plan__periodo { font-size: 11.5px; letter-spacing: 0.8px; text-transform: uppercase;
+                   color: var(--grey-700); }
+  .plan__para { font-size: 12.5px; line-height: 1.6; margin: 14px 0 0;
+                padding-top: 14px; border-top: 1px solid var(--border-2, #D8D8D4); }
+  .plan--destacado .plan__para { border-top-color: var(--border-dark); color: var(--grey-600); }
+  .plan__lista { list-style: none; padding: 0; margin: 16px 0 22px; display: grid; gap: 9px; }
+  .plan__lista li { font-size: 12.5px; line-height: 1.5; padding-left: 18px; position: relative; }
+  .plan__lista li::before { content: '·'; position: absolute; left: 4px; top: -2px;
+                            font-size: 18px; line-height: 1; color: var(--lime); }
+  .plan__lista li strong { font-weight: 700; }
+  .plan__btn { margin-top: auto; }
+
+  .btn-plan {
+    display: block; width: 100%; text-align: center; cursor: pointer;
+    font-family: var(--mono-title); font-weight: 800; font-size: 12px;
+    letter-spacing: 0.4px; text-transform: uppercase;
+    padding: 14px 16px; border: 2px solid var(--ink);
+    background: var(--ink); color: var(--lime);
+  }
+  .btn-plan:hover { background: #000; }
+  .btn-plan--sec { background: transparent; color: var(--ink); }
+  .btn-plan--sec:hover { background: var(--ink); color: var(--lime); }
+  .plan--destacado .btn-plan { background: var(--lime); color: var(--ink); border-color: var(--lime); }
+  .plan--destacado .btn-plan:hover { background: #fff; border-color: #fff; }
+  .btn-plan:disabled { opacity: .5; cursor: default; }
+
+  /* Comisión: es la parte del modelo que más se malinterpreta, así que va
+     explicada con un ejemplo en pesos y no solo con el porcentaje. */
+  .comision { padding: clamp(34px, 4.5vw, 60px) var(--pad-x); background: var(--ink); }
+  .comision__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+                    gap: 2px; background: var(--border-dark);
+                    border: 2px solid var(--border-dark); margin-top: 24px; }
+  .comision__grid > div { background: var(--ink); padding: 22px 20px; }
+  .cuenta { display: grid; gap: 8px; margin-top: 14px; font-size: 13.5px; }
+  .cuenta__fila { display: flex; justify-content: space-between; gap: 14px;
+                  padding-bottom: 8px; border-bottom: 1px solid var(--border-dark); }
+  .cuenta__fila:last-child { border-bottom: none; padding-top: 4px; }
+  .cuenta__fila--total { font-family: var(--mono-title); font-weight: 800; color: var(--lime); }
+  .cuenta__num { font-family: var(--mono-title); font-variant-numeric: tabular-nums; }
+
+  .preguntas { padding: clamp(34px, 4.5vw, 60px) var(--pad-x);
+               background: var(--off-white); color: var(--ink); }
+  .pregunta { border-top: 1px solid #D8D8D4; padding: 18px 0; }
+  .pregunta:last-child { border-bottom: 1px solid #D8D8D4; }
+  .pregunta__q { font-family: var(--mono-title); font-weight: 700; font-size: 14px;
+                 letter-spacing: -0.3px; margin: 0 0 8px; }
+  .pregunta .p { margin: 0; font-size: 13.5px; max-width: 70ch; }
+
+  .cierre { padding: clamp(34px, 4.5vw, 58px) var(--pad-x); background: var(--lime); text-align: center; }
+  .cierre h2 { color: var(--ink); margin: 0 auto; max-width: 18ch; }
+  .cierre__botones { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 24px; }
+
+  .aviso-pago { border: 2px solid var(--ink); background: #fff; padding: 14px 16px;
+                margin-top: 20px; font-size: 13px; line-height: 1.6; }
+
+  .pie { background: var(--ink); padding: 26px var(--pad-x); font-size: 12px; color: var(--grey-700); }
+  .pie a { color: var(--off-white); }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a class="logo" href="/">
+    <span class="logo__marca">C</span>
+    <span class="logo__texto">CREATORS MANAGER</span>
+  </a>
+  <nav class="nav">
+    <a href="/">[inicio]</a>
+    <a href="/#como">[cómo funciona]</a>
+    <a href="/creadora.html">[soy creadora]</a>
+    <a href="/registro.html">[crear cuenta]</a>
+  </nav>
+</header>
+
+<section class="intro">
+  <span class="tag tag--lime">{PRECIOS PARA MARCAS}</span>
+  <h1 class="h1">BUSCAR ES GRATIS<span class="punto">.</span> SIEMPRE<span class="punto">.</span></h1>
+  <p class="p p--lg">
+    Ves el catálogo completo en todos los planes, incluido el gratuito. Lo que define
+    tu plan es cuántas propuestas mandas al mes, porque es ahí donde de verdad te
+    servimos: cuando ya escogiste a quién quieres contratar.
+  </p>
+
+  <div class="promesa">
+    <div>
+      <div class="promesa__titulo">Nunca cobramos por mirar</div>
+      <p class="p">Otras plataformas te limitan las búsquedas o los perfiles que puedes
+      abrir. Eso solo te impide encontrar a la creadora por la que valdría la pena pagar.</p>
+    </div>
+    <div>
+      <div class="promesa__titulo">Sin permanencia</div>
+      <p class="p">Mes a mes. Si un mes no vas a hacer campañas, lo cancelas y vuelves
+      cuando lo necesites. No hay cláusula de salida.</p>
+    </div>
+    <div>
+      <div class="promesa__titulo">Empieza sin poner tarjeta</div>
+      <p class="p">El plan Explora es gratis y sirve para cerrar tus primeros tratos.
+      Solo pagas cuando el volumen se te quede corto.</p>
+    </div>
+  </div>
+</section>
+
+<section class="planes-seccion">
+  <span class="tag">{PLANES}</span>
+  <h2 class="h2" style="margin-top:16px;max-width:22ch">ESCOGE POR CUÁNTAS PROPUESTAS MANDAS<span class="punto">.</span></h2>
+  <div class="planes" id="planes">
+    <div class="plan"><p class="p">Cargando planes…</p></div>
+  </div>
+  <div id="aviso-pago"></div>
+</section>
+
+<section class="comision">
+  <span class="tag tag--lime">{LA COMISIÓN}</span>
+  <h2 class="h2" style="margin-top:16px;max-width:24ch;color:#fff">
+    APARTE DEL PLAN, UNA COMISIÓN POR TRATO CERRADO<span class="punto">.</span></h2>
+  <p class="p p--lg" style="color:var(--grey-600);max-width:60ch;margin-top:16px">
+    Es lo que paga el escrow: el dinero queda retenido hasta que la creadora entregue
+    y tú apruebes. Ninguna de las dos partes queda expuesta.
+  </p>
+
+  <div class="comision__grid">
+    <div>
+      <div class="promesa__titulo">Cómo se reparte</div>
+      <p class="p" style="font-size:13px">
+        La comisión se divide entre las dos partes: tú pagas un
+        <strong id="pct-marca">12</strong>% sobre el valor del trato y la creadora aporta
+        un <strong id="pct-creadora">8</strong>% de lo que recibe.
+      </p>
+      <p class="p" style="font-size:13px;margin-top:10px">
+        Los porcentajes se congelan al crear el trato: si cambian después, el tuyo
+        se respeta hasta cerrarlo.
+      </p>
+    </div>
+    <div>
+      <div class="promesa__titulo">Un trato de $500.000</div>
+      <div class="cuenta">
+        <div class="cuenta__fila">
+          <span>Tarifa de la creadora</span>
+          <span class="cuenta__num">$500.000</span>
+        </div>
+        <div class="cuenta__fila">
+          <span>Comisión de la plataforma</span>
+          <span class="cuenta__num" id="ej-comision">$60.000</span>
+        </div>
+        <div class="cuenta__fila cuenta__fila--total">
+          <span>Tú pagas</span>
+          <span class="cuenta__num" id="ej-total">$560.000</span>
+        </div>
+        <div class="cuenta__fila">
+          <span style="color:var(--grey-700)">Ella recibe</span>
+          <span class="cuenta__num" style="color:var(--grey-700)" id="ej-neto">$460.000</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="promesa__titulo">Qué incluye</div>
+      <ul class="plan__lista" style="margin-bottom:0">
+        <li>Pago retenido hasta que apruebes el contenido</li>
+        <li>Contrato y condiciones registrados antes de empezar</li>
+        <li>Historial de cumplimiento de cada creadora</li>
+        <li>Soporte si algo se sale del acuerdo</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="preguntas">
+  <span class="tag">{DUDAS FRECUENTES}</span>
+  <h2 class="h2" style="margin-top:16px;max-width:20ch">LO QUE SIEMPRE NOS PREGUNTAN<span class="punto">.</span></h2>
+
+  <div style="margin-top:24px">
+    <div class="pregunta">
+      <p class="pregunta__q">¿Puedo ver el catálogo antes de pagar?</p>
+      <p class="p">Sí, completo. Crear cuenta es gratis y no pide tarjeta. Ves todos los
+      perfiles, sus piezas de trabajo, sus tarifas y su historial de cumplimiento. El plan
+      solo limita cuántas propuestas mandas al mes.</p>
+    </div>
+    <div class="pregunta">
+      <p class="pregunta__q">¿Qué pasa si no uso todas mis propuestas?</p>
+      <p class="p">No se acumulan al mes siguiente. El contador vuelve a empezar con cada
+      ciclo de facturación.</p>
+    </div>
+    <div class="pregunta">
+      <p class="pregunta__q">¿Puedo cambiar de plan?</p>
+      <p class="p">Cuando quieras, desde tu panel. Si subes de plan, las propuestas nuevas
+      quedan disponibles de una.</p>
+    </div>
+    <div class="pregunta">
+      <p class="pregunta__q">¿La comisión se suma al plan?</p>
+      <p class="p">Sí, son dos cosas distintas: el plan te da capacidad para proponer, y la
+      comisión cubre el escrow de cada trato que efectivamente cierres. Si un mes no cierras
+      ninguno, no pagas comisión.</p>
+    </div>
+    <div class="pregunta">
+      <p class="pregunta__q">¿Y si la creadora no entrega?</p>
+      <p class="p">Tu dinero sigue retenido: no se libera hasta que apruebes el contenido.
+      Si no entrega, se devuelve. Además cada perfil muestra su historial real de entregas,
+      para que puedas verlo antes de contratar.</p>
+    </div>
+  </div>
+</section>
+
+<section class="cierre">
+  <h2 class="h2">EMPIEZA GRATIS Y PAGA CUANDO CREZCAS<span class="punto">.</span></h2>
+  <div class="cierre__botones">
+    <a href="/registro.html" class="btn btn--ink">CREAR CUENTA GRATIS →</a>
+    <a href="/" class="btn btn--ghost-dark">VER CÓMO FUNCIONA</a>
+  </div>
+</section>
+
+<footer class="pie">
+  Creators Manager es un servicio de COLBELLEZA LATAM S.A.S. · NIT 901.519.449-0 · Medellín, Colombia ·
+  <a href="/terminos">Términos y condiciones</a>
+</footer>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const COP = (n) => '$' + Number(n || 0).toLocaleString('es-CO', { maximumFractionDigits: 0 });
+
+// Quién es cada plan y para quién sirve.
+//
+// Esto vive aquí y no en la base porque es copy de venta, no configuración: el
+// precio y los topes sí vienen del servidor, para que la página nunca prometa
+// un número distinto al que se cobra.
+const RETRATO = {
+  demo: {
+    para: 'Para probar la plataforma y cerrar tus primeros tratos.',
+    extras: ['Catálogo completo, sin límite de perfiles', 'Escrow en cada trato', '1 campaña activa'],
+  },
+  emprende: {
+    para: 'Para marcas que trabajan con creadoras todos los meses.',
+    extras: ['Catálogo completo, sin límite de perfiles', 'Campañas ilimitadas', 'Historial de cumplimiento de cada creadora'],
+  },
+  marca: {
+    para: 'Para equipos de marketing con varias campañas a la vez.',
+    extras: ['Todo lo de Impulsa', 'Comparador de creadoras lado a lado', 'Campañas ilimitadas'],
+    destacado: true,
+  },
+  agencia: {
+    para: 'Para agencias que manejan varias marcas.',
+    // Sin repetir las propuestas: esa línea la pone sola la ficha desde
+    // propuestas_mes, y decirlo dos veces se lee como descuido.
+    extras: ['Varias marcas en una sola cuenta', 'Comparador de creadoras', 'Campañas ilimitadas'],
+  },
+};
+
+function planHTML(p) {
+  const r = RETRATO[p.clave] || { para: '', extras: [] };
+  const gratis = p.precio_mes <= 0;
+  const propuestas = p.propuestas_mes == null
+    ? 'Propuestas <strong>sin tope</strong>'
+    : `<strong>${p.propuestas_mes} propuestas</strong> al mes`;
+
+  return `
+  <div class="plan${r.destacado ? ' plan--destacado' : ''}">
+    ${r.destacado ? '<span class="plan__cinta">El más elegido</span>' : ''}
+    <div class="plan__nombre">${esc(p.nombre)}</div>
+    <div class="plan__precio">${gratis ? 'Gratis' : COP(p.precio_mes)}</div>
+    <div class="plan__periodo">${gratis ? 'Sin tarjeta' : 'Al mes · sin permanencia'}</div>
+    <p class="plan__para">${esc(r.para)}</p>
+    <ul class="plan__lista">
+      <li>${propuestas}</li>
+      ${r.extras.map(e => `<li>${esc(e)}</li>`).join('')}
+    </ul>
+    <div class="plan__btn">
+      ${gratis
+        ? '<a class="btn-plan btn-plan--sec" href="/registro.html">EMPEZAR GRATIS →</a>'
+        : `<button class="btn-plan" data-plan="${esc(p.clave)}">ELEGIR ${esc(p.nombre.toUpperCase())} →</button>`}
+    </div>
+  </div>`;
+}
+
+/**
+ * Llevar a alguien a pagar un plan.
+ *
+ * Comprar exige sesión de marca, así que si no la hay se manda a crear cuenta
+ * recordando qué plan quería. Cobrarle a alguien sin cuenta dejaría un pago sin
+ * a quién asignárselo.
+ */
+function irAComprar(clave) {
+  const token = sessionStorage.getItem('mk_marca');
+  if (!token) {
+    sessionStorage.setItem('mk_plan_deseado', clave);
+    location.href = '/registro.html?plan=' + encodeURIComponent(clave);
+    return;
+  }
+  location.href = '/panel.html#comprar=' + encodeURIComponent(clave);
+}
+
+(async () => {
+  try {
+    const d = await (await fetch('/api/landing/planes')).json();
+    if (d.error) throw new Error(d.error);
+
+    $('planes').innerHTML = d.planes.map(planHTML).join('');
+    $('planes').querySelectorAll('[data-plan]').forEach(b => {
+      b.addEventListener('click', () => irAComprar(b.dataset.plan));
+    });
+
+    // Las comisiones y el ejemplo salen de la configuración real, no de
+    // números escritos aquí: si mañana cambia la comisión, esta página no
+    // puede quedar prometiendo la vieja.
+    const pm = d.comision_marca_pct, pc = d.comision_creadora_pct;
+    $('pct-marca').textContent = pm;
+    $('pct-creadora').textContent = pc;
+
+    const base = 500000;
+    $('ej-comision').textContent = COP(base * pm / 100);
+    $('ej-total').textContent    = COP(base * (1 + pm / 100));
+    $('ej-neto').textContent     = COP(base * (1 - pc / 100));
+
+    if (!d.pagos_activos) {
+      $('aviso-pago').innerHTML = `
+        <div class="aviso-pago">
+          <strong>El pago en línea se está habilitando.</strong>
+          Mientras tanto, crea tu cuenta gratis y escríbenos: activamos tu plan a mano
+          el mismo día.
+        </div>`;
+      $('planes').querySelectorAll('[data-plan]').forEach(b => {
+        b.textContent = 'CREAR CUENTA →';
+        b.addEventListener('click', () => { location.href = '/registro.html'; }, { once: true });
+      });
+    }
+  } catch (e) {
+    $('planes').innerHTML = `
+      <div class="plan">
+        <p class="p">No pudimos cargar los planes en este momento.
+        <a href="/registro.html" style="text-decoration:underline">Crea tu cuenta gratis</a>
+        y los ves desde tu panel.</p>
+      </div>`;
+  }
+})();
+</script>
+</body>
+</html>

@@ -164,7 +164,7 @@
     <nav class="nav" id="nav">
       <a href="#como">[cómo funciona]</a>
       <a href="#banco">[banco]</a>
-      <a href="#precios">[precios]</a>
+      <a href="/precios.html">[precios]</a>
       <a href="#creadora">[creadoras]</a>
     </nav>
     <a href="/registro.html" class="btn btn--sm btn--header">PUBLICAR CAMPAÑA →</a>
@@ -365,32 +365,40 @@
   <!-- 8 · Precios -->
   <section id="precios" class="seccion seccion--ink">
     <span class="tag tag--lime">{PRECIOS}</span>
-    <h2 class="h2" style="margin-top:20px;max-width:24ch">GRATIS PUBLICAR. COMISIÓN SOLO AL CERRAR<span class="punto">.</span></h2>
-    <p class="p p--lg" style="margin-top:18px;max-width:56ch;color:var(--grey-600)">Sin planes ni fee de entrada. Cobramos un porcentaje sobre cada trato cerrado en la plataforma, ya incluido en el precio que ves.</p>
+    <!-- Decía "sin planes ni fee de entrada", que dejó de ser cierto cuando se
+         crearon los planes por propuesta. Una landing que promete un modelo y
+         un panel que cobra otro es la peor forma de recibir a una marca. -->
+    <h2 class="h2" style="margin-top:20px;max-width:24ch">BUSCAR ES GRATIS. SIEMPRE<span class="punto">.</span></h2>
+    <p class="p p--lg" style="margin-top:18px;max-width:56ch;color:var(--grey-600)">Ves el catálogo completo en todos los planes, incluido el gratuito. Lo que define tu plan es cuántas propuestas mandas al mes, más una comisión por cada trato que cierres.</p>
 
     <div class="grid-bordes precios">
       <div class="precio">
-        <div class="precio__label">MARCAS</div>
+        <div class="precio__label">EMPIEZA GRATIS</div>
         <div class="precio__cifra-fila">
-          <span class="precio__cifra" style="color:var(--lime)"><span id="comision-marca">12</span>%</span>
-          <span class="precio__sufijo">POR TRATO</span>
+          <span class="precio__cifra" style="color:var(--lime)">3</span>
+          <span class="precio__sufijo">PROPUESTAS AL MES</span>
         </div>
-        <p class="p">Publicar campañas, ver el banco completo y usar escrow: sin costo.</p>
+        <p class="p">Catálogo completo y escrow incluidos. Sin tarjeta y sin permanencia.</p>
       </div>
       <div class="precio">
-        <div class="precio__label">CREADORAS</div>
+        <div class="precio__label">CUANDO CREZCAS</div>
         <div class="precio__cifra-fila">
-          <span class="precio__cifra" style="color:var(--magenta)"><span id="comision-creadora">8</span>%</span>
-          <span class="precio__sufijo">DEL PAGO</span>
+          <span class="precio__cifra" style="color:var(--magenta)">$39.900</span>
         </div>
-        <p class="p">Perfil, métricas verificadas y cobro garantizado. Retiro a tu cuenta en 48 horas.</p>
+        <p class="p">Desde $39.900 al mes según cuántas propuestas necesites mandar.</p>
       </div>
       <div class="precio precio--azul">
-        <div class="precio__label">MARCAS GRANDES</div>
-        <div class="precio__convenir">A CONVENIR</div>
-        <p class="p">Volumen alto, campañas siempre activas y manager dedicado.</p>
+        <div class="precio__label">POR CADA TRATO</div>
+        <div class="precio__cifra-fila">
+          <span class="precio__cifra"><span id="comision-marca">12</span>%</span>
+          <span class="precio__sufijo">DE COMISIÓN</span>
+        </div>
+        <p class="p">Es lo que paga el escrow: tu dinero queda retenido hasta que apruebes.
+        La creadora aporta <span id="comision-creadora">8</span>% de su lado.</p>
       </div>
     </div>
+
+    <a href="/precios.html" class="btn btn--lime" style="margin-top:26px">VER TODOS LOS PLANES →</a>
   </section>
 
   <!-- 9 · Para creadoras -->
@@ -437,7 +445,7 @@
       <span class="logo__texto" style="font-size:12px;color:var(--off-white)">CREATORS MANAGER</span>
     </div>
     <div class="footer__links">
-      <a href="#precios">PRECIOS</a>
+      <a href="/precios.html">PRECIOS</a>
       <a href="#como">CÓMO FUNCIONA</a>
       <a href="#creadora">CREADORAS</a>
       <a href="/terminos">TÉRMINOS</a>

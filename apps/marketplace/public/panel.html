@@ -704,6 +704,28 @@ async function revisarPagoDeVuelta() {
   } catch (e) { /* si falla la consulta, el webhook igual va a confirmar */ }
 }
 
+/**
+ * Alguien eligió un plan en la página de precios y llegó aquí a pagarlo.
+ *
+ * Se abre el checkout de una en vez de dejarla en el panel buscando dónde
+ * pagar: ya tomó la decisión en la otra página, y hacerla repetirla es la
+ * forma más fácil de que se arrepienta.
+ */
+async function comprarPlanDelAncla() {
+  const m = location.hash.match(/#comprar=([\w-]+)/);
+  if (!m) return;
+  history.replaceState(null, '', location.pathname);
+  try {
+    const r = await apiPagos('/plan/' + m[1], { method: 'POST' });
+    location.href = r.url;
+  } catch (e) {
+    // Si el cobro no está habilitado o el plan no existe, se le muestra el
+    // muro con todas las opciones en vez de un error suelto.
+    alert(e.message);
+    mostrarMuro({ plan: E.plan?.plan, vistas: 0, tope: 0 });
+  }
+}
+
 async function cargarTratos() {
   try {
     E.tratos = await api('/tratos');
@@ -1107,7 +1129,7 @@ function pintarVacio(c) {
 <script src="/js/panel-ficha.js"></script>
 <script src="/js/panel-campanas.js"></script>
 <script>
-  arrancar().then(revisarPagoDeVuelta);
+  arrancar().then(revisarPagoDeVuelta).then(comprarPlanDelAncla);
 </script>
 </body>
 </html>

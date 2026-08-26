@@ -13,6 +13,7 @@
 
 const express = require('express');
 const db = require('./db');
+const wompi = require('./wompi');
 
 const router = express.Router();
 
@@ -76,6 +77,50 @@ router.get('/', async (req, res) => {
       banco: BANCO_DEMO,
       demo: true,
     });
+  }
+});
+
+/**
+ * Los planes, para la página de precios.
+ *
+ * Es público a propósito: una marca tiene que poder ver qué cuesta antes de
+ * crear una cuenta. Pedirle que se registre para saber el precio es la forma
+ * más rápida de perderla.
+ *
+ * Sale de la base y no del HTML para que cambiar un precio sea editar una fila,
+ * y para que la página nunca muestre un número distinto al que se le va a
+ * cobrar. Es el mismo problema que tenían las comisiones quemadas en el panel.
+ */
+router.get('/planes', async (req, res) => {
+  try {
+    const [planes, cfg] = await Promise.all([db.getPlanes(), db.getConfig()]);
+    res.json({
+      planes: (planes || [])
+        .filter(p => p.activo)
+        .sort((a, b) => (a.orden ?? 99) - (b.orden ?? 99))
+        .map(p => ({
+          clave: p.clave,
+          nombre: p.nombre,
+          precio_mes: Number(p.precio_mes),
+          propuestas_mes: p.propuestas_mes,   // null = sin tope
+          campanas_max: p.campanas_max,
+          comparador: Boolean(p.comparador),
+          multi_marca: Boolean(p.multi_marca),
+        })),
+      comision_marca_pct: Number(cfg.comision_marca_pct ?? 12),
+      comision_creadora_pct: Number(cfg.comision_creadora_pct ?? 8),
+      // Las dos condiciones, no una.
+      //
+      // `pagos_wompi_activos` es una decisión de negocio que se prende en la
+      // base; `wompi.disponible()` es si de verdad hay llaves en el entorno.
+      // Mirar solo la primera deja a la marca pulsando "Elegir plan" para
+      // recibir un 503 — que es exactamente lo que pasa si alguien prende el
+      // flag antes de cargar las credenciales en Railway.
+      pagos_activos: cfg.pagos_wompi_activos === true && wompi.disponible(),
+    });
+  } catch (e) {
+    console.error('[landing/planes]', e.message);
+    res.status(500).json({ error: 'No pudimos cargar los planes' });
   }
 });
 

@@ -62,6 +62,12 @@ app.get('/health', (req, res) => {
 
 app.use('/api/landing', require('./landing'));
 
+// Precios sin el .html: es la dirección que se pone en una cotización o en un
+// mensaje de WhatsApp, y "creatorsmanager.com/precios" se lee mejor.
+app.get('/precios', (req, res) => {
+  res.sendFile(require('path').join(__dirname, 'public', 'precios.html'));
+});
+
 app.get('/terminos', async (req, res) => {
   try {
     const cfg = await db.getConfig();
