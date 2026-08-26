@@ -757,6 +757,14 @@
       <button type="button" class="cambiar-modo" data-modo="primera">Nunca he creado mi contraseña</button>
       <button type="button" class="cambiar-modo" data-modo="olvide">Olvidé mi contraseña</button>
     </div>
+
+    <!-- Se dice antes de que falle, no solo después. La mayoría de creadoras
+         que no lograban entrar venían del Programa Creadoras y probaban esa
+         contraseña aquí; una lo intentó trece veces. -->
+    <p class="pista" id="aviso-cuentas" style="margin-top:14px;line-height:1.6">
+      ¿Vienes del Programa Creadoras de Brujería Capilar? Tu cuenta aquí es
+      <strong>distinta</strong>, con su propia contraseña.
+    </p>
   </form>
 </div>
 
@@ -874,6 +882,9 @@ function pintarModo() {
   document.querySelectorAll('.enlaces-login .cambiar-modo').forEach(b => {
     b.classList.toggle('oculto', b.dataset.modo === modo);
   });
+  // El aviso de las dos cuentas solo tiene sentido al entrar: en registro o en
+  // recuperación no aporta y estorba.
+  $('aviso-cuentas')?.classList.toggle('oculto', modo !== 'login');
   // Ya estando en el formulario de registro, el botón de registrarse sobra —y
   // el separador con él, o queda una raya suelta.
   const enRegistro = modo === 'registro';
@@ -1043,6 +1054,33 @@ $('login-form').addEventListener('submit', async (e) => {
     err.className = 'error';
     err.textContent = e.message;
     err.classList.remove('oculto');
+
+    // Si la clave no cuadra, ofrecer la salida ahí mismo.
+    //
+    // 13 de las 16 creadoras que quedaron bloqueadas también tienen cuenta en
+    // el Programa Creadoras de Brujería Capilar, y estaban entrando con ESA
+    // contraseña. Son sistemas distintos, así que el rechazo es correcto — pero
+    // decirles solo "contraseña incorrecta" las deja intentando la misma clave
+    // una y otra vez. Una de ellas lo hizo trece veces.
+    //
+    // El botón no confirma si el correo existe: aparece igual siempre, así que
+    // no le dice nada a un extraño que esté probando direcciones.
+    if (modo === 'login' && /incorrect/i.test(e.message)) {
+      err.innerHTML = `${esc(e.message)}
+        <div style="margin-top:10px;font-weight:400;color:#5A5A5A;font-size:11.5px;line-height:1.6">
+          Si tienes cuenta en el <strong>Programa Creadoras de Brujería Capilar</strong>,
+          esa contraseña no sirve aquí: son cuentas separadas.
+        </div>
+        <button type="button" id="ir-olvide" class="btn-portal btn-portal--sec"
+                style="margin-top:10px;width:100%">MÁNDAME UN ENLACE PARA ENTRAR</button>`;
+      $('ir-olvide').addEventListener('click', () => {
+        modo = 'olvide';
+        pintarModo();
+        // El correo que ya escribió se queda: volver a pedírselo es fricción
+        // gratis justo cuando está a punto de rendirse.
+        $('login-form').requestSubmit();
+      });
+    }
   } finally {
     btn.disabled = false;
     btn.textContent = textoOriginal;
