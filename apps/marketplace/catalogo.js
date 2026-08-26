@@ -42,10 +42,29 @@ async function anotarVista(marca_id, creadora_id) {
   }
 }
 
+/**
+ * Configuración que necesita el panel de la marca.
+ *
+ * Se llama /filtros por lo que era al principio, pero hoy alimenta el `E.cfg`
+ * entero del panel: los filtros del catálogo, el formulario de campaña y el
+ * modal de propuesta. Todo lo que el panel lea de `E.cfg` tiene que salir de
+ * aquí — si no, el control que dependa de esa clave se dibuja vacío.
+ *
+ * Así se rompió el selector de objetivo de campaña: la clave existía en
+ * mk_config con sus cuatro opciones, pero nunca viajaba al navegador.
+ *
+ * Las comisiones se mandan porque el modal de propuesta muestra el dinero en
+ * vivo. Sin ellas el frontend cae a 12/8 fijos, y el día que se cambie la
+ * comisión desde el panel admin la marca vería un total y pagaría otro.
+ *
+ * Nada de lo que sale por aquí es sensible: son las mismas cifras que la marca
+ * ve en pantalla al armar una propuesta.
+ */
 router.get('/filtros', async (req, res) => {
   try {
     const cfg = await db.getConfig();
     res.json({
+      // — Filtros del catálogo —
       // Taxonomía de dos niveles: la marca filtra por categoría (amplio) o
       // afina por subnicho.
       categorias: cfg.nichos || [],
@@ -59,6 +78,16 @@ router.get('/filtros', async (req, res) => {
         min: n.min,
         max: n.max,
       })),
+
+      // — Formulario de campaña —
+      objetivos_campana: cfg.objetivos_campana || [],
+      rango_tope_campana: cfg.rango_tope_campana || null,
+
+      // — Modal de propuesta —
+      rango_presupuesto: cfg.rango_presupuesto || null,
+      comision_marca_pct: cfg.comision_marca_pct,
+      comision_creadora_pct: cfg.comision_creadora_pct,
+      horas_responder: cfg.horas_responder,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
