@@ -187,7 +187,12 @@
 
     <div class="hero__ctas">
       <a href="/registro.html" class="btn btn--lime">SOY MARCA →</a>
-      <a href="/creadora.html#registro" class="btn btn--ghost">SOY CREADORA →</a>
+      <!-- Va al portal, no al registro. "Soy creadora" lo pulsan las dos: la que
+           ya tiene perfil y viene a entrar, y la que llega por primera vez. El
+           portal abre en el login y ofrece crear el perfil justo debajo, así
+           que sirve a las dos. Mandarlo directo al registro dejaba sin puerta a
+           quien ya está adentro, que es la mayoría de quien vuelve. -->
+      <a href="/creadora.html" class="btn btn--ghost">SOY CREADORA →</a>
       <span class="meta">SIN MENSUALIDAD / COMISIÓN SOLO AL CERRAR</span>
     </div>
 
@@ -400,7 +405,8 @@
           <div class="punto-num"><span>02</span><span>Sin exclusividad. Trabajas con las marcas que quieras.</span></div>
           <div class="punto-num"><span>03</span><span>Tu historial de desempeño sube tu tarifa con el tiempo.</span></div>
         </div>
-        <a href="/creadora.html" class="btn btn--ink" style="margin-top:26px">CREAR MI PERFIL →</a>
+        <!-- Este sí promete registro por su nombre, así que abre el registro. -->
+        <a href="/creadora.html#registro" class="btn btn--ink" style="margin-top:26px">CREAR MI PERFIL →</a>
       </div>
       <div class="fotos-grid">
         <div class="foto-slot foto-slot--alta">CREADORA GRABANDO</div>
@@ -421,7 +427,7 @@
     <h2 class="h2 h2--cta">ARMA TU PRIMERA<br>CAMPAÑA HOY<span class="punto">.</span></h2>
     <div class="cta-final__botones">
       <a href="/registro.html" class="btn btn--lime" style="padding:16px 30px">SOY MARCA →</a>
-      <a href="/creadora.html#registro" class="btn btn--ghost" style="padding:16px 30px">SOY CREADORA →</a>
+      <a href="/creadora.html" class="btn btn--ghost" style="padding:16px 30px">SOY CREADORA →</a>
     </div>
   </section>
 

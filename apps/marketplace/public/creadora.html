@@ -562,12 +562,16 @@
                  color: #9A9A9A; font-size: 10.5px; letter-spacing: 1px; }
   .separador-o::before, .separador-o::after { content: ""; flex: 1; height: 1px; background: #DDD; }
 
+  /* Va en contorno, no en sólido: junto al de entrar los dos eran negros con
+     texto lima y pesaban lo mismo, así que la pantalla no decía cuál era la
+     acción principal. Quien ya tiene cuenta entra; crear perfil es la salida
+     para quien no la tiene, y se ve como tal sin dejar de ser evidente. */
   .btn-registrarme {
-    width: 100%; background: var(--ink); color: var(--lime); border: 2px solid var(--ink);
+    width: 100%; background: transparent; color: var(--ink); border: 2px solid var(--ink);
     font-family: var(--mono-title); font-weight: 800; font-size: 13px; letter-spacing: -0.2px;
     padding: 14px 16px; cursor: pointer;
   }
-  .btn-registrarme:hover { background: #000; }
+  .btn-registrarme:hover { background: var(--ink); color: var(--lime); }
   .btn-registrarme:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 
   .cambiar-modo { background: none; border: none; color: #5A5A5A; font-size: 10.5px;
@@ -646,8 +650,11 @@
 <!-- ── Login ──────────────────────────────────────────────────────────────── -->
 <div class="login-wrap" id="login-wrap">
   <form class="login" id="login-form">
-    <h1 id="login-titulo">Mi portal</h1>
-    <p id="login-sub">CREATORS MANAGER</p>
+    <!-- Este es el estado que ve casi todo el mundo: pintarModo() solo corre al
+         cambiar de modo, así que lo escrito aquí manda al cargar. Tiene que
+         coincidir con TEXTOS.login o la pantalla se contradice sola. -->
+    <h1 id="login-titulo">Entrar a mi portal</h1>
+    <p id="login-sub">CON TU CORREO Y CONTRASEÑA</p>
 
     <!-- Campos que solo pide el registro -->
     <div id="campos-registro" class="oculto">
@@ -721,8 +728,13 @@
       Crear mi perfil de creadora →
     </button>
 
+    <!-- "Ya tengo perfil, es mi primera vez" mandaba a la gente equivocada aquí.
+         Quien tiene perfil y contraseña lee "ya tengo perfil", entra, y se
+         encuentra pidiéndole que cree una contraseña que ya tiene. Esta opción
+         es solo para el caso raro de que el equipo le haya creado el perfil y
+         ella nunca haya puesto clave, así que ahora lo dice tal cual. -->
     <div class="enlaces-login">
-      <button type="button" class="cambiar-modo" data-modo="primera">Ya tengo perfil, es mi primera vez</button>
+      <button type="button" class="cambiar-modo" data-modo="primera">Nunca he creado mi contraseña</button>
       <button type="button" class="cambiar-modo" data-modo="olvide">Olvidé mi contraseña</button>
     </div>
   </form>
@@ -816,7 +828,10 @@ let modo = 'login';
 let TARIFA_ABIERTA = false;
 
 const TEXTOS = {
-  login:     { titulo: 'Mi portal',        sub: 'CREATORS MANAGER',              btn: 'ENTRAR →' },
+  // "Mi portal" no le decía a nadie qué hacer aquí: quien llegaba con su cuenta
+  // ya creada no reconocía que este formulario era para entrar, y terminaba en
+  // el botón de crear perfil o en "ya tengo perfil", que es otra cosa.
+  login:     { titulo: 'Entrar a mi portal', sub: 'CON TU CORREO Y CONTRASEÑA',  btn: 'ENTRAR →' },
   registro:  { titulo: 'Crear mi perfil',  sub: 'GRATIS · SIN EXCLUSIVIDAD',  btn: 'CREAR MI PERFIL →' },
   primera:   { titulo: 'Crear contraseña', sub: 'PARA QUIEN YA TIENE PERFIL', btn: 'CREAR Y ENTRAR →' },
   olvide:    { titulo: 'Recuperar acceso', sub: 'TE MANDAMOS UN ENLACE',      btn: 'ENVIARME EL ENLACE →' },
@@ -942,10 +957,17 @@ if (location.hash.startsWith('#recuperar=')) {
 
 // Quien llega desde la invitación no tiene cuenta todavía: abrirle la pantalla
 // de "entra con tu correo y contraseña" es pedirle datos que no existen.
-if (location.hash === '#registro') {
-  modo = 'registro';
-  pintarModo();
+function abrirModoDelHash() {
+  if (location.hash === '#registro') {
+    modo = 'registro';
+    pintarModo();
+  }
 }
+abrirModoDelHash();
+
+// Cambiar solo el hash no recarga la página, así que sin esto un enlace a
+// #registro pulsado desde el propio portal no haría nada visible.
+window.addEventListener('hashchange', abrirModoDelHash);
 
 $('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
