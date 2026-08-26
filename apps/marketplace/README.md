@@ -37,7 +37,10 @@ npm test               # 47 pruebas: comisiones, máquina de estados, tarifas y 
 | `MK_CODIGOS_INVITACION` | no* | Códigos separados por coma. Sin esto, ninguna marca puede registrarse |
 | `MK_BASE_URL` | no | URL pública, para los links de los correos |
 | `MK_SMTP_USER` / `MK_SMTP_PASS` | no | Gmail del remitente. **No usar el de Brujería** |
-| `MK_BREVO_API_KEY` | sí en Railway | Llave de la API de Brevo. **Railway bloquea SMTP saliente**, así que desde ahí el correo solo sale por la API web. Con esta llave puesta, las `MK_SMTP_*` se ignoran salvo `MK_SMTP_FROM` |
+| `MK_ZEPTOMAIL_API_KEY` | una de las tres | Llave de ZeptoMail (Zoho). **La opción recomendada por precio.** |
+| `MK_BREVO_API_KEY` | una de las tres | Llave de Brevo. Funciona, pero es la más cara al escalar |
+| `MK_RESEND_API_KEY` | una de las tres | Llave de Resend |
+| `MK_CORREO_PROVEEDOR` | no | `zeptomail`, `brevo` o `resend`. Solo hace falta si hay varias llaves puestas y quieres forzar una |
 | `MK_SMTP_HOST` | no | Servidor SMTP, ej. `smtp.zoho.com`. Sin esto se asume Gmail |
 | `MK_SMTP_PORT` | no | Por defecto `465` (SSL). Con 587 usa STARTTLS |
 | `MK_SMTP_FROM` | no | Por defecto `Creators Manager <no-reply@creatorsmanager.com>` |
@@ -203,6 +206,20 @@ Las creadoras eligen su país al registrarse (20 opciones: Latinoamérica hispan
 Eso está dicho explícitamente en la interfaz (`moneda_unica`), y no es un detalle cosmético: sin esa aclaración, alguien en México pone "500.000" pensando en pesos mexicanos y termina en un reclamo por una diferencia de 20 a 1.
 
 Multi-moneda de verdad exige conversión, pagos internacionales y repensar el escrow. Es un proyecto aparte, no una columna más.
+
+## El correo
+
+**Railway bloquea el SMTP saliente**, así que el correo solo sale por API web. `correo.js` aísla al proveedor: cambiar de uno a otro es poner otra llave en el entorno, sin tocar `notificaciones.js`.
+
+Si hay varias llaves, gana la primera en el orden de `PROVEEDORES` (ZeptoMail → Resend → Brevo) salvo que `MK_CORREO_PROVEEDOR` diga otra cosa. Ese orden no es alfabético: pone primero el más barato, para que agregar una llave nueva surta efecto sin tener que acordarse de una segunda variable.
+
+**El precio importa más de lo que parece.** A 10.000 correos al mes la diferencia entre uno y otro es de un orden de magnitud, y el volumen de este sistema sube con cada creadora: bienvenida, aprobación, recordatorios, avisos de propuesta, plazos.
+
+Amazon SES es más barato que todos ellos (alrededor de $0,10 por millar) pero no está implementado: firmar sus peticiones exige el SDK de AWS y sacar la cuenta del sandbox. Vale la pena cuando el volumen lo justifique.
+
+⚠️ **El envío falla en silencio a propósito** — un correo caído no puede tumbar un registro — así que un problema aquí es invisible hasta que alguien se queja. La pestaña **Ajustes** del panel admin abre con el estado del correo, los créditos que quedan y un botón para mandarse una prueba que devuelve el error real del proveedor.
+
+Así se detectó que 57 solicitudes de recuperar contraseña —de solo 17 personas, intentándolo 3 y 4 veces— nunca llegaron a su destino.
 
 ## Métricas declaradas y verificadas
 

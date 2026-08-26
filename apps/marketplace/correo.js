@@ -1,0 +1,214 @@
+// De qué proveedor sale el correo.
+//
+// Existe para que cambiar de proveedor sea poner una llave distinta en el
+// entorno, no reescribir el sistema de notificaciones. El precio a un mismo
+// volumen varía mucho —ZeptoMail cuesta alrededor de una décima parte de Brevo
+// a 10.000 correos al mes— y eso es demasiado dinero para dejarlo enterrado en
+// una función.
+//
+// Todos hacen lo mismo: reciben destinatario, asunto y HTML, y devuelven true o
+// lanzan con el mensaje real del proveedor. Ese mensaje importa: dice si la
+// cuota se acabó, si el remitente no está verificado o si la llave está mal, y
+// traducirlo a "no se pudo enviar" deja a quien opera adivinando.
+//
+// Amazon SES no está aquí a propósito. Es el más barato de todos (alrededor de
+// $0,10 por cada mil correos) pero firmar sus peticiones exige el SDK de AWS y
+// sacar la cuenta del sandbox. Vale la pena cuando el volumen lo justifique;
+// hoy no compensa la complejidad.
+
+const fetch = require('node-fetch');
+const config = require('./config');
+
+/**
+ * Convierte "Nombre <correo@dominio>" en las partes que piden las APIs.
+ *
+ * Se recorta también lo de dentro de los signos: el grupo captura hasta el ">"
+ * y una variable de entorno con un espacio de más dejaría "hola@ejemplo.com "
+ * como dirección, que el proveedor rechaza sin decir que sobra un espacio.
+ */
+function partirRemitente(texto) {
+  const m = String(texto || '').match(/^\s*(.*?)\s*<\s*([^>]+?)\s*>\s*$/);
+  return m
+    ? { nombre: (m[1] || '').trim() || 'Creators Manager', email: m[2].trim() }
+    : { nombre: 'Creators Manager', email: String(texto || '').trim() };
+}
+
+const PROVEEDORES = {
+  // Orden de preferencia: el primero con llave gana si nadie eligió.
+  // ZeptoMail va antes que Brevo porque es el que conviene por precio; quien
+  // quiera seguir en Brevo teniendo ambas llaves lo dice con MK_CORREO_PROVEEDOR.
+  zeptomail: {
+    nombre: 'ZeptoMail',
+    llave: () => config.zeptomail_api_key,
+    variable: 'MK_ZEPTOMAIL_API_KEY',
+
+    async enviar({ para, asunto, html, remitente }) {
+      const de = partirRemitente(remitente);
+      const r = await fetch('https://api.zeptomail.com/v1.1/email', {
+        method: 'POST',
+        headers: {
+          // El prefijo no es opcional y no es "Bearer": ZeptoMail rechaza la
+          // llave sin él con un error que no explica por qué.
+          'Authorization': `Zoho-enczapikey ${config.zeptomail_api_key}`,
+          'content-type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: JSON.stringify({
+          from: { address: de.email, name: de.nombre },
+          to: [{ email_address: { address: para } }],
+          subject: asunto,
+          htmlbody: html,
+        }),
+      });
+      if (!r.ok) {
+        const detalle = await r.text().catch(() => '');
+        throw new Error(`ZeptoMail respondió ${r.status}: ${detalle.slice(0, 300)}`);
+      }
+      return true;
+    },
+
+    // ZeptoMail no expone los créditos restantes por API, así que lo único que
+    // se puede comprobar sin gastar un envío es que la llave tenga forma válida.
+    async estado() {
+      const k = config.zeptomail_api_key;
+      return {
+        creditos_restantes: null,
+        nota: k.length < 20
+          ? 'La llave parece incompleta.'
+          : 'ZeptoMail no informa cuántos créditos quedan. Míralo en su panel.',
+      };
+    },
+  },
+
+  resend: {
+    nombre: 'Resend',
+    llave: () => config.resend_api_key,
+    variable: 'MK_RESEND_API_KEY',
+
+    async enviar({ para, asunto, html, remitente }) {
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${config.resend_api_key}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ from: remitente, to: [para], subject: asunto, html }),
+      });
+      if (!r.ok) {
+        const detalle = await r.text().catch(() => '');
+        throw new Error(`Resend respondió ${r.status}: ${detalle.slice(0, 300)}`);
+      }
+      return true;
+    },
+
+    async estado() {
+      return {
+        creditos_restantes: null,
+        nota: 'Resend no informa el consumo por API. Míralo en su panel.',
+      };
+    },
+  },
+
+  brevo: {
+    nombre: 'Brevo',
+    llave: () => config.brevo_api_key,
+    variable: 'MK_BREVO_API_KEY',
+
+    async enviar({ para, asunto, html, remitente }) {
+      const de = partirRemitente(remitente);
+      const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': config.brevo_api_key,
+          'content-type': 'application/json',
+          'accept': 'application/json',
+        },
+        body: JSON.stringify({
+          sender: { name: de.nombre, email: de.email },
+          to: [{ email: para }],
+          subject: asunto,
+          htmlContent: html,
+        }),
+      });
+      if (!r.ok) {
+        const detalle = await r.text().catch(() => '');
+        throw new Error(`Brevo respondió ${r.status}: ${detalle.slice(0, 300)}`);
+      }
+      return true;
+    },
+
+    /** Brevo sí dice cuántos correos quedan, que es lo que más veces falla. */
+    async estado() {
+      const r = await fetch('https://api.brevo.com/v3/account', {
+        headers: { 'api-key': config.brevo_api_key, 'accept': 'application/json' },
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(`Brevo rechazó la llave (HTTP ${r.status}). ${d?.message || ''}`.trim());
+
+      const planes = Array.isArray(d.plan) ? d.plan : [];
+      const correo = planes.find(p => p.type === 'free' || p.credits != null) || {};
+      return {
+        cuenta: d.email || null,
+        plan: correo.type || null,
+        creditos_restantes: correo.credits ?? null,
+        nota: correo.credits === 0
+          ? 'Se acabaron los correos del día. Brevo los repone cada 24 horas; mientras '
+            + 'tanto no sale ninguno, ni siquiera los de recuperar contraseña.'
+          : null,
+      };
+    },
+  },
+};
+
+/** El proveedor que se va a usar ahora mismo, o null si no hay ninguno listo. */
+function activo() {
+  const elegido = config.correo_proveedor;
+  if (elegido && PROVEEDORES[elegido]) {
+    return PROVEEDORES[elegido].llave() ? { clave: elegido, ...PROVEEDORES[elegido] } : null;
+  }
+  for (const [clave, p] of Object.entries(PROVEEDORES)) {
+    if (p.llave()) return { clave, ...p };
+  }
+  return null;
+}
+
+/** Envía por el proveedor activo. Lanza con el mensaje real si algo falla. */
+async function enviar({ para, asunto, html, remitente }) {
+  const p = activo();
+  if (!p) throw new Error('No hay proveedor de correo configurado');
+  return p.enviar({ para, asunto, html, remitente });
+}
+
+/**
+ * Qué proveedor está activo y si puede mandar.
+ *
+ * Nunca lanza: es una pantalla de diagnóstico y tiene que poder mostrar el
+ * problema en vez de convertirse en otro.
+ */
+async function diagnostico() {
+  const p = activo();
+  if (!p) {
+    const configurables = Object.values(PROVEEDORES).map(x => x.variable).join(', ');
+    return {
+      ok: false,
+      motivo: `No hay ningún proveedor configurado. Pon una de estas variables: ${configurables}.`,
+    };
+  }
+
+  try {
+    const e = await p.estado();
+    return {
+      ok: e.creditos_restantes == null || e.creditos_restantes > 0,
+      via: p.nombre,
+      elegido_a_mano: Boolean(config.correo_proveedor),
+      disponibles: Object.entries(PROVEEDORES)
+        .filter(([, x]) => x.llave()).map(([, x]) => x.nombre),
+      ...e,
+      motivo: e.nota || null,
+    };
+  } catch (err) {
+    return { ok: false, via: p.nombre, motivo: err.message };
+  }
+}
+
+module.exports = { enviar, diagnostico, activo, PROVEEDORES, partirRemitente };

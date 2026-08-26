@@ -17,6 +17,7 @@ const { rangoAlcance, resumirAlcance } = require('./comisiones');
 const wompi = require('./wompi');
 const { subirMuestra, borrarMuestra } = require('./muestras');
 const notificaciones = require('./notificaciones');
+const correo = require('./correo');
 const { OLAS, filtrarCandidatas, pendientesDe, filtroDeEstados } = require('./invitaciones');
 const referidos = require('./referidos');
 const whatsapp = require('./whatsapp');
@@ -1080,7 +1081,7 @@ router.get('/invitaciones', async (req, res) => {
       olas,
       enviadas_total: enviadas.length,
       se_registraron: seRegistraron,
-      correo_listo: Boolean(config.brevo_api_key || config.smtp.user),
+      correo_listo: Boolean(correo.activo() || config.smtp.user),
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -1120,7 +1121,7 @@ router.post('/invitaciones/enviar', async (req, res) => {
     const simulacro = req.body.dry_run === true;
 
     if (!OLAS[ola]) return res.status(400).json({ error: 'Ola inválida (1 a 4)' });
-    if (!config.brevo_api_key && !config.smtp.user) {
+    if (!correo.activo() && !config.smtp.user) {
       return res.status(400).json({ error: 'No hay correo configurado: no se enviaría nada' });
     }
 
@@ -1280,7 +1281,7 @@ router.post('/invitaciones/segundo-toque', async (req, res) => {
     const limite = Math.min(Number(req.body.limite) || 200, 300);
     const simulacro = req.body.dry_run === true;
 
-    if (!config.brevo_api_key && !config.smtp.user) {
+    if (!correo.activo() && !config.smtp.user) {
       return res.status(400).json({ error: 'No hay correo configurado: no se enviaría nada' });
     }
 
@@ -1360,7 +1361,7 @@ router.post('/referidos/empujon', async (req, res) => {
     const limite = Math.min(Number(req.body.limite) || 200, 300);
     const simulacro = req.body.dry_run === true;
 
-    if (!config.brevo_api_key && !config.smtp.user) {
+    if (!correo.activo() && !config.smtp.user) {
       return res.status(400).json({ error: 'No hay correo configurado: no se enviaría nada' });
     }
 

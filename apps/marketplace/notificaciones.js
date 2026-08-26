@@ -14,6 +14,7 @@
 const nodemailer = require('nodemailer');
 const config = require('./config');
 const fetch = require('node-fetch');
+const correo = require('./correo');
 const { formatearCOP } = require('./comisiones');
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -54,29 +55,15 @@ function remitente() {
 }
 
 /** Envío por la API web de Brevo. Es el camino que funciona desde Railway. */
+// Qué proveedor manda el correo vive en correo.js, no aquí: cambiarlo es poner
+// otra llave en el entorno. Este archivo solo se ocupa de qué dice cada mensaje.
 async function enviarPorApi(para, asunto, cuerpoHTML) {
-  const r = await fetch('https://api.brevo.com/v3/smtp/email', {
-    method: 'POST',
-    headers: {
-      'api-key': config.brevo_api_key,
-      'content-type': 'application/json',
-      'accept': 'application/json',
-    },
-    body: JSON.stringify({
-      sender: remitente(),
-      to: [{ email: para }],
-      subject: asunto,
-      htmlContent: plantilla(cuerpoHTML),
-    }),
+  return correo.enviar({
+    para,
+    asunto,
+    html: plantilla(cuerpoHTML),
+    remitente: config.smtp.remitente,
   });
-
-  if (!r.ok) {
-    // El cuerpo del error de Brevo dice exactamente qué pasó —remitente sin
-    // verificar, llave inválida, cuota agotada—. Sin él, depurar es adivinar.
-    const detalle = await r.text().catch(() => '');
-    throw new Error(`Brevo respondió ${r.status}: ${detalle.slice(0, 300)}`);
-  }
-  return true;
 }
 
 async function enviar(para, asunto, cuerpoHTML) {
@@ -86,7 +73,7 @@ async function enviar(para, asunto, cuerpoHTML) {
   }
 
   try {
-    if (config.brevo_api_key) {
+    if (correo.activo()) {
       await enviarPorApi(para, asunto, cuerpoHTML);
       return true;
     }
@@ -121,63 +108,35 @@ async function enviar(para, asunto, cuerpoHTML) {
  * Brevo son 300 correos al día, y una tanda de invitaciones se los come.
  */
 async function diagnostico() {
-  if (!config.brevo_api_key) {
-    return {
-      ok: false,
-      via: config.smtp.user ? 'smtp' : 'ninguna',
-      motivo: config.smtp.user
-        ? 'No hay MK_BREVO_API_KEY: se intenta por SMTP, que Railway bloquea.'
-        : 'No hay ni MK_BREVO_API_KEY ni SMTP. No sale ningún correo.',
-    };
-  }
+  const d = await correo.diagnostico();
+  if (d.ok || d.via) return { ...d, remitente: config.smtp.remitente };
 
-  try {
-    const r = await fetch('https://api.brevo.com/v3/account', {
-      headers: { 'api-key': config.brevo_api_key, 'accept': 'application/json' },
-    });
-    const d = await r.json().catch(() => ({}));
-
-    if (!r.ok) {
-      return {
-        ok: false, via: 'brevo',
-        motivo: `Brevo rechazó la llave (HTTP ${r.status}). ${d?.message || ''}`.trim(),
-      };
-    }
-
-    // Brevo devuelve los créditos dentro de plan[]. El de tipo "free" es el que
-    // manda en la cuenta gratuita.
-    const planes = Array.isArray(d.plan) ? d.plan : [];
-    const correo = planes.find(p => p.type === 'free' || p.credits != null) || {};
-    const restantes = correo.credits ?? null;
-
-    return {
-      ok: restantes === null || restantes > 0,
-      via: 'brevo',
-      cuenta: d.email || null,
-      remitente: remitente(),
-      creditos_restantes: restantes,
-      plan: correo.type || null,
-      motivo: restantes === 0
-        ? 'Se acabaron los correos del día. Brevo los repone cada 24 horas; '
-          + 'mientras tanto no sale ninguno, ni siquiera los de recuperar contraseña.'
-        : null,
-    };
-  } catch (e) {
-    return { ok: false, via: 'brevo', motivo: e.message };
-  }
+  // Sin proveedor por API queda el SMTP, que en Railway no sirve: bloquean los
+  // puertos de salida. Conviene decirlo con nombre y apellido en vez de dejar a
+  // alguien peleando con credenciales que nunca iban a funcionar.
+  return {
+    ...d,
+    via: config.smtp.user ? 'smtp' : 'ninguna',
+    motivo: config.smtp.user
+      ? 'Solo hay SMTP configurado, y Railway bloquea los puertos de salida: no sale nada. '
+        + d.motivo
+      : d.motivo,
+  };
 }
 
 /** Manda un correo de prueba y devuelve el error real si falla. */
 async function probar(para) {
   if (!para) return { ok: false, error: 'Falta el correo de destino' };
+  const p = correo.activo();
+  if (!p) return { ok: false, error: 'No hay proveedor de correo configurado' };
   try {
-    if (!config.brevo_api_key) return { ok: false, error: 'No hay MK_BREVO_API_KEY configurada' };
-    await enviarPorApi(para, 'Prueba de correo · Creators Manager',
-      '<p>Si estás leyendo esto, el correo del marketplace está saliendo bien.</p>');
-    return { ok: true };
+    await enviarPorApi(para, `Prueba de correo · ${p.nombre}`,
+      `<p>Si estás leyendo esto, el correo del marketplace está saliendo bien por
+       <strong>${p.nombre}</strong>.</p>`);
+    return { ok: true, via: p.nombre };
   } catch (e) {
     // A diferencia de enviar(), aquí el error sube: es justo lo que se vino a ver.
-    return { ok: false, error: e.message };
+    return { ok: false, via: p.nombre, error: e.message };
   }
 }
 

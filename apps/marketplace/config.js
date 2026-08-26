@@ -53,6 +53,19 @@ const config = {
   // bloquea. Si no está, se cae al SMTP de siempre.
   brevo_api_key: process.env.MK_BREVO_API_KEY || '',
 
+  // Proveedor de correo.
+  //
+  // Se cambia sin tocar código: basta poner la llave del que se quiera usar.
+  // Si hay varias, MK_CORREO_PROVEEDOR decide cuál manda; si no, gana el
+  // primero que tenga llave en el orden de correo.js.
+  //
+  // El precio a 10.000 correos al mes cambia mucho entre uno y otro
+  // —ZeptoMail cuesta cerca de una décima parte de Brevo— y por eso esto es
+  // configuración y no una decisión enterrada en el código.
+  correo_proveedor: (process.env.MK_CORREO_PROVEEDOR || '').toLowerCase().trim(),
+  zeptomail_api_key: process.env.MK_ZEPTOMAIL_API_KEY || '',
+  resend_api_key: process.env.MK_RESEND_API_KEY || '',
+
   // WhatsApp Cloud API. Sin esto configurado, el panel muestra el envío por
   // WhatsApp como no disponible en vez de fallar al intentarlo.
   whatsapp: {

@@ -28,6 +28,7 @@
 const db = require('../db');
 const config = require('../config');
 const notificaciones = require('../notificaciones');
+const correo = require('../correo');
 const { OLAS, filtrarCandidatas, pendientesDe, filtroDeEstados } = require('../invitaciones');
 
 const args = process.argv.slice(2);
@@ -96,7 +97,7 @@ async function main() {
     process.exit(1);
   }
 
-  if (!config.brevo_api_key && !config.smtp.user) {
+  if (!correo.activo() && !config.smtp.user) {
     console.error('No hay correo configurado (MK_BREVO_API_KEY). No se enviaría nada.');
     process.exit(1);
   }
