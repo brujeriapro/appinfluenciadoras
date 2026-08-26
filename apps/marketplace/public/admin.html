@@ -1028,7 +1028,15 @@ VISTAS.marcas = async () => {
 // ── Vista: Invitaciones ─────────────────────────────────────────────────────
 
 VISTAS.invitaciones = async () => {
-  const [d, wa] = await Promise.all([api('/invitaciones'), api('/whatsapp').catch(() => null)]);
+  const [d, wa, seg, ref] = await Promise.all([
+    api('/invitaciones'),
+    api('/whatsapp').catch(() => null),
+    // Las dos palancas de recuperación. Si la migración mk_029 todavía no se
+    // corrió, estas rutas fallan y la pantalla debe seguir funcionando igual:
+    // el envío de olas es lo importante y no depende de ellas.
+    api('/invitaciones/sin-registrar').catch(() => null),
+    api('/referidos/dormidos').catch(() => null),
+  ]);
 
   const filas = d.olas.map(o => `
     <tr>
@@ -1099,6 +1107,58 @@ VISTAS.invitaciones = async () => {
     </div>
 
     <div id="resultado-inv"></div>
+
+    ${(seg || ref) ? `
+      <div class="seccion-titulo" style="margin-top:34px">Recuperar lo que ya está sembrado</div>
+      <div class="bloque" style="margin-bottom:14px;font-size:12.5px;line-height:1.7">
+        Estas dos no buscan gente nueva: van por las que ya tocaste. Son las más
+        baratas que hay, porque el trabajo de convencerlas ya está hecho a medias.
+      </div>` : ''}
+
+    ${seg ? `
+      <div class="bloque" style="margin-bottom:14px">
+        <div class="bloque__titulo">Recibieron la invitación y nunca crearon su perfil</div>
+        <p style="font-size:12.5px;margin:0 0 12px;line-height:1.7">
+          <strong>${seg.sin_registrar}</strong> personas abrieron un día ocupado y no volvieron.
+          No dijeron que no. Este segundo mensaje no repite el argumento —ya lo leyeron—
+          sino que quita la fricción: cuánto toma, que es gratis, y que quien no tenga
+          perfil no aparece cuando lleguen las marcas.
+          <br><br>
+          Se manda <strong>una sola vez por persona</strong>. Insistir dos veces con lo mismo
+          no convence y sí quema el dominio.
+        </p>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin-bottom:12px">
+          <span>Sin registrar: <strong>${seg.sin_registrar}</strong></span>
+          <span>Pendientes: <strong style="color:var(--lime)">${seg.pendientes_de_segundo_toque}</strong></span>
+          <span>Ya recontactadas: <strong>${seg.ya_recontactadas}</strong></span>
+        </div>
+        ${seg.pendientes_de_segundo_toque ? `
+          <button class="btn-mini" data-seg-simular="1">VER A QUIÉN</button>
+          <button class="btn-mini" data-seg-enviar="1">ENVIAR TANDA</button>`
+          : '<span style="color:var(--grey-700);font-size:11px">no hay nadie pendiente</span>'}
+      </div>` : ''}
+
+    ${ref ? `
+      <div class="bloque" style="margin-bottom:14px">
+        <div class="bloque__titulo">Invitaciones de referido sin usar</div>
+        <p style="font-size:12.5px;margin:0 0 12px;line-height:1.7">
+          Cada creadora aprobada puede traer dos, y hay <strong>${ref.cupos_sin_usar} cupos
+          intactos</strong>. No es que no quieran: el enlace viaja en el correo de bienvenida,
+          se lee una vez y se olvida. Esto solo vuelve a ponérselo enfrente.
+          <br><br>
+          Es la palanca que puede crecer sola, porque cada nueva creadora trae sus
+          propios dos cupos.
+        </p>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin-bottom:12px">
+          <span>Con cupos libres: <strong>${ref.con_cupos_libres}</strong></span>
+          <span>Cupos sin usar: <strong style="color:var(--lime)">${ref.cupos_sin_usar}</strong></span>
+          <span>Pendientes de aviso: <strong>${ref.pendientes_de_empujon}</strong></span>
+        </div>
+        ${ref.pendientes_de_empujon ? `
+          <button class="btn-mini" data-ref-simular="1">VER A QUIÉN</button>
+          <button class="btn-mini" data-ref-enviar="1">ENVIAR TANDA</button>`
+          : '<span style="color:var(--grey-700);font-size:11px">ya se les avisó a todas</span>'}
+      </div>` : ''}
 
     ${wa ? `
       <div class="seccion-titulo" style="margin-top:34px">Por WhatsApp</div>
@@ -1287,6 +1347,72 @@ VISTAS.invitaciones = async () => {
           </div>`;
       } catch (e) { alert('No se pudo: ' + e.message); b.disabled = false; b.textContent = 'ENVIAR TANDA'; }
     });
+  });
+
+  // ── Las dos palancas de recuperación ──
+  //
+  // Mismo patrón que las olas: simular primero, enviar después, y avisar que
+  // le escribe a gente real. Se comparte la lógica porque la única diferencia
+  // entre las cuatro es la ruta y el texto.
+  const conectarTanda = ({ attrSimular, attrEnviar, ruta, titulo, etiqueta }) => {
+    contenido().querySelectorAll(`[${attrSimular}]`).forEach(b => {
+      b.addEventListener('click', async () => {
+        b.disabled = true; b.textContent = 'MIRANDO…';
+        try {
+          const r = await api(ruta, { method: 'POST', body: JSON.stringify({ dry_run: true }) });
+          caja().innerHTML = `
+            <div class="bloque" style="margin-top:16px">
+              <div class="seccion-titulo" style="margin-top:0">Simulacro · ${titulo}</div>
+              <p style="font-size:12.5px">Se enviarían <strong>${r.se_enviarian}</strong> mensajes.
+              ${r.quedarian ? `Quedarían <strong>${r.quedarian}</strong> para después.` : ''}
+              No se ha mandado nada todavía.</p>
+              <div style="font-size:11.5px;color:var(--grey-700);line-height:1.8">
+                ${(r.muestra || []).map(m =>
+                  `${esc(m.nombre || '(sin nombre)')}${m.email ? ' — ' + esc(m.email) : ''}${m.cupos ? ` · ${m.cupos} cupos` : ''}`
+                ).join('<br>')}
+                ${r.se_enviarian > 8 ? `<br>… y ${r.se_enviarian - 8} más` : ''}
+              </div>
+            </div>`;
+        } catch (e) { alert('No se pudo: ' + e.message); }
+        b.disabled = false; b.textContent = 'VER A QUIÉN';
+      });
+    });
+
+    contenido().querySelectorAll(`[${attrEnviar}]`).forEach(b => {
+      b.addEventListener('click', async () => {
+        const aviso = `Vas a escribirle a personas reales: ${etiqueta}.`
+          + String.fromCharCode(10, 10)
+          + 'No se puede deshacer y nadie lo recibe dos veces.'
+          + String.fromCharCode(10, 10) + '¿Seguimos?';
+        if (!confirm(aviso)) return;
+        b.disabled = true; b.textContent = 'ENVIANDO…';
+        try {
+          const r = await api(ruta, { method: 'POST', body: JSON.stringify({}) });
+          caja().innerHTML = `
+            <div class="bloque" style="margin-top:16px;border-color:var(--lima)">
+              <div class="seccion-titulo" style="margin-top:0">Enviando ${r.se_enviaran} mensajes</div>
+              <p style="font-size:12.5px">Salen de a uno con pausa — toma unos minutos.
+              Puedes cerrar esto: sigue corriendo en el servidor.
+              ${r.quedaran ? `<br>Quedan <strong>${r.quedaran}</strong> para después.` : ''}
+              <br><br>Recarga en un rato para ver el conteo actualizado.</p>
+            </div>`;
+        } catch (e) { alert('No se pudo: ' + e.message); b.disabled = false; b.textContent = 'ENVIAR TANDA'; }
+      });
+    });
+  };
+
+  conectarTanda({
+    attrSimular: 'data-seg-simular', attrEnviar: 'data-seg-enviar',
+    ruta: '/invitaciones/segundo-toque',
+    titulo: 'segundo toque',
+    etiqueta: 'invitadas que nunca crearon su perfil',
+  });
+
+  conectarTanda({
+    attrSimular: 'data-ref-simular', attrEnviar: 'data-ref-enviar',
+    ruta: '/referidos/empujon',
+    titulo: 'invitaciones de referido sin usar',
+    etiqueta: 'creadoras aprobadas con cupos de referido libres',
   });
 };
 

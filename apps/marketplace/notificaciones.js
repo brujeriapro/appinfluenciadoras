@@ -397,6 +397,115 @@ function trajisteUna({ creadora, nombreReferida, restantes, prioridad, traidas }
   );
 }
 
+/**
+ * Segundo toque a quien recibió la invitación y nunca creó su perfil.
+ *
+ * De las invitaciones enviadas se registró una de cada tres. Las otras dos no
+ * dijeron que no: la mayoría abrió el correo un día ocupado y no volvió. Por
+ * eso este mensaje no repite el argumento de venta —ya lo leyó— sino que quita
+ * la fricción: dice cuánto toma, que es gratis y que el cupo no dura para
+ * siempre.
+ *
+ * La urgencia es real y por eso se puede escribir: cuando se abra a las marcas,
+ * quien no tenga perfil publicado no aparece en las búsquedas. No es una fecha
+ * inventada para apurar.
+ */
+function invitacionSegundoToque({ email, nombre, codigoRef }) {
+  const saludo = nombre ? `${String(nombre).split(' ')[0]},` : 'Hola,';
+  const urlPropia = `${config.base_url}/invitacion.html`;
+  const urlParaCompartir = codigoRef
+    ? `${urlPropia}?ref=${encodeURIComponent(codigoRef)}`
+    : urlPropia;
+
+  return enviar(
+    email,
+    'Tu cupo en Creators Manager sigue reservado',
+    `<p style="font-size:13px;color:#5A5A5A;margin:0 0 16px">${esc(saludo)}</p>
+
+     <p style="font-size:17px;font-weight:800;letter-spacing:-0.6px;line-height:1.3;margin:0 0 14px">
+       Todavía no has creado tu perfil.</p>
+
+     <p>Te escribimos hace unos días para invitarte al prelanzamiento de
+     <strong>Creators Manager</strong> en Colombia. Tu cupo sigue ahí, pero queremos
+     ser claras sobre por qué vale la pena hacerlo ahora y no después.</p>
+
+     <div style="border-left:3px solid #0E0E0E;padding-left:14px;margin:18px 0">
+       <p style="margin:0 0 10px"><strong>Toma unos minutos.</strong> Tu Instagram, en qué
+       eres buena y un par de piezas de tu trabajo. Nada más.</p>
+       <p style="margin:0 0 10px"><strong>No tienes que poner precios si no quieres.</strong>
+       Puedes dejar tu tarifa abierta a negociación y definirla trato por trato.</p>
+       <p style="margin:0"><strong>Es gratis y no tiene mensualidad.</strong> Ni ahora ni
+       cuando salgamos del prelanzamiento.</p>
+     </div>
+
+     <p>Cuando abramos a las marcas, ellas van a buscar en el catálogo de perfiles
+     publicados. <strong>Quien no esté, no aparece.</strong> Esa es toda la prisa que hay.</p>
+
+     ${boton('CREAR MI PERFIL', urlPropia)}
+
+     ${codigoRef ? `
+     <div style="border:2px solid #0E0E0E;background:#D6FF00;padding:14px 16px;margin-top:20px">
+       <div style="font-weight:800;letter-spacing:-0.3px;margin-bottom:6px">TUS DOS INVITACIONES SIGUEN AHÍ</div>
+       <div style="font-size:12.5px;line-height:1.65">
+         Puedes traer a dos creadoras que tú elijas. Este es tu enlace:<br>
+         <span style="display:inline-block;background:#fff;border:1px solid #0E0E0E;padding:6px 9px;margin-top:8px;font-size:11.5px;word-break:break-all">${urlParaCompartir}</span>
+       </div>
+     </div>` : ''}
+
+     <p style="margin-top:24px;font-size:11px;color:#7A7A7A;line-height:1.6">
+       Creators Manager es un servicio de COLBELLEZA LATAM S.A.S., NIT 901.519.449-0,
+       Medellín, Colombia. Si prefieres no participar, ignora este mensaje y no volveremos
+       a escribirte por este tema.
+     </p>`,
+  );
+}
+
+/**
+ * Empujón a quien ya está adentro para que use sus dos invitaciones.
+ *
+ * Hay cientos de cupos de referido sin usar porque nadie los ha pedido: el
+ * enlace viaja en el correo de bienvenida, se lee una vez y se olvida. Este
+ * mensaje existe solo para volver a poner el enlace enfrente.
+ *
+ * No promete nada que no sea cierto. Lo que gana es prioridad —un orden real en
+ * el catálogo y en el aviso de campañas— y eso es exactamente lo que dice.
+ */
+function activarReferidos({ creadora, codigoRef, restantes, traidas = 0 }) {
+  const nombre = String(creadora.nombre_publico || '').split(' ')[0] || 'Hola';
+  const url = `${config.base_url}/invitacion.html?ref=${encodeURIComponent(codigoRef)}`;
+
+  return enviar(
+    creadora.email,
+    `${nombre}, te quedan ${restantes} invitaciones sin usar`,
+    `<p style="font-size:17px;font-weight:800;letter-spacing:-0.6px;line-height:1.3;margin:0 0 14px">
+       Tienes ${restantes} ${restantes === 1 ? 'invitación' : 'invitaciones'} sin usar.</p>
+
+     <p>Tu perfil ya está en Creators Manager. Lo que casi nadie está usando es la otra
+     parte del cupo: <strong>puedes traer creadoras que tú elijas</strong>, y entran
+     directo al prelanzamiento sin lista de espera.</p>
+
+     ${traidas ? `<p>Ya trajiste a ${traidas === 1 ? 'una' : traidas}. Te ${restantes === 1 ? 'queda una' : `quedan ${restantes}`}.</p>` : ''}
+
+     <div style="border:2px solid #0E0E0E;background:#D6FF00;padding:15px 17px;margin:20px 0">
+       <div style="font-weight:800;letter-spacing:-0.3px;margin-bottom:7px">TU ENLACE</div>
+       <div style="font-size:12.5px;line-height:1.65">
+         Pásaselo a quien quieras que entre contigo:<br>
+         <span style="display:inline-block;background:#fff;border:1px solid #0E0E0E;padding:7px 10px;margin-top:8px;font-size:11.5px;word-break:break-all">${url}</span>
+       </div>
+     </div>
+
+     <p><strong>Qué ganas tú.</strong> Cada creadora que traigas y quede publicada te sube
+     la prioridad, que decide dos cosas concretas: quién ve las campañas primero cuando
+     abramos a las marcas, y quién sale antes en el catálogo entre perfiles parecidos.</p>
+
+     <p style="font-size:12.5px;color:#5A5A5A">Una recomendación: funciona mejor mandárselo
+     a dos personas por mensaje directo que publicarlo en tus historias. Entra quien de
+     verdad va a crear su perfil, y esas son las que te suman.</p>
+
+     ${boton('VER MI PERFIL', `${config.base_url}/creadora.html`)}`
+  );
+}
+
 /** Enlace para volver a entrar. Sirve para creadoras y para marcas. */
 function resetClave({ email, token, lado }) {
   const pagina = lado === 'marca' ? 'registro.html' : 'creadora.html';
@@ -518,7 +627,8 @@ function pagoLiberado({ trato, creadora }) {
 
 module.exports = {
   enviar,
-  invitacionCreadora, recordatorioPerfil, trajisteUna,
+  invitacionCreadora, invitacionSegundoToque, activarReferidos,
+  recordatorioPerfil, trajisteUna,
   bienvenidaCreadora, avisoPerfilNuevo, avisoListaParaRevisar, perfilAprobado, resetClave,
   nuevaSolicitud, tratoAceptado, tratoRechazado,
   pagoRetenido, contenidoEntregado, contenidoAprobado, pagoLiberado,

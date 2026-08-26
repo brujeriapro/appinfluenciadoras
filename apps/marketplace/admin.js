@@ -1032,7 +1032,10 @@ router.post('/whatsapp/enviar', async (req, res) => {
 /** Cuántas van y cuántas faltan, por ola. */
 router.get('/invitaciones', async (req, res) => {
   try {
-    const previas = await db.get('mk_invitaciones', { select: 'email,enviada_at,registrada_at' });
+    const [previas, creadoras] = await Promise.all([
+      db.get('mk_invitaciones', { select: 'email,enviada_at' }),
+      db.get('mk_creadoras', { select: 'email' }),
+    ]);
 
     const olas = [];
     for (const [n, ola] of Object.entries(OLAS)) {
@@ -1044,10 +1047,23 @@ router.get('/invitaciones', async (req, res) => {
       });
     }
 
+    // Cuántas invitadas terminaron creando su perfil.
+    //
+    // Se cruza contra mk_creadoras en vez de leer `registrada_at`, que existe
+    // en la tabla pero nunca se escribe: el KPI marcaba 0 desde el principio
+    // aunque casi cien personas se hubieran registrado, y ese es justamente el
+    // número que dice si vale la pena mandar la siguiente ola.
+    //
+    // El cruce además funciona hacia atrás, sin tener que rellenar la columna.
+    const registradas = new Set(creadoras.map(c => String(c.email || '').toLowerCase().trim()));
+    const enviadas = previas.filter(p => p.enviada_at);
+    const seRegistraron = enviadas
+      .filter(p => registradas.has(String(p.email || '').toLowerCase().trim())).length;
+
     res.json({
       olas,
-      enviadas_total: previas.filter(p => p.enviada_at).length,
-      se_registraron: previas.filter(p => p.registrada_at).length,
+      enviadas_total: enviadas.length,
+      se_registraron: seRegistraron,
       correo_listo: Boolean(config.brevo_api_key || config.smtp.user),
     });
   } catch (e) {
@@ -1141,6 +1157,172 @@ router.post('/invitaciones/enviar', async (req, res) => {
     console.log(`[invitaciones] Ola ${ola}: ${ok} enviadas, ${fallos} fallidas`);
   } catch (e) {
     console.error('[invitaciones]', e.message);
+  }
+});
+
+/**
+ * Segundo toque: quién recibió invitación y nunca creó su perfil.
+ *
+ * De cada tres invitadas se registró una. Las otras dos son el grupo más barato
+ * que hay para crecer: ya saben qué es esto y ya pasaron el filtro de "vale la
+ * pena invitarla". Solo no volvieron.
+ *
+ * Se manda una sola vez por persona; `segundo_toque_at` es lo que lo garantiza.
+ * Insistir dos veces con el mismo argumento no convence a nadie y sí quema el
+ * dominio.
+ */
+router.get('/invitaciones/sin-registrar', async (req, res) => {
+  try {
+    const [invs, creadoras] = await Promise.all([
+      db.get('mk_invitaciones', {
+        select: 'id,email,nombre,enviada_at,segundo_toque_at,codigo_ref',
+        enviada_at: 'not.is.null',
+      }),
+      db.get('mk_creadoras', { select: 'email' }),
+    ]);
+
+    const registradas = new Set(creadoras.map(c => String(c.email || '').toLowerCase().trim()));
+    const sinRegistrar = invs.filter(i => !registradas.has(String(i.email || '').toLowerCase().trim()));
+
+    res.json({
+      invitadas: invs.length,
+      sin_registrar: sinRegistrar.length,
+      pendientes_de_segundo_toque: sinRegistrar.filter(i => !i.segundo_toque_at).length,
+      ya_recontactadas: sinRegistrar.filter(i => i.segundo_toque_at).length,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/invitaciones/segundo-toque', async (req, res) => {
+  try {
+    const limite = Math.min(Number(req.body.limite) || 200, 300);
+    const simulacro = req.body.dry_run === true;
+
+    if (!config.brevo_api_key && !config.smtp.user) {
+      return res.status(400).json({ error: 'No hay correo configurado: no se enviaría nada' });
+    }
+
+    const [invs, creadoras] = await Promise.all([
+      db.get('mk_invitaciones', {
+        select: 'id,email,nombre,codigo_ref,segundo_toque_at',
+        enviada_at: 'not.is.null',
+        segundo_toque_at: 'is.null',
+      }),
+      db.get('mk_creadoras', { select: 'email' }),
+    ]);
+
+    const registradas = new Set(creadoras.map(c => String(c.email || '').toLowerCase().trim()));
+    const pendientes = invs.filter(i => !registradas.has(String(i.email || '').toLowerCase().trim()));
+    const lote = pendientes.slice(0, limite);
+
+    if (simulacro) {
+      return res.json({
+        simulacro: true, sin_registrar: pendientes.length, se_enviarian: lote.length,
+        quedarian: Math.max(0, pendientes.length - lote.length),
+        muestra: lote.slice(0, 8).map(c => ({ nombre: c.nombre, email: c.email })),
+      });
+    }
+
+    res.json({ ok: true, se_enviaran: lote.length, quedaran: Math.max(0, pendientes.length - lote.length) });
+
+    let ok = 0, fallos = 0;
+    for (const [i, c] of lote.entries()) {
+      // Se marca antes de enviar, igual que la primera invitación: si el
+      // proceso muere a mitad, lo peor es que alguien no reciba el recordatorio.
+      // Al revés le llegaría dos veces.
+      await db.patch('mk_invitaciones', { id: c.id }, { segundo_toque_at: new Date().toISOString() });
+
+      const salio = await notificaciones.invitacionSegundoToque({
+        email: c.email, nombre: c.nombre, codigoRef: c.codigo_ref,
+      });
+      salio ? ok++ : fallos++;
+
+      if (i < lote.length - 1) await dormir(900);
+    }
+    console.log(`[segundo-toque] ${ok} enviadas, ${fallos} fallidas`);
+  } catch (e) {
+    console.error('[segundo-toque]', e.message);
+  }
+});
+
+/**
+ * Despierta los cupos de referido que nadie está usando.
+ *
+ * El enlace ya viaja en el correo de bienvenida, pero se lee una vez y se
+ * olvida: hay cientos de cupos intactos. Esto solo vuelve a ponerlo enfrente.
+ *
+ * Solo se le escribe a quien tiene perfil aprobado. Pedirle que traiga amigas a
+ * alguien que todavía no pasó la revisión es pedirle que recomiende algo que
+ * ella misma no ha visto funcionar.
+ */
+router.get('/referidos/dormidos', async (req, res) => {
+  try {
+    const creadoras = await db.get('mk_creadoras', {
+      select: 'id,codigo_ref,cupos_ref,estado_perfil,referidos_empujon_at',
+      estado_perfil: 'eq.aprobada',
+    });
+    const conCupo = creadoras.filter(c => c.codigo_ref && (c.cupos_ref || 0) > 0);
+    res.json({
+      aprobadas: creadoras.length,
+      con_cupos_libres: conCupo.length,
+      cupos_sin_usar: conCupo.reduce((s, c) => s + (c.cupos_ref || 0), 0),
+      pendientes_de_empujon: conCupo.filter(c => !c.referidos_empujon_at).length,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/referidos/empujon', async (req, res) => {
+  try {
+    const limite = Math.min(Number(req.body.limite) || 200, 300);
+    const simulacro = req.body.dry_run === true;
+
+    if (!config.brevo_api_key && !config.smtp.user) {
+      return res.status(400).json({ error: 'No hay correo configurado: no se enviaría nada' });
+    }
+
+    const creadoras = await db.get('mk_creadoras', {
+      select: 'id,email,nombre_publico,codigo_ref,cupos_ref,referidos_empujon_at',
+      estado_perfil: 'eq.aprobada',
+      referidos_empujon_at: 'is.null',
+    });
+
+    const pendientes = creadoras.filter(c => c.email && c.codigo_ref && (c.cupos_ref || 0) > 0);
+    const lote = pendientes.slice(0, limite);
+
+    if (simulacro) {
+      return res.json({
+        simulacro: true, con_cupos: pendientes.length, se_enviarian: lote.length,
+        quedarian: Math.max(0, pendientes.length - lote.length),
+        muestra: lote.slice(0, 8).map(c => ({ nombre: c.nombre_publico, cupos: c.cupos_ref })),
+      });
+    }
+
+    res.json({ ok: true, se_enviaran: lote.length, quedaran: Math.max(0, pendientes.length - lote.length) });
+
+    let ok = 0, fallos = 0;
+    for (const [i, c] of lote.entries()) {
+      await db.updateCreadora(c.id, { referidos_empujon_at: new Date().toISOString() });
+
+      // Cuántas trajo ya: es la diferencia entre los cupos con los que nació y
+      // los que le quedan. Decirle "ya trajiste una" cuando no ha traído
+      // ninguna sería el tipo de detalle que le quita credibilidad a todo el
+      // mensaje.
+      const traidas = Math.max(0, 2 - (c.cupos_ref || 0));
+
+      const salio = await notificaciones.activarReferidos({
+        creadora: c, codigoRef: c.codigo_ref, restantes: c.cupos_ref, traidas,
+      });
+      salio ? ok++ : fallos++;
+
+      if (i < lote.length - 1) await dormir(900);
+    }
+    console.log(`[referidos] empujón: ${ok} enviados, ${fallos} fallidos`);
+  } catch (e) {
+    console.error('[referidos]', e.message);
   }
 });
 
