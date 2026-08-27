@@ -939,9 +939,47 @@ const dormir = (ms) => new Promise(r => setTimeout(r, ms));
 // propuesta, plazos—. Bloquear un reset por haber mandado muchas invitaciones
 // sería castigar a quien no tiene nada que ver.
 
-const TOPE_DIARIO_DEFAULT = 100;
+const TOPE_DIARIO_DEFAULT = 60;
 
-/** Cuántos correos masivos salieron hoy, contando lo que ya queda registrado. */
+/**
+ * Lo que el PROVEEDOR deja mandar por día, y cuánto se le guarda a lo
+ * transaccional.
+ *
+ * Esto es lo que faltaba, y por eso el problema se repitió con dos proveedores
+ * distintos. El tope de la app protegía a los correos de uno en uno de que
+ * NOSOTROS los bloqueáramos — pero no de que el proveedor los rechazara por
+ * cuota agotada, que es lo que pasa de verdad.
+ *
+ * ZeptoMail deja 100 al día mientras revisa la cuenta. Una tanda de 137
+ * invitaciones se comió los 100 y a partir de ahí falló TODO: 132
+ * recuperaciones pedidas en cuatro días y ninguna llegando.
+ *
+ * Ahora lo masivo se detiene antes de tocar la reserva. Es la diferencia entre
+ * "no mandamos las últimas 40 invitaciones" y "nadie puede entrar a su cuenta".
+ */
+const LIMITE_PROVEEDOR_DEFAULT = 100;
+const RESERVA_TRANSACCIONAL_DEFAULT = 40;
+
+/**
+ * Cuántos correos salieron hoy, TODOS, no solo los masivos.
+ *
+ * Se cuenta del registro de envíos y no de las marcas de tiempo de cada tanda,
+ * porque el proveedor cuenta todo por igual: una recuperación de contraseña le
+ * consume cuota exactamente igual que una invitación.
+ */
+async function correosDeHoy() {
+  const desde = `${new Date().toISOString().slice(0, 10)}T00:00:00Z`;
+  const filas = await db.get('mk_correos_log', {
+    select: 'ok', created_at: `gte.${desde}`,
+  }).catch(() => null);
+
+  // Si el registro todavía no existe o falla, se cae al conteo viejo: es peor
+  // que nada, pero mejor que dejar salir una tanda sin ningún freno.
+  if (filas) return filas.length;
+  return correosMasivosDeHoy();
+}
+
+/** El conteo viejo, por si el registro de envíos no está disponible. */
 async function correosMasivosDeHoy() {
   const hoy = new Date().toISOString().slice(0, 10);
   const desde = `${hoy}T00:00:00Z`;
@@ -956,13 +994,28 @@ async function correosMasivosDeHoy() {
 
 /**
  * Cuánto cabe todavía hoy. Devuelve el lote recortado y qué queda para mañana.
+ *
+ * Manda el más chico de dos frenos: el tope que puso el equipo, y lo que queda
+ * de la cuota del proveedor DESPUÉS de apartar la reserva transaccional.
  */
 async function cupoDeHoy(pedido) {
   const cfg = await db.getConfig();
   const tope = Number(cfg.correos_por_dia ?? TOPE_DIARIO_DEFAULT);
-  const usados = await correosMasivosDeHoy();
-  const libre = Math.max(0, tope - usados);
-  return { tope, usados, libre, cabe: Math.min(pedido, libre) };
+  const limite = Number(cfg.correo_limite_proveedor ?? LIMITE_PROVEEDOR_DEFAULT);
+  const reserva = Number(cfg.correo_reserva_transaccional ?? RESERVA_TRANSACCIONAL_DEFAULT);
+
+  const usados = await correosDeHoy();
+  const libreProveedor = Math.max(0, limite - reserva - usados);
+  const libre = Math.max(0, Math.min(tope - usados, libreProveedor));
+
+  return {
+    tope, usados, libre, cabe: Math.min(pedido, libre),
+    limite_proveedor: limite,
+    reserva_transaccional: reserva,
+    // Para poder decirle al equipo POR QUÉ se recortó, en vez de que parezca
+    // que el sistema mandó menos de lo que pidió sin razón.
+    freno: libreProveedor <= (tope - usados) ? 'cuota del proveedor' : 'tope del equipo',
+  };
 }
 
 async function candidatasDeOla(estados) {

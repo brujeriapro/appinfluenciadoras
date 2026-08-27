@@ -345,7 +345,17 @@ UGC no es el escalón de las que no llegaron: es otro trabajo, se produce distin
 
 ⚠️ **El envío falla en silencio a propósito** — un correo caído no puede tumbar un registro — pero ya no es invisible: cada intento queda en `mk_correos_log` con lo que contestó el proveedor, y Ajustes lo muestra con el resumen del día arriba. Es lo que convierte «no me llega nada» en un diagnóstico. Antes había que apretar el botón de prueba, que solo dice si el envío funciona *ahora*, no por qué falló el de ayer.
 
-**Hay tope diario de envíos masivos** (`correos_por_dia`, arranca en 100). Se agregó porque 353 correos en un día con un plan de 300 dejó a 16 creadoras dos días sin poder entrar. No toca los correos de uno en uno: bloquear un "recuperar contraseña" por haber mandado muchas invitaciones sería cobrárselo a quien no tiene nada que ver.
+**El correo masivo tiene tres frenos, y manda el más chico:**
+
+| Clave | Qué es | Hoy |
+|---|---|---|
+| `correo_limite_proveedor` | lo que el proveedor deja al día | 100 |
+| `correo_reserva_transaccional` | lo que lo masivo NO puede tocar | 40 |
+| `correos_por_dia` | el tope que pone el equipo | 60 |
+
+⚠️ **La reserva es la pieza que faltaba y por eso el problema pasó dos veces.** El tope de la app protegía a los correos de uno en uno de que *nosotros* los bloqueáramos, pero no de que el *proveedor* los rechazara por cuota agotada — que es lo que pasa de verdad. En agosto fue Brevo (353 contra un plan de 300, 16 creadoras dos días sin entrar); después ZeptoMail, que deja **100 al día mientras revisa la cuenta**: una tanda de invitaciones se los comió y 132 recuperaciones de contraseña murieron en silencio.
+
+⚠️ **`correo_limite_proveedor` está en 100 porque ZeptoMail no ha aprobado la cuenta.** Cuando la apruebe, sube a 10.000 y ahí sí se pueden hacer tandas grandes.
 
 ### Estado
 

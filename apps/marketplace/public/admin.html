@@ -1314,15 +1314,26 @@ VISTAS.invitaciones = async () => {
         <div class="bloque__titulo">Cupo de hoy</div>
         <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:13px;margin-bottom:8px">
           <span>Enviados hoy: <strong>${d.cupo.usados}</strong></span>
-          <span>Tope: <strong>${d.cupo.tope}</strong></span>
+          <span>Tope del equipo: <strong>${d.cupo.tope}</strong></span>
+          ${d.cupo.limite_proveedor ? `<span>Cuota del proveedor:
+            <strong>${d.cupo.limite_proveedor}</strong></span>` : ''}
+          ${d.cupo.reserva_transaccional ? `<span>Reservado:
+            <strong style="color:var(--blue-text-soft)">${d.cupo.reserva_transaccional}</strong></span>` : ''}
           <span>Quedan: <strong style="color:${d.cupo.libre > 0 ? 'var(--lime)' : 'var(--magenta)'}">${d.cupo.libre}</strong></span>
         </div>
         <p style="font-size:11.5px;color:var(--grey-700);margin:0;line-height:1.6">
           ${d.cupo.libre > 0
-            ? 'Lo que no quepa hoy queda para mañana; el botón recorta la tanda solo.'
+            ? `Lo que no quepa hoy queda para mañana; el botón recorta la tanda solo.
+               Manda el freno más chico: hoy, ${esc(d.cupo.freno || 'el tope del equipo')}.`
             : 'Ya se llegó al tope. Los envíos de hoy se detienen aquí — vuelve mañana.'}
-          El tope se cambia en Ajustes.
         </p>
+        ${d.cupo.reserva_transaccional ? `
+          <p style="font-size:11.5px;color:var(--grey-700);margin:8px 0 0;line-height:1.6">
+            Se apartan <strong>${d.cupo.reserva_transaccional}</strong> correos que lo masivo no
+            puede tocar. Son para recuperar contraseñas, avisos de propuesta y recibos: sin esa
+            reserva, una tanda de invitaciones deja a las creadoras sin poder entrar a su cuenta
+            —que ya pasó dos veces—. El tope y la reserva se cambian en Ajustes.
+          </p>` : ''}
       </div>` : ''}
 
     <div class="bloque" style="margin-bottom:18px;font-size:12.5px;line-height:1.7">
