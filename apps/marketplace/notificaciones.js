@@ -76,11 +76,13 @@ async function enviarPorApi(para, asunto, cuerpoHTML) {
  * y tumbar el envío por no poder anotarlo sería cambiar un problema invisible
  * por uno peor.
  */
-function anotarEnvio({ para, asunto, ok, error }) {
+function anotarEnvio({ para, asunto, ok, error, proveedor }) {
   db.post('mk_correos_log', {
     para: String(para).slice(0, 200),
     asunto: String(asunto || '').slice(0, 200),
-    proveedor: correo.activo()?.clave || 'smtp',
+    // El que MANDÓ, si se sabe. Solo se cae al elegido cuando el envío falló y
+    // por lo tanto no mandó nadie.
+    proveedor: proveedor || correo.activo()?.clave || 'smtp',
     ok,
     error: error ? String(error).slice(0, 500) : null,
   }).catch(() => {});
@@ -102,8 +104,8 @@ async function enviar(para, asunto, cuerpoHTML) {
 
   try {
     if (correo.activo()) {
-      await enviarPorApi(para, asunto, cuerpoHTML);
-      anotarEnvio({ para, asunto, ok: true });
+      const r = await enviarPorApi(para, asunto, cuerpoHTML);
+      anotarEnvio({ para, asunto, ok: true, proveedor: r?.proveedor });
       return true;
     }
 

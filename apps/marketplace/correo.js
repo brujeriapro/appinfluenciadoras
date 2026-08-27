@@ -238,7 +238,11 @@ async function enviar({ para, asunto, html, remitente }) {
     try {
       const r = await p.enviar({ para, asunto, html, remitente });
       if (i > 0) console.warn(`[correo] ${lista[0].nombre} sin cuota; salió por ${p.nombre}`);
-      return r;
+      // Se devuelve QUIÉN mandó, no quién estaba elegido. Es lo que se anota en
+      // el registro, y anotar el elegido diría "zeptomail ok" cuando en
+      // realidad mandó Brevo — mandando el próximo diagnóstico en la dirección
+      // equivocada, que es justo lo que este registro existe para evitar.
+      return { ...(r || {}), proveedor: p.clave, respaldo: i > 0 };
     } catch (e) {
       ultimoError = e;
       // Si no es cuota, o ya no quedan alternativas, se falla con el error real.
