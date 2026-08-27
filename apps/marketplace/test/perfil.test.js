@@ -215,3 +215,90 @@ test('el coach queda a la vista pero apagado', () => {
   assert.equal(d.proximamente, true);
   assert.equal(d.abierto, false);
 });
+
+// ── La regla de escritura ───────────────────────────────────────────────────
+
+test('cada pendiente encabeza con el beneficio, no con lo que falta', () => {
+  // Es la pantalla entera: pedirle datos "para mejorar tu perfil" es pedirle
+  // trabajo a cambio de una promesa vaga, y por eso los perfiles quedan a
+  // medias en todas las plataformas.
+  for (const p of completitud(perfil()).pendientes) {
+    assert.ok(p.beneficio && p.beneficio.length > 25, `"${p.clave}" no dice qué gana`);
+    assert.ok(p.pide, `"${p.clave}" no dice qué pide`);
+    assert.ok(p.accion, `"${p.clave}" no trae el verbo del botón`);
+    // El titular nunca habla de porcentajes ni de lo que le falta.
+    assert.ok(!/%|falta|complet/i.test(p.beneficio), `el titular de "${p.clave}" suena a deuda: ${p.beneficio}`);
+  }
+});
+
+test('nunca se muestran más de tres pendientes', () => {
+  // Una lista de seis se lee como deuda.
+  assert.equal(completitud(perfil()).pendientes.length, 3);
+});
+
+test('los pendientes se ordenan por lo que le devuelven, no por el porcentaje', () => {
+  const p = completitud(perfil()).pendientes;
+  const devuelven = p.map(x => x.devuelve);
+  assert.deepEqual(devuelven, [...devuelven].sort((a, b) => b - a));
+});
+
+test('lo que pide se ajusta a cuánto le falta de verdad', () => {
+  const con2 = completitud(perfil({ piezas: 2 })).pendientes.find(x => x.clave === 'piezas');
+  assert.match(con2.pide, /faltan 2/);
+  const con3 = completitud(perfil({ piezas: 3 })).pendientes.find(x => x.clave === 'piezas');
+  assert.match(con3.pide, /falta 1/);
+  const cero = completitud(perfil()).pendientes.find(x => x.clave === 'piezas');
+  assert.match(cero.pide, /primera/);
+});
+
+test('los porcentajes llevan un decimal', () => {
+  // Cada pieza vale 14,05%: redondear a entero hace que cuatro sumen 56% en un
+  // sitio y 56,2% en otro.
+  const p = completitud(perfil()).pendientes.find(x => x.clave === 'metricas');
+  assert.equal(p.suma, 16.9);
+});
+
+// ── Verificación de métricas ────────────────────────────────────────────────
+
+const { estadoVerificacion } = require('../perfil');
+
+test('sin pedir nada, queda pendiente', () => {
+  const e = estadoVerificacion({ metricas_estado: 'declarado' });
+  assert.equal(e.clave, 'sin_verificar');
+  assert.equal(e.suma, false);
+});
+
+test('al pedirla dice que no tiene que hacer nada', () => {
+  // Es la mitad del trabajo de ese estado: sin esa línea vuelve a entrar a ver
+  // si le toca algo.
+  const e = estadoVerificacion({ metricas_estado: 'solicitada', metricas_solicitada_at: '2026-08-26' });
+  assert.equal(e.clave, 'en_revision');
+  assert.match(e.pide, /nada que hacer/i);
+  assert.equal(e.bloqueado, true);
+  assert.equal(e.acento, 'azul');
+});
+
+test('pedirla NO sube el porcentaje', () => {
+  // Si subiera, pedir sería gratis y el sello dejaría de valer.
+  const pidiendo = completitud(perfil({ metricas_estado: 'solicitada' }));
+  const sinPedir = completitud(perfil({ metricas_estado: 'declarado' }));
+  assert.equal(pidiendo.pct, sinPedir.pct);
+});
+
+test('verificada sí suma', () => {
+  const v = completitud(perfil({ metricas_estado: 'verificado' }));
+  const d = completitud(perfil({ metricas_estado: 'declarado' }));
+  assert.ok(v.pct > d.pct);
+  assert.equal(estadoVerificacion({ metricas_estado: 'verificado' }).clave, 'verificada');
+});
+
+test('no existe un estado de rechazo', () => {
+  // En este producto no hay señalamiento negativo: si no cuadra, vuelve a
+  // "sin verificar", no a "rechazada".
+  for (const estado of ['declarado', 'solicitada', 'verificado', 'rechazada', null]) {
+    const e = estadoVerificacion({ metricas_estado: estado });
+    assert.ok(['sin_verificar', 'en_revision', 'verificada'].includes(e.clave),
+      `apareció un estado inesperado: ${e.clave}`);
+    assert.ok(!/rechaz|no cumpl|invalid/i.test(e.pildora || ''), e.pildora);
+  }
+});

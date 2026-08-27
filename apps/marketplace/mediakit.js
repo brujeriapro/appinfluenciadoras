@@ -92,8 +92,18 @@ privado.get('/', async (req, res) => {
       metricas_estado: datos.creadora.metricas_estado,
     }, niveles);
 
+    // El bloque de métricas cambia de texto según dónde esté la solicitud, así
+    // que se reemplaza acá en vez de dejarle esa lógica al navegador.
+    const verificacion = perfil.estadoVerificacion(datos.creadora);
+    const pendientes = datos.estado.pendientes.map(x =>
+      x.clave === 'metricas' && verificacion.titulo
+        ? { ...x, beneficio: verificacion.titulo, pide: verificacion.pide,
+            accion: verificacion.accion, bloqueado: true, acento: verificacion.acento }
+        : x);
+
     res.json({
-      completitud: datos.estado,
+      completitud: { ...datos.estado, pendientes },
+      verificacion,
       nivel,
       logros: perfil.logrosDe({ ...datos.cumplimiento, marcas_que_repitieron: repitieron }),
       desbloqueos: perfil.desbloqueos(datos.estado),
@@ -107,6 +117,54 @@ privado.get('/', async (req, res) => {
     });
   } catch (e) {
     console.error('[mi-perfil]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Pide que el equipo le verifique las métricas.
+ *
+ * Ella solicita, el equipo aprueba. El porcentaje NO sube al pedir: sube al
+ * aprobar. Si subiera al pedir, pedir sería gratis y el sello dejaría de
+ * valer — que es justo lo que lo hace útil para la marca.
+ *
+ * Se exige que haya subido su captura: sin ella el equipo no tiene contra qué
+ * comparar, y la solicitud entra a la cola solo para ser devuelta.
+ */
+privado.post('/verificacion', async (req, res) => {
+  try {
+    const c = await db.getCreadoraCompleta(req.usuarioId);
+    if (!c) return res.status(404).json({ error: 'Perfil no encontrado' });
+
+    if (c.metricas_estado === 'verificado' || c.metricas_estado === 'conectado') {
+      return res.status(409).json({ error: 'Tus métricas ya están verificadas.' });
+    }
+    if (c.metricas_estado === 'solicitada') {
+      return res.status(409).json({
+        error: 'Ya la pediste. Estamos revisando tus vistas: te avisamos en menos de 48 horas.',
+      });
+    }
+    if (!c.metricas_captura_path) {
+      return res.status(400).json({
+        error: 'Antes de pedirla, sube la captura de tus estadísticas. Sin ella no tenemos '
+             + 'contra qué comparar tus números.',
+      });
+    }
+
+    await db.updateCreadora(req.usuarioId, {
+      metricas_estado: 'solicitada',
+      metricas_solicitada_at: new Date().toISOString(),
+    });
+
+    res.json({
+      ok: true,
+      verificacion: perfil.estadoVerificacion({
+        metricas_estado: 'solicitada',
+        metricas_solicitada_at: new Date().toISOString(),
+      }),
+    });
+  } catch (e) {
+    console.error('[verificacion]', e.message);
     res.status(500).json({ error: e.message });
   }
 });

@@ -18,21 +18,53 @@
  * la marca contrata por lo que ve. Un perfil sin una sola pieza no es un perfil
  * a medias, es un perfil que no sirve.
  */
+/**
+ * Los bloques que componen un perfil, con su peso y con lo que ELLA gana.
+ *
+ * La regla de escritura viene del handoff y es lo que hace funcionar la
+ * pantalla: ningún bloque vacío dice qué falta, dice **qué gana**. Pedirle
+ * datos "para mejorar tu perfil" es pedirle trabajo a cambio de una promesa
+ * vaga, y por eso los perfiles quedan a medias en todas las plataformas.
+ *
+ *   Cómo NO                            Cómo SÍ
+ *   "Te faltan tus vistas"             "Las marcas te encuentran por lo que
+ *                                       logras, no por seguidores"
+ *   "Sube 3 piezas más"                "Cuatro piezas es lo que mira una marca
+ *                                       antes de escribirte"
+ *
+ * El copy vive acá, en el servidor, y no en el navegador: es la pieza que hace
+ * funcionar la pantalla y tiene que poder cambiarse sin desplegar la app.
+ *
+ * `devuelve` ordena los pendientes por lo que más le sirve a ella, que no es lo
+ * mismo que lo que más suma al porcentaje. Una lista ordenada por porcentaje se
+ * lee como deuda.
+ */
 const BLOQUES = [
   {
     clave: 'piezas',
     titulo: 'Tu trabajo',
     peso: 100,
+    devuelve: 90,
     // Se mide de 0 a 4 porque el catálogo muestra cuatro por creadora: la
     // quinta no cambia lo que la marca ve.
     medir: (p) => Math.min(Number(p.piezas) || 0, 4) / 4,
+    beneficio: 'Cuatro piezas es lo que mira una marca antes de escribirte',
+    pide: (p) => {
+      const faltan = 4 - Math.min(Number(p.piezas) || 0, 4);
+      return faltan === 4 ? 'sube tu primera pieza' : `te ${faltan === 1 ? 'falta' : 'faltan'} ${faltan}`;
+    },
+    accion: 'Subir una pieza',
     porQue: 'Es lo que más pesa. La marca contrata por lo que ve, no por lo que dice el perfil.',
   },
   {
     clave: 'metricas',
     titulo: 'Métricas verificadas',
     peso: 30,
+    devuelve: 80,
     medir: (p) => (p.metricas_estado === 'verificado' || p.metricas_estado === 'conectado') ? 1 : 0,
+    beneficio: 'Las marcas te encuentran por lo que logras, no por seguidores',
+    pide: () => 'pide que verifiquemos tus vistas',
+    accion: 'Pedir verificación',
     porQue: 'Un perfil verificado se ve distinto en el catálogo. Sin eso, tus números '
           + 'son solo lo que dijiste.',
   },
@@ -40,8 +72,14 @@ const BLOQUES = [
     clave: 'tarifas',
     titulo: 'Tus precios',
     peso: 20,
-    // Dejarlos abiertos a negociación cuenta: es una decisión, no un vacío.
+    devuelve: 70,
+    // Dejarlos abiertos a negociación cuenta: es una decisión, no un vacío. El
+    // copy tiene que decirlo, porque si parece obligatorio poner número, quien
+    // no quiere publicarlo abandona el bloque entero.
     medir: (p) => (Number(p.tarifas) > 0 || p.tarifa_abierta) ? 1 : 0,
+    beneficio: 'Sin precio, la marca asume el más bajo que ha pagado',
+    pide: () => 'carga tus tarifas o déjalas abiertas',
+    accion: 'Poner mis tarifas',
     porQue: 'Sin precio no apareces cuando una marca filtra por presupuesto, '
           + 'que es lo primero que hacen.',
   },
@@ -49,7 +87,11 @@ const BLOQUES = [
     clave: 'foto',
     titulo: 'Tu foto',
     peso: 12,
+    devuelve: 40,
     medir: (p) => p.foto_perfil_path ? 1 : 0,
+    beneficio: 'Tu cara o tu trabajo: lo primero que ve una marca',
+    pide: () => 'sube una foto de perfil',
+    accion: 'Subir mi foto',
     porQue: 'Es lo primero que ve una marca. Si prefieres no mostrar la cara, sirve una '
           + 'foto de tu trabajo — un espacio en gris no.',
   },
@@ -57,17 +99,28 @@ const BLOQUES = [
     clave: 'redes',
     titulo: 'Tus redes',
     peso: 10,
+    devuelve: 50,
     medir: (p) => Number(p.redes) > 0 ? 1 : 0,
+    beneficio: 'Sales cuando una marca busca por Instagram o TikTok',
+    pide: () => 'dinos en qué redes trabajas',
+    accion: 'Agregar mis redes',
     porQue: 'Sin redes declaradas no sales cuando una marca busca por Instagram o TikTok.',
   },
   {
     clave: 'bio',
     titulo: 'Tu descripción',
     peso: 6,
+    devuelve: 20,
     medir: (p) => p.bio_corta ? 1 : 0,
+    beneficio: 'Dos líneas que te separan de otra con los mismos números',
+    pide: () => 'escribe tu descripción',
+    accion: 'Escribir mi descripción',
     porQue: 'Dos líneas contando qué haces. Es lo que te distingue de otra con los mismos números.',
   },
 ];
+
+/** Cuántos pendientes se muestran a la vez. Una lista de seis se lee como deuda. */
+const MAX_PENDIENTES = 3;
 
 const PESO_TOTAL = BLOQUES.reduce((a, b) => a + b.peso, 0);
 
@@ -81,10 +134,16 @@ function completitud(p = {}) {
     const avance = Math.max(0, Math.min(1, b.medir(p) || 0));
     return {
       clave: b.clave, titulo: b.titulo, porQue: b.porQue,
+      // El beneficio es el titular; lo que pide va debajo, en secundario; el
+      // porcentaje NUNCA es el titular. Ese orden es la pantalla entera.
+      beneficio: b.beneficio,
+      pide: typeof b.pide === 'function' ? b.pide(p) : b.pide,
+      accion: b.accion,
       avance, completo: avance >= 1,
-      // Cuánto sube el círculo si lo termina. Es lo que permite ordenar los
-      // pendientes por lo que de verdad le sirve, y no por lo fácil.
-      suma: Math.round((1 - avance) * b.peso / PESO_TOTAL * 100),
+      // Un decimal: cada pieza vale 14,05% y redondear a entero hace que cuatro
+      // piezas sumen 56% en un sitio y 56,2% en otro.
+      suma: Math.round((1 - avance) * b.peso / PESO_TOTAL * 1000) / 10,
+      devuelve: b.devuelve,
     };
   });
 
@@ -92,14 +151,51 @@ function completitud(p = {}) {
     bloques.reduce((a, b, i) => a + b.avance * BLOQUES[i].peso, 0) / PESO_TOTAL * 100
   );
 
-  return {
-    pct,
-    completo: pct >= 100,
-    bloques,
-    // Lo que falta, ordenado por cuánto suma. Nunca incluye lo ya hecho:
-    // pedirle una foto a quien ya la subió convierte el consejo en ruido.
-    pendientes: bloques.filter(b => !b.completo).sort((a, b) => b.suma - a.suma),
-  };
+  // Los pendientes se ordenan por lo que MÁS LE DEVUELVE a ella, no por lo que
+  // más suma al porcentaje. Ordenado por porcentaje, la lista se lee como
+  // deuda; ordenado por beneficio, se lee como oportunidad. Y se cortan en
+  // tres: una lista de seis desanima a cualquiera.
+  const pendientes = bloques
+    .filter(b => !b.completo)
+    .sort((a, b) => (b.devuelve - a.devuelve) || (b.suma - a.suma))
+    .slice(0, MAX_PENDIENTES);
+
+  return { pct, completo: pct >= 100, bloques, pendientes };
+}
+
+/**
+ * El estado de la verificación de métricas, con lo que ve ella en cada uno.
+ *
+ * Son tres y el del medio es el que faltaba. Sin él, ella pide la revisión y
+ * no pasa nada visible, así que vuelve a entrar a ver si tiene que hacer algo.
+ * Por eso el texto de "en revisión" dice explícitamente que no tiene que hacer
+ * nada: esa línea es la mitad del trabajo de ese estado.
+ *
+ * NO hay estado "rechazada". En este producto no existe señalamiento negativo:
+ * si los números no cuadran, vuelve a "sin verificar" con qué reconectar.
+ */
+function estadoVerificacion({ metricas_estado, metricas_solicitada_at } = {}) {
+  if (metricas_estado === 'verificado' || metricas_estado === 'conectado') {
+    return { clave: 'verificada', pildora: 'Listo', suma: false };
+  }
+  if (metricas_estado === 'solicitada') {
+    return {
+      clave: 'en_revision',
+      pildora: 'En revisión',
+      // El acento pasa a azul: en todo el sistema el azul es información en
+      // curso, así que se lee sin explicarlo.
+      acento: 'azul',
+      titulo: 'Estamos revisando tus vistas. Te avisamos en menos de 48 horas.',
+      pide: 'nada que hacer de tu lado',
+      accion: 'Pedida · en revisión',
+      bloqueado: true,
+      // El porcentaje NO sube al pedir. Si subiera, pedir sería gratis y el
+      // sello dejaría de valer.
+      suma: false,
+      desde: metricas_solicitada_at || null,
+    };
+  }
+  return { clave: 'sin_verificar', pildora: 'Pendiente', suma: false };
 }
 
 /**
@@ -262,6 +358,6 @@ function desbloqueos(estado) {
 }
 
 module.exports = {
-  completitud, puntajeDePerfil, nivelDe, logrosDe, desbloqueos,
-  BLOQUES, LOGROS, DESBLOQUEOS, NIVELES_POR_DEFECTO, PESO_TOTAL,
+  completitud, puntajeDePerfil, nivelDe, logrosDe, desbloqueos, estadoVerificacion,
+  BLOQUES, LOGROS, DESBLOQUEOS, NIVELES_POR_DEFECTO, PESO_TOTAL, MAX_PENDIENTES,
 };

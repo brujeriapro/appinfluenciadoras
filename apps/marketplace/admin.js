@@ -1589,11 +1589,23 @@ router.post('/bloqueadas/reenviar', async (req, res) => {
  */
 router.get('/metricas/cola', async (req, res) => {
   try {
+    // Entran las que PIDIERON y las que subieron captura sin pedir. Las que
+    // pidieron van primero: se les prometió respuesta en 48 horas, y una cola
+    // que no distingue entre "está esperando" y "podría revisarse" hace que la
+    // promesa se rompa sin que nadie lo note.
     const pendientes = await db.get('mk_creadoras', {
-      select: 'id,codigo,nombre_publico,metricas_estado,metricas_captura_path,estado_perfil',
+      select: 'id,codigo,nombre_publico,metricas_estado,metricas_captura_path,'
+            + 'metricas_solicitada_at,estado_perfil',
       metricas_captura_path: 'not.is.null',
-      metricas_estado: 'eq.declarado',
+      metricas_estado: 'in.(declarado,solicitada)',
       order: 'created_at.asc',
+    });
+
+    pendientes.sort((a, b) => {
+      const pidio = (x) => x.metricas_estado === 'solicitada' ? 0 : 1;
+      return (pidio(a) - pidio(b))
+        // Entre las que pidieron, primero la que lleva más esperando.
+        || String(a.metricas_solicitada_at || '').localeCompare(String(b.metricas_solicitada_at || ''));
     });
 
     // Sus números declarados, para poder compararlos contra la captura sin
@@ -1605,6 +1617,9 @@ router.get('/metricas/cola', async (req, res) => {
 
     res.json({
       pendientes: conRedes,
+      // Cuántas están esperando de verdad, para que la cola se lea de un
+      // vistazo sin contar filas.
+      solicitadas: conRedes.filter(c => c.metricas_estado === 'solicitada').length,
       verificadas: (await db.get('mk_creadoras', {
         select: 'id', metricas_estado: 'eq.verificado',
       })).length,
@@ -1630,9 +1645,18 @@ router.post('/metricas/:id', async (req, res) => {
       });
     }
 
+    // En los dos casos se limpia la solicitud: la pelota vuelve a ella.
+    //
+    // Y al no aprobar vuelve a 'declarado', NO a un estado de rechazo. En este
+    // producto no existe señalamiento negativo hacia una creadora: si los
+    // números no cuadran, queda como estaba antes de pedir, con el motivo en la
+    // nota interna del equipo.
     await db.updateCreadora(c.id, aprobar
-      ? { metricas_estado: 'verificado', metricas_verificadas_at: new Date().toISOString() }
+      ? { metricas_estado: 'verificado',
+          metricas_verificadas_at: new Date().toISOString(),
+          metricas_solicitada_at: null }
       : { metricas_estado: 'declarado', metricas_verificadas_at: null,
+          metricas_solicitada_at: null,
           notas_admin: [c.notas_admin, req.body.motivo].filter(Boolean).join(' · ') || null });
 
     res.json({ ok: true, estado: aprobar ? 'verificado' : 'declarado' });
