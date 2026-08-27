@@ -143,6 +143,10 @@ function completitud(p = {}) {
       // Un decimal: cada pieza vale 14,05% y redondear a entero hace que cuatro
       // piezas sumen 56% en un sitio y 56,2% en otro.
       suma: Math.round((1 - avance) * b.peso / PESO_TOTAL * 1000) / 10,
+      // Cuánto vale el bloque entero. Va en la respuesta porque la pantalla lo
+      // dice en palabras ("es el 56,2% de tu perfil"): escrito a mano en el
+      // HTML, cambiar un peso acá haría que ese texto mintiera en silencio.
+      peso_pct: Math.round(b.peso / PESO_TOTAL * 1000) / 10,
       devuelve: b.devuelve,
     };
   });

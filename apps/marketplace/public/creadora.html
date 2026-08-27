@@ -374,6 +374,138 @@
 
   /* ── Mi perfil ──────────────────────────────────────────────────────────── */
 
+  /* La alternancia de contraste del handoff F4. La regla es semántica y no
+     estética: el negro marca QUIÉN ERES, A DÓNDE VAS y DÓNDE ESTÁS —cabecera,
+     nivel—; lo claro es donde ella lee y trabaja.
+
+     Los tokens claros viven acá y no en tokens.css: el resto del portal es
+     oscuro y meterlos en la hoja global los pondría al alcance de pantallas
+     que no los quieren. */
+  .f4 {
+    --f4-canvas: #F4F4F1; --f4-surface: #FFFFFF; --f4-surface-alt: #FAFAF8;
+    --f4-text-2: #4A4A44; --f4-text-3: #6E6E68; --f4-text-4: #9A9A93;
+    --f4-b1: #D8D8D3; --f4-b2: #C9C9C2; --f4-b3: #EDEDE8;
+    margin-bottom: 20px;
+  }
+
+  /* Cabecera negra: el anillo con la foto dentro, el nombre, el nivel y el
+     porcentaje. */
+  .f4-cab { background: var(--ink); border: 2px solid var(--ink);
+            padding: 22px; display: flex; align-items: center;
+            gap: 20px; flex-wrap: wrap; }
+  .f4-anillo { position: relative; width: 132px; height: 132px; flex: none; }
+  .f4-anillo svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  /* La única esquina redonda del sistema, y no es decoración: va dentro de un
+     anillo circular, y una foto cuadrada ahí deja ver el arco por detrás de
+     las esquinas — se lee como un error de maquetación. */
+  .f4-anillo__foto { position: absolute; inset: 19px; overflow: hidden;
+                     border-radius: 50%;
+                     background: #1F1F1F; display: grid; place-items: center;
+                     font-family: var(--mono-title); font-weight: 800;
+                     font-size: 26px; color: var(--text-5); }
+  /* La foto va en un contenedor absoluto y a 100%/100%: con place-items el
+     hijo se dimensiona a su contenido, la imagen impone su aspect-ratio y se
+     sale del marco. Ya pasó una vez y recortaba un tercio de la foto. */
+  .f4-anillo__foto img { width: 100%; height: 100%; object-fit: cover; }
+  .f4-cab__medio { flex: 1; min-width: 200px; }
+  .f4-nombre { font-family: var(--mono-title); font-weight: 800; font-size: 32px;
+               letter-spacing: -1.7px; line-height: 1.05; text-transform: uppercase;
+               color: var(--off-white); }
+  .f4-cab__linea { display: flex; align-items: center; gap: 8px;
+                   flex-wrap: wrap; margin-top: 10px; }
+  .f4-pastilla { font-family: var(--mono-body); font-size: 9.5px; font-weight: 700;
+                 letter-spacing: 0.5px; text-transform: uppercase; padding: 4px 8px; }
+  .f4-pastilla--verificada { background: var(--blue); color: #fff; }
+  .f4-pastilla--confiable  { background: var(--lime); color: var(--ink); }
+  .f4-pastilla--elite      { background: var(--magenta); color: var(--ink); }
+  .f4-pastilla--nueva      { border: 1px solid var(--border-input); color: var(--text-4); }
+  .f4-cab__meta { font-size: 10.5px; color: var(--text-5); margin-top: 8px; }
+  .f4-cab__pct { text-align: right; }
+  .f4-pct { font-family: var(--mono-title); font-weight: 800; font-size: 46px;
+            letter-spacing: -2.5px; line-height: 1; }
+  .f4-rotulo { font-size: 9px; letter-spacing: 1.2px; text-transform: uppercase;
+               color: var(--text-5); margin-bottom: 6px; }
+
+  /* "Lo que ganas si sigues". Cada tarjeta dice primero QUÉ GANA y después qué
+     pide; el porcentaje nunca es el titular. Si al portar se invierte ese
+     orden, la pantalla deja de funcionar aunque los píxeles queden iguales. */
+  .f4-ganas { background: var(--f4-surface); border: 2px solid var(--ink);
+              border-top: none; padding: 20px; }
+  .f4-ganas__titulo { font-family: var(--mono-title); font-weight: 800; font-size: 14px;
+                      letter-spacing: -0.4px; text-transform: uppercase;
+                      color: var(--ink); margin-bottom: 4px; }
+  .f4-ganas__nota { font-size: 10.5px; color: var(--f4-text-3); margin-bottom: 16px; }
+  .f4-ganas__grid { display: grid; gap: 12px;
+                    grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); }
+  .f4-pend { background: var(--f4-surface-alt); border: 1px solid var(--f4-b1);
+             border-left: 5px solid var(--ink); padding: 14px;
+             display: flex; flex-direction: column; gap: 9px; }
+  .f4-pend--revision { border-left-color: var(--blue); }
+  .f4-pend__ben { font-family: var(--mono-body); font-weight: 700; font-size: 14px;
+                  line-height: 1.4; color: var(--ink); }
+  .f4-pend__pie { display: flex; justify-content: space-between; gap: 10px;
+                  align-items: baseline; }
+  .f4-pend__pide { font-size: 11px; color: var(--f4-text-3); }
+  .f4-pend__pct { font-size: 12px; color: var(--f4-text-3); white-space: nowrap; }
+  .f4-pend__btn { background: var(--ink); color: var(--off-white); border: none;
+                  font-family: var(--mono-title); font-weight: 700; font-size: 10px;
+                  letter-spacing: 0.4px; text-transform: uppercase;
+                  padding: 10px; cursor: pointer; width: 100%; }
+  .f4-pend__btn:hover:not(:disabled) { background: var(--lime); color: var(--ink); }
+  .f4-pend__btn:disabled { background: var(--f4-b3); color: var(--f4-text-4);
+                           cursor: default; }
+
+  .f4-cuerpo { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px;
+               align-items: start; margin-top: 14px; }
+  .f4-tarjeta { background: var(--f4-surface); border: 2px solid var(--ink); padding: 18px; }
+  .f4-tarjeta__titulo { font-family: var(--mono-title); font-weight: 800; font-size: 13px;
+                        letter-spacing: -0.4px; text-transform: uppercase; color: var(--ink); }
+  .f4-tarjeta__nota { font-size: 10.5px; line-height: 1.55; color: var(--f4-text-3);
+                      margin: 5px 0 14px; }
+
+  .f4-piezas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .f4-pieza { aspect-ratio: 4/5; position: relative; overflow: hidden;
+              background: var(--f4-b3); }
+  .f4-pieza img, .f4-pieza video { width: 100%; height: 100%; object-fit: cover; }
+  .f4-pieza--vacia { border: 2px dashed var(--f4-b2); background: var(--f4-surface-alt);
+                     display: grid; place-items: center; color: var(--f4-text-4);
+                     font-family: var(--mono-title); font-size: 20px; cursor: pointer; }
+  .f4-pieza--vacia:hover { border-color: var(--ink); color: var(--ink); }
+
+  /* Bloque de nivel: negro, porque es "a dónde vas". */
+  .f4-nivel { background: var(--ink); border: 2px solid var(--ink); padding: 18px; }
+  .f4-nivel__titulo { font-family: var(--mono-title); font-weight: 800; font-size: 19px;
+                      letter-spacing: -0.9px; text-transform: uppercase;
+                      color: var(--off-white); }
+  .f4-barras { display: flex; gap: 5px; margin: 14px 0 10px; }
+  .f4-barra { height: 7px; flex: 1; border: 1px solid #4A4A44; }
+  .f4-barra.on { background: var(--lime); border-color: var(--lime); }
+  .f4-nivel__nota { font-size: 10.5px; line-height: 1.6; color: var(--text-4); }
+
+  .f4-logro { display: flex; gap: 11px; align-items: flex-start; padding: 11px 0;
+              border-top: 1px solid var(--f4-b3); }
+  .f4-logro:first-of-type { border-top: none; }
+  .f4-logro--no { opacity: .45; }
+  .f4-logro__cuadro { width: 27px; height: 27px; flex: none; display: grid;
+                      place-items: center; background: var(--ink); color: var(--lime);
+                      font-size: 13px; }
+  .f4-logro--no .f4-logro__cuadro { background: transparent; border: 1px solid var(--f4-b2); }
+  .f4-logro__nombre { font-family: var(--mono-title); font-weight: 700; font-size: 11.5px;
+                      letter-spacing: -0.2px; text-transform: uppercase; color: var(--ink); }
+  .f4-logro__texto { font-size: 10.5px; line-height: 1.5; color: var(--f4-text-3); margin-top: 3px; }
+
+  @media (max-width: 900px) {
+    .f4-cuerpo { grid-template-columns: 1fr; }
+    .f4-cab { gap: 14px; }
+    .f4-anillo { width: 104px; height: 104px; }
+    .f4-anillo__foto { inset: 16px; }
+    .f4-nombre { font-size: 17px; letter-spacing: -0.7px; }
+    .f4-pct { font-size: 22px; letter-spacing: -1px; }
+    .f4-cab__pct { text-align: left; }
+    .f4-piezas { grid-template-columns: 1fr 1fr; }
+    .f4-pend__ben { font-size: 12.5px; }
+  }
+
   .bloque-perfil { border: 2px solid var(--ink); padding: 18px; margin-bottom: 16px; background: #fff; }
   /* Invitaciones: en lima porque es lo único del portal que le da algo, no
      que le pide algo. */
@@ -1488,7 +1620,55 @@ document.addEventListener('click', e => {
       }, 400);
     }
   }
+
+  // Un hueco de pieza vacío es un botón de subir: si no lleva a ninguna parte,
+  // el 56,2% del perfil queda detrás de que ella baje sola hasta el formulario.
+  if (e.target.closest('[data-subir]')) llevarA('piezas');
+
+  const p = e.target.closest('[data-pend]');
+  if (p && !p.disabled) accionPendiente(p.dataset.pend, p);
 });
+
+/**
+ * Cada pendiente lleva a donde se resuelve.
+ *
+ * Decirle qué gana y no llevarla ahí le deja a ella la tarea de encontrarlo,
+ * que es exactamente la fricción que esta pantalla existe para quitar.
+ */
+function llevarA(clave) {
+  const DONDE = {
+    piezas: '.subida-muestras, #archivo',
+    foto:   '#marco-foto',
+    redes:  '#lista-redes',
+    bio:    '#p-bio',
+  };
+  const sel = DONDE[clave];
+  if (!sel) return;
+  const el = document.querySelector(sel);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  if (clave === 'bio') setTimeout(() => el.focus(), 400);
+}
+
+async function accionPendiente(clave, boton) {
+  if (clave === 'tarifas') return ir('tarifas');
+
+  if (clave === 'metricas') {
+    boton.disabled = true;
+    try {
+      await api('/mi-perfil/verificacion', { method: 'POST' });
+      // Se repinta la vista entera: el bloque pasa a "en revisión" con el
+      // acento azul, y el porcentaje NO sube — sube cuando el equipo aprueba.
+      await vistaPerfil();
+    } catch (err) {
+      boton.disabled = false;
+      alert('No se pudo pedir la verificación: ' + err.message);
+    }
+    return;
+  }
+
+  llevarA(clave);
+}
 
 async function ir(v) {
   vista = v;
@@ -1610,9 +1790,213 @@ function cabecera(titulo, subtitulo, clase, conPasos = false) {
 let NICHO_SEL = [];
 let TAXONOMIA = [];
 
+/**
+ * El perfil de la creadora (F4): el anillo, lo que gana si sigue, su trabajo,
+ * su nivel y sus logros.
+ *
+ * La regla que sostiene toda esta pantalla es de escritura, no de componentes:
+ * **ningún bloque vacío dice qué falta, dice qué gana.** Los perfiles quedan a
+ * medias en todas las plataformas porque piden datos "para mejorar tu perfil",
+ * o sea trabajo a cambio de una promesa vaga. Si al tocar esto se invierte el
+ * orden —el porcentaje de titular y el beneficio de letra chica— la pantalla
+ * deja de funcionar aunque se vea idéntica.
+ *
+ * El porcentaje y el orden de los pendientes los calcula el backend. Acá no se
+ * recalcula nada: solo se pinta.
+ */
+const CIRC = 2 * Math.PI * 54;   // r=54, el anillo del handoff
+
+/** 16.9 → "16,9". La app está en español y el separador decimal es la coma. */
+const dec = (n) => String(Number(n) || 0).replace('.', ',');
+
+function anilloHTML(pct) {
+  // Magenta bajo 50, lima de ahí en adelante. Nunca rojo: un perfil a medias
+  // no es un error, es un perfil nuevo.
+  const color = pct >= 50 ? 'var(--lime)' : 'var(--magenta)';
+  const avance = CIRC * Math.max(0, Math.min(100, pct)) / 100;
+  return `
+    <svg viewBox="0 0 132 132" aria-hidden="true">
+      <circle cx="66" cy="66" r="54" fill="none" stroke="#262626" stroke-width="9"></circle>
+      <circle cx="66" cy="66" r="54" fill="none" stroke="${color}" stroke-width="9"
+              stroke-linecap="butt"
+              stroke-dasharray="${avance.toFixed(1)} ${CIRC.toFixed(1)}"></circle>
+    </svg>`;
+}
+
+function cabeceraF4(d, idCreadora) {
+  const q = d.quien || {};
+  const pct = d.completitud.pct;
+  const color = pct >= 50 ? 'var(--lime)' : 'var(--magenta)';
+  const nivel = d.nivel || {};
+  const hechos = (d.entregas || {}).a_tiempo || 0;
+
+  return `
+  <div class="f4-cab">
+    <div class="f4-anillo">
+      ${anilloHTML(pct)}
+      <div class="f4-anillo__foto">
+        ${q.foto
+          ? `<img src="/media/perfil/${idCreadora}?t=${TOKEN}&v=${Date.now()}" alt="Tu foto de perfil">`
+          : esc((q.nombre_publico || '?').slice(0, 2).toUpperCase())}
+      </div>
+    </div>
+    <div class="f4-cab__medio">
+      <div class="f4-nombre">${esc(q.nombre_publico || 'Sin nombre')}</div>
+      <div class="f4-cab__linea">
+        <span class="f4-pastilla f4-pastilla--${esc(nivel.clave || 'nueva')}">${esc(nivel.nombre || 'Nueva')}</span>
+        <span class="f4-pastilla f4-pastilla--nueva">
+          ${hechos} trato${hechos === 1 ? '' : 's'} cumplido${hechos === 1 ? '' : 's'}
+        </span>
+      </div>
+      <div class="f4-cab__meta">
+        ${[(q.nicho || []).join(' · '), q.ciudad].filter(Boolean).map(esc).join(' — ') || 'Sin nicho ni ciudad'}
+      </div>
+    </div>
+    <div class="f4-cab__pct">
+      <div class="f4-rotulo">Tu perfil va en</div>
+      <div class="f4-pct" style="color:${color}">${pct}%</div>
+    </div>
+  </div>`;
+}
+
+/**
+ * "Lo que ganas si sigues": máximo tres, ordenados por lo que más le devuelven.
+ *
+ * Al llegar al 100% el bloque desaparece. No se convierte en "todo listo" ni
+ * queda una felicitación permanente: simplemente ya no está.
+ */
+function ganasHTML(comp) {
+  const p = comp.pendientes || [];
+  if (!p.length) return '';
+  return `
+  <div class="f4-ganas">
+    <div class="f4-ganas__titulo">Lo que ganas si sigues</div>
+    <div class="f4-ganas__nota">Lo que más te devuelve va primero, no lo que más suma.</div>
+    <div class="f4-ganas__grid">
+      ${p.map(x => `
+        <div class="f4-pend ${x.acento === 'azul' ? 'f4-pend--revision' : ''}">
+          <div class="f4-pend__ben">${esc(x.beneficio)}</div>
+          <div class="f4-pend__pie">
+            <span class="f4-pend__pide">${esc(x.pide || '')}</span>
+            <span class="f4-pend__pct">+${dec(x.suma)}%</span>
+          </div>
+          <button class="f4-pend__btn" data-pend="${esc(x.clave)}" ${x.bloqueado ? 'disabled' : ''}>
+            ${esc(x.accion || '')}
+          </button>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function trabajoF4(muestras, comp) {
+  const ms = (muestras || []).slice(0, 4);
+  const peso = ((comp.bloques || []).find(b => b.clave === 'piezas') || {}).peso_pct;
+  const huecos = Math.max(0, 4 - ms.length);
+  const dibujar = (m) => m.tipo === 'video'
+    ? `<video src="/media/${m.id}?t=${TOKEN}#t=1"${m.poster_path ? ` poster="/media/${m.id}/poster?t=${TOKEN}"` : ''}
+              preload="none" muted playsinline></video>`
+    : `<img src="/media/${m.id}?t=${TOKEN}" alt="${esc(m.titulo || 'Pieza de tu trabajo')}">`;
+
+  return `
+  <div class="f4-tarjeta">
+    <div class="f4-tarjeta__titulo">Tu trabajo</div>
+    <div class="f4-tarjeta__nota">${peso ? `Es el ${dec(peso)}% de tu perfil. ` : ''}Lo único
+      que la marca mira antes de escribirte.</div>
+    <div class="f4-piezas">
+      ${ms.map(m => `<div class="f4-pieza">${dibujar(m)}</div>`).join('')}
+      ${Array.from({ length: huecos }, () =>
+        '<button type="button" class="f4-pieza f4-pieza--vacia" data-subir aria-label="Subir una pieza">+</button>'
+      ).join('')}
+    </div>
+  </div>`;
+}
+
+/**
+ * Qué le falta para el siguiente nivel, en una frase.
+ *
+ * Las barras solo se pintan cuando lo que falta son entregas. Cuando ya las
+ * tiene y lo único pendiente es la verificación, una barra llena diría "ya
+ * está" al lado de un nivel que todavía no alcanzó.
+ */
+function textoNivel(sig) {
+  const n = sig.faltan_entregas;
+  const entregas = n
+    ? `Te ${n === 1 ? 'falta' : 'faltan'} ${n} entrega${n === 1 ? '' : 's'} a tiempo`
+    : null;
+
+  if (entregas && sig.falta_verificar) return `${entregas} y que verifiquemos tus métricas.`;
+  if (entregas) return `${entregas}.`;
+  if (sig.falta_verificar) return 'Ya tienes las entregas. Falta que verifiquemos tus métricas.';
+  return 'Ya cumples los requisitos. Lo actualizamos en tu próxima entrega.';
+}
+
+function nivelF4(nivel, entregas) {
+  const n = nivel || {};
+  const hechos = (entregas || {}).a_tiempo || 0;
+  const sig = n.siguiente;
+  const meta = sig ? Math.max(1, hechos + (sig.faltan_entregas || 0)) : hechos;
+
+  return `
+  <div class="f4-nivel">
+    <div class="f4-rotulo">${sig ? 'Para llegar a' : 'Tu nivel'}</div>
+    <div class="f4-nivel__titulo">${esc(sig ? sig.nombre : (n.nombre || 'Nueva'))}</div>
+    ${sig ? `
+      ${sig.faltan_entregas ? `
+        <div class="f4-barras">
+          ${Array.from({ length: meta }, (_, i) =>
+            `<span class="f4-barra ${i < hechos ? 'on' : ''}"></span>`).join('')}
+        </div>` : ''}
+      <div class="f4-nivel__nota" ${sig.faltan_entregas ? '' : 'style="margin-top:12px"'}>
+        ${textoNivel(sig)}
+      </div>` : `
+      <div class="f4-nivel__nota" style="margin-top:12px">
+        Es el nivel más alto. Se mantiene entregando a tiempo.
+      </div>`}
+    <div class="f4-nivel__nota" style="margin-top:12px;border-top:1px solid #262626;padding-top:12px">
+      Las marcas ven «${hechos} trato${hechos === 1 ? '' : 's'} cumplido${hechos === 1 ? '' : 's'}»,
+      no el nombre del nivel. El nombre es tu meta, el número es lo que ellas leen.
+    </div>
+  </div>`;
+}
+
+function logrosF4(logros) {
+  const l = logros || [];
+  if (!l.length) return '';
+  // Los no ganados se muestran, no se esconden: ver uno apagado es una meta,
+  // no verlo no es nada. Nunca hay logro negativo.
+  return `
+  <div class="f4-tarjeta" style="margin-top:14px">
+    <div class="f4-tarjeta__titulo">Tus logros</div>
+    <div style="margin-top:12px">
+      ${l.map(x => `
+        <div class="f4-logro ${x.ganado ? '' : 'f4-logro--no'}">
+          <div class="f4-logro__cuadro">${x.ganado ? '✓' : ''}</div>
+          <div>
+            <div class="f4-logro__nombre">${esc(x.nombre)}</div>
+            <div class="f4-logro__texto">${esc(x.texto)}</div>
+          </div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function perfilF4HTML(d, idCreadora, muestras) {
+  return `
+  <div class="f4">
+    ${cabeceraF4(d, idCreadora)}
+    ${ganasHTML(d.completitud)}
+    <div class="f4-cuerpo">
+      <div>${trabajoF4(muestras, d.completitud)}</div>
+      <div>${nivelF4(d.nivel, d.entregas)}${logrosF4(d.logros)}</div>
+    </div>
+  </div>`;
+}
+
 async function vistaPerfil() {
-  const [perfil, redes, nichos, muestras] = await Promise.all([
+  const [perfil, redes, nichos, muestras, f4] = await Promise.all([
     api('/me'), api('/redes'), api('/nichos'), api('/muestras'),
+    // Que falle el resumen no puede dejarla sin poder editar su perfil.
+    api('/mi-perfil').catch(() => null),
   ]);
   TAXONOMIA = nichos.categorias || [];
   NICHO_SEL = [...(perfil.nicho || [])];
@@ -1622,7 +2006,8 @@ async function vistaPerfil() {
 
   $('principal').innerHTML =
     cabecera('Mi perfil', 'Esto es lo que ven las marcas cuando te buscan.', 'perfil', true) +
-    pasosEstado() + `
+    pasosEstado() +
+    (f4 ? perfilF4HTML(f4, perfil.id, muestras.muestras) : '') + `
     <div id="mis-invitaciones"></div>
 
     <div class="bloque-perfil">

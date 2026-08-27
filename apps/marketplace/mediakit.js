@@ -107,6 +107,22 @@ privado.get('/', async (req, res) => {
       nivel,
       logros: perfil.logrosDe({ ...datos.cumplimiento, marcas_que_repitieron: repitieron }),
       desbloqueos: perfil.desbloqueos(datos.estado),
+      // Sus entregas: el bloque de nivel las pinta como barras de progreso
+      // hacia el siguiente. Solo cuentan las que llegaron a tiempo, que es el
+      // mismo criterio con el que sube de nivel — pintar el total haría que la
+      // barra avanzara sin que el nivel se moviera.
+      entregas: {
+        total: Number(datos.cumplimiento.entregas || 0),
+        a_tiempo: Number(datos.cumplimiento.entregas_a_tiempo || 0),
+      },
+      // Lo que la cabecera necesita para presentarla, sin pedir /me aparte.
+      quien: {
+        nombre_publico: datos.creadora.nombre_publico,
+        foto: Boolean(datos.creadora.foto_perfil_path),
+        nicho: datos.creadora.nicho || [],
+        ciudad: datos.creadora.ciudad || null,
+        piezas: datos.muestras.length,
+      },
       media_kit: {
         slug: datos.creadora.media_kit_slug,
         publico: datos.creadora.media_kit_publico === true,
