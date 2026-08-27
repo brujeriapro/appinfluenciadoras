@@ -147,6 +147,11 @@ app.post('/api/cron/pagos', adminAuth, async (req, res) => {
   }
 });
 
+// La vitrina va aparte —colecciones, destacado y selección curada son un
+// bloque con vida propia, y admin.js ya pasa de mil quinientas líneas— y va
+// ANTES: Express reparte por prefijo y en orden, así que montarla después de
+// '/api/admin' la deja detrás de un router que ya casa con su prefijo.
+app.use('/api/admin/vitrina', adminAuth, require('./admin-vitrina'));
 app.use('/api/admin', adminAuth, require('./admin'));
 
 // admin.html se sirve sin auth a propósito: es una cáscara vacía, no contiene

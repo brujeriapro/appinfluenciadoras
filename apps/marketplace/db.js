@@ -776,6 +776,97 @@ const getTransaccionesPendientes = (creadaAntesDe, limite = 50) =>
     limit: String(limite),
   });
 
+// ── Home editorial: colecciones y destacado ─────────────────────────────────
+
+/**
+ * Las colecciones activas con sus creadoras, en orden.
+ *
+ * Dos consultas y un cruce en memoria, en vez de un join anidado de PostgREST:
+ * son tres o cuatro colecciones con diez perfiles cada una, y el join anidado
+ * complica el filtro por `activa` sin ahorrar nada a esta escala.
+ */
+async function getColecciones({ soloActivas = true } = {}) {
+  const filtro = { select: '*', order: 'orden.asc' };
+  if (soloActivas) filtro.activa = 'eq.true';
+  const cols = await get('mk_coleccion', filtro);
+  if (!cols.length) return [];
+
+  const items = await get('mk_coleccion_item', {
+    select: 'coleccion_id,creadora_id,orden',
+    coleccion_id: `in.(${cols.map(c => c.id).join(',')})`,
+    order: 'orden.asc',
+  });
+
+  return cols.map(c => ({
+    ...c,
+    creadora_ids: items.filter(i => i.coleccion_id === c.id).map(i => i.creadora_id),
+  }));
+}
+
+const getColeccion = (id) => getUno('mk_coleccion', { id: `eq.${id}`, select: '*' });
+const insertColeccion = (data) => post('mk_coleccion', data);
+const updateColeccion = (id, data) => patch('mk_coleccion', { id }, data);
+
+async function borrarColeccion(id) {
+  const url = new URL(`${BASE_URL}/mk_coleccion`);
+  url.searchParams.set('id', `eq.${id}`);
+  const res = await fetch(url.toString(), { method: 'DELETE', headers: HEADERS });
+  if (!res.ok) throw new Error(`Supabase DELETE mk_coleccion: ${res.status}`);
+  return true;
+}
+
+/**
+ * Reemplaza las creadoras de una colección por la lista dada, en ese orden.
+ *
+ * Se borra y se vuelve a insertar en vez de calcular diferencias: el orden es
+ * parte del contenido —la colección es una lista curada, no un conjunto— y
+ * reordenar con altas y bajas parciales es más código para el mismo resultado.
+ */
+async function ponerCreadorasEnColeccion(coleccion_id, ids = []) {
+  const url = new URL(`${BASE_URL}/mk_coleccion_item`);
+  url.searchParams.set('coleccion_id', `eq.${coleccion_id}`);
+  const res = await fetch(url.toString(), { method: 'DELETE', headers: HEADERS });
+  if (!res.ok) throw new Error(`Supabase DELETE mk_coleccion_item: ${res.status}`);
+  if (!ids.length) return [];
+  return post('mk_coleccion_item',
+    ids.map((creadora_id, orden) => ({ coleccion_id, creadora_id, orden })));
+}
+
+const getDestacado = () =>
+  getUno('mk_destacado', { select: '*', activo: 'eq.true' });
+
+/**
+ * Cambia la pieza del hero.
+ *
+ * Apaga la anterior antes de encender la nueva: hay un índice único sobre las
+ * activas, así que insertar sin apagar falla — a propósito, para que no puedan
+ * quedar dos heroes y nadie sepa cuál manda.
+ */
+async function ponerDestacado({ muestra_id, titulo, creado_por }) {
+  await patch('mk_destacado', { activo: true }, { activo: false }).catch(() => {});
+  return post('mk_destacado', { muestra_id, titulo, activo: true, creado_por });
+}
+
+// ── Selección curada ────────────────────────────────────────────────────────
+
+const getSeleccionDeMarca = (marca_id, estado = 'publicada') =>
+  getUno('mk_seleccion', { marca_id: `eq.${marca_id}`, estado: `eq.${estado}`, select: '*' });
+
+const getItemsDeSeleccion = (seleccion_id) =>
+  get('mk_seleccion_item', { seleccion_id: `eq.${seleccion_id}`, select: '*', order: 'orden.asc' });
+
+const insertSeleccion = (data) => post('mk_seleccion', data);
+const updateSeleccion = (id, data) => patch('mk_seleccion', { id }, data);
+
+async function ponerItemsDeSeleccion(seleccion_id, items = []) {
+  const url = new URL(`${BASE_URL}/mk_seleccion_item`);
+  url.searchParams.set('seleccion_id', `eq.${seleccion_id}`);
+  const res = await fetch(url.toString(), { method: 'DELETE', headers: HEADERS });
+  if (!res.ok) throw new Error(`Supabase DELETE mk_seleccion_item: ${res.status}`);
+  if (!items.length) return [];
+  return post('mk_seleccion_item', items.map((it, orden) => ({ ...it, seleccion_id, orden })));
+}
+
 // ── Planes y límites ────────────────────────────────────────────────────────
 
 const getPlanes = () =>
@@ -901,6 +992,10 @@ module.exports = {
   insertEntrega, getEntregasDeTrato, updateEntrega,
   insertTransaccion, getTransaccionPorReferencia, getTransaccionesDeTrato, actualizarTransaccion,
   getTransaccionesPendientes, getMarcasPorVencer,
+  getColecciones, getColeccion, insertColeccion, updateColeccion, borrarColeccion,
+  ponerCreadorasEnColeccion, getDestacado, ponerDestacado,
+  getSeleccionDeMarca, getItemsDeSeleccion, insertSeleccion, updateSeleccion,
+  ponerItemsDeSeleccion,
   getPlanes, getPlan, registrarFichaVista, contarFichasDelMes, contarPropuestasDelMes,
   getInfluencersElegibles, contarContenidosDeInfluencer,
 };

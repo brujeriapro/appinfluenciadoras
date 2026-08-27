@@ -98,25 +98,28 @@ router.get('/filtros', async (req, res) => {
   }
 });
 
-/** Listado con filtros. */
-router.get('/', async (req, res) => {
-  try {
-    const { categoria, nicho, rango_alcance, nivel_tarifa, pais, departamento,
-            ciudad, presupuesto_max, entregable, tier, red } = req.query;
-    let creadoras = await db.getCatalogo({
-      categoria, nicho, rango_alcance, nivel_tarifa, pais, departamento, ciudad, presupuesto_max,
-    });
+/**
+ * El catálogo con todo lo que cuelga de cada perfil.
+ *
+ * Vive fuera de la ruta porque lo necesitan dos consumidores muy distintos: la
+ * marca que navega, y el motor de selección del panel admin. Una fila pelada de
+ * `getCatalogo` no trae redes ni tarifas ni cumplimiento, así que el motor
+ * aprendería de la nada — y en silencio, que es lo peor: propondría perfiles
+ * sin decir que no tenía con qué decidir.
+ */
+async function catalogoEnriquecido(filtros = {}) {
+  const creadoras = await db.getCatalogo(filtros);
+  const ids = creadoras.map(c => c.id);
 
-    const ids = creadoras.map(c => c.id);
-    // Las muestras se adjuntan como ids: el binario se pide después a /media/:id.
-    const [muestras, tarifas, cumplimiento, redes] = await Promise.all([
-      db.getMuestrasDeVarias(ids),
-      db.getTarifasDeVarias(ids),
-      db.getCumplimientoDeVarias(ids),
-      db.getRedesDeVarias(ids),
-    ]);
+  // Las muestras se adjuntan como ids: el binario se pide después a /media/:id.
+  const [muestras, tarifas, cumplimiento, redes] = await Promise.all([
+    db.getMuestrasDeVarias(ids),
+    db.getTarifasDeVarias(ids),
+    db.getCumplimientoDeVarias(ids),
+    db.getRedesDeVarias(ids),
+  ]);
 
-    let resultado = creadoras.map(c => ({
+  return creadoras.map(c => ({
       ...c,
       muestras: (muestras[c.id] || []).map(m => ({
         id: m.id, tipo: m.tipo, poster: Boolean(m.poster_path),
@@ -132,27 +135,43 @@ router.get('/', async (req, res) => {
         red: r.red, tier: r.tier, principal: r.es_principal,
         vistas: r.vistas_promedio,
       })),
-    }));
+  }));
+}
 
-    // Los perfiles a medias van al final.
-    //
-    // Un perfil sin una sola pieza de trabajo intercalado entre los buenos hace
-    // que el catálogo entero se lea como descuidado, y son 31 de 123. En vez de
-    // esconderlos —lo que costaría tamaño de catálogo justo cuando hace falta—
-    // se ordenan por qué tan completos están, así lo primero que ve la marca es
-    // lo mejor que hay.
-    //
+/**
+ * Qué tan completo está un perfil.
+ *
+ * Un perfil sin una sola pieza de trabajo intercalado entre los buenos hace que
+ * el catálogo entero se lea como descuidado. En vez de esconderlos —lo que
+ * costaría tamaño de catálogo justo cuando hace falta— se ordenan por esto, así
+ * lo primero que ve la marca es lo mejor que hay.
+ *
+ * Se exporta porque el motor de selección lo usa para el mismo fin: proponerle
+ * a una marca a alguien sin una pieza publicada es hacerle perder el clic, por
+ * bien que encaje en el papel.
+ */
+const queTanCompleto = (c) => {
+  const piezas = (c.muestras || []).length;
+  return (piezas ? 100 : 0)                      // tener trabajo pesa más que todo lo demás
+       + Math.min(piezas, 4) * 10                // hasta cuatro piezas suman
+       + (c.cumplimiento?.entregas ? 25 : 0)     // historial comprobado
+       + (c.foto_perfil_path ? 8 : 0)
+       + ((c.tarifas || []).length ? 6 : 0)
+       + (c.bio_corta ? 4 : 0);
+};
+
+/** Listado con filtros. */
+router.get('/', async (req, res) => {
+  try {
+    const { categoria, nicho, rango_alcance, nivel_tarifa, pais, departamento,
+            ciudad, presupuesto_max, entregable, tier, red } = req.query;
+
+    let resultado = await catalogoEnriquecido({
+      categoria, nicho, rango_alcance, nivel_tarifa, pais, departamento, ciudad, presupuesto_max,
+    });
+
     // Se ordena aquí y no en la consulta porque depende de las piezas y las
     // tarifas, que viven en otras tablas.
-    const queTanCompleto = (c) => {
-      const piezas = c.muestras.length;
-      return (piezas ? 100 : 0)                      // tener trabajo pesa más que todo lo demás
-           + Math.min(piezas, 4) * 10                // hasta cuatro piezas suman
-           + (c.cumplimiento?.entregas ? 25 : 0)     // historial comprobado
-           + (c.foto_perfil_path ? 8 : 0)
-           + (c.tarifas.length ? 6 : 0)
-           + (c.bio_corta ? 4 : 0);
-    };
     resultado.sort((a, b) => {
       const d = queTanCompleto(b) - queTanCompleto(a);
       // Con el mismo nivel de perfil manda el orden que ya traía la consulta
@@ -244,3 +263,5 @@ router.get('/:id', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.catalogoEnriquecido = catalogoEnriquecido;
+module.exports.queTanCompleto = queTanCompleto;

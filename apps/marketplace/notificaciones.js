@@ -888,6 +888,26 @@ function planPorVencer({ marca, plan, vence, dias }) {
   );
 }
 
+/**
+ * La selección curada de la marca ya está publicada.
+ *
+ * El registro le prometió "en menos de 24 horas tu selección personalizada
+ * estará lista". Este correo es el que cumple esa promesa, y por eso dice
+ * explícitamente que la armó una persona: si la marca cree que se lo escupió
+ * un algoritmo, la selección deja de valer más que el catálogo entero.
+ */
+function seleccionLista({ marca, cuantas }) {
+  return enviar(
+    marca.email,
+    `Tu selección está lista · ${cuantas} creadoras para ${marca.nombre_empresa}`,
+    `<p>Ya está tu selección: <strong>${cuantas} creadoras</strong> elegidas para
+     ${marca.nombre_empresa}, cada una con la razón por la que te la proponemos.</p>
+     <p>La armó alguien del equipo mirando perfil por perfil, no un algoritmo. Si
+     ninguna te convence, respondé este correo y la volvemos a armar.</p>
+     ${boton('VER MI SELECCIÓN', `${config.base_url}/panel.html#seleccion`)}`
+  );
+}
+
 function contenidoEntregado({ trato, marca }) {
   return enviar(
     marca.email,
@@ -924,5 +944,5 @@ module.exports = {
   bienvenidaCreadora, avisoPerfilNuevo, avisoListaParaRevisar, perfilAprobado, resetClave,
   nuevaSolicitud, tratoAceptado, tratoRechazado,
   pagoRetenido, contenidoEntregado, contenidoAprobado, pagoLiberado,
-  reciboSuscripcion, planPorVencer,
+  reciboSuscripcion, planPorVencer, seleccionLista,
 };
