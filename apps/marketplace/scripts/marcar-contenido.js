@@ -5,6 +5,7 @@
 //   node scripts/marcar-contenido.js posters       # portadas de video
 //   node scripts/marcar-contenido.js videos 20     # videos, de a poco (lento)
 //   node scripts/marcar-contenido.js todo
+//   node scripts/marcar-contenido.js rehacer     # borra lo marcado y vuelve a empezar
 //
 // Los videos se separan a propósito: recodificar uno toma entre diez y treinta
 // segundos, así que doscientos son casi una hora. Las imágenes y las portadas
@@ -156,6 +157,38 @@ async function procesar(filas, que, tarea) {
   return { ok, fallos };
 }
 
+/**
+ * Tira lo ya marcado para volver a marcarlo con el logo actual.
+ *
+ * Hace falta cada vez que cambia el diseño de la marca: el resto del script
+ * solo toca lo que está sin marcar, así que sin esto un logo nuevo solo
+ * aplicaría a las piezas que entren de aquí en adelante y el catálogo quedaría
+ * con dos marcas distintas conviviendo.
+ *
+ * Borra también los archivos viejos del bucket. Dejarlos sería acumular una
+ * copia muerta por pieza y por rediseño, y nadie vuelve a limpiarlas.
+ */
+async function rehacer() {
+  const filas = await conReintento(() => db.get('mk_muestras', {
+    select: 'id,watermark_path,watermark_poster_path',
+    or: '(watermark_path.not.is.null,watermark_poster_path.not.is.null)',
+  }));
+  console.log(`  soltando ${filas.length} piezas ya marcadas`);
+
+  for (const m of filas) {
+    for (const ruta of [m.watermark_path, m.watermark_poster_path]) {
+      if (!ruta) continue;
+      await fetch(`${STORAGE}/${config.supabase.bucket_muestras}/${ruta}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${config.supabase.service_role_key}` },
+      }).catch(() => {});   // un archivo huérfano es menos grave que parar aquí
+    }
+    await anotar(m.id, {
+      watermark_path: null, watermark_poster_path: null, watermark_at: null,
+    });
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const que = args.find(a => !/^\d+$/.test(a)) || 'todo';
@@ -163,8 +196,10 @@ async function main() {
 
   console.log(`Marcando: ${que} (tope ${limite})`);
 
-  if (que === 'imagenes' || que === 'todo') await marcarImagenes(limite);
-  if (que === 'posters'  || que === 'todo') await marcarPosters(limite);
+  if (que === 'rehacer') await rehacer();
+
+  if (que === 'rehacer' || que === 'imagenes' || que === 'todo') await marcarImagenes(limite);
+  if (que === 'rehacer' || que === 'posters'  || que === 'todo') await marcarPosters(limite);
   if (que === 'videos'   || que === 'todo') await marcarVideos(limite);
 
   const pend = await conReintento(() =>
