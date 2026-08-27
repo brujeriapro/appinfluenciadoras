@@ -74,10 +74,9 @@ const config = {
     plantilla:       process.env.WA_PLANTILLA || '',
     idioma:          process.env.WA_PLANTILLA_IDIOMA || 'es',
     // Plantilla aparte para las listas que comparte una marca aliada. El texto
-    // tiene que ser otro —dice de dónde salió el contacto, y esa frase es lo
+    // debería ser otro —dice de dónde salió el contacto, y esa frase es lo
     // único que separa una invitación de un número desconocido— y Meta aprueba
-    // cada texto por separado. Sin esta variable, el envío por lista aparece
-    // como no disponible en vez de mandar el mensaje equivocado.
+    // cada texto por separado.
     plantilla_lista: process.env.WA_PLANTILLA_LISTA || '',
   },
 
@@ -144,5 +143,27 @@ if (llave && !llave.startsWith('eyJ') && !process.env.MK_SKIP_CONFIG_CHECK) {
     '         que está en Supabase → Settings → API Keys.'
   );
 }
+
+/**
+ * Qué plantilla sale de verdad hacia una lista externa.
+ *
+ * Decisión de María, 27-ago-2026: si no hay una plantilla propia aprobada, se
+ * usa la del programa antes que esperar a que Meta apruebe otra. Se resuelve
+ * acá y no en cada ruta para que la prueba, la tanda y el estado del panel no
+ * puedan discrepar sobre cuál se está mandando.
+ *
+ * ⚠️ La del programa se escribió para gente que YA conoce la marca, así que no
+ * dice de dónde salió el número. En una lista fría esa frase es lo que evita
+ * los reportes por spam, y los reportes le bajan la calificación de calidad al
+ * MISMO número con el que se le escribe a las 514 del programa. Por eso el
+ * panel avisa cuál está usando en vez de callarse: quien manda la tanda tiene
+ * que saber que va con el texto que no menciona el origen.
+ */
+config.whatsapp.plantilla_lista_efectiva =
+  config.whatsapp.plantilla_lista || config.whatsapp.plantilla;
+
+/** true cuando la lista sale con la plantilla del programa por no tener propia. */
+config.whatsapp.lista_usa_la_del_programa =
+  !config.whatsapp.plantilla_lista && Boolean(config.whatsapp.plantilla);
 
 module.exports = config;

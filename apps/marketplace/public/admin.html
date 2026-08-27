@@ -2429,7 +2429,15 @@ VISTAS.listas = async () => {
         ${wa.limite ? ' · tope de Meta ' + esc(wa.limite) : ''}
         <br>Hoy han salido <strong>${d.cupo.usados}</strong> de ${d.cupo.tope} mensajes.
         ${d.falta_plantilla ? `<br><br><strong style="color:var(--magenta)">Falta la plantilla.</strong>
-          Cuando Meta apruebe el texto, pon su nombre en <code>WA_PLANTILLA_LISTA</code>.` : ''}
+          Cuando Meta apruebe el texto, pon su nombre en <code>WA_PLANTILLA_LISTA</code>.` : `
+          <br>Sale con la plantilla <code>${esc(d.plantilla || '')}</code>.`}
+        ${d.usa_la_del_programa ? `<br><br>
+          <strong style="color:var(--magenta)">Es la plantilla del programa.</strong>
+          Ese texto se escribió para gente que ya conoce la marca, así que <strong>no dice de
+          dónde salió su número</strong> — que es justo lo que una lista fría se pregunta, y
+          lo que evita que te reporten. Los reportes le bajan la calidad a este mismo número,
+          con el que le escribes a las 514 del programa. Manda 30 y revisa la calidad al día
+          siguiente antes de seguir.` : ''}
       </div>` : `
       <div class="bloque" style="border-color:var(--magenta);margin-bottom:14px;font-size:12.5px">
         <strong style="color:var(--magenta)">La conexión de WhatsApp no sirve.</strong>

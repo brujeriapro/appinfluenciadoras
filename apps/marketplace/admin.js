@@ -2047,8 +2047,13 @@ router.get('/lista', async (req, res) => {
       conectado: estado.ok,
       // Son dos cosas distintas: la conexión puede servir mientras Meta
       // todavía revisa el texto de la plantilla.
-      falta_plantilla: !config.whatsapp.plantilla_lista,
-      listo: estado.ok && Boolean(config.whatsapp.plantilla_lista),
+      falta_plantilla: !config.whatsapp.plantilla_lista_efectiva,
+      listo: estado.ok && Boolean(config.whatsapp.plantilla_lista_efectiva),
+      // Cuál va a salir, y si es la del programa. El panel lo dice en vez de
+      // callárselo: esa plantilla no menciona de dónde salió el número, y quien
+      // manda la tanda tiene que saberlo antes y no después de los reportes.
+      plantilla: config.whatsapp.plantilla_lista_efectiva || null,
+      usa_la_del_programa: config.whatsapp.lista_usa_la_del_programa,
       estado,
       cupo,
     });
@@ -2062,12 +2067,14 @@ router.post('/lista/prueba', async (req, res) => {
   try {
     const tel = whatsapp.normalizarTelefono(req.body.telefono);
     if (!tel) return res.status(400).json({ error: 'Ese número no parece un celular colombiano' });
-    if (!config.whatsapp.plantilla_lista) {
-      return res.status(400).json({ error: 'Falta WA_PLANTILLA_LISTA con el nombre de la plantilla aprobada' });
+    if (!config.whatsapp.plantilla_lista_efectiva) {
+      return res.status(400).json({
+        error: 'No hay ninguna plantilla aprobada configurada (ni WA_PLANTILLA_LISTA ni WA_PLANTILLA)',
+      });
     }
 
     const r = await whatsapp.enviarPlantilla(
-      tel, [listas.saludoDe(req.body.nombre || 'María')], config.whatsapp.plantilla_lista,
+      tel, [listas.saludoDe(req.body.nombre || 'María')], config.whatsapp.plantilla_lista_efectiva,
     );
     if (!r.ok) return res.status(500).json({ error: r.error, telefono: tel });
     res.json({ ok: true, telefono: tel, id: r.id, idioma: r.idioma });
@@ -2087,9 +2094,10 @@ router.post('/lista/enviar', async (req, res) => {
     const limite = Math.min(Number(req.body.limite) || 30, 250);
     const simulacro = req.body.dry_run === true;
 
-    if (!whatsapp.configurado(config.whatsapp.plantilla_lista)) {
+    if (!whatsapp.configurado(config.whatsapp.plantilla_lista_efectiva)) {
       return res.status(400).json({
-        error: 'Falta configurar WhatsApp: WA_PHONE_NUMBER_ID, WA_TOKEN y WA_PLANTILLA_LISTA',
+        error: 'Falta configurar WhatsApp: WA_PHONE_NUMBER_ID, WA_TOKEN y una plantilla '
+             + '(WA_PLANTILLA_LISTA, o WA_PLANTILLA si vas a usar la del programa)',
       });
     }
 
@@ -2135,7 +2143,7 @@ router.post('/lista/enviar', async (req, res) => {
     let ok = 0, fallos = 0;
     for (const [i, c] of lote.entries()) {
       const r = await whatsapp.enviarPlantilla(
-        c.telefono, [listas.saludoDe(c.nombre)], config.whatsapp.plantilla_lista,
+        c.telefono, [listas.saludoDe(c.nombre)], config.whatsapp.plantilla_lista_efectiva,
       );
 
       if (r.ok) {
