@@ -327,6 +327,10 @@ El **nivel se calcula por red**, no sobre la suma: hay creadoras micro en Instag
 
 UGC no es el escalón de las que no llegaron: es otro trabajo, se produce distinto y se cobra distinto. Los cortes viven en `mk_tier_de()` **y** en `mk_config.tiers` — misma verdad en dos sitios, así que mover uno exige mover el otro.
 
+⚠️ **El tier se calcula por SEGUIDORES, no por vistas promedio** (decisión de María, 27-ago-2026). El handoff 5 de diseño propone recalcularlo por vistas —nano <10.000, micro 10.000–100.000, media 100.000–500.000, macro +500.000— y marca esos cortes como «por confirmar». **No se aplicó, y no es un olvido:** solo 26 de 299 creadoras tienen vistas promedio cargadas, así que calcular el tier por vistas dejaría al 91% del catálogo sin clasificar. Se revisa cuando el dato esté cargado; hasta entonces, cualquier diseño que muestre tiers asume seguidores.
+
+**Las vistas promedio son el hueco de datos más grande del catálogo.** Es el número con el que una marca decide contratar —los seguidores dicen a cuánta gente podría llegar; las vistas, a cuánta llega— y hoy la fila muestra un guion en 273 de 299 perfiles. Cargarlas vale más para el catálogo que cualquier feature nueva.
+
 ### Métricas: declaradas, verificadas o conectadas
 
 `metricas_estado` tiene tres niveles y el catálogo muestra la diferencia — sin eso, nadie se molestaría en verificarse. La creadora sube una **captura de sus estadísticas** y una persona la compara desde la pestaña *Verificar métricas*. Se hace por captura y no solo conectando Instagram porque su API exige cuenta Business o Creator, y buena parte del catálogo es nano.
