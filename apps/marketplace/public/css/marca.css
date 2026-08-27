@@ -200,6 +200,8 @@ button { font-family: inherit; }
   position: sticky; top: 68px; max-height: calc(100vh - 68px); overflow-y: auto;
 }
 .contenido { flex: 1; min-width: 0; padding: clamp(18px, 2.4vw, 34px); }
+/* La columna de filtros solo existe en el catálogo. */
+.filtros.oculta { display: none; }
 
 .filtros__cab { display: flex; justify-content: space-between; align-items: center;
                 padding: 16px 18px; border-bottom: 1px solid var(--border-dark); }
@@ -551,3 +553,101 @@ input[type=range]::-moz-range-thumb {
              color: var(--ink); font-family: var(--mono-t); font-weight: 800; font-size: 10.5px;
              padding: 7px 10px; cursor: pointer; }
 .abrir-nav:hover { background: var(--ink); color: #fff; }
+
+/* ── Home editorial ──────────────────────────────────────────────────────────
+
+   La puerta de entrada de la marca. El contenido real de las creadoras es el
+   protagonista y la interfaz es el marco: de ahí que las piezas sean grandes y
+   todo lo demás sea texto sobre blanco.                                      */
+
+.hero { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+        gap: 18px; align-items: start; margin-bottom: 34px; }
+.hero--solo { grid-template-columns: minmax(0, 1fr); }
+
+.hero__pieza { position: relative; margin: 0; min-width: 0; overflow: hidden;
+               background: var(--border-3); border: 1px solid var(--border-1); }
+/* aspect-ratio dentro de un grid necesita ancho explícito: si la fila se
+   estira por el otro hijo, calcula el ANCHO a partir del alto y desborda su
+   columna. Es un bug que ya se coló una vez. */
+.hero__pieza > img, .hero__pieza > .pieza-wrap { width: 100%; aspect-ratio: 16/10; }
+.hero__pieza img, .hero__pieza video { width: 100%; height: 100%; object-fit: cover; }
+
+.hero__etiqueta { position: absolute; top: 0; left: 0; z-index: 2;
+                  background: var(--azul); color: #fff; font-family: var(--mono-t);
+                  font-weight: 700; font-size: 9.5px; letter-spacing: 0.8px;
+                  text-transform: uppercase; padding: 6px 10px; }
+.hero__pie { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+             padding: 26px 14px 12px; color: #fff;
+             background: linear-gradient(to top, rgba(14,14,14,.86), transparent); }
+.hero__alias { font-family: var(--mono-t); font-weight: 800; font-size: 15px;
+               letter-spacing: -0.5px; text-transform: uppercase; }
+.hero__meta { font-size: 10px; letter-spacing: 0.7px; text-transform: uppercase;
+              color: #D8D8D3; margin-top: 3px; }
+
+.hero__panel { background: var(--surface); border: 2px solid var(--ink);
+               padding: 22px 20px; min-height: 100%; }
+.hero__panel-etiqueta { display: inline-block; background: var(--magenta); color: var(--ink);
+                        font-family: var(--mono-t); font-weight: 700; font-size: 9.5px;
+                        letter-spacing: 0.8px; text-transform: uppercase; padding: 5px 9px; }
+.hero__panel-etiqueta--proceso { background: var(--azul); color: #fff; }
+
+/* ── Bandas ─────────────────────────────────────────────────────────────── */
+
+.banda { margin-bottom: 34px; }
+.banda__cab { display: flex; align-items: flex-end; justify-content: space-between;
+              gap: 16px; flex-wrap: wrap;
+              border-bottom: 2px solid var(--ink); padding-bottom: 10px; margin-bottom: 16px; }
+.banda__titulo { display: flex; align-items: stretch; gap: 12px; }
+.banda__barra { width: 9px; flex: none; }
+.banda__sub { font-size: 11.5px; color: var(--text-3); margin: 5px 0 0; }
+
+/* "Nuestro equipo", nunca "curado por IA": el copy es deliberado. Lo que hace
+   valer la selección es que la firmó una persona. */
+.sello-equipo { background: var(--magenta); color: var(--ink); font-family: var(--mono-t);
+                font-weight: 700; font-size: 9.5px; letter-spacing: 0.7px;
+                text-transform: uppercase; padding: 6px 10px; }
+
+/* ── Tarjetas de la selección ───────────────────────────────────────────── */
+
+.sel-grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(252px, 1fr));
+              gap: 16px; }
+.sel-card { background: var(--surface); border: 1px solid var(--border-1); min-width: 0;
+            display: flex; flex-direction: column; }
+.sel-card:hover { border-color: var(--ink); }
+.sel-card__foto { aspect-ratio: 4/5; width: 100%; background: var(--border-3);
+                  overflow: hidden; display: grid; place-items: center;
+                  font-size: 10px; color: var(--text-4); }
+.sel-card__foto img, .sel-card__foto video { width: 100%; height: 100%; object-fit: cover; }
+.sel-card__cuerpo { padding: 13px 14px; display: flex; flex-direction: column; flex: 1; }
+
+/* La razón, con la barra del acento a la izquierda. Es lo que distingue esta
+   tarjeta de una del catálogo, así que tiene que leerse como algo escrito y no
+   como un dato más. */
+.sel-card__razon { background: var(--surface-alt); border-left: 3px solid var(--azul);
+                   font-size: 11.5px; line-height: 1.6; color: var(--text-2);
+                   padding: 9px 11px; margin: 10px 0 0; }
+.sel-card__pie { display: flex; align-items: flex-end; justify-content: space-between;
+                 gap: 10px; margin-top: auto; padding-top: 12px; }
+
+/* ── Tira de una colección ──────────────────────────────────────────────── */
+
+.col-tira { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.col-pieza { position: relative; min-width: 0; padding: 0; border: 1px solid var(--border-1);
+             background: var(--border-3); cursor: pointer; overflow: hidden;
+             aspect-ratio: 4/5; width: 100%; }
+.col-pieza:hover { border-color: var(--ink); }
+.col-pieza img, .col-pieza video { width: 100%; height: 100%; object-fit: cover; }
+.col-pieza__alias { position: absolute; left: 0; right: 0; bottom: 0;
+                    padding: 20px 8px 7px; color: #fff; text-align: left;
+                    font-family: var(--mono-t); font-weight: 700; font-size: 10px;
+                    letter-spacing: -0.2px; text-transform: uppercase;
+                    background: linear-gradient(to top, rgba(14,14,14,.84), transparent); }
+
+@media (max-width: 1000px) {
+  .hero { grid-template-columns: minmax(0, 1fr); }
+  .hero__pieza > img, .hero__pieza > .pieza-wrap { aspect-ratio: 4/5; }
+  /* Seis piezas en fila no caben; el scroll táctil conserva la banda entera
+     en vez de partirla en dos filas cortadas. */
+  .col-tira { grid-auto-flow: column; grid-auto-columns: minmax(140px, 1fr);
+              grid-template-columns: none; overflow-x: auto; padding-bottom: 6px; }
+}

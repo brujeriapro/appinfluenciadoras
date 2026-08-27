@@ -260,6 +260,69 @@ router.get('/plan', async (req, res) => {
 
 // ── Triage: preseleccionar y descartar ──────────────────────────────────────
 
+/**
+ * El home editorial: destacado, selección curada y colecciones.
+ *
+ * Una sola llamada porque el home no se puede pintar por partes: tres
+ * peticiones en cascada dejan la primera pantalla armándose a pedazos, y esta
+ * es justo la pantalla que decide si una marca se queda.
+ *
+ * Devuelve ids de creadoras, no perfiles completos: el panel ya tiene el
+ * catálogo cargado y los cruza en memoria. Mandarlos otra vez sería repetir
+ * doscientos perfiles para mostrar veinte.
+ */
+router.get('/home', async (req, res) => {
+  try {
+    const [destacado, seleccion, colecciones] = await Promise.all([
+      db.getDestacado().catch(() => null),
+      db.getSeleccionDeMarca(req.usuarioId, 'publicada').catch(() => null),
+      db.getColecciones({ soloActivas: true }).catch(() => []),
+    ]);
+
+    let piezaDestacada = null;
+    if (destacado) {
+      const m = await db.getMuestra(destacado.muestra_id).catch(() => null);
+      if (m) {
+        const c = await db.getCreadoraCatalogo(m.creadora_id).catch(() => null);
+        piezaDestacada = {
+          titulo: destacado.titulo,
+          muestra: { id: m.id, tipo: m.tipo, poster: Boolean(m.poster_path) },
+          // Nunca el nombre real ni el handle: esto es lo primero que ve la
+          // marca, y es exactamente donde más fácil se filtraría una identidad.
+          creadora: c && {
+            id: c.id, codigo: c.codigo, nombre_publico: c.nombre_publico,
+            nicho: c.nicho, ciudad: c.ciudad,
+          },
+        };
+      }
+    }
+
+    // La selección solo viaja si está PUBLICADA. Un borrador es trabajo del
+    // equipo a medio hacer; que se filtre al panel de la marca sería mostrarle
+    // una recomendación que nadie terminó de revisar.
+    let miSeleccion = null;
+    if (seleccion) {
+      const items = await db.getItemsDeSeleccion(seleccion.id);
+      miSeleccion = {
+        publicada_at: seleccion.publicada_at,
+        items: items.map(i => ({ creadora_id: i.creadora_id, razon: i.razon })),
+      };
+    }
+
+    res.json({
+      destacado: piezaDestacada,
+      seleccion: miSeleccion,
+      colecciones: colecciones.map(c => ({
+        slug: c.slug, nombre: c.nombre, descripcion: c.descripcion,
+        color: c.color, creadora_ids: c.creadora_ids,
+      })),
+    });
+  } catch (e) {
+    console.error('[marcas/home]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.get('/triage', async (req, res) => {
   try {
     const filas = await db.getTriageDeMarca(req.usuarioId);

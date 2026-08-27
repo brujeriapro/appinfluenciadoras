@@ -255,7 +255,8 @@
   <button class="abrir-nav" id="abrir-nav">MENÚ</button>
 
   <nav class="nav" id="nav">
-    <button class="nav__item activo" data-vista="catalogo" id="btn-creadoras">Catálogo</button>
+    <button class="nav__item activo" data-vista="inicio">Inicio</button>
+    <button class="nav__item" data-vista="catalogo" id="btn-creadoras">Catálogo</button>
     <button class="nav__item" data-vista="campanas">
       Mis campañas <span class="nav__badge oculto" id="badge-campanas"></span>
     </button>
@@ -371,7 +372,7 @@ async function apiPagos(ruta, opciones = {}) {
 // ── Estado ──────────────────────────────────────────────────────────────────
 
 const E = {
-  vista: 'catalogo',
+  vista: 'inicio',
   layout: localStorage.getItem('mk_layout') || 'filas',
   bandeja: 'todas',
   filtros: { nicho: '', ciudad: '', tier: '', red: '', entregable: '', presupuesto: null },
@@ -379,6 +380,7 @@ const E = {
   catalogo: [],
   plan: null,
   triage: { preseleccionadas: [], descartadas: [] },
+  home: null,
   campanas: [],
   tratos: [],
   marca: null,
@@ -617,6 +619,9 @@ async function arrancar() {
     E.triage = triage;
     E.campanas = campanas;
     E.plan = await api('/plan').catch(() => null);
+    // El home no puede tumbar el arranque: si la vitrina falla, la marca
+    // igual entra y ve el catálogo, que es lo que de verdad no puede faltar.
+    E.home = await api('/home').catch(() => ({}));
     pintarPlan();
 
     $('nombre-marca').textContent = marca.nombre_empresa || '—';
@@ -812,7 +817,11 @@ async function cargarTratos() {
 
 function render() {
   actualizarConteos();
+  // Los filtros son del catálogo. En el home ocupan 262px y no filtran nada,
+  // y en la ficha o en un trato son ruido puro.
+  $('filtros').classList.toggle('oculta', E.vista !== 'catalogo');
   const c = $('contenido');
+  if (E.vista === 'inicio')   return vistaInicio(c);
   if (E.vista === 'catalogo') return vistaCatalogo(c);
   if (E.vista === 'ficha')    return vistaFicha(c);
   if (E.vista === 'campanas') return vistaCampanas(c);
@@ -856,6 +865,194 @@ const TITULOS = {
   pre: 'Preseleccionadas',
   desc: 'Descartadas',
 };
+
+// ── Vista: Inicio (home editorial) ──────────────────────────────────────────
+//
+// Reemplaza la grilla cruda como puerta de entrada. El contenido real de las
+// creadoras es el protagonista; la interfaz es el marco.
+//
+// Todo lo que se muestra acá lo armó una persona del equipo: el destacado, la
+// selección y las colecciones. No hay nada generado. Es lo que hace que esta
+// pantalla valga más que el catálogo, que está a un clic.
+
+function vistaInicio(c) {
+  if (E.cargando) return pintarCargando(c);
+  if (E.error)    return pintarError(c);
+
+  const h = E.home || {};
+  const porId = new Map(E.catalogo.map(x => [x.id, x]));
+
+  c.innerHTML = `
+    ${heroHTML(h.destacado, h.seleccion)}
+    ${seleccionHTML(h.seleccion, porId)}
+    ${(h.colecciones || []).map(col => coleccionHTML(col, porId)).join('')}
+    ${!h.destacado && !h.seleccion && !(h.colecciones || []).length ? sinVitrinaHTML() : ''}
+  `;
+
+  c.querySelectorAll('[data-ficha]').forEach(b => {
+    b.addEventListener('click', () => ir('ficha', b.dataset.ficha));
+  });
+  $('ir-catalogo')?.addEventListener('click', () => ir('catalogo'));
+}
+
+/** La primera pieza que de verdad se puede pintar: imagen, o video con portada. */
+const primeraConImagen = (c) =>
+  (c.muestras || []).find(m => m.tipo !== 'video' || m.poster) || null;
+
+/**
+ * El hero: una pieza real en grande, más el estado de la selección al lado.
+ *
+ * La calidad entra por los ojos antes que cualquier ficha. Si no hay pieza
+ * destacada no se deja un hueco: el panel de la derecha pasa a ocupar todo.
+ */
+function heroHTML(destacado, seleccion) {
+  const panel = seleccion ? panelSeleccionListaHTML(seleccion) : panelEnProcesoHTML();
+  if (!destacado) return `<section class="hero hero--solo">${panel}</section>`;
+
+  const cr = destacado.creadora || {};
+  return `
+  <section class="hero">
+    <figure class="hero__pieza">
+      <span class="hero__etiqueta">Contenido de la semana</span>
+      ${pieza(destacado.muestra)}
+      <figcaption class="hero__pie">
+        <div class="hero__alias">${esc(cr.nombre_publico || '')}</div>
+        <div class="hero__meta">${esc([cr.codigo, (cr.nicho || [])[0], cr.ciudad]
+          .filter(Boolean).join(' · '))}</div>
+      </figcaption>
+    </figure>
+    ${panel}
+  </section>`;
+}
+
+function panelSeleccionListaHTML(seleccion) {
+  return `
+  <div class="hero__panel">
+    <span class="hero__panel-etiqueta">Tu selección está lista</span>
+    <h2 class="h1" style="margin:10px 0 0">${seleccion.items.length} creadoras elegidas
+      para ${esc(E.marca?.nombre_empresa || 'tu marca')}</h2>
+    <p class="p" style="margin-top:12px">Las eligió alguien del equipo mirando perfil por
+    perfil, no un algoritmo. Cada una viene con la razón por la que te la proponemos.</p>
+    <button class="btn btn--magenta" style="margin-top:16px" id="ir-seleccion">Ver mi selección →</button>
+  </div>`;
+}
+
+/**
+ * Todavía no hay selección.
+ *
+ * No se disfraza de error ni se deja en blanco: se dice cuándo llega y qué
+ * hacer mientras tanto. Una marca que entra el primer día y ve un hueco
+ * concluye que la plataforma está vacía.
+ */
+function panelEnProcesoHTML() {
+  return `
+  <div class="hero__panel">
+    <span class="hero__panel-etiqueta hero__panel-etiqueta--proceso">Estamos armando tu selección</span>
+    <h2 class="h1" style="margin:10px 0 0">Tu selección personalizada estará lista en menos de 24 horas</h2>
+    <p class="p" style="margin-top:12px">La revisa una persona del equipo, no un algoritmo.
+    Te avisamos por correo cuando esté.</p>
+    <p class="p" style="margin-top:8px">Mientras tanto, mirá el catálogo completo y marcá con
+    ✓ lo que te sirva: eso es justamente lo que usamos para armártela.</p>
+    <button class="btn btn--magenta" style="margin-top:16px" id="ir-catalogo">Explorar el catálogo →</button>
+  </div>`;
+}
+
+/**
+ * La selección curada, con su razón por perfil.
+ *
+ * La línea de "por qué ella" es obligatoria y viene del equipo. Sin ella esto
+ * sería otra grilla, y la marca no tendría motivo para mirar acá antes que en
+ * el catálogo.
+ */
+function seleccionHTML(seleccion, porId) {
+  if (!seleccion || !seleccion.items.length) return '';
+
+  const tarjetas = seleccion.items
+    .map(it => ({ it, c: porId.get(it.creadora_id) }))
+    // Si una creadora salió del catálogo después de publicarse la selección,
+    // se omite en vez de pintar una tarjeta rota.
+    .filter(x => x.c)
+    .map(({ it, c }) => `
+      <article class="sel-card">
+        <div class="sel-card__foto">${piezaQuieta(primeraConImagen(c))}</div>
+        <div class="sel-card__cuerpo">
+          <div class="alias">${esc(c.nombre_publico)}</div>
+          <div class="sub-id">${esc([c.codigo, (c.nicho || [])[0], c.ciudad]
+            .filter(Boolean).join(' · '))}</div>
+          <p class="sel-card__razon">${esc(it.razon || '')}</p>
+          <div class="sel-card__pie">
+            <div class="desde">
+              <div class="desde__valor">${c.tarifa_min ? COP(c.tarifa_min) : 'A convenir'}</div>
+              <div class="desde__label">${c.tarifa_min ? 'Desde' : 'Sin precio fijo'}</div>
+            </div>
+            <button class="btn btn--sm" data-ficha="${c.id}">Ver perfil →</button>
+          </div>
+        </div>
+      </article>`).join('');
+
+  return `
+  <section class="banda" id="seleccion">
+    <header class="banda__cab">
+      <div>
+        <h2 class="mk-h2">Para tu marca</h2>
+        <p class="banda__sub">${seleccion.items.length} perfiles · cada uno con la razón
+        por la que te lo propusimos</p>
+      </div>
+      <span class="sello-equipo">Seleccionadas por nuestro equipo</span>
+    </header>
+    <div class="sel-grilla">${tarjetas}</div>
+  </section>`;
+}
+
+/** Una colección: barra de color, título y las piezas de sus creadoras. */
+function coleccionHTML(col, porId) {
+  // Solo entran las que tienen algo que mostrar: un recuadro gris entre piezas
+  // buenas hace que la fila entera se lea como rota, y la colección existe
+  // justamente para lucir trabajo.
+  const perfiles = (col.creadora_ids || [])
+    .map(id => porId.get(id))
+    .filter(c => c && primeraConImagen(c));
+  if (!perfiles.length) return '';
+
+  return `
+  <section class="banda">
+    <header class="banda__cab">
+      <div class="banda__titulo">
+        <span class="banda__barra" style="background:${esc(col.color)}"></span>
+        <div>
+          <h2 class="mk-h2">${esc(col.nombre)}</h2>
+          ${col.descripcion ? `<p class="banda__sub">${esc(col.descripcion)}</p>` : ''}
+        </div>
+      </div>
+    </header>
+    <div class="col-tira">
+      ${perfiles.slice(0, 6).map(c => `
+        <button class="col-pieza" data-ficha="${c.id}" aria-label="Ver perfil de ${esc(c.nombre_publico)}">
+          ${piezaQuieta(primeraConImagen(c))}
+          <span class="col-pieza__alias">${esc(c.nombre_publico)}</span>
+        </button>`).join('')}
+    </div>
+  </section>`;
+}
+
+/**
+ * Nadie ha armado la vitrina todavía.
+ *
+ * Pasa el primer día y cada vez que se apaguen todas las colecciones. Se
+ * manda al catálogo en vez de dejar la pantalla muerta.
+ */
+function sinVitrinaHTML() {
+  return `
+  <div class="estado">
+    <div class="estado__cuadro">→</div>
+    <div class="estado__titulo">Empezá por el catálogo</div>
+    <p class="estado__texto">Todavía no tenés una selección armada. Mirá el catálogo completo
+    y marcá con ✓ los perfiles que te sirvan: con eso armamos la tuya.</p>
+    <div class="estado__acciones">
+      <button class="btn" id="ir-catalogo">Ver el catálogo →</button>
+    </div>
+  </div>`;
+}
 
 function vistaCatalogo(c) {
   if (E.cargando) return pintarCargando(c);
@@ -951,6 +1148,25 @@ const pieza = (m) => {
             </button>`;
   }
   return `<img src="${url}" alt="Pieza de trabajo" loading="lazy">`;
+};
+
+/**
+ * Una pieza como imagen quieta, para donde el clic hace otra cosa.
+ *
+ * En la tira de una colección y en la tarjeta de la selección, tocar abre el
+ * perfil — no reproduce. `pieza()` devuelve un <button> para el reproductor, y
+ * meter un botón dentro de otro es HTML inválido: el navegador lo saca del
+ * padre y la grilla se desarma sola.
+ *
+ * De un video se usa su portada. Sin portada no se pinta nada: un rectángulo
+ * negro entre piezas buenas hace que la fila entera se lea como rota.
+ */
+const piezaQuieta = (m) => {
+  if (!m) return '';
+  const url = m.tipo === 'video'
+    ? (m.poster ? `/media/${m.id}/poster?t=${TOKEN}` : null)
+    : `/media/${m.id}?t=${TOKEN}`;
+  return url ? `<img src="${url}" alt="Pieza de trabajo" loading="lazy">` : '';
 };
 
 /**
