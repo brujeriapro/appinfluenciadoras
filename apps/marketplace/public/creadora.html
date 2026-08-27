@@ -1637,10 +1637,11 @@ document.addEventListener('click', e => {
  */
 function llevarA(clave) {
   const DONDE = {
-    piezas: '.subida-muestras, #archivo',
-    foto:   '#marco-foto',
-    redes:  '#lista-redes',
-    bio:    '#p-bio',
+    piezas:  '.subida-muestras, #archivo',
+    foto:    '#marco-foto',
+    redes:   '#lista-redes',
+    bio:     '#p-bio',
+    captura: '.verificacion',
   };
   const sel = DONDE[clave];
   if (!sel) return;

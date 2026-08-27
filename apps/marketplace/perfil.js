@@ -178,7 +178,7 @@ function completitud(p = {}) {
  * NO hay estado "rechazada". En este producto no existe señalamiento negativo:
  * si los números no cuadran, vuelve a "sin verificar" con qué reconectar.
  */
-function estadoVerificacion({ metricas_estado, metricas_solicitada_at } = {}) {
+function estadoVerificacion({ metricas_estado, metricas_solicitada_at, metricas_captura_path } = {}) {
   if (metricas_estado === 'verificado' || metricas_estado === 'conectado') {
     return { clave: 'verificada', pildora: 'Listo', suma: false };
   }
@@ -199,7 +199,22 @@ function estadoVerificacion({ metricas_estado, metricas_solicitada_at } = {}) {
       desde: metricas_solicitada_at || null,
     };
   }
-  return { clave: 'sin_verificar', pildora: 'Pendiente', suma: false };
+  // Sin captura no se puede pedir: el equipo no tendría contra qué comparar, y
+  // el endpoint la rechaza. Si el botón dijera igual "pedir verificación",
+  // estaría ofreciendo algo que va a fallar — así que dice el paso que sí
+  // puede dar. Es la diferencia entre guiarla y hacerla chocar contra un error.
+  if (!metricas_captura_path) {
+    return {
+      clave: 'sin_captura',
+      pildora: 'Pendiente',
+      suma: false,
+      tiene_captura: false,
+      pide: 'sube la captura de tus estadísticas',
+      accion: 'Subir mi captura',
+    };
+  }
+
+  return { clave: 'sin_verificar', pildora: 'Pendiente', suma: false, tiene_captura: true };
 }
 
 /**

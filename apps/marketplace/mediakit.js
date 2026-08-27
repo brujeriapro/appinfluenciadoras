@@ -95,11 +95,24 @@ privado.get('/', async (req, res) => {
     // El bloque de métricas cambia de texto según dónde esté la solicitud, así
     // que se reemplaza acá en vez de dejarle esa lógica al navegador.
     const verificacion = perfil.estadoVerificacion(datos.creadora);
-    const pendientes = datos.estado.pendientes.map(x =>
-      x.clave === 'metricas' && verificacion.titulo
-        ? { ...x, beneficio: verificacion.titulo, pide: verificacion.pide,
-            accion: verificacion.accion, bloqueado: true, acento: verificacion.acento }
-        : x);
+    const pendientes = datos.estado.pendientes.map(x => {
+      if (x.clave !== 'metricas') return x;
+
+      // Ya la pidió: el bloque entero cambia de texto y se bloquea.
+      if (verificacion.titulo) {
+        return { ...x, beneficio: verificacion.titulo, pide: verificacion.pide,
+                 accion: verificacion.accion, bloqueado: true, acento: verificacion.acento };
+      }
+
+      // Todavía no hay captura: el beneficio sigue siendo el mismo —lo que gana
+      // no cambió— pero lo que se le pide es el paso que sí puede dar hoy.
+      if (verificacion.clave === 'sin_captura') {
+        return { ...x, pide: verificacion.pide, accion: verificacion.accion,
+                 clave: 'captura' };
+      }
+
+      return x;
+    });
 
     res.json({
       completitud: { ...datos.estado, pendientes },

@@ -262,9 +262,21 @@ test('los porcentajes llevan un decimal', () => {
 
 const { estadoVerificacion } = require('../perfil');
 
-test('sin pedir nada, queda pendiente', () => {
-  const e = estadoVerificacion({ metricas_estado: 'declarado' });
+test('con captura subida y sin pedir, queda pendiente', () => {
+  const e = estadoVerificacion({ metricas_estado: 'declarado', metricas_captura_path: 'x.jpg' });
   assert.equal(e.clave, 'sin_verificar');
+  assert.equal(e.suma, false);
+});
+
+test('sin captura, lo que se le pide es la captura y no la verificación', () => {
+  // Pedirla sin captura lo rechaza el endpoint: el equipo no tendría contra qué
+  // comparar. Un botón que dice "pedir verificación" ahí está ofreciendo algo
+  // que va a fallar, y la hace chocar contra un error en vez de guiarla.
+  const e = estadoVerificacion({ metricas_estado: 'declarado' });
+  assert.equal(e.clave, 'sin_captura');
+  assert.equal(e.tiene_captura, false);
+  assert.match(e.accion, /captura/i);
+  assert.ok(!/verificaci[oó]n/i.test(e.accion), e.accion);
   assert.equal(e.suma, false);
 });
 
@@ -296,9 +308,11 @@ test('no existe un estado de rechazo', () => {
   // En este producto no hay señalamiento negativo: si no cuadra, vuelve a
   // "sin verificar", no a "rechazada".
   for (const estado of ['declarado', 'solicitada', 'verificado', 'rechazada', null]) {
-    const e = estadoVerificacion({ metricas_estado: estado });
-    assert.ok(['sin_verificar', 'en_revision', 'verificada'].includes(e.clave),
-      `apareció un estado inesperado: ${e.clave}`);
-    assert.ok(!/rechaz|no cumpl|invalid/i.test(e.pildora || ''), e.pildora);
+    for (const captura of ['x.jpg', null]) {
+      const e = estadoVerificacion({ metricas_estado: estado, metricas_captura_path: captura });
+      assert.ok(['sin_captura', 'sin_verificar', 'en_revision', 'verificada'].includes(e.clave),
+        `apareció un estado inesperado: ${e.clave}`);
+      assert.ok(!/rechaz|no cumpl|invalid/i.test(e.pildora || ''), e.pildora);
+    }
   }
 });

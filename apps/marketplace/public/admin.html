@@ -1183,14 +1183,87 @@ const NOMBRE_RED_ADMIN = {
   kwai: 'Kwai', pinterest: 'Pinterest', twitch: 'Twitch', linkedin: 'LinkedIn',
 };
 
+/** Cuánto lleva esperando desde que pidió, y si ya se pasó el plazo. */
+const PLAZO_H = 48;
+
+/**
+ * Las capturas se cargan a mano, no con <img src>.
+ *
+ * El panel se autentica poniendo Basic en la cabecera de cada fetch, pero una
+ * imagen puesta con `src` NO manda esa cabecera: `/media/captura/:id` responde
+ * 401 y el navegador pinta el ícono de imagen rota. No prompta al usuario
+ * tampoco — los navegadores no piden credenciales para subrecursos.
+ *
+ * Estuvo así desde el principio, y explica lo que no cuadraba: 54 creadoras
+ * subieron su captura y ninguna quedó verificada. No era desidia del equipo,
+ * era que la pantalla no mostraba lo único que hay que mirar.
+ *
+ * Se cargan al entrar en pantalla porque pueden ser decenas, y pedirlas todas
+ * de golpe al abrir la vista deja el panel colgado un rato largo.
+ */
+const CAPTURAS_ABIERTAS = [];
+
+function pintarCapturas(raiz) {
+  CAPTURAS_ABIERTAS.splice(0).forEach(u => URL.revokeObjectURL(u));
+
+  const cargar = async (a) => {
+    if (a.dataset.cargada) return;
+    a.dataset.cargada = '1';
+    try {
+      const r = await fetch('/media/captura/' + a.dataset.captura, {
+        headers: { 'Authorization': 'Basic ' + AUTH },
+      });
+      if (!r.ok) throw new Error('Error ' + r.status);
+      const url = URL.createObjectURL(await r.blob());
+      CAPTURAS_ABIERTAS.push(url);
+      a.href = url;
+      a.innerHTML = `<img src="${url}" alt="Captura de estadísticas que subió"
+                          style="width:100%;display:block">`;
+    } catch (e) {
+      a.innerHTML = `<div style="padding:14px;font-size:11px;color:var(--grey-700)">
+        No se pudo cargar la captura (${esc(e.message)}).</div>`;
+    }
+  };
+
+  const obs = new IntersectionObserver((filas) => {
+    filas.forEach(f => { if (f.isIntersecting) { cargar(f.target); obs.unobserve(f.target); } });
+  }, { rootMargin: '400px' });
+
+  raiz.querySelectorAll('[data-captura]').forEach(a => obs.observe(a));
+}
+
+function espera(desde) {
+  if (!desde) return null;
+  const h = Math.floor((Date.now() - new Date(desde)) / 3600000);
+  if (h < 1) return { texto: 'pidió hace menos de 1 h', vencida: false };
+  if (h < 24) return { texto: `pidió hace ${h} h`, vencida: h >= PLAZO_H };
+  const d = Math.floor(h / 24);
+  return { texto: `pidió hace ${d} día${d === 1 ? '' : 's'}`, vencida: h >= PLAZO_H };
+}
+
 VISTAS.metricas = async () => {
   const d = await api('/metricas/cola');
 
-  const filas = (d.pendientes || []).map(c => `
-    <div class="bloque" style="margin-bottom:16px">
+  const todas = d.pendientes || [];
+  // Las que PIDIERON van aparte de las que solo subieron captura. No es un
+  // matiz: a las primeras se les prometió respuesta en 48 horas desde su
+  // portal, a las segundas no se les prometió nada. Mezcladas, la promesa se
+  // rompe sin que nadie lo note — que es exactamente lo que pasaba.
+  const pidieron = todas.filter(c => c.metricas_estado === 'solicitada');
+  const soloCaptura = todas.filter(c => c.metricas_estado !== 'solicitada');
+  const vencidas = pidieron.filter(c => (espera(c.metricas_solicitada_at) || {}).vencida).length;
+
+  const fila = (c) => {
+    const e = espera(c.metricas_solicitada_at);
+    return `
+    <div class="bloque" style="margin-bottom:16px${e && e.vencida ? ';border-left:5px solid var(--magenta)' : ''}">
       <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
         <div style="flex:1;min-width:250px">
           <div class="bloque__titulo">${esc(c.nombre_publico)} · ${esc(c.codigo || '')}</div>
+          ${e ? `<div style="font-size:11px;margin:4px 0 8px;letter-spacing:0.5px;
+                   color:${e.vencida ? 'var(--magenta)' : 'var(--grey-700)'}">
+                   ${esc(e.texto)}${e.vencida ? ' · fuera del plazo que le prometimos' : ''}
+                 </div>` : ''}
           <p style="font-size:12px;color:var(--grey-700);margin:0 0 12px">
             Compara lo que declaró contra su captura. Si no cuadra, devuélvela.
           </p>
@@ -1209,21 +1282,25 @@ VISTAS.metricas = async () => {
             <button class="btn-mini" data-rechazar="${c.id}">NO CUADRA</button>
           </div>
         </div>
-        <a href="/media/captura/${c.id}" target="_blank" rel="noopener"
-           style="flex:none;width:220px;border:2px solid var(--ink);display:block">
-          <img src="/media/captura/${c.id}" alt="Captura de estadísticas"
-               style="width:100%;display:block" loading="lazy">
+        <a data-captura="${c.id}" target="_blank" rel="noopener"
+           style="flex:none;width:220px;border:2px solid var(--ink);display:block;
+                  min-height:120px;background:var(--surface-2)">
+          <div style="padding:14px;font-size:11px;color:var(--grey-700)">Cargando captura…</div>
         </a>
       </div>
-    </div>`).join('');
+    </div>`;
+  };
 
   contenido().innerHTML = `
     <div class="seccion-titulo">Verificar métricas</div>
 
     <div class="kpis" style="margin-bottom:18px">
-      <div class="kpi"><div class="kpi__label">Esperando revisión</div>
-        <div class="kpi__valor">${(d.pendientes || []).length}</div>
-        <div class="kpi__nota">Subieron captura y falta compararla</div></div>
+      <div class="kpi"><div class="kpi__label">Te están esperando</div>
+        <div class="kpi__valor">${pidieron.length}</div>
+        <div class="kpi__nota">Pidieron la verificación desde su portal</div></div>
+      <div class="kpi"><div class="kpi__label">Fuera de plazo</div>
+        <div class="kpi__valor" style="${vencidas ? 'color:var(--magenta)' : ''}">${vencidas}</div>
+        <div class="kpi__nota">Llevan más de ${PLAZO_H} h esperando</div></div>
       <div class="kpi"><div class="kpi__label">Ya verificadas</div>
         <div class="kpi__valor kpi__valor--lima">${d.verificadas || 0}</div>
         <div class="kpi__nota">Llevan el distintivo en el catálogo</div></div>
@@ -1238,9 +1315,26 @@ VISTAS.metricas = async () => {
       Si cambia sus números después, el sello se cae solo y vuelve a esta cola.
     </div>
 
-    ${filas || `<div class="bloque"><p style="font-size:13px;margin:0">
-      Nadie está esperando revisión. Cuando una creadora suba su captura, aparece aquí.
-    </p></div>`}`;
+    <div class="seccion-titulo" style="font-size:14px;margin-bottom:10px">
+      Pidieron verificación${pidieron.length ? ` · ${pidieron.length}` : ''}
+    </div>
+    <p style="font-size:12px;color:var(--grey-700);margin:0 0 14px">
+      A estas se les prometió respuesta en ${PLAZO_H} horas. Van primero, y la que
+      lleva más esperando va arriba.
+    </p>
+    ${pidieron.map(fila).join('') || `<div class="bloque" style="margin-bottom:24px">
+      <p style="font-size:13px;margin:0">Nadie está esperando. Cuando una creadora pida
+      la verificación desde su portal, aparece aquí con el reloj corriendo.</p></div>`}
+
+    <div class="seccion-titulo" style="font-size:14px;margin:26px 0 10px">
+      Subieron captura sin pedirla${soloCaptura.length ? ` · ${soloCaptura.length}` : ''}
+    </div>
+    <p style="font-size:12px;color:var(--grey-700);margin:0 0 14px">
+      No están esperando respuesta —no la pidieron— pero ya tienes con qué compararlas.
+      Verificarlas es regalarles el sello.
+    </p>
+    ${soloCaptura.map(fila).join('') || `<div class="bloque"><p style="font-size:13px;margin:0">
+      No hay ninguna.</p></div>`}`;
 
   const actuar = async (id, aprobar, btn) => {
     btn.disabled = true;
@@ -1263,6 +1357,8 @@ VISTAS.metricas = async () => {
     b.addEventListener('click', () => actuar(b.dataset.verificar, true, b)));
   contenido().querySelectorAll('[data-rechazar]').forEach(b =>
     b.addEventListener('click', () => actuar(b.dataset.rechazar, false, b)));
+
+  pintarCapturas(contenido());
 };
 
 VISTAS.invitaciones = async () => {
