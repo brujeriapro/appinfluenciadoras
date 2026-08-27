@@ -100,6 +100,18 @@ const cuposRutas = require('./campanas-cupos');
 app.use('/api/marcas/cupos', soloMarca, cuposRutas.deMarca);
 app.use('/api/creadoras/cupos', soloCreadora, cuposRutas.deCreadora);
 
+// El perfil de la creadora y su media kit.
+//
+// Se monta en la ruta EXACTA y no en '/api/creadoras': el guard de sesión
+// corre para todo lo que casa con el prefijo, así que montarlo arriba dejaría
+// el registro y el login de creadoras exigiendo una sesión que todavía no
+// tienen.
+const mediakit = require('./mediakit');
+app.use('/api/creadoras/mi-perfil', soloCreadora, mediakit.privado);
+// La página pública va SIN sesión: es la que ella comparte en su bio, y pedir
+// cuenta para verla la volvería inútil como carta de presentación.
+app.use('/api/c', mediakit.publico);
+
 app.use('/api/marcas', require('./marcas'));
 app.use('/api/creadoras', require('./creadoras'));
 app.use('/api/catalogo', require('./catalogo'));

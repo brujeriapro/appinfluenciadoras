@@ -9,6 +9,7 @@
 
 const express = require('express');
 const db = require('./db');
+const { puntajeDePerfil } = require('./perfil');
 const { marcaAuth } = require('./auth');
 const { conAhorro } = require('./paquetes');
 
@@ -146,19 +147,26 @@ async function catalogoEnriquecido(filtros = {}) {
  * costaría tamaño de catálogo justo cuando hace falta— se ordenan por esto, así
  * lo primero que ve la marca es lo mejor que hay.
  *
- * Se exporta porque el motor de selección lo usa para el mismo fin: proponerle
- * a una marca a alguien sin una pieza publicada es hacerle perder el clic, por
- * bien que encaje en el papel.
+ * ⚠️ Los pesos NO viven acá: salen de `perfil.js`, que es el mismo módulo que
+ * dibuja el círculo de completitud en el portal de la creadora. Es lo que hace
+ * verdadera la frase "los perfiles completos reciben más solicitudes" — si el
+ * círculo y este orden se calcularan aparte, subir el círculo dejaría de subir
+ * la posición y sería una promesa falsa.
+ *
+ * Al historial de cumplimiento se le suma aparte porque no es algo que ella
+ * pueda "llenar": se gana entregando, y no tiene sentido pedírselo en un
+ * círculo de completitud.
  */
-const queTanCompleto = (c) => {
-  const piezas = (c.muestras || []).length;
-  return (piezas ? 100 : 0)                      // tener trabajo pesa más que todo lo demás
-       + Math.min(piezas, 4) * 10                // hasta cuatro piezas suman
-       + (c.cumplimiento?.entregas ? 25 : 0)     // historial comprobado
-       + (c.foto_perfil_path ? 8 : 0)
-       + ((c.tarifas || []).length ? 6 : 0)
-       + (c.bio_corta ? 4 : 0);
-};
+const queTanCompleto = (c) =>
+  puntajeDePerfil({
+    piezas: (c.muestras || []).length,
+    redes: (c.redes || []).length,
+    tarifas: (c.tarifas || []).length,
+    tarifa_abierta: c.tarifa_abierta,
+    foto_perfil_path: c.foto_perfil_path,
+    bio_corta: c.bio_corta,
+    metricas_estado: c.metricas_estado,
+  }) + (c.cumplimiento?.entregas ? 25 : 0);
 
 /** Listado con filtros. */
 router.get('/', async (req, res) => {

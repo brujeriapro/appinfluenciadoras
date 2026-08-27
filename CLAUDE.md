@@ -287,10 +287,10 @@ Taxonomía de dos niveles en `mk_config.nichos`: 15 categorías madre (belleza, 
 cd apps/marketplace
 npm install
 node index.js       # http://localhost:3040
-npm test            # 195 pruebas: comisiones, estados, tarifas, Wompi, plazos, correo, análisis, pagos, cupos y aprendizaje
+npm test            # 220 pruebas: comisiones, estados, tarifas, Wompi, plazos, correo, análisis, pagos, cupos y aprendizaje
 ```
 
-**Migraciones:** los archivos de `apps/marketplace/migrations/` en orden numérico, en el SQL Editor de Supabase. Van por `mk_046`. Además, crear el bucket privado `mk-muestras` en Storage.
+**Migraciones:** los archivos de `apps/marketplace/migrations/` en orden numérico, en el SQL Editor de Supabase. Van por `mk_047`. Además, crear el bucket privado `mk-muestras` en Storage.
 
 **Scripts que se corren a mano** (necesitan las mismas variables que el servidor):
 
