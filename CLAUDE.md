@@ -339,7 +339,9 @@ UGC no es el escalón de las que no llegaron: es otro trabajo, se produce distin
 
 ⚠️ **El tier se calcula por SEGUIDORES, no por vistas promedio** (decisión de María, 27-ago-2026). El handoff 5 de diseño propone recalcularlo por vistas —nano <10.000, micro 10.000–100.000, media 100.000–500.000, macro +500.000— y marca esos cortes como «por confirmar». **No se aplicó, y no es un olvido:** solo 26 de 299 creadoras tienen vistas promedio cargadas, así que calcular el tier por vistas dejaría al 91% del catálogo sin clasificar. Se revisa cuando el dato esté cargado; hasta entonces, cualquier diseño que muestre tiers asume seguidores.
 
-**Las vistas promedio son el hueco de datos más grande del catálogo.** Es el número con el que una marca decide contratar —los seguidores dicen a cuánta gente podría llegar; las vistas, a cuánta llega— y hoy la fila muestra un guion en 273 de 299 perfiles. Cargarlas vale más para el catálogo que cualquier feature nueva.
+**Las vistas promedio son el hueco de datos más grande del catálogo.** Es el número con el que una marca decide contratar —los seguidores dicen a cuánta gente podría llegar; las vistas, a cuánta llega— y hoy solo 38 de 262 perfiles visibles las tienen cargadas. Cargarlas vale más para el catálogo que cualquier feature nueva.
+
+⚠️ **Y no son el único hueco: `engagement_pct`, `audiencia_mujeres`, `audiencia_pais` y `dias_entrega` están vacíos en las 262.** La ficha tiene tres grupos de números —alcance por red, su audiencia, cómo trabaja— y hoy solo el primero tiene algo que mostrar, en 38 perfiles. Los otros dos se ocultan solos en vez de pintar guiones (un recuadro con dos guiones no se lee como "todavía no lo sabemos" sino como "aquí no hay nada", justo donde la marca decide si paga), así que el hueco **no se ve en pantalla** — se ve en esta tabla y en la consulta. Al cargar cualquiera de esos campos, el grupo aparece solo.
 
 ### Métricas: declaradas, verificadas o conectadas
 
@@ -377,7 +379,7 @@ Los **videos van en crudo** por `POST /api/creadoras/muestras/video` (el archivo
 
 ### Estado
 
-- **233 creadoras · 220 visibles · 2 marcas · 1 trato · 421 piezas.** El cuello de botella son las marcas, no el producto.
+- **328 creadoras · 262 visibles · 2 marcas · 1 trato · 663 piezas** (27-ago-2026). El cuello de botella son las marcas, no el producto.
 - Dominio **`creatorsmanager.com`** conectado y en producción, con `/precios` público.
 - **Planes por propuesta, no por búsqueda:** Explora $0 (3 propuestas/mes), Impulsa $39.900 (12), Escala $119.900 (40), Agencia $299.900 (sin tope). El catálogo se ve **completo en todos**: limitar la búsqueda no protegía nada —lo que se ve se anota— e impedía encontrar a la creadora por la que valdría la pena pagar. El tope vive donde está el valor: al enviar la propuesta.
 - **Pagos con Wompi** configurados en producción. ⚠️ **Nunca se ha probado una compra real** — hay 1 transacción registrada. Guía paso a paso para hacerlo: [apps/marketplace/PROBAR-PAGO.md](apps/marketplace/PROBAR-PAGO.md).
