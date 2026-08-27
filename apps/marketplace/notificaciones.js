@@ -790,6 +790,104 @@ async function pagoRetenido({ trato, marca, contacto }) {
   return Promise.all([aMarca, aCreadora]);
 }
 
+/**
+ * Recibo de la suscripción.
+ *
+ * Existe porque cobrar entre $39.900 y $299.900 y no mandar nada por escrito
+ * deja a la marca sin cómo verificar qué compró, hasta cuándo va y a quién
+ * reclamarle. Es lo primero que pide un área de contabilidad.
+ *
+ * Lleva los datos fiscales de COLBELLEZA LATAM y la referencia de la
+ * transacción: no es una factura electrónica —esa la emite el sistema
+ * contable— pero sí el soporte del pago mientras tanto.
+ */
+// Cómo pagó, en español. Wompi los devuelve en inglés y en mayúsculas, y
+// "CARD" en un recibo colombiano se lee como un descuido.
+const MEDIO_DE_PAGO = {
+  CARD: 'Tarjeta',
+  NEQUI: 'Nequi',
+  PSE: 'PSE',
+  BANCOLOMBIA_TRANSFER: 'Transferencia Bancolombia',
+  BANCOLOMBIA_COLLECT: 'Corresponsal Bancolombia',
+  DAVIPLATA: 'Daviplata',
+  BANCOLOMBIA_QR: 'QR Bancolombia',
+};
+
+function reciboSuscripcion({ marca, plan, monto, referencia, vence, metodo }) {
+  const fecha = new Date().toLocaleDateString('es-CO', {
+    day: '2-digit', month: 'long', year: 'numeric',
+  });
+  const hasta = new Date(vence).toLocaleDateString('es-CO', {
+    day: '2-digit', month: 'long', year: 'numeric',
+  });
+  const fila = (etiqueta, valor) =>
+    `<tr><td style="padding:6px 0;color:#7A7A7A;font-size:11.5px">${etiqueta}</td>` +
+    `<td style="padding:6px 0;text-align:right;font-weight:700">${valor}</td></tr>`;
+
+  return enviar(
+    marca.email,
+    `Recibo de tu plan ${plan.nombre} · ${referencia}`,
+    `<p>Recibimos tu pago. Tu plan <strong>${plan.nombre}</strong> queda activo.</p>
+
+     <table style="width:100%;border-collapse:collapse;border:2px solid #0E0E0E;padding:0">
+       <tbody style="display:table-row-group">
+         <tr><td colspan="2" style="background:#0E0E0E;color:#F2F2F2;padding:8px 12px;font-weight:800;letter-spacing:-0.4px">RECIBO</td></tr>
+         <tr><td colspan="2" style="padding:4px 12px 12px">
+           <table style="width:100%;border-collapse:collapse">
+             ${fila('Fecha', fecha)}
+             ${fila('Plan', plan.nombre)}
+             ${fila('Propuestas al mes', plan.propuestas_mes || 'Sin tope')}
+             ${fila('Activo hasta', hasta)}
+             ${fila('Medio de pago', MEDIO_DE_PAGO[metodo] || metodo || 'Tarjeta')}
+             ${fila('Referencia', referencia)}
+           </table>
+         </td></tr>
+         <tr><td colspan="2" style="border-top:2px solid #0E0E0E;padding:10px 12px;background:#D6FF00">
+           <table style="width:100%"><tr>
+             <td style="font-weight:800">TOTAL PAGADO</td>
+             <td style="text-align:right;font-weight:800;font-size:17px">${formatearCOP(monto)}</td>
+           </tr></table>
+         </td></tr>
+       </tbody>
+     </table>
+
+     <p style="font-size:11px;color:#7A7A7A;margin-top:14px">
+       COLBELLEZA LATAM S.A.S. · Medellín, Colombia<br>
+       Este es el soporte de tu pago. La factura electrónica llega aparte.<br>
+       El plan no se renueva solo. Te avisamos tres días antes de que se venza.
+     </p>
+     ${boton('IR A MI PANEL', `${config.base_url}/panel.html`)}`
+  );
+}
+
+/**
+ * El plan está por vencerse.
+ *
+ * Sin esto el plan deja de funcionar el día que vence y la marca se entera
+ * chocando con el muro al ir a mandar una propuesta — en mitad de una campaña,
+ * eso se lee como que la plataforma falló.
+ *
+ * No se dramatiza: no pierde nada de lo que ya hizo, solo deja de poder
+ * proponer. Decirlo así evita que renueve por susto y después se arrepienta.
+ */
+function planPorVencer({ marca, plan, vence, dias }) {
+  const hasta = new Date(vence).toLocaleDateString('es-CO', {
+    day: '2-digit', month: 'long', year: 'numeric',
+  });
+  const cuando = dias <= 1 ? 'mañana' : `en ${dias} días`;
+
+  return enviar(
+    marca.email,
+    `Tu plan ${plan?.nombre || ''} se vence ${cuando}`,
+    `<p>Tu plan <strong>${plan?.nombre || ''}</strong> va hasta el <strong>${hasta}</strong>.</p>
+     <p>Cuando se venza sigues entrando y viendo el catálogo completo; lo que se pausa es
+     poder enviar propuestas nuevas. Tus tratos en curso no se tocan.</p>
+     <p style="font-size:11px;color:#7A7A7A">No se renueva solo: si quieres seguir, hay que
+     renovarlo desde el panel.</p>
+     ${boton('RENOVAR MI PLAN', `${config.base_url}/panel.html#planes`)}`
+  );
+}
+
 function contenidoEntregado({ trato, marca }) {
   return enviar(
     marca.email,
@@ -826,4 +924,5 @@ module.exports = {
   bienvenidaCreadora, avisoPerfilNuevo, avisoListaParaRevisar, perfilAprobado, resetClave,
   nuevaSolicitud, tratoAceptado, tratoRechazado,
   pagoRetenido, contenidoEntregado, contenidoAprobado, pagoLiberado,
+  reciboSuscripcion, planPorVencer,
 };

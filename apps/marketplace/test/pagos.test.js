@@ -16,7 +16,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 
 const { elegirTransaccion } = require('../wompi');
-const { MENSAJES } = require('../pagos');
+const { MENSAJES, yaSeAviso } = require('../pagos');
 
 // ── Cuál de varios intentos cuenta ──────────────────────────────────────────
 
@@ -77,4 +77,34 @@ test('los mensajes de fallo dicen si se debitó o no', () => {
   // Es lo primero que quiere saber alguien cuyo pago no pasó.
   assert.match(MENSAJES.anulada, /no se debitó/i);
   assert.match(MENSAJES.error, /no se debitó/i);
+});
+
+// ── Aviso de plan por vencer ────────────────────────────────────────────────
+
+const DIA = 24 * 3600_000;
+const enFecha = (ms) => new Date(ms).toISOString();
+
+test('sin aviso previo, se avisa', () => {
+  assert.equal(yaSeAviso({ plan_vence_at: enFecha(Date.now() + 2 * DIA), plan_aviso_at: null }), false);
+});
+
+test('no se repite el aviso del mismo ciclo', () => {
+  // Le avisamos ayer del vencimiento de pasado mañana: no se le escribe otra
+  // vez en cada pasada del reloj, que son cuatro al día.
+  const vence = Date.now() + 2 * DIA;
+  assert.equal(yaSeAviso({ plan_vence_at: enFecha(vence), plan_aviso_at: enFecha(Date.now() - DIA) }), true);
+});
+
+test('tras renovar, el aviso viejo no bloquea el nuevo ciclo', () => {
+  // Es el caso que un booleano se comería: le avisamos el mes pasado, renovó,
+  // y el vencimiento nuevo está a dos días. Tiene que volver a recibir aviso.
+  const vence = Date.now() + 2 * DIA;
+  const avisoDelCicloAnterior = enFecha(Date.now() - 33 * DIA);
+  assert.equal(yaSeAviso({ plan_vence_at: enFecha(vence), plan_aviso_at: avisoDelCicloAnterior }), false);
+});
+
+test('un aviso justo en el límite del mes pertenece al ciclo anterior', () => {
+  const vence = Date.now() + 2 * DIA;
+  const limite = enFecha(vence - 31 * DIA - 1000);
+  assert.equal(yaSeAviso({ plan_vence_at: enFecha(vence), plan_aviso_at: limite }), false);
 });

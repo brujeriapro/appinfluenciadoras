@@ -227,7 +227,7 @@ async function sincronizar(referencia, wompiId) {
   }
 
   if (fila.concepto === 'trato') await aplicarPagoDeTrato(fila, real);
-  if (fila.concepto === 'suscripcion') await aplicarSuscripcion(fila);
+  if (fila.concepto === 'suscripcion') await aplicarSuscripcion(fila, real);
   return { estado: 'aprobada', cambio: true };
 }
 
@@ -266,7 +266,7 @@ async function aplicarPagoDeTrato(fila, transaccion) {
 }
 
 /** Suscripción aprobada: se activa el plan por 30 días. */
-async function aplicarSuscripcion(fila) {
+async function aplicarSuscripcion(fila, transaccion) {
   const clave = fila.datos?.plan;
   if (!clave) return;
 
@@ -282,6 +282,15 @@ async function aplicarSuscripcion(fila) {
     plan_vence_at: vence.toISOString(),
   });
   console.log(`[wompi] marca ${fila.marca_id} activó el plan ${clave} hasta ${vence.toISOString()}`);
+
+  // El recibo va después de activar, y su fallo no revierte nada: es peor
+  // dejar a alguien pagando sin plan por un correo caído que dejarlo con el
+  // plan activo y sin recibo, que se puede reenviar.
+  const plan = await db.getPlan(clave);
+  notificaciones.reciboSuscripcion({
+    marca, plan, monto: fila.monto, referencia: fila.referencia,
+    vence, metodo: transaccion?.payment_method_type,
+  }).catch(e => console.error('[notif] reciboSuscripcion:', e.message));
 }
 
 // ── Consulta del estado de un pago ──────────────────────────────────────────
@@ -373,8 +382,67 @@ async function conciliarPendientes({ margenMinutos = 10, tope = 50 } = {}) {
   return { revisadas: pendientes.length, resueltas, detalle };
 }
 
+/**
+ * ¿Ya se le avisó de ESTE vencimiento?
+ *
+ * El aviso cuenta si cae dentro del ciclo actual, o sea después del
+ * vencimiento anterior. Se resta un mes porque los planes son mensuales: un
+ * aviso más viejo que eso pertenece a un ciclo ya pagado y no dice nada del
+ * que está por vencerse.
+ *
+ * Se mira así en vez de con un booleano porque un booleano habría que
+ * acordarse de apagarlo en cada renovación, y ese olvido deja a la marca sin
+ * aviso para siempre sin que nada falle a la vista.
+ */
+function yaSeAviso(marca, unMes = 31 * 24 * 3600_000) {
+  if (!marca.plan_aviso_at) return false;
+  const vence = new Date(marca.plan_vence_at).getTime();
+  return new Date(marca.plan_aviso_at).getTime() > vence - unMes;
+}
+
+/**
+ * Avisa a las marcas cuyo plan se vence pronto.
+ *
+ * El recibo promete este aviso; sin esto sería una promesa falsa. Y un plan
+ * que se apaga sin advertencia, en mitad de una campaña, se lee como una falla
+ * de la plataforma y no como un cobro que venció.
+ *
+ * Se avisa una vez por ciclo: `plan_aviso_at` se compara contra el
+ * vencimiento vigente, así que al renovar el aviso vuelve a habilitarse solo
+ * sin tener que acordarse de apagar nada.
+ */
+async function avisarPlanesPorVencer({ diasAntes = 3 } = {}) {
+  const ahora = Date.now();
+  const corte = new Date(ahora + diasAntes * 24 * 3600_000).toISOString();
+  const marcas = await db.getMarcasPorVencer(new Date(ahora).toISOString(), corte);
+
+  let avisadas = 0;
+  for (const marca of marcas) {
+    if (yaSeAviso(marca)) continue;
+
+    const vence = new Date(marca.plan_vence_at).getTime();
+    const plan = await db.getPlan(marca.plan).catch(() => null);
+    const dias = Math.max(1, Math.ceil((vence - ahora) / (24 * 3600_000)));
+
+    const ok = await notificaciones.planPorVencer({
+      marca, plan, vence: marca.plan_vence_at, dias,
+    });
+    // Solo se marca si salió. Si el correo falló, que lo reintente la próxima
+    // pasada en vez de dar por avisada a una marca que no supo nada.
+    if (ok) {
+      await db.updateMarca(marca.id, { plan_aviso_at: new Date(ahora).toISOString() });
+      avisadas++;
+    }
+  }
+
+  if (avisadas) console.log(`[planes] ${avisadas} marcas avisadas de vencimiento`);
+  return { revisadas: marcas.length, avisadas };
+}
+
 module.exports = router;
 module.exports.manejarEvento = manejarEvento;
 module.exports.sincronizar = sincronizar;
 module.exports.conciliarPendientes = conciliarPendientes;
 module.exports.MENSAJES = MENSAJES;
+module.exports.avisarPlanesPorVencer = avisarPlanesPorVencer;
+module.exports.yaSeAviso = yaSeAviso;

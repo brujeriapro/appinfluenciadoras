@@ -132,11 +132,15 @@ app.post('/api/cron/plazos', adminAuth, async (req, res) => {
  */
 app.post('/api/cron/pagos', adminAuth, async (req, res) => {
   try {
-    const r = await require('./pagos').conciliarPendientes({
+    const pagos = require('./pagos');
+    const r = await pagos.conciliarPendientes({
       margenMinutos: Number(req.query.margen) || undefined,
     });
+    // Va en la misma ruta porque las dos cosas son el ciclo de vida del cobro y
+    // el equipo las mira juntas cuando algo huele mal con los pagos.
+    const planes = await pagos.avisarPlanesPorVencer();
     if (r.resueltas || r.detalle.length) console.log('[cron/pagos]', JSON.stringify(r));
-    res.json(r);
+    res.json({ ...r, planes });
   } catch (e) {
     console.error('[cron/pagos]', e.message);
     res.status(500).json({ error: e.message });
@@ -210,6 +214,12 @@ function programarPlazos() {
       if (p.resueltas || p.detalle.length) console.log('[pagos]', JSON.stringify(p));
     } catch (e) {
       console.error('[pagos] falló la conciliación:', e.message);
+    }
+
+    try {
+      await require('./pagos').avisarPlanesPorVencer();
+    } catch (e) {
+      console.error('[planes] falló el aviso de vencimiento:', e.message);
     }
   };
 

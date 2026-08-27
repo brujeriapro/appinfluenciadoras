@@ -27,7 +27,14 @@ const HEADERS = {
 
 async function get(tabla, params = {}) {
   const url = new URL(`${BASE_URL}/${tabla}`);
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  Object.entries(params).forEach(([k, v]) => {
+    // Un arreglo son varios filtros sobre la MISMA columna, que es como
+    // PostgREST expresa un rango: `fecha=gte.X&fecha=lte.Y`. Con `set` los dos
+    // se juntarían en "gte.X,lte.Y" y la consulta traería lo que le diera la
+    // gana, sin error.
+    if (Array.isArray(v)) v.forEach(uno => url.searchParams.append(k, uno));
+    else url.searchParams.set(k, v);
+  });
   const res = await fetch(url.toString(), { headers: HEADERS });
   if (!res.ok) throw new Error(`Supabase GET ${tabla}: ${res.status} ${await res.text()}`);
   return res.json();
@@ -752,6 +759,14 @@ const actualizarTransaccion = (referencia, data) =>
  * hace un cuarto de hora, que probablemente solo sea alguien tecleando su
  * tarjeta.
  */
+/** Marcas con plan de pago vigente que se vence dentro de la ventana. */
+const getMarcasPorVencer = (desde, hasta) =>
+  get('mk_marcas', {
+    select: 'id,email,nombre_empresa,nombre_contacto,plan,plan_vence_at,plan_aviso_at',
+    plan_vence_at: [`gte.${desde}`, `lte.${hasta}`],
+    order: 'plan_vence_at.asc',
+  });
+
 const getTransaccionesPendientes = (creadaAntesDe, limite = 50) =>
   get('mk_transacciones', {
     select: '*',
@@ -885,7 +900,7 @@ module.exports = {
   insertPago, getPagosDeTrato, getTodosLosPagos,
   insertEntrega, getEntregasDeTrato, updateEntrega,
   insertTransaccion, getTransaccionPorReferencia, getTransaccionesDeTrato, actualizarTransaccion,
-  getTransaccionesPendientes,
+  getTransaccionesPendientes, getMarcasPorVencer,
   getPlanes, getPlan, registrarFichaVista, contarFichasDelMes, contarPropuestasDelMes,
   getInfluencersElegibles, contarContenidosDeInfluencer,
 };
