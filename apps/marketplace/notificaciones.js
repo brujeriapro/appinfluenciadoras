@@ -330,17 +330,51 @@ function recordatorioPerfil({ email, nombre, falta = [] }) {
 // ── Alta de creadoras ───────────────────────────────────────────────────────
 
 /** A la creadora recién registrada: qué sigue, en concreto. */
+/**
+ * La bienvenida, y por qué dice con qué correo entra.
+ *
+ * Este correo crea el momento de la verdad: la manda de vuelta a una pantalla
+ * que le va a pedir correo y contraseña. Antes no le daba ninguno de los dos
+ * datos —solo "entra y pon tus tarifas"— así que si se registró con un correo
+ * distinto del que usa a diario, o si el navegador le autocompletó la clave,
+ * quedaba trancada con el correo que la trancó en la mano.
+ *
+ * De 32 creadoras que pidieron recuperar la clave, 31 se habían registrado
+ * hacía menos de tres días. No se les olvidó: nunca supieron cuál era.
+ *
+ * Tres cosas que ahora sí están:
+ *   · Su correo de acceso, escrito. El enlace además lo lleva precargado.
+ *   · Que la contraseña es la que escogió ACÁ. Dos de cada tres vienen de otra
+ *     plataforma nuestra y llegan probando la de allá.
+ *   · La salida, sin tener que buscarla, por si nada de lo anterior funciona.
+ */
 function bienvenidaCreadora({ creadora }) {
+  const entrar = `${config.base_url}/creadora.html?email=${encodeURIComponent(creadora.email)}`;
   return enviar(
     creadora.email,
     'Ya tienes perfil en Creators Manager',
     `<p>Hola ${esc(creadora.nombre_publico)}, tu perfil quedó creado.</p>
+
      <p style="background:#D6FF00;padding:10px;border:2px solid #0E0E0E">
        <strong>Lo que sigue:</strong> entra y pon tus tarifas.<br>
        <span style="font-size:11px;color:#3A3A3A">Sin precio publicado no podemos mostrarte a las marcas.</span>
      </p>
-     <p>Cuando las tengas, revisamos tu perfil y te avisamos por acá cuando esté publicado.</p>
-     ${boton('PONER MIS TARIFAS', `${config.base_url}/creadora.html`)}`
+
+     <div style="border:1px solid #C9C9C2;padding:12px 14px;margin:16px 0;font-size:12.5px;line-height:1.7">
+       <strong>Para entrar:</strong><br>
+       Tu correo es <strong>${esc(creadora.email)}</strong><br>
+       Tu contraseña es la que escogiste al registrarte aquí — no la de ninguna
+       otra plataforma.
+     </div>
+
+     <p>Cuando pongas tus tarifas, revisamos tu perfil y te avisamos por acá cuando esté publicado.</p>
+     ${boton('PONER MIS TARIFAS', entrar)}
+
+     <p style="font-size:11px;color:#7A7A7A;margin-top:14px">
+       ¿No te sirve la contraseña?
+       <a href="${config.base_url}/creadora.html?olvide=1&email=${encodeURIComponent(creadora.email)}"
+          style="color:#0E0E0E">Pide un enlace para crear otra</a>.
+     </p>`
   );
 }
 

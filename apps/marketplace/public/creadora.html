@@ -1178,6 +1178,19 @@ document.getElementById('ver-clave')?.addEventListener('click', () => {
 
 // El correo de recuperación trae el token en el ancla de la URL.
 let tokenReset = null;
+// El correo de bienvenida trae el correo de acceso en el enlace. Precargarlo
+// quita de en medio la pregunta "¿con cuál me registré?", que es media causa de
+// que alguien no pueda entrar: se registran con uno y prueban con otro.
+const _emailDeLaUrl = new URLSearchParams(location.search).get('email');
+if (_emailDeLaUrl && $('email')) $('email').value = _emailDeLaUrl;
+
+// El mismo correo ofrece pedir un enlace nuevo. Que llegue directo a esa
+// pantalla evita que tenga que encontrar un botón al pie.
+if (new URLSearchParams(location.search).get('olvide') === '1') {
+  modo = 'olvide';
+  pintarModo();
+}
+
 // Se lee de la query y también del ancla: los correos nuevos traen el token en
 // `?recuperar=`, pero los enlaces ya enviados usan `#recuperar=` y siguen
 // sirviendo su hora de vida.

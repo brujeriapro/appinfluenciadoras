@@ -189,11 +189,64 @@ function activo() {
   return null;
 }
 
-/** Envía por el proveedor activo. Lanza con el mensaje real si algo falla. */
+/**
+ * Todos los proveedores con llave, empezando por el activo.
+ *
+ * Sirve para tener a dónde caerse cuando el primero se queda sin cuota.
+ */
+function disponibles() {
+  const primero = activo();
+  if (!primero) return [];
+  const resto = Object.entries(PROVEEDORES)
+    .filter(([clave, p]) => clave !== primero.clave && p.llave())
+    .map(([clave, p]) => ({ clave, ...p }));
+  return [primero, ...resto];
+}
+
+/**
+ * ¿Este error dice que se acabó la cuota, y no que algo está mal configurado?
+ *
+ * Importa la diferencia: una cuota agotada se arregla mandando por otro lado,
+ * pero una llave equivocada va a fallar igual en todos, y reintentar solo
+ * gastaría cuota del siguiente por nada.
+ */
+function esCuotaAgotada(mensaje) {
+  return /limit exceeded|limit exhausted|quota|rate limit|429|too many requests|daily limit/i
+    .test(String(mensaje || ''));
+}
+
+/**
+ * Envía. Si el proveedor se queda sin cuota, prueba con el siguiente que tenga
+ * llave.
+ *
+ * Existe porque el modo de falla real no es "el correo está mal configurado"
+ * —eso se nota el primer día— sino "se acabó la cuota de hoy", que llega sin
+ * aviso y tumba TODO por igual: las invitaciones y también las recuperaciones
+ * de contraseña. Pasó con Brevo en agosto (plan de 300) y con ZeptoMail
+ * después (100 al día mientras revisan la cuenta), y las dos veces dejó a
+ * creadoras sin poder entrar.
+ *
+ * Solo se reintenta ante cuota agotada. Ante una llave mala se falla de una:
+ * probar los demás no arreglaría nada y gastaría su cuota.
+ */
 async function enviar({ para, asunto, html, remitente }) {
-  const p = activo();
-  if (!p) throw new Error('No hay proveedor de correo configurado');
-  return p.enviar({ para, asunto, html, remitente });
+  const lista = disponibles();
+  if (!lista.length) throw new Error('No hay proveedor de correo configurado');
+
+  let ultimoError = null;
+  for (const [i, p] of lista.entries()) {
+    try {
+      const r = await p.enviar({ para, asunto, html, remitente });
+      if (i > 0) console.warn(`[correo] ${lista[0].nombre} sin cuota; salió por ${p.nombre}`);
+      return r;
+    } catch (e) {
+      ultimoError = e;
+      // Si no es cuota, o ya no quedan alternativas, se falla con el error real.
+      if (!esCuotaAgotada(e.message) || i === lista.length - 1) throw e;
+      console.warn(`[correo] ${p.nombre} sin cuota, probando el siguiente…`);
+    }
+  }
+  throw ultimoError;
 }
 
 /**
@@ -228,4 +281,5 @@ async function diagnostico() {
   }
 }
 
-module.exports = { enviar, diagnostico, activo, PROVEEDORES, partirRemitente };
+module.exports = {
+  disponibles, esCuotaAgotada, enviar, diagnostico, activo, PROVEEDORES, partirRemitente };
