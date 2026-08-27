@@ -43,11 +43,22 @@ test('la marca trae su plan', () => {
   }
 });
 
-test('la marca trae lo que respondió en el registro', () => {
-  // Alimenta la selección curada. Sin esto, quien la arma no ve qué pidió.
+test('la marca trae las seis respuestas del registro', () => {
+  // Alimentan la selección curada y el filtro de candidatas. Sin ellas, quien
+  // arma no ve qué pidió la marca y el banco no se puede filtrar.
   const cols = columnasDe('COLS_MARCA');
-  for (const c of ['busca_que_vende', 'busca_canal', 'busca_tipo', 'busca_presupuesto']) {
+  for (const c of ['busca_categorias', 'busca_canal', 'busca_audiencia',
+                   'busca_ciudades', 'busca_tamano', 'busca_presupuesto']) {
     assert.ok(cols.includes(c), `COLS_MARCA no trae "${c}"`);
+  }
+});
+
+test('no quedan columnas del tanteo anterior', () => {
+  // mk_045 dejó cuatro columnas provisionales que mk_053 reemplazó por las
+  // seis reales. Leerlas devolvería undefined en silencio.
+  const cols = columnasDe('COLS_MARCA');
+  for (const viejo of ['busca_que_vende', 'busca_tipo']) {
+    assert.ok(!cols.includes(viejo), `COLS_MARCA todavía lee "${viejo}", que ya no existe`);
   }
 });
 

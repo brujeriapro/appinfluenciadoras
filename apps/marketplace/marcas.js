@@ -7,6 +7,7 @@ const db = require('./db');
 const config = require('./config');
 const { calcularTrato } = require('./comisiones');
 const maquina = require('./tratos');
+const seleccion = require('./seleccion');
 const { marcaAuth, firmarToken, rateLimit, ipDe } = require('./auth');
 const { TERMINOS_VERSION } = require('./terminos');
 const notificaciones = require('./notificaciones');
@@ -271,6 +272,56 @@ router.get('/plan', async (req, res) => {
  * catálogo cargado y los cruza en memoria. Mandarlos otra vez sería repetir
  * doscientos perfiles para mostrar veinte.
  */
+/**
+ * Guarda las seis respuestas del registro y abre la solicitud de selección.
+ *
+ * La solicitud nace con su vencimiento a 24 horas porque eso es lo que se le
+ * acaba de prometer en pantalla. Sin el dato, la promesa es solo una frase: la
+ * cola del equipo no puede ordenarse por urgencia y se incumple sin que nadie
+ * lo note.
+ */
+router.post('/busqueda', async (req, res) => {
+  try {
+    const limpio = seleccion.normalizarBusqueda(req.body);
+
+    await db.updateMarca(req.usuarioId, {
+      ...limpio,
+      busca_completado_at: new Date().toISOString(),
+    });
+
+    // Si ya tenía una solicitud abierta se reutiliza: responder el registro dos
+    // veces no debería poner al equipo a armar dos selecciones.
+    let solicitud = await db.getSeleccionDeMarca(req.usuarioId, 'solicitada')
+      || await db.getSeleccionDeMarca(req.usuarioId, 'borrador');
+
+    if (!solicitud) {
+      solicitud = await db.insertSeleccion({
+        marca_id: req.usuarioId,
+        estado: 'solicitada',
+        vence_at: new Date(Date.now() + seleccion.HORAS_PROMESA * 3600_000).toISOString(),
+        creada_por: 'registro',
+      });
+    }
+
+    res.json({ ok: true, vence_at: solicitud.vence_at, respuestas: limpio });
+  } catch (e) {
+    console.error('[marcas/busqueda]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** Las opciones del registro, para que el formulario no las tenga escritas. */
+router.get('/busqueda/opciones', (req, res) => {
+  res.json({
+    categorias: seleccion.CATEGORIAS,
+    canales: seleccion.CANALES,
+    audiencias: seleccion.AUDIENCIAS,
+    ciudades: seleccion.CIUDADES,
+    tamanos: seleccion.TAMANOS,
+    topes: seleccion.TOPES,
+  });
+});
+
 router.get('/home', async (req, res) => {
   try {
     const [destacado, seleccion, colecciones] = await Promise.all([

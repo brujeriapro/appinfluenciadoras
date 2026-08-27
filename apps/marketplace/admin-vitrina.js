@@ -16,6 +16,7 @@ const express = require('express');
 const db = require('./db');
 const { proponerSeleccion } = require('./aprendizaje');
 const { catalogoEnriquecido, queTanCompleto } = require('./catalogo');
+const seleccion = require('./seleccion');
 const notificaciones = require('./notificaciones');
 
 const router = express.Router();
@@ -163,6 +164,91 @@ router.post('/destacado', async (req, res) => {
 // ── Selección curada ────────────────────────────────────────────────────────
 
 /**
+ * La cola del equipo, ordenada por urgencia.
+ *
+ * Lo primero que se ve al abrir la pantalla: a quién hay que armarle la
+ * selección y cuánto queda de las 24 horas que se le prometieron. Ordenada por
+ * cualquier otra cosa, la promesa se incumple sin que nadie lo note.
+ */
+router.get('/solicitudes', async (req, res) => {
+  try {
+    const filas = await db.get('mk_seleccion', {
+      select: '*', estado: 'in.(solicitada,borrador)', order: 'vence_at.asc',
+    });
+    if (!filas.length) return res.json({ solicitudes: [] });
+
+    const marcas = await db.get('mk_marcas', {
+      select: COLS_BUSQUEDA, id: `in.(${filas.map(f => f.marca_id).join(',')})`,
+    });
+    const porId = new Map(marcas.map(m => [m.id, m]));
+
+    res.json({
+      solicitudes: filas.map(f => ({
+        ...f,
+        tiempo: seleccion.tiempoRestante(f.vence_at),
+        marca: porId.get(f.marca_id) || null,
+      })),
+      // Las vencidas van aparte: son las que ya incumplieron la promesa.
+      vencidas: filas.filter(f => seleccion.tiempoRestante(f.vence_at).vencida).length,
+    });
+  } catch (e) {
+    console.error('[admin/solicitudes]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+const COLS_BUSQUEDA = 'id,nombre_empresa,email,ciudad,busca_categorias,busca_otra,'
+                    + 'busca_canal,busca_audiencia,busca_ciudades,busca_tamano,'
+                    + 'busca_presupuesto,busca_completado_at';
+
+/**
+ * El banco ya filtrado por lo que pidió la marca.
+ *
+ * Devuelve quiénes califican y quiénes no, con el motivo. Las que no califican
+ * se mandan igual: quien arma la selección a veces sabe algo que el filtro no
+ * —que una creadora de otro nicho encaja perfecto con ese producto— y
+ * esconderlas le quitaría esa decisión.
+ */
+router.get('/solicitudes/:marcaId/candidatas', async (req, res) => {
+  try {
+    const marca = await db.getMarcaById(req.params.marcaId);
+    if (!marca) return res.status(404).json({ error: 'Marca no encontrada' });
+
+    const catalogo = await catalogoEnriquecido({});
+    const evaluadas = catalogo.map(c => {
+      const v = seleccion.califica(c, marca);
+      return { ...c, califica: v.califica, motivos: v.motivos };
+    });
+
+    const califican = evaluadas.filter(c => c.califica);
+    res.json({
+      busca: {
+        categorias: marca.busca_categorias, otra: marca.busca_otra,
+        canal: marca.busca_canal, audiencia: marca.busca_audiencia,
+        ciudades: marca.busca_ciudades, tamano: marca.busca_tamano,
+        presupuesto: marca.busca_presupuesto,
+      },
+      califican: califican.length,
+      total: evaluadas.length,
+      // Primero las que califican, y dentro de ellas las más completas: es el
+      // orden en que alguien las va a querer mirar.
+      candidatas: [...califican, ...evaluadas.filter(c => !c.califica)]
+        .slice(0, 60)
+        .map(c => ({
+          id: c.id, codigo: c.codigo, nombre_publico: c.nombre_publico,
+          nicho: c.nicho, ciudad: c.ciudad, redes: c.redes,
+          tarifa_min: c.tarifa_min, cumplimiento: c.cumplimiento,
+          muestras: (c.muestras || []).slice(0, 1),
+          califica: c.califica, motivos: c.motivos,
+        })),
+    });
+  } catch (e) {
+    console.error('[admin/candidatas]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
  * Propone un borrador de selección para una marca.
  *
  * No guarda nada: devuelve la propuesta para que la persona la mire. Guardar
@@ -211,12 +297,21 @@ router.get('/seleccion/:marcaId/propuesta', async (req, res) => {
 /** El borrador guardado de una marca, si lo hay, con lo publicado aparte. */
 router.get('/seleccion/:marcaId', async (req, res) => {
   try {
-    const [borrador, publicada] = await Promise.all([
+    const [borrador, publicada, solicitada] = await Promise.all([
       db.getSeleccionDeMarca(req.params.marcaId, 'borrador'),
       db.getSeleccionDeMarca(req.params.marcaId, 'publicada'),
+      db.getSeleccionDeMarca(req.params.marcaId, 'solicitada'),
     ]);
     const cargar = async (sel) => sel ? { ...sel, items: await db.getItemsDeSeleccion(sel.id) } : null;
-    res.json({ borrador: await cargar(borrador), publicada: await cargar(publicada) });
+    const abierta = borrador || solicitada;
+    res.json({
+      borrador: await cargar(borrador),
+      publicada: await cargar(publicada),
+      // Cuánto queda de las 24 horas, para poder mostrarlo mientras se arma.
+      tiempo: abierta ? seleccion.tiempoRestante(abierta.vence_at) : null,
+      atajos: seleccion.ATAJOS,
+      minimo: seleccion.MINIMO, maximo: seleccion.MAXIMO, max_razon: seleccion.MAX_RAZON,
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -233,7 +328,14 @@ router.post('/seleccion/:marcaId', async (req, res) => {
     const items = Array.isArray(req.body.items) ? req.body.items : [];
     if (!items.length) return res.status(400).json({ error: 'La selección está vacía' });
 
+    // Si venía como solicitud del registro, pasa a borrador: alguien empezó.
     let sel = await db.getSeleccionDeMarca(req.params.marcaId, 'borrador');
+    if (!sel) {
+      const pedida = await db.getSeleccionDeMarca(req.params.marcaId, 'solicitada');
+      if (pedida) {
+        sel = await db.updateSeleccion(pedida.id, { estado: 'borrador' });
+      }
+    }
     if (!sel) {
       sel = await db.insertSeleccion({
         marca_id: req.params.marcaId,
@@ -275,15 +377,14 @@ router.post('/seleccion/:marcaId/publicar', async (req, res) => {
     const sel = await db.getSeleccionDeMarca(req.params.marcaId, 'borrador');
     if (!sel) return res.status(404).json({ error: 'No hay borrador que publicar' });
 
-    const items = await db.getItemsDeSeleccion(sel.id);
-    if (!items.length) return res.status(400).json({ error: 'La selección está vacía' });
 
-    const sinRazon = items.filter(i => !String(i.razon || '').trim());
-    if (sinRazon.length) {
-      return res.status(400).json({
-        error: `Faltan ${sinRazon.length} razones. Cada creadora necesita su línea de "por qué ella" — sin eso es una grilla más.`,
-      });
-    }
+    const items = await db.getItemsDeSeleccion(sel.id);
+
+    // Las mismas tres reglas que bloquean el botón, verificadas acá. El
+    // handoff lo pide explícito y tiene razón: un bloqueo que solo vive en el
+    // navegador no es una regla, es una sugerencia.
+    const veredicto = seleccion.puedeEnviar(items);
+    if (!veredicto.ok) return res.status(400).json({ error: veredicto.aviso });
 
     const anterior = await db.getSeleccionDeMarca(req.params.marcaId, 'publicada');
     if (anterior) await db.updateSeleccion(anterior.id, { estado: 'archivada' });

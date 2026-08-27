@@ -140,9 +140,9 @@ const COLS_MARCA = [
   'contacto_creadoras', 'terminos_version', 'terminos_aceptados_at', 'created_at',
   // Suscripción. Sin estas dos, todo el mundo es plan gratuito.
   'plan', 'plan_vence_at', 'plan_aviso_at',
-  // Qué busca la marca, del registro. Alimenta la selección curada.
-  'busca_que_vende', 'busca_canal', 'busca_tipo', 'busca_presupuesto',
-  'busca_completado_at',
+  // Qué busca la marca, las seis del registro. Alimenta la selección curada.
+  'busca_categorias', 'busca_otra', 'busca_canal', 'busca_audiencia',
+  'busca_ciudades', 'busca_tamano', 'busca_presupuesto', 'busca_completado_at',
 ].join(',');
 
 const getMarcaPorEmail = (email) =>
