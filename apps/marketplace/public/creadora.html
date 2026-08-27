@@ -799,6 +799,17 @@
     .inv__cupos { flex-direction: column; align-items: flex-start; gap: 8px; }
     .inv__acciones .btn-portal { min-width: 100%; }
   }
+
+  /* El campo de contraseña con su interruptor de ver. */
+  .clave-caja { position: relative; display: flex; align-items: center; }
+  .clave-caja input { flex: 1; padding-right: 74px; }
+  .clave-ojo {
+    position: absolute; right: 6px; background: none; border: none; cursor: pointer;
+    font-family: var(--mono-title); font-weight: 700; font-size: 10px;
+    letter-spacing: 0.8px; color: var(--text-5); padding: 6px 8px;
+  }
+  .clave-ojo:hover { color: var(--lime); }
+  .clave-ojo:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
 </style>
 </head>
 <body>
@@ -865,7 +876,15 @@
     </div>
     <div class="campo" id="campo-clave">
       <label for="clave" id="label-clave">Tu contraseña</label>
-      <input id="clave" type="password" autocomplete="current-password" required minlength="8">
+      <!-- El ojo no es un adorno: sin él se escribe a ciegas en el celular, y
+           un error de dedo al ESCOGER la contraseña queda permanente e
+           invisible. Es la causa más probable de que alguien no pueda entrar
+           al día siguiente de haberse registrado. -->
+      <div class="clave-caja">
+        <input id="clave" type="password" autocomplete="current-password" required minlength="8">
+        <button type="button" class="clave-ojo" id="ver-clave"
+                aria-label="Mostrar la contraseña" aria-pressed="false">VER</button>
+      </div>
     </div>
 
     <label class="acepta oculto" id="acepta-wrap">
@@ -945,7 +964,24 @@
 <script>
 // ── Sesión ──────────────────────────────────────────────────────────────────
 
-let TOKEN = sessionStorage.getItem('mk_creadora') || null;
+/**
+ * La sesión de la creadora, guardada donde SOBREVIVE cerrar la pestaña.
+ *
+ * Estaba en sessionStorage, que se borra al cerrar. En el celular eso es casi
+ * inmediato: se registraba, entraba, cerraba, y al volver tenía que escribir
+ * de nuevo una contraseña que —si se equivocó al escogerla, o si el navegador
+ * se la autocompletó— nunca supo cuál era. De ahí salieron 33 personas
+ * pidiendo recuperación en cuatro días.
+ *
+ * Se acepta el riesgo de un celular compartido a cambio de eso: es lo que hace
+ * cualquier app que ella ya usa, y acá no puede mover dinero — los pagos los
+ * hace el equipo a mano.
+ */
+let TOKEN = localStorage.getItem('mk_creadora')
+  // Quien tenía sesión abierta cuando esto cambió no se entera: se lee la
+  // vieja una última vez y se migra.
+  || sessionStorage.getItem('mk_creadora') || null;
+if (TOKEN) localStorage.setItem('mk_creadora', TOKEN);
 let modoPrimeraVez = false;
 
 async function api(ruta, opciones = {}) {
@@ -958,6 +994,7 @@ async function api(ruta, opciones = {}) {
     },
   });
   if (res.status === 401) {
+    localStorage.removeItem('mk_creadora');
     sessionStorage.removeItem('mk_creadora');
     location.reload();
     throw new Error('Sesión vencida');
@@ -1013,8 +1050,19 @@ function pintarModo() {
   $('campo-clave').classList.toggle('oculto', modo === 'olvide');
   $('email').closest('.campo').classList.toggle('oculto', modo === 'recuperar');
   $('clave').required = modo !== 'olvide';
-  $('label-clave').textContent = ['registro', 'primera', 'recuperar'].includes(modo)
+  const escogiendo = ['registro', 'primera', 'recuperar'].includes(modo);
+  $('label-clave').textContent = escogiendo
     ? 'Escoge tu contraseña (mínimo 8)' : 'Tu contraseña';
+
+  // `current-password` mientras se ESCOGE una nueva es un error con
+  // consecuencias: el navegador no ofrece guardarla como debe, y puede
+  // autocompletar una guardada de otro sitio. La persona termina registrada
+  // con una contraseña que nunca eligió y que no sabe cuál es.
+  $('clave').setAttribute('autocomplete', escogiendo ? 'new-password' : 'current-password');
+
+  // Al escoger, se muestra por defecto: no hay nada que ocultarle a alguien
+  // que está inventando su propia contraseña, y verla evita el error de dedo.
+  mostrarClave(escogiendo);
   $('login-error').classList.add('oculto');
   document.querySelectorAll('.enlaces-login .cambiar-modo').forEach(b => {
     b.classList.toggle('oculto', b.dataset.modo === modo);
@@ -1115,6 +1163,19 @@ fetch('/api/creadoras/paises')
   })
   .catch(() => {});
 
+function mostrarClave(visible) {
+  const campo = $('clave');
+  const boton = $('ver-clave');
+  if (!campo || !boton) return;
+  campo.type = visible ? 'text' : 'password';
+  boton.textContent = visible ? 'OCULTAR' : 'VER';
+  boton.setAttribute('aria-pressed', String(visible));
+  boton.setAttribute('aria-label', visible ? 'Ocultar la contraseña' : 'Mostrar la contraseña');
+}
+document.getElementById('ver-clave')?.addEventListener('click', () => {
+  mostrarClave($('clave').type === 'password');
+});
+
 // El correo de recuperación trae el token en el ancla de la URL.
 let tokenReset = null;
 // Se lee de la query y también del ancla: los correos nuevos traen el token en
@@ -1172,7 +1233,7 @@ $('login-form').addEventListener('submit', async (e) => {
       });
       TOKEN = r.token;
       // Recién registrada: primero el alta guiada, después el portal.
-      sessionStorage.setItem('mk_creadora', TOKEN);
+      localStorage.setItem('mk_creadora', TOKEN);
       return asistenteAlta();
     } else if (modo === 'olvide') {
       await publico('/olvide-clave', { email: $('email').value });
@@ -1190,7 +1251,7 @@ $('login-form').addEventListener('submit', async (e) => {
       TOKEN = r.token;
     }
 
-    sessionStorage.setItem('mk_creadora', TOKEN);
+    localStorage.setItem('mk_creadora', TOKEN);
     arrancar();
   } catch (e) {
     err.className = 'error';
@@ -3421,6 +3482,7 @@ async function arrancar() {
 
 if (TOKEN) {
   api('/me').then(arrancar).catch(() => {
+    localStorage.removeItem('mk_creadora');
     sessionStorage.removeItem('mk_creadora');
     TOKEN = null;
   });
