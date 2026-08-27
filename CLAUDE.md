@@ -287,10 +287,10 @@ Taxonomía de dos niveles en `mk_config.nichos`: 15 categorías madre (belleza, 
 cd apps/marketplace
 npm install
 node index.js       # http://localhost:3040
-npm test            # 265 pruebas: comisiones, estados, tarifas, Wompi, plazos, correo, análisis, pagos, cupos y aprendizaje
+npm test            # 310 pruebas: comisiones, estados, tarifas, Wompi, plazos, correo, análisis, pagos, cupos, aprendizaje y listas externas
 ```
 
-**Migraciones:** los archivos de `apps/marketplace/migrations/` en orden numérico, en el SQL Editor de Supabase. Van por `mk_053`. Además, crear el bucket privado `mk-muestras` en Storage.
+**Migraciones:** los archivos de `apps/marketplace/migrations/` en orden numérico, en el SQL Editor de Supabase. Van por `mk_054`. Además, crear el bucket privado `mk-muestras` en Storage.
 
 **Scripts que se corren a mano** (necesitan las mismas variables que el servidor):
 
@@ -377,6 +377,21 @@ Los **videos van en crudo** por `POST /api/creadoras/muestras/video` (el archivo
 
 ⚠️ **`correo_limite_proveedor` está en 100 porque ZeptoMail no ha aprobado la cuenta.** Cuando la apruebe, sube a 10.000 y ahí sí se pueden hacer tandas grandes.
 
+### Listas que comparte una marca aliada
+
+Pestaña **Creadoras por invitar** del panel. Ojo con el nombre: lo que trae la lista son **creadoras**, no marcas — la marca es quien la comparte, no lo que está adentro. Todo lo demás invita a gente que ya está en `influencers` repartida en cuatro olas por su estado; esto es lo otro: contactos que una marca aliada comparte, que llegan **con celular y sin correo** y no encajan en ninguna ola. Por eso la invitación sale por WhatsApp.
+
+La lista **se pega desde Excel**, no se sube el archivo. Un `.xlsx` trae los teléfonos con tipos mezclados —unos como número, otros como texto— y copiar y pegar entrega siempre texto plano separado por tabulaciones, sin dependencias nuevas. `listas.js` busca el celular **por su forma, no por su posición**, así que da igual el orden de las columnas y cuántas traiga.
+
+El flujo es pegar → **revisar** (no escribe nada) → importar → enviar en tandas. La revisión es la pieza que importa: dice cuántas son nuevas, cuántas ya recibieron WhatsApp y **cuántas ya tienen perfil** — a esas no se les escribe, porque un "estás invitada" a alguien que ya entró es el mensaje que hace que te reporten.
+
+⚠️ **Al volver `email` nullable en `mk_invitaciones` (mk_054), cuatro consultas que ya existían empezaban a leer estas filas.** La peor: `POST /invitaciones/segundo-toque` habría intentado mandar un correo a `null`, rebotando contra el proveedor — justo lo que dejó a 16 creadoras sin entrar en agosto. Todas llevan ahora `email: 'not.is.null'` o `fuente: 'eq.programa'`. Cualquier lectura nueva de esa tabla tiene que decidir explícitamente si quiere las listas externas.
+
+- La llave anti-duplicado de estas filas es `(telefono, canal)`, no el correo. Convive con la de correo: cada una cubre su canal.
+- `mk_config.whatsapp_por_dia` (80) es el primer tope diario que tiene WhatsApp. ⚠️ Meta cuenta destinatarios únicos en una ventana **móvil** de 24 h y esto cuenta por día UTC; con 80 no importa, si alguien lo sube sí.
+- La plantilla es **otra** (`WA_PLANTILLA_LISTA`): Meta aprueba cada texto por separado, y este tiene que decir de dónde salió el contacto y ofrecer salida. `enviarPlantilla(tel, vars, plantilla)` acepta cuál mandar; sin ese tercer argumento se comporta como siempre.
+- ⚠️ **Nadie está leyendo las respuestas.** El mensaje promete "responde SALIR y no te volvemos a escribir" y no hay webhook de WhatsApp entrante. Hay que revisar la bandeja del número a mano después de cada tanda y sacar a quien lo pida.
+
 ### Estado
 
 - **328 creadoras · 262 visibles · 2 marcas · 1 trato · 663 piezas** (27-ago-2026). El cuello de botella son las marcas, no el producto.
@@ -386,8 +401,9 @@ Los **videos van en crudo** por `POST /api/creadoras/muestras/video` (el archivo
 - **Un pago perdido se recupera solo.** Un webhook es un mensaje que puede perderse, y perder el que confirma un cobro significa alguien que pagó y no recibió nada. Hay tres caminos al mismo sitio y los tres pasan por `pagos.sincronizar()`, que le pregunta a Wompi en vez de creerle al mensaje: el webhook, el regreso del navegador tras el checkout, y la conciliación (`POST /api/cron/pagos`, también en el reloj interno cada 6 h). Si el monto no coincide **no se aplica nada** y queda en el log: cobrar de menos y entregar igual, o cobrar de más y no devolver, son los dos errores que no se arreglan solos.
 - **Los plazos ya se cumplen solos** (`plazos.js`): las propuestas sin responder se cierran a las 72h, avisando antes. La auto-aprobación existe pero está **apagada** — libera dinero, así que encenderla es decisión de negocio. ⚠️ Falta programar el cron en Railway.
 - ⚠️ Hay **país** en el perfil (20 países) pero la **moneda es COP para todos**. Multi-moneda es un proyecto aparte: exige conversión, pagos internacionales y repensar el escrow.
-- El **registro de marcas es abierto y mínimo**: marca, teléfono, correo y clave. El código de invitación sigue existiendo y se reactiva apagando `registro_marcas_abierto`, sin desplegar.
-- **El portal de la creadora alterna contraste** desde el handoff F4, y la regla es semántica: el negro marca **quién eres** (cabecera con el anillo) y **a dónde vas** (el bloque de nivel); lo claro es donde ella lee y trabaja. ⚠️ Solo se aplicó en **Mi perfil**: *Mis tarifas*, *Propuestas* y *Entregas* siguen negras completas del handoff anterior, así que el portal está mezclado hasta que se propague.
+- El **registro de marcas es abierto y mínimo**: marca, teléfono, correo y clave. El código de invitación sigue existiendo y se reactiva apagando `registro_marcas_abierto`, sin desplegar. Al terminar pasa por `/empezar.html`, las **seis preguntas** que abren su solicitud de selección; quien ya tenía cuenta las ve ofrecidas en el home, sin bloqueo. La regla que decidió cuáles entran: **una pregunta solo entra si se puede cruzar contra un campo que ya tenemos de la creadora** — si no se puede cruzar, no filtra nada y solo alarga el registro. ⚠️ Los rótulos de tamaño dicen los cortes reales por seguidores (micro = 10 mil a 50 mil), no los del prototipo de diseño (10 a 100 mil): con esos, una marca pediría hasta 100 mil y no le saldría nadie entre 50 y 100 mil, porque esas son `media`.
+- **El circuito de la selección curada está cerrado:** registro → seis preguntas → solicitud con vencimiento a 24 h → cola del equipo en *Vitrina*, ordenada por la que menos tiempo tiene → armar 6–8 con su razón → publicar → la marca la ve en su home. Las reglas viven en `seleccion.js` (mínimo 6, máximo 8, razón obligatoria, un dato que falta nunca descarta).
+- **El portal de la creadora alterna contraste**, y la regla es semántica: el negro marca **quién eres** (la barra lateral, la cabecera con el anillo) y **a dónde vas** (el bloque de nivel); lo claro es donde ella lee y trabaja. Está aplicada en las cuatro pantallas. ⚠️ El handoff F4 la marca como «pendiente de propagar» a *Mis tarifas*, *Propuestas* y *Entregas* — **ese pendiente está desactualizado**: se escribió cuando el portal era negro completo y esas tres ya se convirtieron. Verificado en pantalla el 27-ago-2026.
 - **La pantalla del perfil se sostiene en una regla de escritura, no en sus componentes:** ningún bloque vacío dice qué falta, dice **qué gana**. El beneficio es el titular, lo que pide va debajo y el porcentaje nunca va primero. Invertir ese orden la deja sin funcionar aunque se vea idéntica — es la razón por la que los perfiles quedan a medias en las demás plataformas.
 - **Todo lo que sirve `/media` lleva marca de agua** (`watermark.js`): tres pasadas semitransparentes, más un recorte del 5% y una recompresión, que es la parte que de verdad estorba una búsqueda inversa. Las piezas nuevas se marcan solas al subirse; el rezago lo recoge `node scripts/marcar-contenido.js`. ⚠️ No la hace imposible — nada lo hace salvo destruir la imagen.
 

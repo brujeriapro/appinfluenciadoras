@@ -21,6 +21,7 @@ const correo = require('./correo');
 const { OLAS, filtrarCandidatas, pendientesDe, filtroDeEstados } = require('./invitaciones');
 const referidos = require('./referidos');
 const whatsapp = require('./whatsapp');
+const listas = require('./listas');
 const { queLeFalta } = require('./ranking');
 
 const router = express.Router();
@@ -984,9 +985,12 @@ async function correosMasivosDeHoy() {
   const hoy = new Date().toISOString().slice(0, 10);
   const desde = `${hoy}T00:00:00Z`;
 
+  // Solo el canal correo: un WhatsApp no le consume cuota al proveedor de
+  // correo. Sin este filtro, una tanda de WhatsApp dejaría sin cupo a los
+  // correos del día — y son cuotas de dos empresas distintas.
   const [invitaciones, segundos, empujones] = await Promise.all([
-    db.get('mk_invitaciones', { select: 'email', enviada_at: `gte.${desde}` }),
-    db.get('mk_invitaciones', { select: 'email', segundo_toque_at: `gte.${desde}` }),
+    db.get('mk_invitaciones', { select: 'email', canal: 'eq.correo', enviada_at: `gte.${desde}` }),
+    db.get('mk_invitaciones', { select: 'email', canal: 'eq.correo', segundo_toque_at: `gte.${desde}` }),
     db.get('mk_creadoras', { select: 'id', referidos_empujon_at: `gte.${desde}` }),
   ]);
   return invitaciones.length + segundos.length + empujones.length;
@@ -1050,7 +1054,12 @@ async function candidatasConTelefono(estados) {
 
 router.get('/whatsapp', async (req, res) => {
   try {
-    const previas = await db.get('mk_invitaciones', { select: 'email,enviada_at', canal: 'eq.whatsapp' });
+    // `fuente` separa las olas del Programa Creadoras de las listas que
+    // comparte una marca aliada, que comparten tabla y canal pero se cuentan
+    // en su propia pantalla.
+    const previas = await db.get('mk_invitaciones', {
+      select: 'email,enviada_at', canal: 'eq.whatsapp', fuente: 'eq.programa',
+    });
 
     const olas = [];
     for (const [n, ola] of Object.entries(OLAS)) {
@@ -1122,7 +1131,9 @@ router.post('/whatsapp/enviar', async (req, res) => {
       return res.status(400).json({ error: 'Falta configurar WhatsApp: WA_PHONE_NUMBER_ID, WA_TOKEN y WA_PLANTILLA' });
     }
 
-    const previas = await db.get('mk_invitaciones', { select: 'email', canal: 'eq.whatsapp' });
+    const previas = await db.get('mk_invitaciones', {
+      select: 'email', canal: 'eq.whatsapp', fuente: 'eq.programa',
+    });
     const todas = await candidatasConTelefono(OLAS[ola].estados);
     const pendientes = pendientesDe(todas, previas);
     const lote = pendientes.slice(0, limite);
@@ -1173,8 +1184,11 @@ router.post('/whatsapp/enviar', async (req, res) => {
 /** Cuántas van y cuántas faltan, por ola. */
 router.get('/invitaciones', async (req, res) => {
   try {
+    // Solo lo del Programa Creadoras. Las listas que comparte una marca aliada
+    // viven en la misma tabla pero no tienen ola ni correo, y contarlas aquí
+    // inflaría "ya invitadas" con gente que no sale de `influencers`.
     const [previas, creadoras] = await Promise.all([
-      db.get('mk_invitaciones', { select: 'email,enviada_at' }),
+      db.get('mk_invitaciones', { select: 'email,enviada_at', fuente: 'eq.programa' }),
       db.get('mk_creadoras', { select: 'email' }),
     ]);
 
@@ -1683,6 +1697,10 @@ router.get('/invitaciones/sin-registrar', async (req, res) => {
       db.get('mk_invitaciones', {
         select: 'id,email,nombre,enviada_at,segundo_toque_at,codigo_ref',
         enviada_at: 'not.is.null',
+        // El segundo toque va por correo, así que quien no tiene correo no
+        // cuenta aquí: aparecería como "invitada que no se registró" sin que
+        // hubiera forma de recontactarla.
+        email: 'not.is.null',
       }),
       db.get('mk_creadoras', { select: 'email' }),
     ]);
@@ -1715,6 +1733,11 @@ router.post('/invitaciones/segundo-toque', async (req, res) => {
         select: 'id,email,nombre,codigo_ref,segundo_toque_at',
         enviada_at: 'not.is.null',
         segundo_toque_at: 'is.null',
+        // Imprescindible: sin este filtro, una invitación de una lista externa
+        // —que no tiene correo— entraría en la tanda y se intentaría mandar un
+        // correo a `null`. No falla ruidosamente: rebota contra el proveedor,
+        // que es justo lo que dejó a 16 creadoras sin poder entrar en agosto.
+        email: 'not.is.null',
       }),
       db.get('mk_creadoras', { select: 'email' }),
     ]);
@@ -1845,6 +1868,294 @@ router.post('/referidos/empujon', async (req, res) => {
     console.log(`[referidos] empujón: ${ok} enviados, ${fallos} fallidos`);
   } catch (e) {
     console.error('[referidos]', e.message);
+  }
+});
+
+// ── Listas que comparte una marca aliada ────────────────────────────────────
+//
+// Todo lo de arriba invita a gente que ya está en la tabla `influencers` del
+// Programa Creadoras, repartida en cuatro olas por su estado. Esto es lo otro:
+// una lista de contactos que una marca comparte, que llega con celular y poco
+// más, y que no encaja en ninguna ola.
+//
+// Entra pegándola desde Excel y no subiendo el archivo a propósito. Un .xlsx
+// trae los teléfonos con tipos mezclados —unos como número, otros como texto—
+// y escribir un parser para eso es construir un problema. Copiar y pegar
+// entrega siempre texto plano separado por tabulaciones, sin dependencias
+// nuevas y sin que importe desde qué programa se copió.
+
+const TOPE_WHATSAPP_DEFAULT = 80;
+
+/**
+ * Cuántos WhatsApp masivos caben todavía hoy.
+ *
+ * Existe porque el tope de Meta no avisa: pasado el cupo de destinatarios de
+ * 24 h, los mensajes se ACEPTAN y no se entregan, que es exactamente lo que
+ * parece un envío exitoso. Un número sin verificación de negocio se queda en
+ * 250, y la calificación de calidad baja con los reportes y no se recupera
+ * rápido.
+ *
+ * Se cuenta sobre `mk_invitaciones` y no sobre un registro propio porque cada
+ * mensaje deja su fila ahí con `enviada_at`, que es el mismo dato.
+ */
+async function cupoWhatsAppDeHoy(pedido) {
+  const cfg = await db.getConfig();
+  const tope = Number(cfg.whatsapp_por_dia ?? TOPE_WHATSAPP_DEFAULT);
+
+  const desde = `${new Date().toISOString().slice(0, 10)}T00:00:00Z`;
+  const hoy = await db.get('mk_invitaciones', {
+    select: 'id', canal: 'eq.whatsapp', enviada_at: `gte.${desde}`,
+  }).catch(() => []);
+
+  const usados = hoy.length;
+  const libre = Math.max(0, tope - usados);
+  return { tope, usados, libre, cabe: Math.min(pedido, libre) };
+}
+
+/**
+ * Lee el texto pegado y lo cruza contra la base, sin escribir nada.
+ *
+ * Los dos cruces que importan son distintos: a quien ya se le escribió no hay
+ * que repetirle, y a quien YA TIENE PERFIL no hay que escribirle en absoluto
+ * —un "estás invitada" a alguien que ya entró es el mensaje que hace que te
+ * reporten, y un reporte le baja la calidad al número.
+ */
+async function revisarPegado(texto) {
+  const { filas, descartadas, vacias } = listas.leerPegado(texto);
+  const { unicas, repetidas } = listas.quitarRepetidos(filas);
+
+  const [invitadas, creadoras] = await Promise.all([
+    db.get('mk_invitaciones', { select: 'telefono', canal: 'eq.whatsapp' }),
+    db.get('mk_creadoras', { select: 'whatsapp' }),
+  ]);
+
+  const reparto = listas.pendientesPorTelefono(unicas, invitadas, creadoras);
+  return { filas, descartadas, vacias, unicas, repetidas, ...reparto };
+}
+
+router.post('/lista/previsualizar', async (req, res) => {
+  try {
+    const r = await revisarPegado(req.body.texto);
+    res.json({
+      lineas_con_algo: r.filas.length + r.descartadas.length,
+      vacias: r.vacias,
+      validas: r.filas.length,
+      repetidas: r.repetidas.length,
+      ya_registradas: r.ya_registradas.length,
+      ya_invitadas: r.ya_invitadas.length,
+      nuevas: r.nuevas.length,
+      // Con su línea original: una pantalla que dice "importé 132 de 147" sin
+      // decir cuáles fueron las otras 15 obliga a revisar el Excel a mano.
+      descartadas: r.descartadas,
+      muestra: r.nuevas.slice(0, 10).map(f => ({ nombre: f.nombre, telefono: f.telefono })),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/lista/importar', async (req, res) => {
+  try {
+    const fuente = listas.normalizarFuente(req.body.fuente);
+    if (!fuente) return res.status(400).json({ error: 'Falta el nombre de la lista (de qué marca viene)' });
+    if (fuente === 'programa') {
+      return res.status(400).json({ error: '"programa" está reservado para las invitaciones del Programa Creadoras' });
+    }
+
+    const r = await revisarPegado(req.body.texto);
+    if (!r.nuevas.length) {
+      return res.status(400).json({
+        error: 'No hay ningún contacto nuevo que importar.',
+        ya_registradas: r.ya_registradas.length,
+        ya_invitadas: r.ya_invitadas.length,
+      });
+    }
+
+    // De a una y tolerando el fallo: si dos personas pegan la misma lista a la
+    // vez, el índice único rechaza la repetida y el resto tiene que entrar
+    // igual. Insertarlas en bloque haría que una sola colisión tumbara todo.
+    let importadas = 0;
+    const chocaron = [];
+    for (const f of r.nuevas) {
+      try {
+        await db.post('mk_invitaciones', {
+          email: null,
+          nombre: f.nombre || null,
+          telefono: f.telefono,
+          canal: 'whatsapp',
+          fuente,
+          ola: null,
+        });
+        importadas++;
+      } catch (e) {
+        chocaron.push(f.telefono);
+      }
+    }
+
+    res.json({
+      ok: true, fuente, importadas,
+      chocaron: chocaron.length,
+      ya_registradas: r.ya_registradas.length,
+      ya_invitadas: r.ya_invitadas.length,
+      descartadas: r.descartadas.length,
+    });
+  } catch (e) {
+    console.error('[lista/importar]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Estado de cada lista importada.
+ *
+ * "Se registraron" se calcula cruzando teléfonos contra `mk_creadoras`. No es
+ * exacto —alguien puede registrarse con otro número— pero el enlace del mensaje
+ * es el mismo para todas y esto es lo único que dice si la lista sirvió, sin
+ * tener que tocar el flujo de registro.
+ */
+router.get('/lista', async (req, res) => {
+  try {
+    const [filas, creadoras] = await Promise.all([
+      db.get('mk_invitaciones', {
+        select: 'telefono,nombre,fuente,enviada_at,error',
+        canal: 'eq.whatsapp',
+        fuente: 'neq.programa',
+      }),
+      db.get('mk_creadoras', { select: 'whatsapp' }),
+    ]);
+
+    const registradas = listas.conjuntoDeTelefonos(creadoras);
+
+    const porFuente = new Map();
+    for (const f of filas) {
+      const k = f.fuente || 'sin-nombre';
+      if (!porFuente.has(k)) {
+        porFuente.set(k, { fuente: k, total: 0, enviadas: 0, faltan: 0, fallidas: 0, se_registraron: 0 });
+      }
+      const g = porFuente.get(k);
+      g.total++;
+      if (f.enviada_at) g.enviadas++; else g.faltan++;
+      if (f.error) g.fallidas++;
+      if (registradas.has(f.telefono)) g.se_registraron++;
+    }
+
+    const estado = await whatsapp.verificar();
+    const cupo = await cupoWhatsAppDeHoy(0);
+
+    res.json({
+      fuentes: [...porFuente.values()].sort((a, b) => b.total - a.total),
+      conectado: estado.ok,
+      // Son dos cosas distintas: la conexión puede servir mientras Meta
+      // todavía revisa el texto de la plantilla.
+      falta_plantilla: !config.whatsapp.plantilla_lista,
+      listo: estado.ok && Boolean(config.whatsapp.plantilla_lista),
+      estado,
+      cupo,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** Una sola, al número que se diga, para verla con los ojos antes de la tanda. */
+router.post('/lista/prueba', async (req, res) => {
+  try {
+    const tel = whatsapp.normalizarTelefono(req.body.telefono);
+    if (!tel) return res.status(400).json({ error: 'Ese número no parece un celular colombiano' });
+    if (!config.whatsapp.plantilla_lista) {
+      return res.status(400).json({ error: 'Falta WA_PLANTILLA_LISTA con el nombre de la plantilla aprobada' });
+    }
+
+    const r = await whatsapp.enviarPlantilla(
+      tel, [listas.saludoDe(req.body.nombre || 'María')], config.whatsapp.plantilla_lista,
+    );
+    if (!r.ok) return res.status(500).json({ error: r.error, telefono: tel });
+    res.json({ ok: true, telefono: tel, id: r.id, idioma: r.idioma });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.post('/lista/enviar', async (req, res) => {
+  try {
+    const fuente = listas.normalizarFuente(req.body.fuente);
+    if (!fuente) return res.status(400).json({ error: 'Falta decir de qué lista' });
+
+    // Tope bajo a propósito, igual que en las olas: un número que manda
+    // cientos de golpe es lo que Meta castiga con bloqueo, y no hay apelación
+    // rápida.
+    const limite = Math.min(Number(req.body.limite) || 30, 250);
+    const simulacro = req.body.dry_run === true;
+
+    if (!whatsapp.configurado(config.whatsapp.plantilla_lista)) {
+      return res.status(400).json({
+        error: 'Falta configurar WhatsApp: WA_PHONE_NUMBER_ID, WA_TOKEN y WA_PLANTILLA_LISTA',
+      });
+    }
+
+    const pendientes = await db.get('mk_invitaciones', {
+      select: 'id,nombre,telefono',
+      canal: 'eq.whatsapp',
+      fuente: `eq.${fuente}`,
+      enviada_at: 'is.null',
+      order: 'created_at.asc',
+    });
+
+    const cupo = await cupoWhatsAppDeHoy(Math.min(limite, pendientes.length));
+    const lote = pendientes.slice(0, cupo.cabe);
+
+    if (!lote.length) {
+      return res.status(429).json({
+        error: pendientes.length
+          ? `Ya salieron ${cupo.usados} mensajes hoy y el tope está en ${cupo.tope}. Sigue mañana.`
+          : 'No queda nadie pendiente en esta lista.',
+        cupo,
+      });
+    }
+
+    if (simulacro) {
+      return res.json({
+        simulacro: true, fuente,
+        pendientes: pendientes.length,
+        se_enviarian: lote.length,
+        quedarian: Math.max(0, pendientes.length - lote.length),
+        cupo,
+        muestra: lote.slice(0, 8).map(c => ({ nombre: c.nombre, telefono: c.telefono })),
+      });
+    }
+
+    // Se responde antes de empezar: 30 mensajes con pausa toman casi un minuto
+    // y ningún navegador espera tanto.
+    res.json({
+      ok: true, fuente,
+      se_enviaran: lote.length,
+      quedaran: Math.max(0, pendientes.length - lote.length),
+    });
+
+    let ok = 0, fallos = 0;
+    for (const [i, c] of lote.entries()) {
+      const r = await whatsapp.enviarPlantilla(
+        c.telefono, [listas.saludoDe(c.nombre)], config.whatsapp.plantilla_lista,
+      );
+
+      if (r.ok) {
+        ok++;
+        await db.patch('mk_invitaciones', { id: c.id }, { enviada_at: new Date().toISOString(), error: null });
+      } else {
+        fallos++;
+        // Sin `enviada_at`: así vuelve a entrar en la siguiente tanda. Aquí no
+        // hace falta marcar antes de enviar como en las olas, porque la fila
+        // ya existe desde la importación y el índice único por teléfono impide
+        // que la misma persona esté dos veces.
+        await db.patch('mk_invitaciones', { id: c.id }, { error: String(r.error).slice(0, 500) });
+        console.error(`[lista ${fuente}] ${c.telefono}: ${r.error}`);
+      }
+
+      if (i < lote.length - 1) await dormir(1500);
+    }
+    console.log(`[lista ${fuente}] ${ok} enviados, ${fallos} fallidos`);
+  } catch (e) {
+    console.error('[lista/enviar]', e.message);
   }
 });
 

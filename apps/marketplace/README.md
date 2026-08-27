@@ -50,6 +50,11 @@ npm test               # 140 pruebas: comisiones, máquina de estados, tarifas, 
 | `WOMPI_LLAVE_PRIVADA` | no | Para confirmar transacciones contra la API |
 | `WOMPI_SECRETO_INTEGRIDAD` | no | Firma del checkout |
 | `WOMPI_SECRETO_EVENTOS` | no | Verificación del webhook |
+| `WA_PHONE_NUMBER_ID` | no | Número de WhatsApp Cloud API. Sin esto, el panel muestra el envío por WhatsApp como no disponible en vez de fallar al intentarlo |
+| `WA_TOKEN` | no | Token de Meta. Que sea **permanente**, de un usuario del sistema: los temporales duran 24 h y después los envíos fallan en silencio |
+| `WA_PLANTILLA` | no | Nombre exacto de la plantilla aprobada para invitar a las olas del Programa Creadoras |
+| `WA_PLANTILLA_LISTA` | no | La otra plantilla: la de las listas que comparte una marca aliada. Meta aprueba cada texto por separado, así que son dos nombres distintos |
+| `WA_PLANTILLA_IDIOMA` | no | Por defecto `es`. Si no cuadra se prueban solas las demás variantes del español |
 | `PORT` | no | Por defecto 3040 |
 
 El arranque **falla** si falta alguna de las obligatorias: es preferible no levantar a levantar con un secreto por defecto que permita forjar tokens.

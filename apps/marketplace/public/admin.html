@@ -227,6 +227,7 @@
       <button class="tab" data-vista="metricas">Verificar métricas</button>
       <button class="tab" data-vista="vitrina">Vitrina</button>
       <button class="tab" data-vista="invitaciones">Invitaciones</button>
+      <button class="tab" data-vista="listas">Creadoras por invitar</button>
       <button class="tab" data-vista="ajustes">Ajustes</button>
     </div>
   </div>
@@ -1828,17 +1829,24 @@ VISTAS.invitaciones = async () => {
 let VIT = { marcaId: null, propuesta: null, items: [], colecciones: [] };
 
 VISTAS.vitrina = async () => {
-  const [marcas, colecciones, destacado] = await Promise.all([
+  const [marcas, colecciones, destacado, solicitudes] = await Promise.all([
     api('/marcas'),
     apiVit('/colecciones'),
     apiVit('/destacado').catch(() => null),
+    apiVit('/solicitudes').catch(() => ({ solicitudes: [] })),
   ]);
   VIT.colecciones = colecciones;
 
   contenido().innerHTML = `
-    <div class="seccion-titulo">Selección para una marca</div>
-    <p class="nota">Se le promete a la marca en menos de 24 horas. El sistema propone
-    a partir de lo que ella marcó con ✓ y ✕; vos ajustás las razones y publicás.</p>
+    <div class="seccion-titulo">Solicitudes esperando</div>
+    <p class="nota">Marcas que contestaron las seis preguntas del registro. A cada una
+    se le prometió su selección en menos de 24 horas, así que la que menos tiempo tiene
+    va arriba. Tocá una para armarla.</p>
+    ${colaSolicitudesHTML(solicitudes)}
+
+    <div class="seccion-titulo" style="margin-top:34px">Selección para una marca</div>
+    <p class="nota">El sistema propone a partir de lo que ella marcó con ✓ y ✕;
+    vos ajustás las razones y publicás.</p>
 
     <div class="fila-controles">
       <select id="vit-marca">
@@ -1869,7 +1877,60 @@ VISTAS.vitrina = async () => {
 
   $('vit-proponer').addEventListener('click', proponerSeleccion);
   $('vit-destacar').addEventListener('click', destacarPieza);
+
+  // Tocar una solicitud la selecciona abajo y arma la propuesta: quien está
+  // atendiendo la cola no debería tener que buscar la marca en el desplegable.
+  contenido().querySelectorAll('[data-armar]').forEach(b =>
+    b.addEventListener('click', () => {
+      $('vit-marca').value = b.dataset.armar;
+      $('vit-seleccion').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      proponerSeleccion();
+    }));
 };
+
+/**
+ * La cola de solicitudes, con el reloj de cada una.
+ *
+ * Sin esto la pantalla solo tenía un desplegable con TODAS las marcas, y quien
+ * arma no podía saber a quién le está corriendo el plazo — la promesa de 24
+ * horas se incumplía sin que nadie lo viera. Es la misma pieza que le faltaba a
+ * la cola de métricas.
+ */
+function colaSolicitudesHTML(d) {
+  const lista = (d && d.solicitudes) || [];
+  if (!lista.length) {
+    return `<div class="bloque"><p style="font-size:13px;margin:0">Ninguna marca está
+      esperando selección. Aparecen acá al terminar las seis preguntas del registro.</p></div>`;
+  }
+
+  return lista.map(s => {
+    const m = s.marca || {};
+    const t = s.tiempo || {};
+    const chip = (x) => `<span class="pill" style="margin-right:6px">${esc(x)}</span>`;
+    return `
+    <div class="bloque" style="margin-bottom:12px${t.vencida ? ';border-left:5px solid var(--magenta)' : ''}">
+      <div style="display:flex;gap:14px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap">
+        <div style="flex:1;min-width:260px">
+          <div class="bloque__titulo">${esc(m.nombre_empresa || m.email || 'Marca sin nombre')}</div>
+          <div style="font-size:11px;margin:5px 0 10px;letter-spacing:0.5px;
+                      color:${t.vencida ? 'var(--magenta)' : 'var(--grey-700)'}">
+            ${esc(t.texto || 'Sin plazo')}${s.estado === 'borrador' ? ' · ya empezada' : ''}
+          </div>
+          <div style="line-height:2.1">
+            ${(m.busca_categorias || []).map(chip).join('')}
+            ${m.busca_canal ? chip(m.busca_canal) : ''}
+            ${m.busca_tamano ? chip(m.busca_tamano) : ''}
+            ${(m.busca_ciudades || []).map(chip).join('')}
+            ${m.busca_presupuesto ? chip('hasta $' + Number(m.busca_presupuesto).toLocaleString('es-CO')) : ''}
+          </div>
+          ${m.busca_otra ? `<p style="font-size:11.5px;color:var(--grey-700);margin:8px 0 0">
+            Dijo que vende: ${esc(m.busca_otra)}</p>` : ''}
+        </div>
+        <button class="btn-mini" data-armar="${esc(s.marca_id)}">ARMAR SU SELECCIÓN</button>
+      </div>
+    </div>`;
+  }).join('');
+}
 
 function destacadoHTML(d) {
   if (!d) return '<div class="vacio" style="padding:14px">Todavía no hay pieza destacada.</div>';
@@ -2319,6 +2380,251 @@ async function pintarLogCorreos() {
     caja.innerHTML = `<div class="aviso">No se pudo leer el registro: ${esc(e.message)}</div>`;
   }
 }
+
+// ── Listas que comparte una marca aliada ────────────────────────────────────
+//
+// Pestaña aparte y no una sección más dentro de Invitaciones, por una razón
+// que no es de orden: son dos públicos con riesgos distintos. Las olas 1-4 son
+// gente del Programa Creadoras que nos conoce; esto es gente que nunca oyó de
+// nosotros. Dos botones de "enviar" con consecuencias tan distintas en la
+// misma pantalla es una equivocación esperando ocurrir.
+
+// Lo que se pegó, entre revisar e importar. Vive fuera de la vista porque
+// re-renderizar no puede perderlo.
+let LISTA_REVISADA = null;
+
+VISTAS.listas = async () => {
+  const d = await api('/lista');
+  const wa = d.estado || {};
+
+  const fuentes = (d.fuentes || []).map(f => `
+    <tr>
+      <td>${esc(f.fuente)}</td>
+      <td class="num">${f.total}</td>
+      <td class="num">${f.enviadas}</td>
+      <td class="num">${f.faltan ? `<strong>${f.faltan}</strong>` : '—'}</td>
+      <td class="num">${f.fallidas || '—'}</td>
+      <td class="num" style="color:var(--lime)">${f.se_registraron || '—'}</td>
+      <td>${f.faltan ? `
+        <button class="btn-mini btn-mini--ghost" data-lx-simular="${esc(f.fuente)}">VER A QUIÉN</button>
+        <button class="btn-mini" data-lx-enviar="${esc(f.fuente)}" ${d.listo ? '' : 'disabled title="Falta la plantilla aprobada"'}>ENVIAR 30</button>`
+        : '<span class="nota">completa</span>'}</td>
+    </tr>`).join('');
+
+  contenido().innerHTML = `
+    <div class="seccion-titulo" style="margin-top:0">Creadoras que nos compartió una marca</div>
+
+    <div class="bloque" style="margin-bottom:14px;font-size:12.5px;line-height:1.7">
+      <strong>Esta gente no nos conoce.</strong> No se registró en ningún lado nuestro:
+      su contacto lo compartió una marca con la que ya trabajó. Por eso el mensaje dice
+      de dónde salió y ofrece salida, y por eso las tandas van cortas — un número que
+      manda de golpe a desconocidos es el que Meta bloquea, y no hay apelación rápida.
+    </div>
+
+    ${d.conectado ? `
+      <div class="bloque" style="margin-bottom:14px;font-size:12.5px;border-color:${wa.calidad && wa.calidad !== 'GREEN' ? 'var(--magenta)' : 'var(--lime)'}">
+        <strong>WhatsApp conectado.</strong>
+        ${wa.numero ? '+' + esc(wa.numero) : ''}
+        ${wa.calidad ? ' · calidad ' + esc(wa.calidad) : ''}
+        ${wa.limite ? ' · tope de Meta ' + esc(wa.limite) : ''}
+        <br>Hoy han salido <strong>${d.cupo.usados}</strong> de ${d.cupo.tope} mensajes.
+        ${d.falta_plantilla ? `<br><br><strong style="color:var(--magenta)">Falta la plantilla.</strong>
+          Cuando Meta apruebe el texto, pon su nombre en <code>WA_PLANTILLA_LISTA</code>.` : ''}
+      </div>` : `
+      <div class="bloque" style="border-color:var(--magenta);margin-bottom:14px;font-size:12.5px">
+        <strong style="color:var(--magenta)">La conexión de WhatsApp no sirve.</strong>
+        ${esc(wa.motivo || 'Revisa la configuración.')}
+      </div>`}
+
+    <div class="bloque" style="margin-bottom:14px">
+      <div class="bloque__titulo">1 · Pega la lista</div>
+      <p style="font-size:12.5px;margin:0 0 10px">
+        Abre el Excel, selecciona las columnas de nombre y celular, copia y pega aquí.
+        No importa el orden de las columnas ni cuántas traiga: el celular se busca por su forma.
+      </p>
+      <div class="campo" style="margin-bottom:10px">
+        <label>De qué marca viene</label>
+        <input id="lx-fuente" placeholder="Ettos Beauty Market">
+      </div>
+      <textarea id="lx-pegado" rows="8" placeholder="Sara Ospina	3164309055&#10;sgreymakeup	3156886805"
+        style="width:100%;font-family:var(--mono, monospace);font-size:12px"></textarea>
+      <div style="margin-top:10px">
+        <button class="btn-mini" id="lx-revisar">REVISAR →</button>
+      </div>
+      <div id="lx-preview"></div>
+    </div>
+
+    <div class="seccion-titulo">2 · Lo que ya está importado</div>
+    ${fuentes ? `
+      <div class="tabla-wrap"><table>
+        <thead><tr><th>Lista</th><th>En la lista</th><th>Ya escritas</th><th>Faltan</th><th>Fallaron</th><th>Se registraron</th><th></th></tr></thead>
+        <tbody>${fuentes}</tbody>
+      </table></div>
+      <div class="nota" style="margin-top:8px">
+        "Se registraron" se calcula cruzando el celular al que se escribió con el que
+        registró la creadora. Queda corto si alguna se registró sin poner WhatsApp.
+      </div>`
+      : '<div class="vacio">Todavía no has importado ninguna lista.</div>'}
+
+    <div class="bloque" style="margin-top:14px">
+      <div class="bloque__titulo">Mándate una de prueba</div>
+      <p style="font-size:12.5px;margin:0 0 10px">Llega igual que le llegaría a una
+      creadora de la lista. No cuenta como escrita ni toca nada.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="lx-prueba-tel" placeholder="300 000 0000" inputmode="tel" style="flex:1;min-width:180px">
+        <button class="btn-mini" id="lx-prueba-btn">ENVIARME UNA</button>
+      </div>
+      <div id="lx-prueba-msg" style="font-size:12px;margin-top:10px"></div>
+    </div>
+
+    <div id="lx-resultado"></div>`;
+
+  // ── Revisar ──
+  $('lx-revisar').addEventListener('click', async () => {
+    const btn = $('lx-revisar');
+    const texto = $('lx-pegado').value;
+    if (!texto.trim()) return alert('Pega la lista primero.');
+
+    btn.disabled = true; btn.textContent = 'REVISANDO…';
+    try {
+      const r = await api('/lista/previsualizar', { method: 'POST', body: JSON.stringify({ texto }) });
+      LISTA_REVISADA = texto;
+
+      $('lx-preview').innerHTML = `
+        <div class="kpis" style="margin:16px 0">
+          <div class="kpi"><div class="kpi__label">Con celular</div>
+            <div class="kpi__valor">${r.validas}</div>
+            <div class="kpi__nota">de ${r.lineas_con_algo} líneas</div></div>
+          <div class="kpi"><div class="kpi__label">Repetidas</div>
+            <div class="kpi__valor">${r.repetidas}</div>
+            <div class="kpi__nota">dentro de tu pegado</div></div>
+          <div class="kpi"><div class="kpi__label">Ya registradas</div>
+            <div class="kpi__valor">${r.ya_registradas}</div>
+            <div class="kpi__nota">tienen perfil; no se les escribe</div></div>
+          <div class="kpi"><div class="kpi__label">Ya escritas</div>
+            <div class="kpi__valor">${r.ya_invitadas}</div>
+            <div class="kpi__nota">recibieron WhatsApp antes</div></div>
+          <div class="kpi"><div class="kpi__label">Nuevas</div>
+            <div class="kpi__valor" style="color:var(--lime)">${r.nuevas}</div>
+            <div class="kpi__nota">esto es lo que se importa</div></div>
+        </div>
+
+        ${r.muestra.length ? `
+          <div class="bloque__titulo">Así van a quedar las primeras</div>
+          <div class="tabla-wrap"><table>
+            <thead><tr><th>Cómo venía</th><th>Celular</th></tr></thead>
+            <tbody>${r.muestra.map(m => `
+              <tr><td>${esc(m.nombre || '(sin nombre)')}</td>
+                  <td class="num">+${esc(m.telefono)}</td></tr>`).join('')}
+            </tbody></table></div>` : ''}
+
+        ${r.descartadas.length ? `
+          <details style="margin-top:12px">
+            <summary style="cursor:pointer;font-size:12.5px">
+              ${r.descartadas.length} línea${r.descartadas.length === 1 ? '' : 's'} sin celular usable — míralas
+            </summary>
+            <div class="nota" style="margin-top:8px;line-height:1.9">
+              ${r.descartadas.map(x => `Línea ${x.numero}: ${esc(x.linea)} <em>(${esc(x.motivo)})</em>`).join('<br>')}
+            </div>
+          </details>` : ''}
+
+        ${r.nuevas ? `
+          <div style="margin-top:14px">
+            <button class="btn-mini" id="lx-importar">IMPORTAR ${r.nuevas} →</button>
+            <span class="nota" style="margin-left:8px">Importar no manda nada.</span>
+          </div>` : `
+          <div class="aviso" style="margin-top:14px">No hay ningún contacto nuevo en este pegado.</div>`}`;
+
+      $('lx-importar')?.addEventListener('click', importar);
+    } catch (e) {
+      alert('No se pudo revisar: ' + e.message);
+    }
+    btn.disabled = false; btn.textContent = 'REVISAR →';
+  });
+
+  async function importar() {
+    const btn = $('lx-importar');
+    const fuente = $('lx-fuente').value.trim();
+    if (!fuente) return alert('Escribe de qué marca viene la lista.');
+
+    btn.disabled = true; btn.textContent = 'IMPORTANDO…';
+    try {
+      const r = await api('/lista/importar', {
+        method: 'POST', body: JSON.stringify({ texto: LISTA_REVISADA, fuente }),
+      });
+      LISTA_REVISADA = null;
+      alert(`Importadas ${r.importadas} en la lista "${r.fuente}". Todavía no se ha mandado ningún mensaje.`);
+      recargar();
+    } catch (e) {
+      alert('No se pudo importar: ' + e.message);
+      btn.disabled = false; btn.textContent = 'IMPORTAR →';
+    }
+  }
+
+  // ── Prueba ──
+  $('lx-prueba-btn').addEventListener('click', async () => {
+    const tel = $('lx-prueba-tel').value.trim();
+    const msg = $('lx-prueba-msg');
+    if (!tel) { msg.style.color = 'var(--magenta)'; msg.textContent = 'Escribe tu número.'; return; }
+    msg.style.color = 'var(--grey-700)'; msg.textContent = 'Enviando…';
+    try {
+      const r = await api('/lista/prueba', { method: 'POST', body: JSON.stringify({ telefono: tel }) });
+      msg.style.color = 'var(--lime)';
+      msg.textContent = 'Enviado a +' + r.telefono + '. Revisa tu WhatsApp.';
+    } catch (e) {
+      msg.style.color = 'var(--magenta)';
+      msg.textContent = e.message;
+    }
+  });
+
+  // ── Simular y enviar ──
+  const caja = () => $('lx-resultado');
+
+  contenido().querySelectorAll('[data-lx-simular]').forEach(b => {
+    b.addEventListener('click', async () => {
+      b.disabled = true; b.textContent = 'MIRANDO…';
+      try {
+        const r = await api('/lista/enviar', {
+          method: 'POST',
+          body: JSON.stringify({ fuente: b.dataset.lxSimular, dry_run: true }),
+        });
+        caja().innerHTML = `
+          <div class="bloque" style="margin-top:14px">
+            <div class="seccion-titulo" style="margin-top:0">Simulacro · ${esc(r.fuente)}</div>
+            <p style="font-size:12.5px">Se enviarían <strong>${r.se_enviarian}</strong> mensajes.
+            ${r.quedarian ? `Quedarían <strong>${r.quedarian}</strong> para los días siguientes.` : ''}
+            No se ha mandado nada.</p>
+            <div class="nota" style="line-height:1.8">
+              ${r.muestra.map(m => `${esc(m.nombre || '(sin nombre)')} — +${esc(m.telefono)}`).join('<br>')}
+            </div>
+          </div>`;
+      } catch (e) { alert('No se pudo: ' + e.message); }
+      b.disabled = false; b.textContent = 'VER A QUIÉN';
+    });
+  });
+
+  contenido().querySelectorAll('[data-lx-enviar]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const fuente = b.dataset.lxEnviar;
+      if (!confirm(`Vas a mandarle WhatsApp a 30 creadoras reales de "${fuente}" que no nos conocen. No se puede deshacer. ¿Seguimos?`)) return;
+      b.disabled = true; b.textContent = 'ENVIANDO…';
+      try {
+        const r = await api('/lista/enviar', { method: 'POST', body: JSON.stringify({ fuente }) });
+        caja().innerHTML = `
+          <div class="bloque" style="margin-top:14px;border-color:var(--lime)">
+            <div class="seccion-titulo" style="margin-top:0">Enviando ${r.se_enviaran} mensajes</div>
+            <p style="font-size:12.5px">Van saliendo despacio, uno cada segundo y medio.
+            ${r.quedaran ? `Quedan <strong>${r.quedaran}</strong> para después.` : ''}
+            <br><br>Recarga en unos minutos para ver el conteo. Mañana, antes de seguir,
+            mira que la calidad del número siga en verde.</p>
+          </div>`;
+      } catch (e) {
+        alert('No se pudo: ' + e.message);
+        b.disabled = false; b.textContent = 'ENVIAR 30';
+      }
+    });
+  });
+};
 
 // ── Arranque ────────────────────────────────────────────────────────────────
 

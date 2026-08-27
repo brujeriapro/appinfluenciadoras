@@ -73,6 +73,12 @@ const config = {
     token:           process.env.WA_TOKEN || '',
     plantilla:       process.env.WA_PLANTILLA || '',
     idioma:          process.env.WA_PLANTILLA_IDIOMA || 'es',
+    // Plantilla aparte para las listas que comparte una marca aliada. El texto
+    // tiene que ser otro —dice de dónde salió el contacto, y esa frase es lo
+    // único que separa una invitación de un número desconocido— y Meta aprueba
+    // cada texto por separado. Sin esta variable, el envío por lista aparece
+    // como no disponible en vez de mandar el mensaje equivocado.
+    plantilla_lista: process.env.WA_PLANTILLA_LISTA || '',
   },
 
   smtp: {

@@ -17,9 +17,15 @@ const config = require('./config');
 
 const API = 'https://graph.facebook.com/v21.0';
 
-/** ¿Está configurado lo mínimo para poder enviar? */
-const configurado = () =>
-  Boolean(config.whatsapp.phone_number_id && config.whatsapp.token && config.whatsapp.plantilla);
+/**
+ * ¿Está configurado lo mínimo para poder enviar?
+ *
+ * Recibe la plantilla porque hay más de una y Meta aprueba cada texto por
+ * separado: la del Programa Creadoras puede estar lista y la de las listas
+ * aliadas todavía en revisión. Sin argumento se comporta como siempre.
+ */
+const configurado = (plantilla = config.whatsapp.plantilla) =>
+  Boolean(config.whatsapp.phone_number_id && config.whatsapp.token && plantilla);
 
 /**
  * Normaliza un teléfono colombiano al formato que espera Meta: solo dígitos,
@@ -58,8 +64,8 @@ function normalizarTelefono(crudo) {
 // naturalmente elige quien crea la plantilla desde Colombia.
 const IDIOMAS_ES = ['es_CO', 'es', 'es_ES', 'es_MX', 'es_AR', 'es_LA'];
 
-/** Una sola llamada a Meta con un idioma concreto. */
-async function intentarEnvio(numero, variables, idioma) {
+/** Una sola llamada a Meta con un idioma y una plantilla concretos. */
+async function intentarEnvio(numero, variables, idioma, plantilla) {
   const r = await fetch(`${API}/${config.whatsapp.phone_number_id}/messages`, {
     method: 'POST',
     headers: {
@@ -71,7 +77,7 @@ async function intentarEnvio(numero, variables, idioma) {
       to: numero,
       type: 'template',
       template: {
-        name: config.whatsapp.plantilla,
+        name: plantilla,
         language: { code: idioma },
         components: variables.length ? [{
           type: 'body',
@@ -102,9 +108,13 @@ async function intentarEnvio(numero, variables, idioma) {
  * Si el idioma configurado no corresponde, prueba las otras variantes del
  * español antes de darse por vencida: el resultado es el mismo y le ahorra a
  * quien opera tener que adivinar el código exacto.
+ *
+ * `plantilla` deja elegir cuál de las aprobadas se manda. Omitirla es el
+ * comportamiento de siempre, así que las cuatro olas del Programa Creadoras no
+ * se enteran de que existe.
  */
-async function enviarPlantilla(telefono, variables = []) {
-  if (!configurado()) return { ok: false, error: 'WhatsApp sin configurar' };
+async function enviarPlantilla(telefono, variables = [], plantilla = config.whatsapp.plantilla) {
+  if (!configurado(plantilla)) return { ok: false, error: 'WhatsApp sin configurar' };
 
   const numero = normalizarTelefono(telefono);
   if (!numero) return { ok: false, error: 'Teléfono no válido' };
@@ -115,7 +125,7 @@ async function enviarPlantilla(telefono, variables = []) {
   try {
     let ultimo = null;
     for (const idioma of orden) {
-      const r = await intentarEnvio(numero, variables, idioma);
+      const r = await intentarEnvio(numero, variables, idioma, plantilla);
       if (r.ok) return r;
       ultimo = r;
       // 132001 es "no existe en esa traducción": vale la pena probar otra.
@@ -126,8 +136,8 @@ async function enviarPlantilla(telefono, variables = []) {
     return {
       ok: false,
       error: ultimo?.codigo === 132001
-        ? `No se encontró la plantilla "${config.whatsapp.plantilla}" en ningún idioma español. `
-          + 'Revisa que el nombre en WA_PLANTILLA sea exactamente el aprobado en Meta.'
+        ? `No se encontró la plantilla "${plantilla}" en ningún idioma español. `
+          + 'Revisa que el nombre configurado sea exactamente el aprobado en Meta.'
         : ultimo?.error || 'Error desconocido',
     };
   } catch (e) {
