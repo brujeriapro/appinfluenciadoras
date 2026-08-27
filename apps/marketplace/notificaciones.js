@@ -15,6 +15,9 @@ const nodemailer = require('nodemailer');
 const config = require('./config');
 const fetch = require('node-fetch');
 const correo = require('./correo');
+// Solo para dejar rastro de los envíos. db.js no depende de este archivo, así
+// que no hay ciclo.
+const db = require('./db');
 const { formatearCOP } = require('./comisiones');
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -66,6 +69,31 @@ async function enviarPorApi(para, asunto, cuerpoHTML) {
   });
 }
 
+/**
+ * Deja rastro de un intento de envío.
+ *
+ * Nunca lanza: si el registro falla, el correo igual salió (o igual no salió),
+ * y tumbar el envío por no poder anotarlo sería cambiar un problema invisible
+ * por uno peor.
+ */
+function anotarEnvio({ para, asunto, ok, error }) {
+  db.post('mk_correos_log', {
+    para: String(para).slice(0, 200),
+    asunto: String(asunto || '').slice(0, 200),
+    proveedor: correo.activo()?.clave || 'smtp',
+    ok,
+    error: error ? String(error).slice(0, 500) : null,
+  }).catch(() => {});
+}
+
+/**
+ * Manda un correo. Nunca lanza: un correo caído no puede tumbar un registro.
+ *
+ * Que falle en silencio es la decisión correcta para quien lo dispara, pero
+ * dejaba el problema invisible para el equipo — y así se perdieron 132
+ * recuperaciones sin que nadie pudiera ver el error del proveedor. Ahora cada
+ * intento queda anotado en `mk_correos_log` con lo que contestó el proveedor.
+ */
 async function enviar(para, asunto, cuerpoHTML) {
   if (!para) {
     console.warn(`[notif] Sin destinatario para "${asunto}"`);
@@ -75,12 +103,15 @@ async function enviar(para, asunto, cuerpoHTML) {
   try {
     if (correo.activo()) {
       await enviarPorApi(para, asunto, cuerpoHTML);
+      anotarEnvio({ para, asunto, ok: true });
       return true;
     }
 
     const t = transporte();
     if (!t) {
-      console.warn(`[notif] Correo sin configurar — no se envió "${asunto}" a ${para}`);
+      const falta = 'Correo sin configurar: no hay llave de API ni SMTP.';
+      console.warn(`[notif] ${falta} No se envió "${asunto}" a ${para}`);
+      anotarEnvio({ para, asunto, ok: false, error: falta });
       return false;
     }
     await t.sendMail({
@@ -89,9 +120,11 @@ async function enviar(para, asunto, cuerpoHTML) {
       subject: asunto,
       html: plantilla(cuerpoHTML),
     });
+    anotarEnvio({ para, asunto, ok: true });
     return true;
   } catch (e) {
     console.error(`[notif] Falló el envío de "${asunto}":`, e.message);
+    anotarEnvio({ para, asunto, ok: false, error: e.message });
     return false;
   }
 }

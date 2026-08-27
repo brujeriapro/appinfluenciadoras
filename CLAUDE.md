@@ -343,7 +343,7 @@ UGC no es el escalón de las que no llegaron: es otro trabajo, se produce distin
 
 ⚠️ **Railway bloquea el SMTP saliente.** Todo sale por API web.
 
-⚠️ **El envío falla en silencio a propósito** — un correo caído no puede tumbar un registro — así que un problema es invisible hasta que alguien se queja. Ajustes abre con el estado del correo y un botón de prueba que devuelve el error real del proveedor.
+⚠️ **El envío falla en silencio a propósito** — un correo caído no puede tumbar un registro — pero ya no es invisible: cada intento queda en `mk_correos_log` con lo que contestó el proveedor, y Ajustes lo muestra con el resumen del día arriba. Es lo que convierte «no me llega nada» en un diagnóstico. Antes había que apretar el botón de prueba, que solo dice si el envío funciona *ahora*, no por qué falló el de ayer.
 
 **Hay tope diario de envíos masivos** (`correos_por_dia`, arranca en 100). Se agregó porque 353 correos en un día con un plan de 300 dejó a 16 creadoras dos días sin poder entrar. No toca los correos de uno en uno: bloquear un "recuperar contraseña" por haber mandado muchas invitaciones sería cobrárselo a quien no tiene nada que ver.
 

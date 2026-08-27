@@ -802,6 +802,36 @@ router.delete('/muestras/:id', async (req, res) => {
   }
 });
 
+/**
+ * Los últimos correos que se intentaron, con su error.
+ *
+ * Es lo que convierte "no me llega nada" en un diagnóstico. Antes había que
+ * entrar a Ajustes y apretar un botón de prueba, que solo dice si el envío
+ * funciona AHORA — no por qué falló el de ayer.
+ */
+router.get('/correos/log', async (req, res) => {
+  try {
+    const params = { select: '*', order: 'created_at.desc', limit: String(Number(req.query.limite) || 60) };
+    if (req.query.solo_fallos === '1') params.ok = 'eq.false';
+    const filas = await db.get('mk_correos_log', params);
+
+    // Un resumen del día arriba: si hay 40 fallos seguidos no hace falta leer
+    // fila por fila para saber que algo se rompió.
+    const hoy = new Date().toISOString().slice(0, 10);
+    const delDia = filas.filter(f => String(f.created_at).startsWith(hoy));
+    res.json({
+      resumen: {
+        hoy_total: delDia.length,
+        hoy_fallos: delDia.filter(f => !f.ok).length,
+        ultimo_error: filas.find(f => !f.ok)?.error || null,
+      },
+      correos: filas,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Configuración ───────────────────────────────────────────────────────────
 
 router.get('/config', async (req, res) => {
