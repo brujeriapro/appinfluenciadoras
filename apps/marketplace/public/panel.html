@@ -244,7 +244,10 @@
 <!-- ── Cabecera ─────────────────────────────────────────────────────────── -->
 <header class="cab">
   <div class="cab__logo">
-    <div class="cab__marca">C</div>
+    <!-- El corchete es la marca, no un adorno: encierra y contiene lo que
+         está adentro, que es lo que hace el escrow. Va en negro sobre claro —
+         el lima sobre fondo claro se pierde. -->
+    <span class="cab__marca" aria-hidden="true">[C]</span>
     <span class="cab__texto">CREATORS MANAGER</span>
     <span class="cab__sello">Marcas</span>
   </div>
@@ -252,32 +255,28 @@
   <button class="abrir-nav" id="abrir-nav">MENÚ</button>
 
   <nav class="nav" id="nav">
-    <div class="menu">
-      <button class="nav__item activo" data-vista="catalogo" id="btn-creadoras">
-        Creadoras <span style="font-size:8px">▼</span>
-      </button>
-      <div class="menu__lista" id="menu-bandejas">
-        <button class="menu__op activo" data-bandeja="todas">
-          <span>Catálogo completo</span><span class="menu__conteo" id="c-todas">0</span>
-        </button>
-        <button class="menu__op" data-bandeja="pendientes">
-          <span>Por revisar</span><span class="menu__conteo" id="c-pendientes">0</span>
-        </button>
-        <button class="menu__op" data-bandeja="pre">
-          <span>Preseleccionadas</span><span class="menu__conteo" id="c-pre">0</span>
-        </button>
-        <button class="menu__op" data-bandeja="desc">
-          <span>Descartadas</span><span class="menu__conteo" id="c-desc">0</span>
-        </button>
-      </div>
-    </div>
+    <button class="nav__item activo" data-vista="catalogo" id="btn-creadoras">Catálogo</button>
     <button class="nav__item" data-vista="campanas">
       Mis campañas <span class="nav__badge oculto" id="badge-campanas"></span>
     </button>
     <button class="nav__item" data-vista="perfil">Mi perfil</button>
   </nav>
 
+  <!-- Accesible pero secundario, a la derecha y no en el centro: la marca
+       llega a mirar el catálogo, no a buscar un nombre que no conoce. -->
+  <form class="buscador" id="form-buscar" role="search">
+    <span class="buscador__lupa" aria-hidden="true">⌕</span>
+    <input id="q" type="search" placeholder="Buscar por nicho o ciudad"
+           aria-label="Buscar por nicho o ciudad" autocomplete="off">
+  </form>
+
   <div class="cab__marca-info">
+    <!-- El consumo del plan va donde se ve sin buscarlo: quien se está
+         quedando sin propuestas tiene que enterarse antes de escribir una. -->
+    <div class="cab__plan" id="cab-plan" hidden>
+      <div class="cab__plan-label">Propuestas este mes</div>
+      <div class="cab__plan-cifra" id="plan-cifra">—</div>
+    </div>
     <div>
       <div class="cab__marca-nombre" id="nombre-marca">—</div>
       <div class="cab__marca-sub" id="sub-marca"></div>
@@ -304,7 +303,11 @@
   <span class="barra-comp__conteo" id="comp-conteo"></span>
   <span class="barra-comp__codigos" id="comp-codigos"></span>
   <button class="btn-oscuro" id="comp-quitar">Quitar selección</button>
-  <button class="btn btn--lima" id="comp-comparar">Comparar lado a lado</button>
+  <!-- Invitar, no comparar: preseleccionar tiene sentido si al final se puede
+       hacer algo con el grupo entero. La comparación lado a lado todavía no
+       existe, y un botón que no lleva a ninguna parte enseña a ignorar la
+       barra. -->
+  <button class="btn btn--magenta" id="comp-invitar">Invitar a campaña →</button>
 </div>
 
 <div class="telon" id="telon"><div id="modal-hueco"></div></div>
@@ -401,18 +404,7 @@ function visibles() {
 $('abrir-nav').addEventListener('click', () => $('nav').classList.toggle('abierto'));
 
 document.querySelectorAll('.nav__item[data-vista]').forEach(b => {
-  b.addEventListener('click', (ev) => {
-    if (b.id === 'btn-creadoras' && E.vista === 'catalogo') {
-      $('menu-bandejas').classList.toggle('abierto');
-      ev.stopPropagation();
-      return;
-    }
-    ir(b.dataset.vista);
-  });
-});
-
-document.addEventListener('click', (ev) => {
-  if (!ev.target.closest('.menu')) $('menu-bandejas').classList.remove('abierto');
+  b.addEventListener('click', () => ir(b.dataset.vista));
 });
 
 /**
@@ -447,15 +439,17 @@ document.addEventListener('click', (ev) => {
   }
 });
 
-document.querySelectorAll('.menu__op').forEach(b => {
-  b.addEventListener('click', (ev) => {
-    ev.stopPropagation();
-    E.bandeja = b.dataset.bandeja;
-    document.querySelectorAll('.menu__op').forEach(o => o.classList.toggle('activo', o === b));
-    $('menu-bandejas').classList.remove('abierto');
-    ir('catalogo');
-  });
-});
+/**
+ * Cambia de bandeja.
+ *
+ * Las bandejas dejaron de ser un desplegable del menú: escondidas ahí, quien
+ * marcaba diez perfiles con ✓ no tenía cómo notar que existía un sitio donde
+ * verlos juntos. Ahora están a la vista, con su conteo, encima de la lista.
+ */
+function irABandeja(clave) {
+  E.bandeja = clave;
+  ir('catalogo');
+}
 
 function ir(vista, id) {
   E.vista = vista;
@@ -641,11 +635,22 @@ async function arrancar() {
 /** El consumo del plan va en la cabecera: se ve sin tener que buscarlo. */
 function pintarPlan() {
   if (!E.plan || !E.plan.activo) return;
-  const sub = $('sub-marca');
   const tope = E.plan.propuestas_tope;
-  sub.textContent = tope === null
-    ? `${E.plan.nombre} · propuestas sin límite`
-    : `${E.plan.nombre} · ${E.plan.propuestas_enviadas}/${tope} propuestas`;
+  const usadas = E.plan.propuestas_enviadas;
+
+  $('sub-marca').textContent = E.plan.nombre;
+
+  // "9 de 12" y no "9/12": el "de" en gris deja claro de un vistazo cuál de
+  // los dos números es el que se está gastando.
+  $('plan-cifra').innerHTML = tope === null
+    ? 'Sin tope'
+    : `${usadas} <span class="cab__plan-tope">de ${tope}</span>`;
+  $('cab-plan').hidden = false;
+
+  // Se avisa cuando queda poco, no cuando ya se acabó: enterarse a mitad de
+  // armar una campaña de que no quedan propuestas es la peor forma de saberlo.
+  $('cab-plan').classList.toggle('cab__plan--poco',
+    tope !== null && tope - usadas <= Math.max(1, Math.round(tope * 0.2)));
 }
 
 /**
@@ -818,16 +823,32 @@ function render() {
 function actualizarConteos() {
   const pre = E.catalogo.filter(c => esPre(c.id)).length;
   const desc = E.catalogo.filter(c => esDesc(c.id)).length;
-  $('c-todas').textContent = E.catalogo.length;
-  $('c-pendientes').textContent = E.catalogo.length - pre - desc;
-  $('c-pre').textContent = pre;
-  $('c-desc').textContent = desc;
+  // Los conteos viven en la barra de bandejas, que solo existe mientras se
+  // está en el catálogo — de ahí el encadenamiento opcional.
+  E.conteos = {
+    todas: E.catalogo.length,
+    pendientes: E.catalogo.length - pre - desc,
+    pre, desc,
+  };
+  Object.entries(E.conteos).forEach(([k, v]) => {
+    const nodo = document.getElementById('c-' + k);
+    if (nodo) nodo.textContent = v;
+  });
 
   const sel = E.catalogo.filter(c => esPre(c.id));
   $('barra-comp').classList.toggle('visible', sel.length > 0 && E.vista === 'catalogo');
   $('comp-conteo').textContent = `${sel.length} PRESELECCIONADA${sel.length === 1 ? '' : 'S'}`;
   $('comp-codigos').textContent = sel.map(c => c.codigo).filter(Boolean).join(' · ');
 }
+
+// Por revisar es la predeterminada: la marca entra a triar, no a mirar el
+// listado entero otra vez.
+const BANDEJAS = [
+  { clave: 'todas',      nombre: 'Catálogo' },
+  { clave: 'pendientes', nombre: 'Por revisar' },
+  { clave: 'pre',        nombre: 'Preseleccionadas' },
+  { clave: 'desc',       nombre: 'Descartadas' },
+];
 
 const TITULOS = {
   todas: 'Catálogo completo',
@@ -852,6 +873,18 @@ function vistaCatalogo(c) {
       </div>
       <div class="vista-cab__acciones">
         <button class="btn btn--linea btn--sm abrir-filtros" id="abrir-filtros">Filtros</button>
+      </div>
+    </div>
+
+    <div class="barra-bandejas">
+      <div class="bandejas" role="tablist" aria-label="Bandejas del catálogo">
+        ${BANDEJAS.map(b => `
+          <button role="tab" class="bandeja ${E.bandeja === b.clave ? 'on' : ''}"
+                  aria-selected="${E.bandeja === b.clave}" data-bandeja="${b.clave}">
+            ${b.nombre} <span class="bandeja__n" id="c-${b.clave}">${(E.conteos || {})[b.clave] ?? 0}</span>
+          </button>`).join('')}
+      </div>
+      <div class="barra-bandejas__der">
         <span class="conteo">${lista.length} de ${E.catalogo.length} perfiles</span>
         <div class="toggle">
           <button class="${E.layout === 'filas' ? 'on' : ''}" data-layout="filas">Filas</button>
@@ -859,7 +892,12 @@ function vistaCatalogo(c) {
         </div>
       </div>
     </div>
+
     <div id="lista"></div>`;
+
+  c.querySelectorAll('[data-bandeja]').forEach(b => {
+    b.addEventListener('click', () => irABandeja(b.dataset.bandeja));
+  });
 
   c.querySelectorAll('[data-layout]').forEach(b => {
     b.addEventListener('click', () => {
@@ -1029,10 +1067,28 @@ function metricasHTML(estado) {
   return `<span class="sello" title="Los números los declara la creadora; nadie los ha comprobado">Métricas declaradas</span>`;
 }
 
+/**
+ * Cuánto tarda en entregar.
+ *
+ * Sale del historial medido (`dias_primera_entrega`), no de lo que la creadora
+ * declare: un plazo prometido y uno cumplido no son el mismo dato, y la marca
+ * está decidiendo con esto. Quien no tiene historial muestra un guion; poner
+ * el número declarado ahí sería vender una promesa como si fuera un hecho.
+ */
+function entregaHTML(c) {
+  const dias = c.cumplimiento?.dias_primera_entrega;
+  return `
+    <div class="metrica">
+      <div class="metrica__valor">${dias ? dias + ' días' : '—'}</div>
+      <div class="metrica__label">Entrega</div>
+    </div>`;
+}
+
 function filaHTML(c) {
   const ms = c.muestras || [];
+  const estado = esPre(c.id) ? ' fila--pre' : esDesc(c.id) ? ' fila--desc' : '';
   return `
-  <article class="fila">
+  <article class="fila${estado}">
     <div class="fila__cab">
       <div class="avatar">${avatarDe(c)}</div>
       <div class="fila__id">
@@ -1040,7 +1096,7 @@ function filaHTML(c) {
         <div class="sub-id">${esc([c.codigo, (c.nicho || [])[0], c.ciudad].filter(Boolean).join(' · '))}</div>
         <div style="margin-top:6px">${selloHTML(c.cumplimiento)}</div>
       </div>
-      <div class="metricas">${redesHTML(c.redes)}</div>
+      <div class="metricas">${redesHTML(c.redes)}${entregaHTML(c)}</div>
       <div class="desde">
         <div class="desde__valor">${c.tarifa_min ? COP(c.tarifa_min) : 'A convenir'}</div>
         <div class="desde__label">${c.tarifa_min ? 'Desde' : 'Sin precio fijo'}</div>
@@ -1063,8 +1119,9 @@ function filaHTML(c) {
 
 function tarjetaHTML(c) {
   const ms = c.muestras || [];
+  const estado = esPre(c.id) ? ' tarjeta--pre' : esDesc(c.id) ? ' tarjeta--desc' : '';
   return `
-  <article class="tarjeta">
+  <article class="tarjeta${estado}">
     <div class="tarjeta__foto">
       ${pieza(ms[0])}
       ${c.codigo ? `<span class="tarjeta__codigo">${esc(c.codigo)}</span>` : ''}
@@ -1124,11 +1181,13 @@ $('comp-quitar').addEventListener('click', async () => {
   render();
 });
 
-$('comp-comparar').addEventListener('click', () => {
-  E.bandeja = 'pre';
-  document.querySelectorAll('.menu__op').forEach(o =>
-    o.classList.toggle('activo', o.dataset.bandeja === 'pre'));
-  ir('catalogo');
+// Invitar a campaña con el grupo preseleccionado. Si la vista de campañas
+// todavía no sabe recibir un grupo, al menos lleva a verlas juntas — que es
+// el paso previo obligatorio de todos modos.
+$('comp-invitar').addEventListener('click', () => {
+  const sel = E.catalogo.filter(c => esPre(c.id));
+  if (typeof abrirCampanaCon === 'function') return abrirCampanaCon(sel);
+  irABandeja('pre');
 });
 
 // ── Estados ─────────────────────────────────────────────────────────────────
@@ -1183,12 +1242,7 @@ function pintarVacio(c) {
           <button class="btn" id="a-revisar">Volver a por revisar →</button>
         </div>
       </div>`;
-    $('a-revisar').addEventListener('click', () => {
-      E.bandeja = 'pendientes';
-      document.querySelectorAll('.menu__op').forEach(o =>
-        o.classList.toggle('activo', o.dataset.bandeja === 'pendientes'));
-      render();
-    });
+    $('a-revisar').addEventListener('click', () => irABandeja('pendientes'));
     return;
   }
 

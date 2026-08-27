@@ -70,40 +70,106 @@ button { font-family: inherit; }
 
 /* ── Cabecera ───────────────────────────────────────────────────────────── */
 
+/* Cabecera blanca sobre borde negro.
+
+   Es la diferencia entre este lado y el de la creadora: allá el negro a
+   sangre es la cara ruidosa de la marca; aquí quien mira está por gastar
+   varios millones y lo que tiene que sentir es orden. El negro se guarda para
+   la estructura —el borde, la columna de filtros— no para el fondo. */
 .cab {
   position: sticky; top: 0; z-index: 40;
-  display: flex; align-items: center; gap: clamp(14px, 2vw, 32px);
-  padding: 0 clamp(14px, 2vw, 26px);
-  background: var(--ink); height: 56px;
-  overflow: hidden;
+  display: flex; align-items: center; gap: clamp(14px, 2vw, 26px);
+  padding: 0 clamp(14px, 2vw, 30px);
+  background: var(--surface); border-bottom: 2px solid var(--ink);
+  min-height: 68px;
 }
-.cab__logo { display: flex; align-items: center; gap: 9px; }
-.cab__marca { width: 26px; height: 26px; background: var(--lima); display: grid; place-items: center;
-              color: var(--ink); font-family: var(--mono-t); font-weight: 800; font-size: 13px; }
-.cab__texto { font-family: var(--mono-t); font-weight: 800; font-size: 13.5px;
-              letter-spacing: -0.5px; color: #fff; }
-.cab__sello { font-size: 9px; letter-spacing: 1px; border: 1px solid var(--chip-dark-border);
-              color: var(--chip-dark-text); padding: 3px 6px; text-transform: uppercase; }
+.cab__logo { display: flex; align-items: center; gap: 9px; flex: none; }
+/* El corchete es la marca: encierra, protege, contiene lo que está adentro —
+   que es exactamente lo que hace el escrow. */
+.cab__marca { font-family: var(--mono-t); font-weight: 800; font-size: 21px;
+              letter-spacing: -1.2px; line-height: 1; color: var(--ink); }
+.cab__texto { font-family: var(--mono-t); font-weight: 800; font-size: 12.5px;
+              letter-spacing: -0.5px; color: var(--ink); }
+.cab__sello { font-size: 9px; letter-spacing: 1px; border: 1px solid var(--border-2);
+              color: var(--text-3); padding: 3px 6px; text-transform: uppercase; }
 
-.nav { display: flex; align-items: center; gap: clamp(10px, 1.6vw, 26px); height: 100%; }
+.nav { display: flex; align-items: center; gap: clamp(10px, 1.6vw, 24px);
+       align-self: stretch; flex: none; white-space: nowrap; }
 .nav__item {
-  background: none; border: none; height: 100%; padding: 0 2px; cursor: pointer;
-  font-family: var(--mono-t); font-weight: 800; font-size: 11px; letter-spacing: 0.5px;
-  text-transform: uppercase; color: var(--chip-dark-text); display: flex; align-items: center; gap: 7px;
+  background: none; border: none; padding: 0 2px; cursor: pointer; align-self: stretch;
+  font-family: var(--mono-t); font-weight: 800; font-size: 11px; letter-spacing: 0.4px;
+  text-transform: uppercase; color: var(--text-3); display: flex; align-items: center; gap: 7px;
+  transition: color 120ms ease-out;
 }
-.nav__item:hover { color: #fff; }
-.nav__item.activo { color: #fff; box-shadow: inset 0 -4px 0 var(--lima); }
+.nav__item:hover { color: var(--ink); }
+/* El subrayado va en negro, no en lima: navegar no es dinero. Es la única
+   sombra que existe en todo el sistema, y por eso marca el activo sin ruido. */
+.nav__item.activo { color: var(--ink); box-shadow: inset 0 -4px 0 var(--ink); }
 .nav__badge { background: var(--magenta); color: var(--ink); font-size: 9.5px;
               font-weight: 700; padding: 1px 5px; }
 
 .cab__marca-info { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .cab__marca-nombre { font-family: var(--mono-t); font-weight: 800; font-size: 11.5px;
-                     letter-spacing: -0.2px; color: #fff; text-align: right; }
-.cab__marca-sub { font-size: 9px; letter-spacing: 0.8px; color: var(--chip-dark-text);
+                     letter-spacing: -0.2px; color: var(--ink); text-align: right; }
+.cab__marca-sub { font-size: 9px; letter-spacing: 0.8px; color: var(--text-4);
                   text-transform: uppercase; text-align: right; }
-.cab__avatar { width: 30px; height: 30px; background: var(--surface); color: var(--ink);
+.cab__avatar { width: 34px; height: 34px; background: var(--ink); color: #fff;
                display: grid; place-items: center; font-family: var(--mono-t);
                font-weight: 800; font-size: 11px; }
+
+/* Buscador de la cabecera.
+
+   `flex: none` a propósito: sin eso el flex lo aprieta hasta que el
+   placeholder se parte en cuatro líneas. */
+.buscador {
+  flex: none; width: 250px; margin-left: auto;
+  display: flex; align-items: center; gap: 7px;
+  background: var(--surface-alt); border: 1px solid var(--border-2);
+  padding: 0 10px; height: 34px;
+}
+.buscador__lupa { color: var(--text-4); font-size: 13px; line-height: 1; }
+.buscador input {
+  flex: 1; min-width: 0; background: none; border: none; outline: none;
+  color: var(--ink); font-family: var(--mono-b); font-size: 11px;
+}
+.buscador input::placeholder { color: var(--text-4); }
+.buscador:focus-within { border-color: var(--ink); }
+
+/* Contador del plan */
+.cab__plan { text-align: right; padding-right: 14px; margin-right: 4px;
+             border-right: 1px solid var(--border-3); }
+.cab__plan-label { font-size: 8.5px; letter-spacing: 1px; text-transform: uppercase;
+                   color: var(--text-4); }
+.cab__plan-cifra { font-family: var(--mono-t); font-weight: 800; font-size: 13px;
+                   letter-spacing: -0.4px; color: var(--ink); margin-top: 2px;
+                   font-variant-numeric: tabular-nums; }
+.cab__plan-tope { color: var(--text-4); font-weight: 700; }
+/* Quedan pocas: magenta, que en este sistema es alarma. */
+.cab__plan--poco .cab__plan-cifra { color: var(--magenta); }
+
+/* Barra de bandejas: el triage a la vista, no escondido en un desplegable. */
+.barra-bandejas {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  background: var(--surface); border-bottom: 2px solid var(--ink);
+  padding: 10px clamp(14px, 2vw, 20px);
+  margin: 0 calc(-1 * clamp(18px, 2.4vw, 34px)) 20px;
+}
+.barra-bandejas__der { display: flex; align-items: center; gap: 14px; }
+
+/* El gap de 2px sobre el fondo gris dibuja las divisiones sin bordes. */
+.bandejas { display: flex; gap: 2px; background: var(--border-3); flex-wrap: wrap; min-width: 0; }
+.bandeja {
+  background: none; border: none; cursor: pointer; padding: 8px 12px;
+  font-family: var(--mono-t); font-weight: 700; font-size: 9.5px; letter-spacing: 0.5px;
+  text-transform: uppercase; color: var(--text-3);
+  display: flex; align-items: center; gap: 6px;
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+.bandeja:hover { background: var(--surface-alt); color: var(--ink); }
+.bandeja.on { background: var(--ink); color: #fff; }
+.bandeja__n { font-variant-numeric: tabular-nums; color: var(--text-4); }
+.bandeja.on .bandeja__n { color: var(--chip-dark-text); }
 
 /* Menú desplegable de bandejas */
 .menu { position: relative; }
@@ -128,10 +194,10 @@ button { font-family: inherit; }
 
 /* ── Estructura de la vista ─────────────────────────────────────────────── */
 
-.layout { display: flex; align-items: flex-start; min-height: calc(100vh - 56px); }
+.layout { display: flex; align-items: flex-start; min-height: calc(100vh - 68px); }
 .filtros {
   width: 262px; flex: none; background: var(--ink); color: #fff;
-  position: sticky; top: 56px; max-height: calc(100vh - 56px); overflow-y: auto;
+  position: sticky; top: 68px; max-height: calc(100vh - 68px); overflow-y: auto;
 }
 .contenido { flex: 1; min-width: 0; padding: clamp(18px, 2.4vw, 34px); }
 
@@ -200,6 +266,12 @@ input[type=range]::-moz-range-thumb {
 }
 .btn:hover { background: var(--azul); border-color: var(--azul); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
+/* Magenta: la acción principal del sistema. El lima NO se usa en botones —
+   está reservado al dinero, y un botón lima compite con el precio que está
+   justo al lado. */
+.btn--magenta { background: var(--magenta); color: var(--ink); border-color: var(--ink); }
+.btn--magenta:hover { background: var(--ink); color: var(--magenta); border-color: var(--ink); }
+
 .btn--lima { background: var(--lima); color: var(--ink); border-color: var(--lima); }
 .btn--lima:hover { background: var(--ink); color: var(--lima); border-color: var(--ink); }
 .btn--linea { background: transparent; color: var(--ink); }
@@ -208,7 +280,18 @@ input[type=range]::-moz-range-thumb {
 
 /* ── Fila de creadora ───────────────────────────────────────────────────── */
 
-.fila { background: var(--surface); border: 1px solid var(--border-1); margin-bottom: 14px; }
+.fila { background: var(--surface); border: 1px solid var(--border-1); margin-bottom: 14px;
+        border-left: 5px solid transparent; transition: background-color 120ms ease-out; }
+.fila:hover { background: var(--surface-alt); }
+/* El estado del triage se lee de un vistazo bajando por el borde izquierdo,
+   sin tener que buscar el ✓ de cada fila. */
+.fila--pre  { border-color: var(--ink); border-left-color: var(--magenta); }
+.fila--desc { border-color: var(--border-3); border-left-color: var(--border-2); }
+.fila--desc .fila__cab { opacity: .62; }
+
+.tarjeta--pre  { border-color: var(--ink); box-shadow: inset 5px 0 0 var(--magenta); }
+.tarjeta--desc { border-color: var(--border-3); box-shadow: inset 5px 0 0 var(--border-2); }
+.tarjeta--desc .tarjeta__cuerpo { opacity: .62; }
 .fila:hover { border-color: var(--ink); }
 .fila__cab { display: flex; align-items: center; gap: 16px; padding: 13px 15px; flex-wrap: wrap; }
 .avatar { width: 42px; height: 42px; flex: none; background: var(--border-3);
@@ -242,8 +325,14 @@ input[type=range]::-moz-range-thumb {
   display: grid; place-items: center;
 }
 .tri:hover { border-color: var(--ink); color: var(--ink); }
-.tri.on-si { background: var(--lima); border-color: var(--ink); color: var(--ink); }
-.tri.on-no { background: var(--magenta); border-color: var(--ink); color: var(--ink); }
+/* Preseleccionar es magenta y no lima: el lima está reservado al dinero, y un
+   ✓ lima justo al lado del precio hace que los dos dejen de significar algo.
+   Magenta es el estado de selección en todo el sistema. */
+.tri.on-si { background: var(--magenta); border-color: var(--ink); color: var(--ink); }
+
+/* Descartar es GRIS, nunca rojo ni magenta: es una decisión privada de la
+   marca sobre su propia lista, no un juicio sobre la creadora. */
+.tri.on-no { background: var(--border-2); border-color: var(--ink); color: var(--ink); }
 
 /* La tira de trabajo es lo que hace que este layout funcione: se juzga el
    trabajo real, no solo los números. */
@@ -336,7 +425,10 @@ input[type=range]::-moz-range-thumb {
          font-family: var(--mono-t); font-size: 9.5px; font-weight: 700;
          letter-spacing: 0.4px; text-transform: uppercase;
          padding: 4px 7px; border: 1px solid var(--border-2); color: var(--text-3); }
-.sello--cumple { background: var(--lima); border-color: var(--ink); color: var(--ink); }
+/* Negro y no lima, por lo mismo: es una señal de confianza, no una cifra de
+   dinero. En negro además pesa más, que es lo que se busca — el historial de
+   cumplimiento es el diferenciador del producto. */
+.sello--cumple { background: var(--ink); border-color: var(--ink); color: #fff; }
 .sello__marca { font-size: 11px; line-height: 1; }
 
 /* Paquetes en la ficha. Van antes del trabajo porque es la oferta que más
@@ -414,7 +506,7 @@ input[type=range]::-moz-range-thumb {
 
 /* Bajo 900px la columna de filtros se vuelve un panel desplegable. */
 @media (max-width: 900px) {
-  .filtros { position: fixed; inset: 56px 0 0 0; width: 100%; max-height: none;
+  .filtros { position: fixed; inset: 68px 0 0 0; width: 100%; max-height: none;
              z-index: 44; display: none; overflow-y: auto; }
   .filtros.abierto { display: block; }
   .abrir-filtros { display: inline-flex !important; }
@@ -424,19 +516,38 @@ input[type=range]::-moz-range-thumb {
 }
 .abrir-filtros { display: none; }
 
+/* El buscador tiene ancho fijo a propósito —si no, el flex lo aprieta hasta
+   partir el placeholder— así que por debajo de 1280 hay que sacarlo del flujo
+   en vez de dejar que empuje la cabecera fuera de la pantalla. Los filtros
+   hacen el mismo trabajo y siguen ahí. */
+@media (max-width: 1280px) {
+  .buscador { display: none; }
+  .cab__marca-info { margin-left: auto; }
+}
+
 @media (max-width: 1100px) {
   .nav { display: none; }
   /* En pantallas angostas el nombre de la marca empuja la cabecera fuera del
      viewport. Se deja solo el avatar, que es suficiente para saber con qué
      cuenta se está trabajando. */
-  .cab__marca-info > div:first-child { display: none; }
+  .cab__marca-info > div:nth-child(2) { display: none; }
   .cab__marca-info { min-width: 0; }
-  .nav.abierto { display: flex; position: absolute; top: 56px; left: 0; right: 0;
-                 background: var(--ink); flex-direction: column; align-items: stretch;
+  .nav.abierto { display: flex; position: absolute; top: 68px; left: 0; right: 0;
+                 background: var(--surface); border-bottom: 2px solid var(--ink);
+                 flex-direction: column; align-items: stretch;
                  height: auto; padding: 8px 0; z-index: 46; }
-  .nav.abierto .nav__item { height: auto; padding: 12px 18px; }
+  .nav.abierto .nav__item { align-self: stretch; padding: 12px 18px; }
   .abrir-nav { display: block !important; }
 }
-.abrir-nav { display: none; background: none; border: 2px solid var(--border-dark);
-             color: #fff; font-family: var(--mono-t); font-weight: 800; font-size: 10.5px;
+
+/* Ya no cabe el contador junto al menú, al logo y al avatar. El plan se sigue
+   viendo en "Mi perfil"; lo que no puede pasar es que la cabecera desborde. */
+@media (max-width: 620px) {
+  .cab__plan { display: none; }
+  .cab__sello { display: none; }
+}
+
+.abrir-nav { display: none; background: none; border: 2px solid var(--ink);
+             color: var(--ink); font-family: var(--mono-t); font-weight: 800; font-size: 10.5px;
              padding: 7px 10px; cursor: pointer; }
+.abrir-nav:hover { background: var(--ink); color: #fff; }
