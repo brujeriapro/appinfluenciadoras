@@ -22,6 +22,21 @@ const topeDePropuestas = (id) => require('./marcas').topeDePropuestas(id);
 const deMarca = express.Router();
 const deCreadora = express.Router();
 
+/**
+ * Las invitaciones de campañas ANTERIORES de esta marca.
+ *
+ * Se excluye la campaña actual: dentro de la misma, quien ya está invitada se
+ * filtra por otro camino, y contarla acá la haría parecer reinvitable gratis.
+ */
+async function historialDeMarca(marca_id, exceptoCampana) {
+  const campanas = await db.get('mk_campanas', { marca_id: `eq.${marca_id}`, select: 'id' });
+  const otras = campanas.map(c => c.id).filter(id => id !== exceptoCampana);
+  if (!otras.length) return [];
+  return db.get('mk_campana_invitacion', {
+    campana_id: `in.(${otras.join(',')})`, select: 'creadora_id,estado',
+  });
+}
+
 /** Carga la campaña y su estado calculado. Devuelve null si no es de la marca. */
 async function cargar(campana_id, marca_id) {
   const campana = await db.getCampana(campana_id);
@@ -144,12 +159,19 @@ deMarca.post('/:id/invitar', async (req, res) => {
     const datos = await cargar(req.params.id, req.usuarioId);
     if (!datos) return res.status(404).json({ error: 'Campaña no encontrada' });
 
-    const plan = await topeDePropuestas(req.usuarioId);
+    const [plan, historial] = await Promise.all([
+      topeDePropuestas(req.usuarioId),
+      // Campañas anteriores de ESTA marca: de ahí sale a quién se reinvita sin
+      // volver a cobrarle una propuesta.
+      historialDeMarca(req.usuarioId, datos.campana.id),
+    ]);
+
     const veredicto = cupos.puedeInvitar({
       campana: datos.campana,
       yaInvitadas: datos.invitaciones,
       nuevas: Array.isArray(req.body.creadora_ids) ? req.body.creadora_ids : [],
       plan: { tope: plan.tope, enviadas: plan.enviadas || 0 },
+      historial,
     });
 
     if (!veredicto.ok) {
@@ -180,6 +202,9 @@ deMarca.post('/:id/invitar', async (req, res) => {
       ok: true,
       invitadas: veredicto.porInvitar.length,
       consumio: veredicto.consume,
+      // Las que entraron sin gastar propuesta, para poder decírselo a la marca
+      // en vez de que solo note que la cuenta no cuadra.
+      sin_costo: (veredicto.sinCosto || []).length,
       ignoradas: (req.body.creadora_ids || []).length - veredicto.porInvitar.length,
       invitaciones: filas,
     });

@@ -1196,29 +1196,37 @@ const avatarDe = (c) => c.foto_perfil_path
  *      equipo en el panel admin, y pesa en el orden del catálogo — pero no se
  *      exhibe. Destacamos a quien cumple en vez de señalar a quien no.
  */
-function selloHTML(cump) {
+function selloHTML(cump, opciones = {}) {
   const c = cump || {};
   const entregas = Number(c.entregas || 0);
+  const oscuro = opciones.oscuro ? ' trayectoria--oscuro' : '';
 
   if (entregas > 0) {
     const aTiempo = Number(c.entregas_a_tiempo || 0);
+    const plural = entregas === 1 ? 'trato cumplido' : 'tratos cumplidos';
 
-    // Quien entregó todo dentro del plazo se lleva el sello en lima con su
-    // palomita. Los demás van en gris y sin palomita: un "✓ entregó 0 de 1 a
-    // tiempo" en color de premio dice dos cosas opuestas a la vez y deja a la
-    // marca sin saber cuál creer.
-    if (aTiempo === entregas) {
-      return `<span class="sello sello--cumple" title="Historial verificado en la plataforma">
-                <span class="sello__marca">✓</span>Entregó a tiempo · ${entregas} de ${entregas}</span>`;
-    }
-    // Entregó, pero tarde. Se dice sin adornos y sin castigo: el trabajo salió,
-    // que es lo que a la mayoría de marcas le importa primero.
-    const texto = aTiempo
-      ? `${aTiempo} de ${entregas} a tiempo`
-      : `Entregó ${entregas === 1 ? 'con retraso' : `${entregas} veces, con retraso`}`;
-    return `<span class="sello" title="Entregó fuera del plazo de 30 días">${esc(texto)}</span>`;
+    // El número, no una palabra. "17 tratos cumplidos" pesa más que "Elite" y
+    // no promete nada que no sea verificable. Además escala solo: no hay que
+    // rediseñar cuando alguien llegue a cincuenta.
+    //
+    // Si alguna salió tarde se dice al lado, sin castigo: el trabajo se
+    // entregó, que es lo que a la mayoría de marcas le importa primero.
+    const tarde = entregas - aTiempo;
+    return `<span class="trayectoria${oscuro}" title="Historial verificado en la plataforma">
+              <span class="trayectoria__marca">✓</span>${entregas} ${plural}${
+                tarde ? ` · ${tarde} fuera de plazo` : ''}</span>`;
   }
-  return `<span class="sello" title="Todavía no ha completado colaboraciones aquí">Sin historial aún</span>`;
+
+  // Con cero tratos se dice algo CIERTO y positivo en vez de dejar un vacío o
+  // una advertencia. Que las métricas estén verificadas por la plataforma es
+  // real y es un diferenciador — y repetir "sin historial" 259 veces se lee
+  // como un defecto compartido por todo el catálogo.
+  const verificada = opciones.metricas === 'verificado' || opciones.metricas === 'conectado';
+  return `<span class="trayectoria trayectoria--nueva${oscuro}"
+                title="${verificada ? 'La plataforma comparó sus números contra sus estadísticas'
+                                    : 'Todavía no ha completado colaboraciones aquí'}">
+            <span class="trayectoria__marca trayectoria__marca--vacia"></span>${
+              verificada ? 'Métricas verificadas' : 'Perfil sin tratos aún'}</span>`;
 }
 
 /**
@@ -1248,6 +1256,20 @@ const corto = (n) => {
   return String(v);
 };
 
+/**
+ * Las redes de una creadora, con su tamaño como etiqueta del dato.
+ *
+ * El tamaño (UGC/Nano/Micro/Media/Macro) NO es una insignia suelta: va pegado
+ * a la métrica de SU red, porque solo significa algo junto a ella. Una creadora
+ * puede ser Micro en Instagram y Nano en TikTok, y una insignia en la esquina
+ * de la tarjeta no diría cuál de las dos.
+ *
+ * Además, como es la etiqueta del número que la marca ya está leyendo, no
+ * cuesta atención extra.
+ *
+ *   INSTAGRAM  MICRO
+ *   44.000
+ */
 function redesHTML(redes, tope = 3) {
   const lista = (redes || []).filter(r => r.tier);
   if (!lista.length) return `
@@ -1255,15 +1277,18 @@ function redesHTML(redes, tope = 3) {
     <div class="metrica__label">Sin redes</div></div>`;
 
   return lista.slice(0, tope).map(r => {
-    // Las vistas mandan sobre el nivel cuando existen: es el número que decide
-    // una contratación. Los seguidores dicen a cuánta gente podría llegar; las
-    // vistas, a cuánta llega de verdad.
+    // Las vistas mandan: es el número que decide una contratación. Los
+    // seguidores dicen a cuánta gente podría llegar; las vistas, a cuánta
+    // llega de verdad. Sin vistas se muestra un guion en vez de rellenar con
+    // el tamaño, que es la etiqueta y no el dato.
     const vistas = corto(r.vistas);
     return `
     <div class="metrica">
-      <div class="metrica__valor">${vistas ? esc(vistas) : esc(NOMBRE_TIER[r.tier] || r.tier)}</div>
-      <div class="metrica__label">${esc(NOMBRE_RED[r.red] || r.red)}${
-        vistas ? ' · vistas' : ''}${r.principal && !vistas ? ' ·' : ''}</div>
+      <div class="metrica__label">
+        ${esc(NOMBRE_RED[r.red] || r.red)}
+        <span class="tier">${esc(NOMBRE_TIER[r.tier] || r.tier)}</span>
+      </div>
+      <div class="metrica__valor">${vistas ? esc(vistas) : '—'}</div>
     </div>`;
   }).join('');
 }
@@ -1310,7 +1335,7 @@ function filaHTML(c) {
       <div class="fila__id">
         <div class="alias">${esc(c.nombre_publico)}</div>
         <div class="sub-id">${esc([c.codigo, (c.nicho || [])[0], c.ciudad].filter(Boolean).join(' · '))}</div>
-        <div style="margin-top:6px">${selloHTML(c.cumplimiento)}</div>
+        <div style="margin-top:6px">${selloHTML(c.cumplimiento, { metricas: c.metricas_estado })}</div>
       </div>
       <div class="metricas">${redesHTML(c.redes)}${entregaHTML(c)}</div>
       <div class="desde">
@@ -1354,7 +1379,7 @@ function tarjetaHTML(c) {
         ${(c.nicho || []).slice(0, 1).map(n => `<span class="chip-claro chip-nicho">${esc(n)}</span>`).join('')}
         ${c.ciudad ? `<span class="chip-claro">${esc(c.ciudad)}</span>` : ''}
       </div>
-      <div style="margin-top:8px">${selloHTML(c.cumplimiento)}</div>
+      <div style="margin-top:8px">${selloHTML(c.cumplimiento, { metricas: c.metricas_estado })}</div>
       <div class="tarjeta__metricas">
         ${redesHTML(c.redes, 2)}
         <div><div class="metrica__valor">${c.dias_entrega ? c.dias_entrega + ' días' : '—'}</div>

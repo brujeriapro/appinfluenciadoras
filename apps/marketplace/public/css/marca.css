@@ -427,6 +427,36 @@ input[type=range]::-moz-range-thumb {
          font-family: var(--mono-t); font-size: 9.5px; font-weight: 700;
          letter-spacing: 0.4px; text-transform: uppercase;
          padding: 4px 7px; border: 1px solid var(--border-2); color: var(--text-3); }
+
+/* ── Trayectoria ─────────────────────────────────────────────────────────
+
+   Una línea de hecho, no una insignia. Se cambió porque de 299 creadoras 40
+   tienen un trato y NINGUNA tiene tres: una píldora que dice "NUEVA" repetida
+   259 veces no informa nada y se lee como un defecto de todo el catálogo.
+
+   Con cero tratos dice algo cierto y positivo —las métricas están
+   verificadas— y el salto visual del primer trato, que es el que más se va a
+   ver estos meses, es el cuadrado pasando de contorno a relleno.            */
+
+.trayectoria { display: inline-flex; align-items: center; gap: 7px;
+               font-family: var(--mono-t); font-weight: 700; font-size: 10px;
+               letter-spacing: -0.2px; color: var(--ink); }
+.trayectoria__marca { width: 15px; height: 15px; flex: none;
+                      display: grid; place-items: center;
+                      background: var(--ink); color: #fff; font-size: 9px; }
+.trayectoria__marca--vacia { background: none; border: 1px solid var(--border-2); }
+.trayectoria--nueva { color: var(--text-3); }
+
+/* Sobre negro el relleno va en lima con el ✓ oscuro: es el color de mayor
+   jerarquía disponible ahí. */
+.trayectoria--oscuro { color: #F2F2F2; }
+.trayectoria--oscuro .trayectoria__marca { background: var(--lima); color: var(--ink); }
+.trayectoria--oscuro .trayectoria__marca--vacia { background: none; border-color: #4A4A44; }
+
+/* El tamaño de audiencia, como etiqueta del dato de su red y no como insignia
+   suelta: solo significa algo junto al número al que acompaña. */
+.tier { color: var(--azul); font-family: var(--mono-b); font-weight: 700;
+        font-size: 9px; letter-spacing: 0.7px; margin-left: 5px; }
 /* Negro y no lima, por lo mismo: es una señal de confianza, no una cifra de
    dinero. En negro además pesa más, que es lo que se busca — el historial de
    cumplimiento es el diferenciador del producto. */

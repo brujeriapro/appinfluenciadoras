@@ -223,3 +223,55 @@ test('la campaña se cierra sola cuando ya no le sirve a nadie', () => {
   const r = alVencerse({ campana: c, invitaciones: invs, estado: estadoDeCampana(c, invs) });
   assert.equal(r.cerrar, true);
 });
+
+// ── Reinvitación sin costo ──────────────────────────────────────────────────
+
+test('quien se quedó sin cupo no gasta propuesta la próxima vez', () => {
+  // Es la compensación que hace justo el modelo: dijo que sí, esperó, y no fue
+  // culpa suya que la marca eligiera a otras. Se le promete a la marca en la
+  // pantalla de confirmar, así que tiene que ser verdad.
+  const r = puedeInvitar({
+    campana: campana(),
+    nuevas: ['a', 'b'],
+    plan: { tope: 1, enviadas: 0 },
+    historial: [{ creadora_id: 'a', estado: 'cupos_llenos' }],
+  });
+  assert.equal(r.ok, true);
+  assert.equal(r.consume, 1, 'solo debería cobrar por la que no había esperado');
+  assert.deepEqual(r.sinCosto, ['a']);
+  assert.equal(r.porInvitar.length, 2, 'las dos se invitan igual');
+});
+
+test('quien pasó o no respondió sí gasta propuesta', () => {
+  // No están esperando nada: su propuesta se consumió como cualquier otra.
+  const r = puedeInvitar({
+    campana: campana(),
+    nuevas: ['a', 'b'],
+    plan: { tope: 10, enviadas: 0 },
+    historial: [
+      { creadora_id: 'a', estado: 'paso' },
+      { creadora_id: 'b', estado: 'vencida' },
+    ],
+  });
+  assert.equal(r.consume, 2);
+});
+
+test('la reinvitación gratis puede salvar una tanda que no alcanzaba', () => {
+  const historial = ['a', 'b', 'c'].map(creadora_id => ({ creadora_id, estado: 'cupos_llenos' }));
+  const r = puedeInvitar({
+    campana: campana(), nuevas: ['a', 'b', 'c'],
+    plan: { tope: 1, enviadas: 1 },   // cero disponibles
+    historial,
+  });
+  assert.equal(r.ok, true);
+  assert.equal(r.consume, 0);
+});
+
+test('solo cuenta cupos_llenos, no una confirmada anterior', () => {
+  // A quien ya contrató no le debe nada: ese trato se pagó.
+  const r = puedeInvitar({
+    campana: campana(), nuevas: ['a'], plan: { tope: 10, enviadas: 0 },
+    historial: [{ creadora_id: 'a', estado: 'confirmada' }],
+  });
+  assert.equal(r.consume, 1);
+});

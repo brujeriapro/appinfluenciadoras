@@ -48,12 +48,37 @@ function alcanzaElPlan({ tope, enviadas, cuantas }) {
 }
 
 /**
+ * A quiénes se puede reinvitar gratis.
+ *
+ * Quien aceptó una campaña de esta marca y se quedó sin cupo no gasta
+ * propuesta la próxima vez. Es la compensación que hace justo el modelo: dijo
+ * que sí, se quedó esperando, y no fue culpa suya que la marca eligiera a
+ * otras. Cobrarle a la marca dos veces por la misma creadora sería cobrarle
+ * por su propia decisión.
+ *
+ * Se le promete a la marca en la pantalla de confirmar ("quedan disponibles
+ * para tu próxima campaña, sin gastar propuesta otra vez"), así que si esto se
+ * quita hay que quitar también esa frase.
+ *
+ * Solo cuenta `cupos_llenos`: quien no respondió o pasó no está esperando
+ * nada, y su propuesta se consumió como cualquier otra.
+ */
+function reinvitablesGratis(historial = []) {
+  return new Set(
+    historial.filter(i => i.estado === 'cupos_llenos').map(i => i.creadora_id)
+  );
+}
+
+/**
  * ¿Se puede invitar a esta tanda?
  *
  * Junta todo lo que tiene que ser cierto antes de mandar nada, para que la
  * respuesta sea un solo mensaje entendible y no tres errores seguidos.
+ *
+ * @param historial  invitaciones anteriores de ESTA marca, para saber a quién
+ *                   se reinvita sin cobrar.
  */
-function puedeInvitar({ campana, yaInvitadas = [], nuevas = [], plan = {} }) {
+function puedeInvitar({ campana, yaInvitadas = [], nuevas = [], plan = {}, historial = [] }) {
   if (!campana) return { ok: false, motivo: 'Esa campaña no existe.' };
   if (campana.estado === 'cerrada') {
     return { ok: false, motivo: 'Esta campaña está cerrada. Abrí una nueva para seguir invitando.' };
@@ -77,12 +102,17 @@ function puedeInvitar({ campana, yaInvitadas = [], nuevas = [], plan = {} }) {
     return { ok: false, motivo: `Se puede invitar hasta ${MAX_POR_TANDA} creadoras por tanda.` };
   }
 
+  // Las que ya dijeron que sí y se quedaron sin cupo entran gratis.
+  const gratis = reinvitablesGratis(historial);
+  const cobradas = porInvitar.filter(id => !gratis.has(id));
+  const sinCosto = porInvitar.filter(id => gratis.has(id));
+
   const plata = alcanzaElPlan({
-    tope: plan.tope, enviadas: plan.enviadas || 0, cuantas: porInvitar.length,
+    tope: plan.tope, enviadas: plan.enviadas || 0, cuantas: cobradas.length,
   });
   if (!plata.alcanza) return { ok: false, motivo: plata.mensaje, sinPropuestas: true };
 
-  return { ok: true, porInvitar, consume: porInvitar.length };
+  return { ok: true, porInvitar, consume: cobradas.length, sinCosto };
 }
 
 /**
@@ -200,7 +230,7 @@ function alVencerse({ campana, invitaciones = [], estado }) {
 }
 
 module.exports = {
-  alcanzaElPlan, puedeInvitar, estadoDeCampana, puedeConfirmar,
+  alcanzaElPlan, puedeInvitar, estadoDeCampana, puedeConfirmar, reinvitablesGratis,
   puedeResponder, alVencerse,
   MAX_POR_TANDA, HORAS_LIMITE,
 };
