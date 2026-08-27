@@ -16,6 +16,15 @@
 <style>
   /* Piezas propias de este panel. El sistema visual vive en marca.css. */
 
+  .aviso-empezar { display: flex; gap: 18px; align-items: center; flex-wrap: wrap;
+                   justify-content: space-between; background: var(--ink);
+                   color: #F2F2F2; padding: 20px 22px; margin-bottom: 18px; }
+  .aviso-empezar__titulo { font-family: var(--mono-t); font-weight: 800; font-size: 16px;
+                           letter-spacing: -0.7px; text-transform: uppercase;
+                           color: var(--lima); margin-bottom: 7px; }
+  .aviso-empezar__texto { font-size: 11.5px; line-height: 1.65; color: var(--chip-dark-text);
+                          max-width: 62ch; margin: 0; }
+
   /* ── Ficha ──────────────────────────────────────────────────────────── */
   .ficha { display: flex; gap: 24px; align-items: flex-start; }
   .ficha__col { flex: 1; min-width: 0; }
@@ -980,16 +989,43 @@ function vistaInicio(c) {
   const porId = new Map(E.catalogo.map(x => [x.id, x]));
 
   c.innerHTML = `
+    ${sinBusquedaHTML()}
     ${heroHTML(h.destacado, h.seleccion)}
     ${seleccionHTML(h.seleccion, porId)}
     ${(h.colecciones || []).map(col => coleccionHTML(col, porId)).join('')}
     ${!h.destacado && !h.seleccion && !(h.colecciones || []).length ? sinVitrinaHTML() : ''}
   `;
 
+  $('ir-empezar')?.addEventListener('click', () => { location.href = '/empezar.html'; });
+
   c.querySelectorAll('[data-ficha]').forEach(b => {
     b.addEventListener('click', () => ir('ficha', b.dataset.ficha));
   });
   $('ir-catalogo')?.addEventListener('click', () => ir('catalogo'));
+}
+
+/**
+ * A quien nunca contestó las seis preguntas, se las ofrecemos.
+ *
+ * Sin ellas no hay solicitud, y sin solicitud el equipo no tiene qué armar: la
+ * marca se queda con el catálogo suelto y sin la selección, que es justamente
+ * lo que la diferencia de un directorio. Le pasa a quien se registró antes de
+ * que existieran las preguntas y a quien abandonó a mitad.
+ *
+ * No es un muro: el catálogo sigue completo debajo.
+ */
+function sinBusquedaHTML() {
+  if (E.marca?.busca_completado_at) return '';
+  return `
+  <div class="aviso-empezar">
+    <div>
+      <div class="aviso-empezar__titulo">¿Te armamos una selección?</div>
+      <p class="aviso-empezar__texto">Seis preguntas, menos de un minuto. Con eso una
+      persona del equipo te arma entre 6 y 8 creadoras, cada una con la razón por la que
+      te la propone. El catálogo lo tienes completo mientras tanto.</p>
+    </div>
+    <button class="btn btn--lima" id="ir-empezar">Empezar →</button>
+  </div>`;
 }
 
 /** La primera pieza que de verdad se puede pintar: imagen, o video con portada. */

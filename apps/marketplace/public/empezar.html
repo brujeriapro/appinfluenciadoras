@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tu selección · Creators Manager</title>
+<link rel="icon" type="image/png" sizes="16x16" href="/icono/icono-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/icono/icono-32.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/icono/icono-64.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icono/icono-180.png">
+<meta name="theme-color" content="#0E0E0E">
+<meta name="robots" content="noindex, nofollow">
+<link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/marca.css">
+<style>
+  /* Las seis preguntas del registro de la marca.
+     Una por pantalla, no las seis en una lista: cada una tiene una ayuda que
+     explica CONTRA QUÉ se cruza, y seis ayudas juntas no las lee nadie.
+
+     La regla que decidió cuáles entran: una pregunta solo entra si se puede
+     cruzar contra un campo que ya tenemos del perfil de la creadora. Si no se
+     puede cruzar, no filtra nada y solo alarga el registro. */
+
+  body { background: var(--canvas); }
+
+  .paso-wrap { min-height: 100vh; display: flex; flex-direction: column;
+               align-items: center; padding: 26px 16px 60px; }
+  .paso-caja { width: min(560px, 100%); }
+
+  .barra-progreso { height: 5px; background: var(--border-3); margin-bottom: 26px; }
+  .barra-progreso__lleno { height: 100%; background: var(--ink); transition: width 220ms ease-out; }
+
+  .paso-num { font-size: 9.5px; letter-spacing: 1.3px; text-transform: uppercase;
+              color: var(--text-3); margin-bottom: 10px; }
+  .paso-preg { font-family: var(--mono-t); font-weight: 800;
+               font-size: clamp(21px, 3.4vw, 28px); letter-spacing: -1.2px;
+               line-height: 1.15; margin: 0 0 10px; }
+  .paso-ayuda { font-size: 11.5px; line-height: 1.6; color: var(--text-3); margin-bottom: 22px; }
+
+  .opciones { display: grid; gap: 8px; }
+  .opcion { display: block; width: 100%; text-align: left; background: var(--surface);
+            border: 2px solid var(--border-1); padding: 15px 16px; cursor: pointer;
+            font-family: var(--mono-t); font-weight: 700; font-size: 12.5px;
+            letter-spacing: -0.2px; color: var(--ink); }
+  .opcion:hover { border-color: var(--ink); }
+  .opcion.on { background: var(--ink); color: var(--off-white, #F2F2F2); border-color: var(--ink); }
+  .opcion__sub { display: block; font-family: var(--mono-b, 'Space Mono', monospace);
+                 font-weight: 400; font-size: 10.5px; letter-spacing: 0;
+                 color: var(--text-3); margin-top: 5px; }
+  .opcion.on .opcion__sub { color: #B4B4AE; }
+
+  /* Agregar y quitar, no marcar en una lista: con quince categorías sobre una
+     lista larga la marca no ve de un golpe qué eligió. Los chips sí, y en móvil
+     ocupan una fracción del alto. */
+  .agregar { width: 100%; padding: 14px; border: 2px solid var(--ink);
+             background: var(--surface); font-family: var(--mono-t); font-weight: 700;
+             font-size: 12px; cursor: pointer; }
+  .chips-sel { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+  .chip-sel { display: inline-flex; align-items: center; gap: 8px; background: var(--ink);
+              color: var(--off-white, #F2F2F2); border: none; padding: 8px 11px;
+              font-family: var(--mono-t); font-weight: 700; font-size: 11px;
+              letter-spacing: -0.2px; cursor: pointer; }
+  .chip-sel__x { color: var(--lima); font-size: 13px; line-height: 1; }
+  .chip-vacio { border: 2px dashed var(--border-2); color: var(--text-4);
+                padding: 8px 11px; font-size: 11px; }
+
+  .campo-otra { width: 100%; border: 2px solid var(--magenta); background: var(--surface);
+                padding: 13px; font-family: inherit; font-size: 12.5px; margin-top: 12px; }
+  .nota-otra { font-size: 11px; line-height: 1.6; color: var(--text-3); margin-top: 9px; }
+
+  .pie-paso { display: flex; justify-content: space-between; align-items: center;
+              gap: 12px; margin-top: 26px; }
+  .volver { background: none; border: none; font-family: inherit; font-size: 11px;
+            letter-spacing: 0.6px; text-transform: uppercase; color: var(--text-3);
+            cursor: pointer; padding: 0; }
+  .volver:hover { color: var(--ink); }
+  .volver:disabled { opacity: 0; cursor: default; }
+
+  /* ── Cierre: la única pantalla negra del registro ────────────────────────── */
+  .cierre { background: var(--ink); color: #F2F2F2; min-height: 100vh;
+            padding: 40px 16px 70px; display: flex; justify-content: center; }
+  .cierre__caja { width: min(620px, 100%); }
+  .cierre .barra-progreso { background: #262626; }
+  .cierre .barra-progreso__lleno { background: var(--lima); }
+  .cierre__titulo { font-family: var(--mono-t); font-weight: 800;
+                    font-size: clamp(22px, 4vw, 30px); letter-spacing: -1.6px;
+                    line-height: 1.15; color: var(--lima); margin: 0 0 14px;
+                    text-transform: uppercase; }
+  .cierre__texto { font-size: 12.5px; line-height: 1.7; color: #D8D8D3; }
+  .dijiste { border: 2px solid #262626; margin: 26px 0; }
+  .dijiste__cab { padding: 11px 15px; border-bottom: 2px solid #262626; font-size: 9.5px;
+                  letter-spacing: 1.3px; text-transform: uppercase; color: #9A9A93; }
+  .dijiste__fila { display: flex; gap: 14px; padding: 12px 15px;
+                   border-top: 1px solid #1F1F1F; }
+  .dijiste__fila:first-of-type { border-top: none; }
+  .dijiste__k { flex: none; width: 150px; font-size: 9.5px; letter-spacing: 1px;
+                text-transform: uppercase; color: #9A9A93; padding-top: 2px; }
+  .dijiste__v { font-family: var(--mono-t); font-weight: 700; font-size: 12px;
+                letter-spacing: -0.2px; }
+  .cierre__nota { font-size: 11.5px; line-height: 1.7; color: #B4B4AE;
+                  border-left: 4px solid var(--azul); padding-left: 12px; margin-bottom: 22px; }
+  .cierre__botones { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn-cierre { font-family: var(--mono-t); font-weight: 700; font-size: 11.5px;
+                letter-spacing: 0.3px; text-transform: uppercase; padding: 15px 20px;
+                border: 2px solid var(--lima); cursor: pointer; }
+  .btn-cierre--lleno { background: var(--lima); color: var(--ink); }
+  .btn-cierre--linea { background: transparent; color: var(--lima); }
+  .btn-cierre--linea:hover { background: var(--lima); color: var(--ink); }
+
+  .aviso { border: 2px solid var(--magenta); padding: 12px; font-size: 11.5px;
+           margin-top: 14px; }
+  .oculto { display: none !important; }
+</style>
+</head>
+<body>
+<div id="raiz"><div class="paso-wrap"><div class="paso-caja">
+  <p style="font-size:12px;color:var(--text-3)">Cargando…</p>
+</div></div></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const COP = (v) => '$' + Math.round(Number(v) || 0).toLocaleString('es-CO');
+
+const TOKEN = sessionStorage.getItem('mk_marca');
+if (!TOKEN) location.href = '/registro.html';
+
+async function api(ruta, opciones = {}) {
+  const res = await fetch('/api/marcas' + ruta, {
+    ...opciones,
+    headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json',
+               ...(opciones.headers || {}) },
+  });
+  if (res.status === 401) { sessionStorage.removeItem('mk_marca'); location.href = '/registro.html'; return; }
+  const t = await res.text();
+  const d = t ? JSON.parse(t) : null;
+  if (!res.ok) throw new Error((d && d.error) || 'Error ' + res.status);
+  return d;
+}
+
+/**
+ * Los rótulos de cada opción.
+ *
+ * El backend guarda claves (`mujeres_25_34`) y acá viven las frases. Van juntas
+ * en un solo sitio porque también se usan en el resumen del cierre: si el
+ * resumen dijera la clave, la marca no podría revisar lo que contestó.
+ *
+ * ⚠️ Los rangos de tamaño son los CORTES REALES con que se clasifica a las
+ * creadoras (por seguidores), no los del prototipo de diseño. El handoff dice
+ * "Micro (10 a 100 mil)", pero micro va de 10.000 a 50.000: con ese rótulo, una
+ * marca pediría hasta 100 mil y no le saldría nadie entre 50 y 100 mil, porque
+ * esas están clasificadas como media. El rótulo tiene que decir lo que el
+ * filtro hace de verdad.
+ */
+const ROTULO = {
+  canal: {
+    tiktok: ['TikTok', null],
+    instagram: ['Instagram', null],
+    ambas: ['Las dos', null],
+    no_publicado: ['No publicado', 'Solo material para mis canales'],
+  },
+  audiencia: {
+    mujeres_18_24: ['Mujeres de 18 a 24', null],
+    mujeres_25_34: ['Mujeres de 25 a 34', null],
+    mujeres_35_mas: ['Mujeres de 35 o más', null],
+    mixta: ['Audiencia mixta', null],
+  },
+  tamano: {
+    nano: ['Nano', '3 mil a 10 mil seguidores'],
+    micro: ['Micro', '10 mil a 50 mil seguidores'],
+    media: ['Media', '50 mil a 200 mil seguidores'],
+    cualquiera: ['No sé, muéstrame de todo', null],
+  },
+};
+
+const rotuloTope = (v) => Number(v) >= 999_000_000
+  ? ['Más de $2.000.000', null]
+  : [`Hasta ${COP(v)}`, null];
+
+let OPCIONES = null;
+let PASO = 0;
+const R = { categorias: [], otra: '', canal: null, audiencia: null,
+            ciudades: [], ultima: null, tamano: null, presupuesto: null };
+
+// ── Las seis preguntas ──────────────────────────────────────────────────────
+
+const PASOS = [
+  {
+    clave: 'categorias', multiple: true,
+    pregunta: '¿Qué vende tu marca?',
+    ayuda: 'Lo cruzamos con el nicho de cada creadora y con las marcas con las que ya trabajó.',
+    listo: () => R.categorias.length > 0
+      && (!R.categorias.includes('Otra cosa') || R.otra.trim().length > 1),
+  },
+  {
+    clave: 'canal',
+    pregunta: '¿Para qué canal buscas contenido?',
+    ayuda: 'Cada creadora tiene números distintos por red, así que no es lo mismo '
+         + 'contratarla para TikTok que para Instagram.',
+    opciones: () => (OPCIONES.canales || []).map(c => [c, ...(ROTULO.canal[c] || [c, null])]),
+    listo: () => Boolean(R.canal),
+  },
+  {
+    clave: 'audiencia',
+    pregunta: '¿A quién le quieres hablar?',
+    ayuda: 'Lo cruzamos con la audiencia real de cada creadora, no con quién creemos que la sigue.',
+    opciones: () => (OPCIONES.audiencias || []).map(a => [a, ...(ROTULO.audiencia[a] || [a, null])]),
+    listo: () => Boolean(R.audiencia),
+  },
+  {
+    clave: 'ciudades', multiple: true,
+    pregunta: '¿En qué ciudades te interesa?',
+    ayuda: 'Descartamos creadoras cuya audiencia está en otra parte.',
+    listo: () => R.ciudades.length > 0,
+  },
+  {
+    clave: 'tamano',
+    pregunta: '¿Qué tamaño de creadora buscas?',
+    ayuda: 'Si no sabes, dilo: forzarte a elegir produce un filtro falso y te deja '
+         + 'por fuera gente que te servía.',
+    opciones: () => (OPCIONES.tamanos || []).map(t => [t, ...(ROTULO.tamano[t] || [t, null])]),
+    listo: () => Boolean(R.tamano),
+  },
+  {
+    clave: 'presupuesto',
+    pregunta: '¿Cuánto puedes pagar por colaboración?',
+    ayuda: 'Es un tope, no un compromiso. Pagas lo que cobre cada una.',
+    opciones: () => (OPCIONES.topes || []).map(t => [t, ...rotuloTope(t)]),
+    listo: () => R.presupuesto != null,
+    cta: 'Ver mi selección →',
+  },
+];
+
+// ── Pintado ─────────────────────────────────────────────────────────────────
+
+function pintar() {
+  const p = PASOS[PASO];
+  const pct = Math.round(PASO / PASOS.length * 100);
+
+  $('raiz').innerHTML = `
+    <div class="paso-wrap"><div class="paso-caja">
+      <div class="barra-progreso"><div class="barra-progreso__lleno" style="width:${pct}%"></div></div>
+      <div class="paso-num">Pregunta ${PASO + 1} de ${PASOS.length}</div>
+      <h1 class="paso-preg">${esc(p.pregunta)}</h1>
+      <p class="paso-ayuda">${esc(p.ayuda)}</p>
+      <div id="cuerpo"></div>
+      <div class="pie-paso">
+        <button class="volver" id="atras" ${PASO === 0 ? 'disabled' : ''}>← Atrás</button>
+        <button class="btn btn--lima" id="seguir">${esc(p.cta || 'Seguir →')}</button>
+      </div>
+      <div class="aviso oculto" id="error"></div>
+    </div></div>`;
+
+  if (p.clave === 'categorias') cuerpoCategorias();
+  else if (p.clave === 'ciudades') cuerpoCiudades();
+  else cuerpoOpciones(p);
+
+  $('atras').addEventListener('click', () => { if (PASO > 0) { PASO--; pintar(); } });
+  $('seguir').addEventListener('click', seguir);
+  refrescarSeguir();
+}
+
+function refrescarSeguir() {
+  const listo = PASOS[PASO].listo();
+  const b = $('seguir');
+  b.disabled = !listo;
+  b.style.opacity = listo ? '1' : '.4';
+  b.style.cursor = listo ? 'pointer' : 'default';
+}
+
+function cuerpoOpciones(p) {
+  const lista = p.opciones();
+  $('cuerpo').innerHTML = `<div class="opciones">
+    ${lista.map(([valor, titulo, sub]) => `
+      <button class="opcion ${String(R[p.clave]) === String(valor) ? 'on' : ''}" data-v="${esc(valor)}">
+        ${esc(titulo)}${sub ? `<span class="opcion__sub">${esc(sub)}</span>` : ''}
+      </button>`).join('')}
+  </div>`;
+
+  $('cuerpo').querySelectorAll('[data-v]').forEach(b =>
+    b.addEventListener('click', () => {
+      const v = b.dataset.v;
+      R[p.clave] = p.clave === 'presupuesto' ? Number(v) : v;
+      cuerpoOpciones(p);
+      refrescarSeguir();
+    }));
+}
+
+/**
+ * Categorías: desplegable que agrega, chips que quitan.
+ *
+ * Lo ya elegido desaparece del desplegable, así no se puede agregar dos veces.
+ */
+function cuerpoCategorias() {
+  const libres = (OPCIONES.categorias || []).filter(c => !R.categorias.includes(c));
+  const otra = R.categorias.includes('Otra cosa');
+
+  $('cuerpo').innerHTML = `
+    <select class="agregar" id="add-cat">
+      <option value="">+ Agregar categoría…</option>
+      ${libres.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+    </select>
+    <div class="chips-sel">
+      ${R.categorias.length
+        ? R.categorias.map(c => `<button class="chip-sel" data-quitar="${esc(c)}">
+             ${esc(c)} <span class="chip-sel__x">×</span></button>`).join('')
+        : '<span class="chip-vacio">Agrega al menos una</span>'}
+    </div>
+    ${otra ? `
+      <input class="campo-otra" id="otra" maxlength="120"
+             placeholder="¿Qué vendes? Ej: velas artesanales" value="${esc(R.otra)}">
+      <p class="nota-otra">Hay creadoras de belleza, comida, moda, hogar y mascotas.
+        Si vendes algo que no está en la lista, igual te armamos la selección.</p>` : ''}`;
+
+  $('add-cat').addEventListener('change', (e) => {
+    if (!e.target.value) return;
+    R.categorias.push(e.target.value);
+    cuerpoCategorias();
+    refrescarSeguir();
+  });
+  $('cuerpo').querySelectorAll('[data-quitar]').forEach(b =>
+    b.addEventListener('click', () => {
+      R.categorias = R.categorias.filter(c => c !== b.dataset.quitar);
+      if (!R.categorias.includes('Otra cosa')) R.otra = '';
+      cuerpoCategorias();
+      refrescarSeguir();
+    }));
+  $('otra')?.addEventListener('input', (e) => { R.otra = e.target.value; refrescarSeguir(); });
+}
+
+/**
+ * Ciudades: "Toda Colombia" es mutuamente exclusiva con las específicas.
+ *
+ * Sin esa regla se queda en un estado contradictorio —Bogotá + Toda Colombia—
+ * que el filtro no sabe interpretar. Se resuelve al marcar, no al filtrar.
+ */
+function cuerpoCiudades() {
+  const lista = OPCIONES.ciudades || [];
+  $('cuerpo').innerHTML = `<div class="opciones">
+    ${lista.map(c => `
+      <button class="opcion ${R.ciudades.includes(c) ? 'on' : ''}" data-c="${esc(c)}">
+        ${esc(c)}
+      </button>`).join('')}
+  </div>`;
+
+  $('cuerpo').querySelectorAll('[data-c]').forEach(b =>
+    b.addEventListener('click', () => {
+      const c = b.dataset.c;
+      R.ultima = c;
+      if (R.ciudades.includes(c)) {
+        R.ciudades = R.ciudades.filter(x => x !== c);
+      } else if (c === 'Toda Colombia') {
+        R.ciudades = ['Toda Colombia'];
+      } else {
+        R.ciudades = [...R.ciudades.filter(x => x !== 'Toda Colombia'), c];
+      }
+      cuerpoCiudades();
+      refrescarSeguir();
+    }));
+}
+
+// ── Enviar ──────────────────────────────────────────────────────────────────
+
+async function seguir() {
+  if (!PASOS[PASO].listo()) return;
+  if (PASO < PASOS.length - 1) { PASO++; pintar(); return; }
+
+  const b = $('seguir');
+  b.disabled = true;
+  b.textContent = 'Guardando…';
+  try {
+    const d = await api('/busqueda', { method: 'POST', body: JSON.stringify(R) });
+    cierre(d);
+  } catch (e) {
+    b.disabled = false;
+    b.textContent = 'Ver mi selección →';
+    const err = $('error');
+    err.textContent = 'No se pudo guardar: ' + e.message;
+    err.classList.remove('oculto');
+  }
+}
+
+/**
+ * El cierre. Repite lo que contestó, y no de adorno: es lo que le permite
+ * darse cuenta de que se equivocó ANTES de esperar 24 horas.
+ *
+ * Y nunca la deja en una pantalla de espera sin salida: de aquí sale a
+ * completar su perfil o a mirar el catálogo, que ya está completo.
+ */
+function cierre(d) {
+  const r = d.respuestas || {};
+  const nombreDe = (dic, v) => (dic[v] || [v])[0];
+
+  const filas = [
+    ['Qué vende', (r.busca_categorias || []).join(' · ')
+      + (r.busca_otra ? ` (${r.busca_otra})` : '')],
+    ['Canal', nombreDe(ROTULO.canal, r.busca_canal)],
+    ['Le habla a', nombreDe(ROTULO.audiencia, r.busca_audiencia)],
+    ['Dónde', (r.busca_ciudades || []).join(' · ')],
+    ['Tamaño', nombreDe(ROTULO.tamano, r.busca_tamano)],
+    ['Tope por colaboración', r.busca_presupuesto ? rotuloTope(r.busca_presupuesto)[0] : '—'],
+  ].filter(([, v]) => v && v !== 'undefined');
+
+  document.body.innerHTML = `
+    <div class="cierre"><div class="cierre__caja">
+      <div class="barra-progreso"><div class="barra-progreso__lleno" style="width:100%"></div></div>
+      <h1 class="cierre__titulo">En menos de 24 horas tu selección estará lista</h1>
+      <p class="cierre__texto">La arma una persona del equipo, no un algoritmo. Vas a recibir
+        entre 6 y 8 creadoras, cada una con la razón por la que te la propusimos.</p>
+
+      <div class="dijiste">
+        <div class="dijiste__cab">Lo que nos dijiste</div>
+        ${filas.map(([k, v]) => `
+          <div class="dijiste__fila">
+            <div class="dijiste__k">${esc(k)}</div>
+            <div class="dijiste__v">${esc(v)}</div>
+          </div>`).join('')}
+      </div>
+
+      <p class="cierre__nota">Si subes tu logo y tus productos, más creadoras aceptan:
+        pueden ver con qué van a trabajar antes de decir que sí.</p>
+
+      <div class="cierre__botones">
+        <button class="btn-cierre btn-cierre--lleno" id="ir-perfil">Completar mi perfil →</button>
+        <button class="btn-cierre btn-cierre--linea" id="ir-catalogo">Explorar el catálogo</button>
+      </div>
+    </div></div>`;
+
+  $('ir-perfil').addEventListener('click', () => { location.href = '/panel.html#perfil'; });
+  $('ir-catalogo').addEventListener('click', () => { location.href = '/panel.html'; });
+}
+
+// ── Arranque ────────────────────────────────────────────────────────────────
+
+(async () => {
+  try {
+    OPCIONES = await api('/busqueda/opciones');
+    pintar();
+  } catch (e) {
+    $('raiz').innerHTML = `<div class="paso-wrap"><div class="paso-caja">
+      <div class="aviso">No pudimos cargar el registro: ${esc(e.message)}</div>
+    </div></div>`;
+  }
+})();
+</script>
+</body>
+</html>

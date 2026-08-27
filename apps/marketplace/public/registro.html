@@ -348,7 +348,10 @@ $('formulario').addEventListener('submit', async (e) => {
     }
 
     sessionStorage.setItem('mk_marca', TOKEN);
-    location.href = '/panel.html';
+    // Quien acaba de registrarse pasa por las seis preguntas: son las que
+    // abren su solicitud de selección, que es lo que vino a buscar. Quien ya
+    // tiene cuenta entra directo — a esa ya se las hicimos.
+    location.href = modo === 'registro' ? '/empezar.html' : '/panel.html';
   } catch (e) {
     err.className = 'error';
     err.textContent = e.message;
