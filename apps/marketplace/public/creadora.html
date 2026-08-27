@@ -1055,6 +1055,12 @@ function pintarModo() {
   $('acepta-wrap').classList.toggle('oculto', modo !== 'registro');
   $('campo-clave').classList.toggle('oculto', modo === 'olvide');
   $('email').closest('.campo').classList.toggle('oculto', modo === 'recuperar');
+  // Un campo obligatorio pero OCULTO bloquea el envío y el navegador no puede
+  // señalarlo, así que el botón deja de responder sin decir nada. Es lo que
+  // pasaba al recuperar la contraseña: el correo seguía siendo obligatorio
+  // mientras estaba escondido, y "Guardar y entrar" no hacía absolutamente
+  // nada. Cada campo que se esconda tiene que dejar de ser obligatorio.
+  $('email').required = modo !== 'recuperar';
   $('clave').required = modo !== 'olvide';
   const escogiendo = ['registro', 'primera', 'recuperar'].includes(modo);
   $('label-clave').textContent = escogiendo
@@ -1226,6 +1232,20 @@ $('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const err = $('login-error');
   err.classList.add('oculto');
+
+  // Red de seguridad contra el fallo de arriba: si algo bloquea el envío, se
+  // dice. Un botón que no responde es el peor error posible — no hay nada que
+  // corregir porque no hay nada que leer.
+  const form = e.target;
+  if (!form.checkValidity()) {
+    const malo = form.querySelector(':invalid');
+    const visible = malo && malo.offsetParent !== null;
+    if (visible) return form.reportValidity();
+    err.textContent = 'Algo quedó incompleto en el formulario. Recarga la página e inténtalo de nuevo.';
+    err.classList.remove('oculto');
+    console.warn('[login] bloqueado por un campo oculto:', malo && malo.id);
+    return;
+  }
   const btn = $('login-btn');
   const textoOriginal = btn.textContent;
   btn.disabled = true;
