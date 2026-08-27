@@ -8,6 +8,7 @@ const fetch = require('node-fetch');
 const crypto = require('crypto');
 const db = require('./db');
 const config = require('./config');
+const { marcarImagen, marcarVideo } = require('./watermark');
 
 // Los mismos tipos que acepta el bucket de Storage. Se valida aquí también
 // para dar un error entendible en vez de un 400 críptico de Supabase.
@@ -137,7 +138,7 @@ async function subirMuestra(creadora_id, { archivo_base64, mime, titulo, origen_
     throw new ErrorMuestra(`Storage rechazó el archivo (${subida.status}): ${mensaje}`, 502);
   }
 
-  return db.insertMuestra({
+  const fila = await db.insertMuestra({
     creadora_id,
     tipo: MIMES_VIDEO.includes(tipoMime) ? 'video' : 'imagen',
     storage_path,
@@ -147,6 +148,52 @@ async function subirMuestra(creadora_id, { archivo_base64, mime, titulo, origen_
     origen_url: origen_url || null,
     subida_por,
   });
+
+  marcarEnSegundoPlano(fila, buffer);
+  return fila;
+}
+
+/**
+ * Pone la marca de agua sin hacer esperar a quien subió.
+ *
+ * A propósito no se espera el resultado: marcar un video toma medio minuto y
+ * dejar a la creadora mirando una barra de carga ese rato la haría abandonar.
+ * Mientras tanto el proxy sirve el original —ver media.js— así que la pieza se
+ * ve desde el primer segundo; lo único que pasa es que unos segundos sale sin
+ * marca.
+ *
+ * Si falla, solo se registra: la pieza ya está guardada y el script
+ * `scripts/marcar-contenido.js` recoge después todo lo que quedó sin marcar.
+ */
+function marcarEnSegundoPlano(fila, buffer) {
+  const esVideo = fila.tipo === 'video';
+  const trabajo = esVideo ? marcarVideo(buffer, fila.mime) : marcarImagen(buffer);
+
+  trabajo
+    .then(async (marcado) => {
+      const nombre = `wm-${crypto.randomUUID()}.${esVideo ? 'mp4' : 'jpg'}`;
+      await subirBuffer(marcado, nombre, esVideo ? 'video/mp4' : 'image/jpeg');
+      await db.actualizarMuestra(fila.id, {
+        watermark_path: nombre,
+        watermark_at: new Date().toISOString(),
+      });
+    })
+    .catch((e) => console.warn(`[muestras] no se pudo marcar ${fila.id}:`, e.message));
+}
+
+/** Sube un buffer con nombre y tipo dados. Devuelve el nombre. */
+async function subirBuffer(buffer, nombre, mime) {
+  const url = `${String(config.supabase.url).replace(/\/$/, '')}/storage/v1/object/${config.supabase.bucket_muestras}/${nombre}`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${config.supabase.service_role_key}`,
+      'Content-Type': mime,
+    },
+    body: buffer,
+  });
+  if (!r.ok) throw new Error(`Storage ${r.status}`);
+  return nombre;
 }
 
 /**
@@ -212,17 +259,16 @@ async function borrarMuestra(muestra_id) {
   const muestra = await db.getMuestra(muestra_id);
   if (!muestra) throw new ErrorMuestra('Pieza no encontrada', 404);
 
-  const url = `${String(config.supabase.url).replace(/\/$/, '')}/storage/v1/object/${config.supabase.bucket_muestras}/${muestra.storage_path}`;
-  // Si el borrado en Storage falla, igual se quita de la base: una fila
-  // huérfana en el bucket es menos grave que una pieza que la creadora quiso
+  // Se borran las cuatro: original, copia marcada, portada y portada marcada.
+  // Quitar solo el original dejaría la versión con marca de agua viva en el
+  // bucket — que es justamente la que el catálogo sirve.
+  //
+  // Si el borrado en Storage falla, igual se quita de la base: un archivo
+  // huérfano en el bucket es menos grave que una pieza que la creadora quiso
   // quitar y sigue viéndose en el catálogo.
-  try {
-    await fetch(url, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${config.supabase.service_role_key}` },
-    });
-  } catch (e) {
-    console.warn('[muestras] no se pudo borrar del bucket:', e.message);
+  for (const ruta of [muestra.storage_path, muestra.watermark_path,
+                      muestra.poster_path, muestra.watermark_poster_path]) {
+    await borrarArchivo(ruta);
   }
 
   await db.borrarMuestra(muestra_id);

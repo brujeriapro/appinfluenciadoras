@@ -104,6 +104,40 @@ async function consultarTransaccion(id) {
   return j.data;
 }
 
+/**
+ * Busca una transacción por NUESTRA referencia, no por el id de Wompi.
+ *
+ * Es lo que permite recuperar un pago cuando el webhook nunca llegó: en ese
+ * caso no tenemos el id de Wompi, solo la referencia que nosotros generamos.
+ * Sin esto, una notificación perdida deja a la marca con la plata debitada y el
+ * trato quieto, y nadie se entera hasta que reclama.
+ *
+ * Devuelve la más reciente: si la marca reintentó el checkout con la misma
+ * referencia, la última es la que vale.
+ */
+async function buscarPorReferencia(referencia) {
+  const res = await fetch(`${BASE}/transactions?reference=${encodeURIComponent(referencia)}`, {
+    headers: { 'Authorization': `Bearer ${config.wompi.llave_privada}` },
+  });
+  if (!res.ok) throw new Error(`Wompi ${res.status}: ${await res.text()}`);
+  const j = await res.json();
+  return elegirTransaccion(j.data);
+}
+
+/**
+ * De varios intentos sobre la misma referencia, cuál cuenta.
+ *
+ * Una aprobada manda sobre cualquier otra sin importar el orden: si el primer
+ * intento fue rechazado y el segundo pasó, lo que importa es que el dinero
+ * entró. Quedarse con "la última" sería suficiente casi siempre y fallaría
+ * justo en el caso caro — dar por no pagado un trato que sí se pagó.
+ */
+function elegirTransaccion(filas) {
+  if (!Array.isArray(filas) || !filas.length) return null;
+  return filas.find(t => t.status === 'APPROVED')
+      || [...filas].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))[0];
+}
+
 /** Referencia única y legible: CR-000123-1724270400000 */
 function nuevaReferencia(prefijo) {
   return `${prefijo}-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
@@ -118,6 +152,6 @@ const ESTADOS = {
 };
 
 module.exports = {
-  disponible, linkDePago, eventoEsAutentico, consultarTransaccion,
+  disponible, linkDePago, eventoEsAutentico, consultarTransaccion, buscarPorReferencia, elegirTransaccion,
   nuevaReferencia, firmaIntegridad, ESTADOS, ES_PRUEBA,
 };

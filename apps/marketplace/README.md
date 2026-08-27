@@ -22,7 +22,7 @@ Plan completo: [`plans/2026-08-20-marketplace-creadoras-fase1.md`](../../plans/2
 cd apps/marketplace
 npm install
 node index.js          # http://localhost:3040
-npm test               # 47 pruebas: comisiones, máquina de estados, tarifas y pagos con Wompi
+npm test               # 140 pruebas: comisiones, máquina de estados, tarifas, pagos y recuperación de cobros
 ```
 
 ### Variables de entorno
@@ -305,7 +305,11 @@ Necesita `ANTHROPIC_API_KEY` además de las variables de siempre. Es seguro corr
 
 ## Deuda técnica consciente
 
-- **Sin marca de agua** (decisión de producto, agosto 2026). Una búsqueda inversa de imagen sobre una pieza del catálogo todavía puede identificar a la creadora. `mk_muestras.storage_path` está separado del original justamente para que agregar el watermark después sea un cambio contenido en el pipeline de subida, sin tocar frontend ni esquema.
+- **Marca de agua** (`watermark.js`, agosto 2026). Ninguna ruta sirve el original: `/media/:id` y `/media/:id/poster` devuelven la copia de `watermark_path` / `watermark_poster_path`. Además de las tres pasadas visibles, la copia va recortada un 5% por lado y recomprimida — eso cambia el hash perceptual, que es lo que de verdad dificulta una búsqueda inversa; la marca visible sola no lo hace.
+
+  Las piezas nuevas se marcan en segundo plano al subirse (no se hace esperar a la creadora medio minuto por un video), y `node scripts/marcar-contenido.js` recoge lo que quedó atrás. Mientras una pieza no esté marcada el proxy sirve el original: un hueco negro en el catálogo sería peor que el riesgo que se cubre.
+
+  ⚠️ **No hace imposible identificar a la creadora.** Nada lo hace salvo arruinar la imagen. Alguien decidido, con la pieza en la mano, puede llegar a su perfil; lo que esto cambia es que deje de ser trivial.
 - **Sin pasarela de pagos** (decisión de producto). El escrow es un estado contable: `mk_pagos` registra entradas y salidas a mano. Si el volumen crece, la tabla ya tiene la forma que necesitaría una conciliación con Wompi.
 - **Sin bloqueo optimista en las transiciones.** Dos admins simultáneos podrían registrar dos pagos de salida sobre el mismo trato. Con un equipo de una o dos personas es aceptable.
 - **El texto de los términos está pendiente de revisión jurídica.** Sirve para los pilotos; debe pasar por abogada antes de operar con marcas externas en volumen.

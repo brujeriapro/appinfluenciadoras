@@ -458,6 +458,8 @@ const getMuestra = (id) =>
 
 const insertMuestra = (data) => post('mk_muestras', data);
 
+const actualizarMuestra = (id, data) => patch('mk_muestras', { id }, data);
+
 async function borrarMuestra(id) {
   const url = new URL(`${BASE_URL}/mk_muestras`);
   url.searchParams.set('id', `eq.${id}`);
@@ -743,6 +745,22 @@ const getTransaccionesDeTrato = (trato_id) =>
 const actualizarTransaccion = (referencia, data) =>
   patch('mk_transacciones', { referencia }, data);
 
+/**
+ * Transacciones que quedaron pendientes desde antes del corte.
+ *
+ * Las más viejas primero: si algo lleva días colgado es más urgente que lo de
+ * hace un cuarto de hora, que probablemente solo sea alguien tecleando su
+ * tarjeta.
+ */
+const getTransaccionesPendientes = (creadaAntesDe, limite = 50) =>
+  get('mk_transacciones', {
+    select: '*',
+    estado: 'eq.pendiente',
+    created_at: `lt.${creadaAntesDe}`,
+    order: 'created_at.asc',
+    limit: String(limite),
+  });
+
 // ── Planes y límites ────────────────────────────────────────────────────────
 
 const getPlanes = () =>
@@ -853,7 +871,8 @@ module.exports = {
   getCampanasDeMarca, getCampana, insertCampana, updateCampana, contarTratosPorCampana,
   getProductosDeMarca, getProductoMarca, insertProductoMarca, borrarProductoMarca,
   siguienteCodigoCreadora,
-  getMuestrasDeCreadora, getMuestra, insertMuestra, borrarMuestra, getMuestrasDeVarias,
+  getMuestrasDeCreadora, getMuestra, insertMuestra, actualizarMuestra, borrarMuestra,
+  getMuestrasDeVarias,
   getCumplimientoDeVarias, getCumplimientoDeUna,
   getRedesDeVarias, getRedesDeCreadora, getRedesPrivadas, guardarRedesDeCreadora,
   getPaquetesDeCreadora, getPaquetesDeVarias, getPaquete,
@@ -866,6 +885,7 @@ module.exports = {
   insertPago, getPagosDeTrato, getTodosLosPagos,
   insertEntrega, getEntregasDeTrato, updateEntrega,
   insertTransaccion, getTransaccionPorReferencia, getTransaccionesDeTrato, actualizarTransaccion,
+  getTransaccionesPendientes,
   getPlanes, getPlan, registrarFichaVista, contarFichasDelMes, contarPropuestasDelMes,
   getInfluencersElegibles, contarContenidosDeInfluencer,
 };

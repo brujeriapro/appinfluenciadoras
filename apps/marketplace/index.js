@@ -122,6 +122,27 @@ app.post('/api/cron/plazos', adminAuth, async (req, res) => {
   }
 });
 
+/**
+ * Concilia los pagos que quedaron pendientes contra lo que diga Wompi.
+ *
+ * Es la red de seguridad del cobro: si un webhook se pierde, aquí se detecta
+ * que la marca ya pagó y el trato avanza igual. Sin esto, un mensaje perdido
+ * significa alguien que pagó y no recibió nada, y que solo se descubre cuando
+ * reclama.
+ */
+app.post('/api/cron/pagos', adminAuth, async (req, res) => {
+  try {
+    const r = await require('./pagos').conciliarPendientes({
+      margenMinutos: Number(req.query.margen) || undefined,
+    });
+    if (r.resueltas || r.detalle.length) console.log('[cron/pagos]', JSON.stringify(r));
+    res.json(r);
+  } catch (e) {
+    console.error('[cron/pagos]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.use('/api/admin', adminAuth, require('./admin'));
 
 // admin.html se sirve sin auth a propósito: es una cáscara vacía, no contiene
@@ -179,6 +200,16 @@ function programarPlazos() {
       }
     } catch (e) {
       console.error('[plazos] falló la pasada:', e.message);
+    }
+
+    // La conciliación de pagos viaja en el mismo reloj: son dos barridos
+    // baratos y montar un segundo temporizador solo agrega algo más que se
+    // puede quedar apagado sin que nadie lo note.
+    try {
+      const p = await require('./pagos').conciliarPendientes();
+      if (p.resueltas || p.detalle.length) console.log('[pagos]', JSON.stringify(p));
+    } catch (e) {
+      console.error('[pagos] falló la conciliación:', e.message);
     }
   };
 

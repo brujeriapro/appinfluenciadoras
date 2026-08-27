@@ -4,6 +4,19 @@
 // que mueve dinero y cambia estados. Por eso hace tres cosas antes de tocar
 // nada — verifica la firma, vuelve a consultar la transacción en Wompi, y
 // comprueba que el monto coincida con lo que la base dice que se debía cobrar.
+//
+// Un webhook, sin embargo, es un mensaje que puede perderse: Railway
+// reiniciando, un secreto mal puesto, una caída de Wompi. Si ese mensaje es lo
+// único que confirma un pago, la marca queda con la plata debitada y el trato
+// quieto, y nadie se entera hasta que reclama. Por eso hay TRES caminos hacia
+// el mismo sitio, y todos pasan por `sincronizar()`:
+//
+//   1. El webhook, cuando llega.
+//   2. El navegador de la marca al volver del checkout (`GET /estado/:ref`).
+//   3. El conciliador (`POST /api/cron/pagos`), que barre lo que quedó colgado.
+//
+// Que los tres compartan una sola función es lo que hace que no puedan
+// divergir: un pago no se aplica distinto según por dónde se enteró el sistema.
 
 const express = require('express');
 const db = require('./db');
@@ -144,50 +157,78 @@ async function manejarEvento(req, res) {
     const t = evento.data?.transaction;
     if (!t?.reference) return;
 
-    const fila = await db.getTransaccionPorReferencia(t.reference);
-    if (!fila) {
-      console.warn(`[wompi] referencia desconocida: ${t.reference}`);
-      return;
-    }
-    if (fila.estado === 'aprobada') return;   // ya se procesó
-
-    // No se confía en el estado que llegó por el mensaje: se pregunta a Wompi.
-    let real = t;
-    try {
-      real = await wompi.consultarTransaccion(t.id);
-    } catch (e) {
-      console.error('[wompi] no se pudo confirmar contra la API:', e.message);
-      return;   // sin confirmación no se mueve nada
-    }
-
-    const estado = wompi.ESTADOS[real.status] || 'error';
-    await db.actualizarTransaccion(fila.referencia, {
-      wompi_id: real.id,
-      estado,
-      metodo: real.payment_method_type,
-      datos: real,
-      actualizada_at: new Date().toISOString(),
-    });
-
-    if (estado !== 'aprobada') {
-      console.log(`[wompi] ${t.reference} quedó ${estado}`);
-      return;
-    }
-
-    // El monto tiene que coincidir con lo que la base dice que se debía cobrar.
-    const pagado = Number(real.amount_in_cents) / 100;
-    if (Math.abs(pagado - Number(fila.monto)) > 1) {
-      console.error(
-        `[wompi] monto distinto en ${t.reference}: se esperaban ${fila.monto} y llegaron ${pagado}`
-      );
-      return;
-    }
-
-    if (fila.concepto === 'trato') await aplicarPagoDeTrato(fila, real);
-    if (fila.concepto === 'suscripcion') await aplicarSuscripcion(fila);
+    await sincronizar(t.reference, t.id);
   } catch (e) {
     console.error('[wompi] error procesando evento:', e.message);
   }
+}
+
+/**
+ * Pone al día una transacción contra lo que diga Wompi, y aplica sus efectos.
+ *
+ * Es el único sitio donde un pago cambia de estado. Da igual si el disparo vino
+ * del webhook, del navegador de la marca o del conciliador: lo que se hace es
+ * lo mismo, porque lo que se cree no es el mensaje sino la respuesta de Wompi.
+ *
+ * Es idempotente: si la transacción ya está aprobada, sale de una. Llamarla
+ * cien veces sobre el mismo pago aplica el efecto una sola vez.
+ *
+ * @param {string} referencia  La nuestra, la que viaja en el checkout.
+ * @param {string} [wompiId]   Si se conoce, ahorra una búsqueda.
+ * @returns {Promise<{estado: string, cambio: boolean, motivo?: string}>}
+ */
+async function sincronizar(referencia, wompiId) {
+  const fila = await db.getTransaccionPorReferencia(referencia);
+  if (!fila) {
+    console.warn(`[wompi] referencia desconocida: ${referencia}`);
+    return { estado: 'desconocida', cambio: false };
+  }
+  if (fila.estado === 'aprobada') return { estado: 'aprobada', cambio: false };
+
+  // No se confía en el estado que llegó por el mensaje: se pregunta a la fuente.
+  let real;
+  try {
+    real = wompiId
+      ? await wompi.consultarTransaccion(wompiId)
+      : await wompi.buscarPorReferencia(referencia);
+  } catch (e) {
+    console.error(`[wompi] no se pudo confirmar ${referencia}:`, e.message);
+    return { estado: fila.estado, cambio: false, motivo: 'wompi no respondió' };
+  }
+
+  // Sin transacción en Wompi, la marca abrió el checkout y no pagó. Es el caso
+  // normal de un enlace abandonado, no un error.
+  if (!real) return { estado: fila.estado, cambio: false, motivo: 'sin intento de pago' };
+
+  const estado = wompi.ESTADOS[real.status] || 'error';
+  await db.actualizarTransaccion(fila.referencia, {
+    wompi_id: real.id,
+    estado,
+    metodo: real.payment_method_type,
+    datos: real,
+    actualizada_at: new Date().toISOString(),
+  });
+
+  if (estado !== 'aprobada') {
+    console.log(`[wompi] ${referencia} quedó ${estado}`);
+    return { estado, cambio: estado !== fila.estado };
+  }
+
+  // El monto tiene que coincidir con lo que la base dice que se debía cobrar.
+  const pagado = Number(real.amount_in_cents) / 100;
+  if (Math.abs(pagado - Number(fila.monto)) > 1) {
+    // No se aplica nada y queda a la vista: cobrar de menos y entregar igual, o
+    // cobrar de más y no devolver, son los dos errores que no se pueden
+    // arreglar solos.
+    console.error(
+      `[wompi] monto distinto en ${referencia}: se esperaban ${fila.monto} y llegaron ${pagado}`
+    );
+    return { estado: 'aprobada', cambio: false, motivo: 'el monto no coincide' };
+  }
+
+  if (fila.concepto === 'trato') await aplicarPagoDeTrato(fila, real);
+  if (fila.concepto === 'suscripcion') await aplicarSuscripcion(fila);
+  return { estado: 'aprobada', cambio: true };
 }
 
 /** Pago del trato aprobado: queda en escrow y se revela el contacto. */
@@ -245,18 +286,95 @@ async function aplicarSuscripcion(fila) {
 
 // ── Consulta del estado de un pago ──────────────────────────────────────────
 
-/** Lo usa el panel al volver del checkout, para saber si ya entró. */
+/**
+ * Lo usa el panel al volver del checkout, para saber si ya entró.
+ *
+ * Si sigue pendiente, le pregunta a Wompi en vez de responder lo que hay
+ * guardado. Así el propio regreso de la marca completa el pago cuando el
+ * webhook se perdió — que es el caso que dejaría a alguien pagando sin recibir
+ * nada. Solo se consulta si está pendiente: una ya resuelta no cambia.
+ */
 router.get('/estado/:referencia', marcaAuth, async (req, res) => {
   try {
-    const fila = await db.getTransaccionPorReferencia(req.params.referencia);
+    let fila = await db.getTransaccionPorReferencia(req.params.referencia);
     if (!fila || fila.marca_id !== req.usuarioId) {
       return res.status(404).json({ error: 'No encontrada' });
     }
-    res.json({ estado: fila.estado, concepto: fila.concepto, monto: fila.monto });
+
+    if (fila.estado === 'pendiente' && wompi.disponible()) {
+      await sincronizar(fila.referencia).catch(e =>
+        console.error('[pagos/estado]', e.message));
+      fila = await db.getTransaccionPorReferencia(req.params.referencia) || fila;
+    }
+
+    res.json({
+      estado: fila.estado,
+      concepto: fila.concepto,
+      monto: fila.monto,
+      mensaje: MENSAJES[fila.estado] || null,
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
+/**
+ * Qué se le dice a la marca según cómo quedó el cobro.
+ *
+ * Un "rechazada" a secas deja a quien lo lee sin saber si reintentar, cambiar
+ * de tarjeta o llamar al banco. Wompi no dice por qué rechazó un cargo —el
+ * banco no se lo cuenta— así que lo honesto es nombrar las causas comunes en
+ * vez de inventar una.
+ */
+const MENSAJES = {
+  aprobada: 'Pago confirmado. El dinero queda retenido hasta que apruebes la entrega.',
+  pendiente: 'Todavía estamos esperando la confirmación del banco. Puede tardar unos minutos.',
+  rechazada: 'El banco rechazó el cobro. Suele ser cupo, un tope de compras por internet '
+           + 'o datos que no coinciden. Puedes reintentar con otra tarjeta.',
+  anulada: 'El cobro se anuló y no se debitó nada.',
+  error: 'Hubo un problema procesando el pago y no se debitó nada. Reintenta en unos minutos.',
+};
+
+// ── Conciliación ────────────────────────────────────────────────────────────
+
+/**
+ * Barre las transacciones que quedaron pendientes y les pregunta a Wompi.
+ *
+ * Existe porque un webhook es un mensaje que puede perderse, y perder el que
+ * confirma un pago significa que alguien pagó y no recibió nada. Esto lo
+ * detecta sin que la marca tenga que reclamar.
+ *
+ * Se deja un margen antes de mirar una transacción: recién creada, lo normal es
+ * que esté pendiente porque la marca todavía está escribiendo el número de la
+ * tarjeta. Preguntar en ese momento no aporta y gasta una llamada.
+ *
+ * @returns {Promise<{revisadas: number, resueltas: number, detalle: object[]}>}
+ */
+async function conciliarPendientes({ margenMinutos = 10, tope = 50 } = {}) {
+  if (!wompi.disponible()) return { revisadas: 0, resueltas: 0, detalle: [] };
+
+  const corte = new Date(Date.now() - margenMinutos * 60_000).toISOString();
+  const pendientes = await db.getTransaccionesPendientes(corte, tope);
+
+  const detalle = [];
+  for (const fila of pendientes) {
+    try {
+      const r = await sincronizar(fila.referencia);
+      if (r.cambio || r.motivo) {
+        detalle.push({ referencia: fila.referencia, ...r });
+      }
+    } catch (e) {
+      detalle.push({ referencia: fila.referencia, estado: 'error', motivo: e.message });
+    }
+  }
+
+  const resueltas = detalle.filter(d => d.cambio).length;
+  if (resueltas) console.log(`[wompi] conciliación: ${resueltas} de ${pendientes.length} resueltas`);
+  return { revisadas: pendientes.length, resueltas, detalle };
+}
+
 module.exports = router;
 module.exports.manejarEvento = manejarEvento;
+module.exports.sincronizar = sincronizar;
+module.exports.conciliarPendientes = conciliarPendientes;
+module.exports.MENSAJES = MENSAJES;

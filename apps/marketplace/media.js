@@ -6,10 +6,10 @@
 // bucket PRIVADO de Supabase Storage con nombre aleatorio y se hace stream al
 // navegador. Nunca se devuelve ni se redirige a la URL de Storage.
 //
-// En esta fase no hay marca de agua (decisión de producto). El proxy es, por
-// ahora, lo único que separa "ver la pieza" de "identificar a la creadora": una
-// búsqueda inversa de imagen sigue siendo posible. Cuando se agregue el
-// watermark, se hace en el pipeline de subida y este archivo no cambia.
+// Encima de eso, lo que sale por aquí lleva marca de agua (ver watermark.js):
+// el proxy solo esconde de dónde viene el archivo, no impide que alguien tome la
+// pieza y la busque en Google Lens. La copia marcada —recortada y recomprimida—
+// es lo que hace ese camino difícil. El original nunca sale por estas rutas.
 
 const express = require('express');
 const fetch = require('node-fetch');
@@ -94,9 +94,12 @@ router.get('/captura/:creadoraId', adminAuth, async (req, res) => {
 router.get('/:id/poster', sesionAuth, async (req, res) => {
   try {
     const muestra = await db.getMuestra(req.params.id);
-    if (!muestra || !muestra.poster_path) return res.status(404).send('Sin portada');
+    // La portada marcada primero: es lo que se ve en la grilla del catálogo, y
+    // una portada limpia delataría igual que la pieza entera.
+    const rutaPoster = muestra?.watermark_poster_path || muestra?.poster_path;
+    if (!rutaPoster) return res.status(404).send('Sin portada');
 
-    const url = `${STORAGE_URL}/${config.supabase.bucket_muestras}/${muestra.poster_path}`;
+    const url = `${STORAGE_URL}/${config.supabase.bucket_muestras}/${rutaPoster}`;
     const upstream = await fetch(url, {
       headers: { 'Authorization': `Bearer ${config.supabase.service_role_key}` },
     });
@@ -114,12 +117,43 @@ router.get('/:id/poster', sesionAuth, async (req, res) => {
   }
 });
 
+/**
+ * Qué Content-Type anunciar para una pieza.
+ *
+ * Tiene dos trampas, y las dos terminan en un reproductor en negro:
+ *
+ * 1. La copia con marca de agua la reescribe ffmpeg, así que SIEMPRE sale mp4 o
+ *    jpeg — el `mime` guardado describe el original, no lo que se está
+ *    sirviendo.
+ * 2. Los .mov de iPhone llevan video H.264, que todo navegador reproduce, pero
+ *    Chrome y Firefox rechazan el tipo "video/quicktime". Anunciarlo como mp4
+ *    no toca el archivo y lo hace verse en todas partes.
+ */
+function tipoQueSeSirve(muestra, tipoDeStorage) {
+  if (muestra.watermark_path) {
+    return String(muestra.mime || '').startsWith('video/') ? 'video/mp4' : 'image/jpeg';
+  }
+  if (muestra.mime === 'video/quicktime') return 'video/mp4';
+  return muestra.mime || tipoDeStorage || 'application/octet-stream';
+}
+
 router.get('/:id', sesionAuth, async (req, res) => {
   try {
     const muestra = await db.getMuestra(req.params.id);
     if (!muestra) return res.status(404).send('No encontrada');
 
-    const url = `${STORAGE_URL}/${config.supabase.bucket_muestras}/${muestra.storage_path}`;
+    // Se sirve la copia con marca de agua siempre que exista.
+    //
+    // El original se guarda pero no sale por ninguna ruta: queda para poder
+    // regenerar la marca —subirle o bajarle intensidad, corregir un error— sin
+    // pedirle a la creadora que vuelva a subir su portafolio.
+    //
+    // Mientras una pieza no esté marcada se sirve el original: dejar huecos
+    // negros en el catálogo sería peor que el riesgo que se intenta cubrir, y
+    // el script de marcado se pone al día solo.
+    const ruta = muestra.watermark_path || muestra.storage_path;
+
+    const url = `${STORAGE_URL}/${config.supabase.bucket_muestras}/${ruta}`;
     const upstream = await fetch(url, {
       headers: { 'Authorization': `Bearer ${config.supabase.service_role_key}` },
     });
@@ -129,14 +163,8 @@ router.get('/:id', sesionAuth, async (req, res) => {
       return res.status(404).send('No disponible');
     }
 
-    // Los .mov que salen de un iPhone llevan video H.264, que todo navegador
-    // sabe reproducir — pero Chrome y Firefox rechazan el tipo
-    // "video/quicktime" y muestran el reproductor en negro. Anunciarlo como
-    // mp4 no cambia el archivo y lo hace verse en todas partes.
-    const tipo = muestra.mime === 'video/quicktime'
-      ? 'video/mp4'
-      : (muestra.mime || upstream.headers.get('content-type') || 'application/octet-stream');
-    res.setHeader('Content-Type', tipo);
+    res.setHeader('Content-Type',
+      tipoQueSeSirve(muestra, upstream.headers.get('content-type')));
     res.setHeader('Content-Disposition', 'inline');
     res.setHeader('Cache-Control', 'private, max-age=300');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -151,3 +179,4 @@ router.get('/:id', sesionAuth, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.tipoQueSeSirve = tipoQueSeSirve;

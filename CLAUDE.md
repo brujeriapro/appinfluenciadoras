@@ -287,10 +287,10 @@ Taxonomía de dos niveles en `mk_config.nichos`: 15 categorías madre (belleza, 
 cd apps/marketplace
 npm install
 node index.js       # http://localhost:3040
-npm test            # 97 pruebas: comisiones, estados, tarifas, Wompi, plazos, correo y análisis
+npm test            # 140 pruebas: comisiones, estados, tarifas, Wompi, plazos, correo, análisis y recuperación de pagos
 ```
 
-**Migraciones:** los archivos de `apps/marketplace/migrations/` en orden numérico, en el SQL Editor de Supabase. Van por `mk_037`. Además, crear el bucket privado `mk-muestras` en Storage.
+**Migraciones:** los archivos de `apps/marketplace/migrations/` en orden numérico, en el SQL Editor de Supabase. Van por `mk_042`. Además, crear el bucket privado `mk-muestras` en Storage.
 
 **Scripts que se corren a mano** (necesitan las mismas variables que el servidor):
 
@@ -348,11 +348,12 @@ UGC no es el escalón de las que no llegaron: es otro trabajo, se produce distin
 - **233 creadoras · 220 visibles · 2 marcas · 1 trato · 421 piezas.** El cuello de botella son las marcas, no el producto.
 - Dominio **`creatorsmanager.com`** conectado y en producción, con `/precios` público.
 - **Planes por propuesta, no por búsqueda:** Explora $0 (3 propuestas/mes), Impulsa $39.900 (12), Escala $119.900 (40), Agencia $299.900 (sin tope). El catálogo se ve **completo en todos**: limitar la búsqueda no protegía nada —lo que se ve se anota— e impedía encontrar a la creadora por la que valdría la pena pagar. El tope vive donde está el valor: al enviar la propuesta.
-- **Pagos con Wompi** configurados en producción. ⚠️ **Nunca se ha probado una compra real** — hay 1 transacción registrada.
+- **Pagos con Wompi** configurados en producción. ⚠️ **Nunca se ha probado una compra real** — hay 1 transacción registrada. Guía paso a paso para hacerlo: [apps/marketplace/PROBAR-PAGO.md](apps/marketplace/PROBAR-PAGO.md).
+- **Un pago perdido se recupera solo.** Un webhook es un mensaje que puede perderse, y perder el que confirma un cobro significa alguien que pagó y no recibió nada. Hay tres caminos al mismo sitio y los tres pasan por `pagos.sincronizar()`, que le pregunta a Wompi en vez de creerle al mensaje: el webhook, el regreso del navegador tras el checkout, y la conciliación (`POST /api/cron/pagos`, también en el reloj interno cada 6 h). Si el monto no coincide **no se aplica nada** y queda en el log: cobrar de menos y entregar igual, o cobrar de más y no devolver, son los dos errores que no se arreglan solos.
 - **Los plazos ya se cumplen solos** (`plazos.js`): las propuestas sin responder se cierran a las 72h, avisando antes. La auto-aprobación existe pero está **apagada** — libera dinero, así que encenderla es decisión de negocio. ⚠️ Falta programar el cron en Railway.
 - ⚠️ Hay **país** en el perfil (20 países) pero la **moneda es COP para todos**. Multi-moneda es un proyecto aparte: exige conversión, pagos internacionales y repensar el escrow.
 - El **registro de marcas es abierto y mínimo**: marca, teléfono, correo y clave. El código de invitación sigue existiendo y se reactiva apagando `registro_marcas_abierto`, sin desplegar.
-- Sin marca de agua en esta fase, por decisión de producto.
+- **Todo lo que sirve `/media` lleva marca de agua** (`watermark.js`): tres pasadas semitransparentes, más un recorte del 5% y una recompresión, que es la parte que de verdad estorba una búsqueda inversa. Las piezas nuevas se marcan solas al subirse; el rezago lo recoge `node scripts/marcar-contenido.js`. ⚠️ No la hace imposible — nada lo hace salvo destruir la imagen.
 
 ---
 
