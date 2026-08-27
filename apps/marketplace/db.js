@@ -120,7 +120,30 @@ function invalidarCacheConfig() {
 
 // ── Marcas ──────────────────────────────────────────────────────────────────
 
-const COLS_MARCA = 'id,nombre_empresa,nombre_contacto,email,whatsapp,nit,pais,departamento,ciudad,sitio_web,estado,logo_path,bio,categoria,instagram,tiktok,que_espera,libertad_creativa,contacto_creadoras,terminos_version,terminos_aceptados_at,created_at';
+/**
+ * Las columnas de una marca que se leen en todas partes.
+ *
+ * Es una lista y no un `*` para no arrastrar el hash de la contraseña a cada
+ * consulta. El precio de eso es que una columna nueva no aparece hasta que
+ * alguien la agrega acá, y la ausencia NO da error: la propiedad llega como
+ * `undefined` y el código sigue como si el dato no existiera.
+ *
+ * Ya pasó con `plan` y `plan_vence_at`: sin ellas, toda marca se leía como si
+ * estuviera en el plan gratuito, así que quien pagara Agencia habría tenido el
+ * tope de Explora. Al agregar una columna a mk_marcas que alguien vaya a leer,
+ * agregarla también aquí.
+ */
+const COLS_MARCA = [
+  'id', 'nombre_empresa', 'nombre_contacto', 'email', 'whatsapp', 'nit',
+  'pais', 'departamento', 'ciudad', 'sitio_web', 'estado', 'logo_path', 'bio',
+  'categoria', 'instagram', 'tiktok', 'que_espera', 'libertad_creativa',
+  'contacto_creadoras', 'terminos_version', 'terminos_aceptados_at', 'created_at',
+  // Suscripción. Sin estas dos, todo el mundo es plan gratuito.
+  'plan', 'plan_vence_at', 'plan_aviso_at',
+  // Qué busca la marca, del registro. Alimenta la selección curada.
+  'busca_que_vende', 'busca_canal', 'busca_tipo', 'busca_presupuesto',
+  'busca_completado_at',
+].join(',');
 
 const getMarcaPorEmail = (email) =>
   getUno('mk_marcas', { email: `eq.${String(email).toLowerCase().trim()}`, select: '*' });
@@ -776,6 +799,33 @@ const getTransaccionesPendientes = (creadaAntesDe, limite = 50) =>
     limit: String(limite),
   });
 
+// ── Invitaciones a campañas con cupos ───────────────────────────────────────
+
+const getInvitacionesDeCampana = (campana_id) =>
+  get('mk_campana_invitacion', {
+    campana_id: `eq.${campana_id}`, select: '*', order: 'invitada_at.asc',
+  });
+
+const getInvitacion = (id) =>
+  getUno('mk_campana_invitacion', { id: `eq.${id}`, select: '*' });
+
+const getInvitacionesDeCreadora = (creadora_id, estados = null) => {
+  const p = { creadora_id: `eq.${creadora_id}`, select: '*', order: 'invitada_at.desc' };
+  if (estados) p.estado = `in.(${estados.join(',')})`;
+  return get('mk_campana_invitacion', p);
+};
+
+const insertInvitaciones = (filas) => post('mk_campana_invitacion', filas);
+
+const actualizarInvitacion = (id, data) =>
+  patch('mk_campana_invitacion', { id }, data);
+
+/** Invitaciones con plazo vencido que todavía están abiertas. */
+const getInvitacionesPorVencer = () =>
+  get('mk_campana_invitacion', {
+    select: '*', estado: 'in.(invitada,acepto)', order: 'invitada_at.asc',
+  });
+
 // ── Home editorial: colecciones y destacado ─────────────────────────────────
 
 /**
@@ -893,13 +943,50 @@ const getPlanes = () =>
  * Cuenta los tratos creados, no los aceptados: el cupo se gasta al proponer.
  * Que la creadora diga que no es riesgo del negocio, no un reembolso.
  */
+/**
+ * Cuántas propuestas gastó la marca este mes.
+ *
+ * Cuenta dos cosas y evita contarlas dos veces:
+ *
+ *   · Las propuestas individuales — un trato creado directamente.
+ *   · Las invitaciones a campañas con cupos — cada creadora invitada consume
+ *     una, y la consume al INVITAR, no al confirmar. Si solo se contaran los
+ *     tratos, invitar a diez y confirmar a tres costaría tres, y el plan
+ *     gratuito se volvería ilimitado invitando sin confirmar.
+ *
+ * El trato que nace de una invitación NO vuelve a contar: ya se pagó al
+ * invitar. Por eso se excluyen los que traen `invitacion_id`.
+ */
 async function contarPropuestasDelMes(marca_id) {
   const desde = new Date();
   desde.setUTCDate(1); desde.setUTCHours(0, 0, 0, 0);
+  const corte = desde.toISOString();
 
-  const filas = await get('mk_tratos', {
-    marca_id: `eq.${marca_id}`,
-    created_at: `gte.${desde.toISOString()}`,
+  const [tratos, invitaciones] = await Promise.all([
+    get('mk_tratos', {
+      marca_id: `eq.${marca_id}`,
+      created_at: `gte.${corte}`,
+      invitacion_id: 'is.null',
+      select: 'id',
+    }),
+    contarInvitacionesDelMes(marca_id, corte),
+  ]);
+  return tratos.length + invitaciones;
+}
+
+/**
+ * Invitaciones enviadas este mes por una marca.
+ *
+ * Se filtra por campaña y no por la invitación, porque la invitación no sabe
+ * de quién es: cuelga de la campaña, y la campaña de la marca.
+ */
+async function contarInvitacionesDelMes(marca_id, desde) {
+  const campanas = await get('mk_campanas', { marca_id: `eq.${marca_id}`, select: 'id' });
+  if (!campanas.length) return 0;
+
+  const filas = await get('mk_campana_invitacion', {
+    campana_id: `in.(${campanas.map(c => c.id).join(',')})`,
+    invitada_at: `gte.${desde}`,
     select: 'id',
   });
   return filas.length;
@@ -1007,6 +1094,8 @@ module.exports = {
   insertEntrega, getEntregasDeTrato, updateEntrega,
   insertTransaccion, getTransaccionPorReferencia, getTransaccionesDeTrato, actualizarTransaccion,
   getTransaccionesPendientes, getMarcasPorVencer,
+  getInvitacionesDeCampana, getInvitacion, getInvitacionesDeCreadora,
+  insertInvitaciones, actualizarInvitacion, getInvitacionesPorVencer,
   getColecciones, getColeccion, insertColeccion, updateColeccion, borrarColeccion,
   ponerCreadorasEnColeccion, getDestacado, ponerDestacado,
   getSeleccionDeMarca, getItemsDeSeleccion, insertSeleccion, updateSeleccion,

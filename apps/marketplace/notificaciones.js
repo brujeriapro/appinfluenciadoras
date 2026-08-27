@@ -908,6 +908,74 @@ function seleccionLista({ marca, cuantas }) {
   );
 }
 
+// ── Campañas con cupos ────────────────────────────────────────────────────
+
+/**
+ * A una creadora la invitaron a una campaña.
+ *
+ * Lleva el monto y el plazo en el asunto porque es lo que decide si abre el
+ * correo. Y dice cuántos cupos hay: aceptar no garantiza el trabajo, y
+ * enterarse de eso DESPUÉS de aceptar es lo que hace que alguien no vuelva a
+ * responder una invitación.
+ */
+function invitacionACampana({ campana, marca, contacto, estado }) {
+  const vence = new Date(campana.fecha_limite_respuesta).toLocaleString('es-CO', {
+    day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit',
+  });
+  return enviar(
+    contacto.email,
+    `${marca.nombre_empresa} te invitó a una campaña · ${formatearCOP(campana.monto_creadora)}`,
+    `<p><strong>${marca.nombre_empresa}</strong> está buscando
+     <strong>${campana.cupos} creadora${campana.cupos === 1 ? '' : 's'}</strong> y te invitó.</p>
+
+     <p style="background:#D6FF00;padding:10px;border:2px solid #0E0E0E">
+       Pagan <strong style="font-size:16px">${formatearCOP(campana.monto_creadora)}</strong> por creadora
+     </p>
+
+     <p><strong>Qué piden:</strong><br>${(campana.brief_base || '').slice(0, 400)}</p>
+     ${campana.fecha_entrega ? `<p><strong>Entrega:</strong> ${campana.fecha_entrega}</p>` : ''}
+
+     <p>Tenés hasta el <strong>${vence}</strong> para responder.</p>
+     <p style="font-size:11px;color:#7A7A7A">Son ${campana.cupos} cupos y hay más creadoras
+     invitadas. Aceptar no reserva el cupo: la marca elige entre las que acepten, y te
+     avisamos apenas decida.</p>
+     ${boton('VER LA CAMPAÑA', `${config.base_url}/creadora.html#campanas`)}`
+  );
+}
+
+/** Alguien aceptó: la marca tiene que ir a confirmar. */
+function aceptoLaCampana({ campana, marca, creadora }) {
+  return enviar(
+    marca.email,
+    `${creadora?.nombre_publico || 'Una creadora'} aceptó tu campaña · ${campana.nombre}`,
+    `<p><strong>${creadora?.nombre_publico || 'Una creadora'}</strong>
+     (${creadora?.codigo || ''}) aceptó participar en <strong>${campana.nombre}</strong>.</p>
+     <p>Todavía no está contratada: se contrata cuando la confirmés. Ahí queda el trato
+     creado y sigue el flujo normal.</p>
+     ${boton('VER LA CAMPAÑA', `${config.base_url}/panel.html#campanas`)}`
+  );
+}
+
+/**
+ * Aceptó y no fue elegida.
+ *
+ * NO es un rechazo y por eso no se redacta como uno. Que no la eligieran no
+ * dice nada de ella, y decírselo como un "no" la castiga por haber aceptado.
+ * Se le agradece, se le explica qué pasó, y se le dice que su perfil sigue
+ * igual de arriba.
+ */
+function cuposCompletos({ campana, contacto }) {
+  return enviar(
+    contacto.email,
+    `Los cupos de "${campana.nombre}" ya se llenaron`,
+    `<p>Gracias por responder a <strong>${campana.nombre}</strong>. Los cupos se llenaron
+     con otras creadoras, así que esta vez no se dio.</p>
+     <p>No es nada sobre tu perfil: eran ${campana.cupos} cupos y respondieron más.
+     Tu perfil sigue exactamente igual en el catálogo.</p>
+     ${boton('VER OTRAS CAMPAÑAS', `${config.base_url}/creadora.html#campanas`)}`
+  );
+}
+
 function contenidoEntregado({ trato, marca }) {
   return enviar(
     marca.email,
@@ -945,4 +1013,5 @@ module.exports = {
   nuevaSolicitud, tratoAceptado, tratoRechazado,
   pagoRetenido, contenidoEntregado, contenidoAprobado, pagoLiberado,
   reciboSuscripcion, planPorVencer, seleccionLista,
+  invitacionACampana, aceptoLaCampana, cuposCompletos,
 };

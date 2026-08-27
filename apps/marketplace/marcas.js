@@ -535,44 +535,21 @@ router.post('/tratos', rateLimit({ max: 20 }), async (req, res) => {
       });
     }
 
-    // El flag de comisión 0% vive en la fila completa, no en la vista pública.
-    const creadora = await db.getCreadoraCompleta(creadora_id);
-    const cfg = await db.getConfig();
-
-    // Los porcentajes vigentes se COPIAN al trato y ya no vuelven a leerse:
-    // si mañana cambia la comisión, este trato conserva la suya.
-    const calculo = calcularTrato({
-      monto: Number(monto),
-      comision_marca_pct: Number(cfg.comision_marca_pct ?? 12),
-      comision_creadora_pct: Number(cfg.comision_creadora_pct ?? 8),
-      // Lo que cobra la pasarela por dispersar. Se congela igual que las
-      // comisiones: subirlo mañana no puede cambiar lo que ya se le prometió
-      // a alguien que aceptó hoy.
-      costo_desembolso_pct: Number(cfg.costo_desembolso_pct ?? 0),
-      es_bruja_embajadora: creadora.es_bruja_embajadora === true,
-    });
-
-    const trato = await db.insertTrato({
-      codigo: await db.siguienteCodigoTrato(),
+    // Se crea por la misma función que usa la confirmación de una campaña con
+    // cupos: un solo sitio donde se congelan las comisiones y se escribe el
+    // primer evento.
+    const { trato, creadora } = await maquina.crearTrato({
       marca_id: req.usuarioId,
       creadora_id,
-      estado: 'solicitado',
       campana_id: campana_id || null,
       brief: base.brief,
-      entregables: base.entregables || null,
-      fecha_entrega_esperada: base.fecha_entrega_esperada || null,
-      producto: base.producto || null,
-      exclusividad: base.exclusividad || null,
-      ...calculo,
-    });
-
-    await db.insertEvento({
-      trato_id: trato.id,
-      estado_anterior: null,
-      estado_nuevo: 'solicitado',
-      actor: 'marca',
-      actor_id: req.usuarioId,
-      nota: 'Solicitud enviada',
+      entregables: base.entregables,
+      monto,
+      fecha_entrega_esperada: base.fecha_entrega_esperada,
+      producto: base.producto,
+      exclusividad: base.exclusividad,
+      producto_detalle: base.producto_detalle,
+      exclusividad_detalle: base.exclusividad_detalle,
     });
 
     const marca = await db.getMarcaById(req.usuarioId);
@@ -693,3 +670,7 @@ router.post('/tratos/:id/cancelar', async (req, res) => {
 });
 
 module.exports = router;
+// Lo usa el router de campañas con cupos: cada creadora invitada consume una
+// propuesta, y la cuenta tiene que salir del mismo sitio que la de las
+// propuestas individuales.
+module.exports.topeDePropuestas = topeDePropuestas;

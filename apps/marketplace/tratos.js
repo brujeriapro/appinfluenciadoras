@@ -9,6 +9,7 @@
 // y en cualquier punto temprano puede desviarse a rechazado o cancelado.
 
 const db = require('./db');
+const { calcularTrato } = require('./comisiones');
 
 const ESTADOS = [
   'solicitado', 'aceptado', 'pago_retenido', 'entregado',
@@ -192,8 +193,74 @@ function contactoVisible(trato) {
   return Boolean(trato && trato.contacto_revelado_at);
 }
 
+/**
+ * Crea un trato en estado `solicitado`, con su evento inicial.
+ *
+ * Vive acá y no en el router porque hay dos caminos que llegan al mismo sitio
+ * —la propuesta individual y la confirmación de una campaña con cupos— y dos
+ * copias de esto son dos sitios donde el escrow se puede romper distinto.
+ *
+ * Lo que hace y no se puede saltar:
+ *   · COPIA los porcentajes vigentes al trato. Si mañana cambia la comisión,
+ *     este trato conserva la suya. Es lo que hace que un acuerdo sea un
+ *     acuerdo y no una variable de configuración.
+ *   · Deja el evento en el historial. Un trato sin su primer evento aparece
+ *     después como si hubiera nacido de la nada.
+ *
+ * No valida el tope del plan ni si hay otra propuesta abierta: eso depende de
+ * por dónde se entró, y cada camino tiene sus propias reglas.
+ */
+async function crearTrato({
+  marca_id, creadora_id, campana_id = null, invitacion_id = null,
+  brief, entregables = null, monto,
+  fecha_entrega_esperada = null, producto = null, exclusividad = null,
+  producto_detalle = null, exclusividad_detalle = null,
+  nota = 'Solicitud enviada',
+}) {
+  const [creadora, cfg] = await Promise.all([
+    db.getCreadoraCompleta(creadora_id),
+    db.getConfig(),
+  ]);
+
+  const calculo = calcularTrato({
+    monto: Number(monto),
+    comision_marca_pct: Number(cfg.comision_marca_pct ?? 12),
+    comision_creadora_pct: Number(cfg.comision_creadora_pct ?? 8),
+    // Lo que cobra la pasarela por dispersar. Se congela igual que las
+    // comisiones: subirlo mañana no puede cambiar lo que ya se le prometió a
+    // alguien que aceptó hoy.
+    costo_desembolso_pct: Number(cfg.costo_desembolso_pct ?? 0),
+    es_bruja_embajadora: creadora?.es_bruja_embajadora === true,
+  });
+
+  const trato = await db.insertTrato({
+    codigo: await db.siguienteCodigoTrato(),
+    marca_id, creadora_id,
+    estado: 'solicitado',
+    campana_id, invitacion_id,
+    brief,
+    entregables: entregables || null,
+    fecha_entrega_esperada: fecha_entrega_esperada || null,
+    producto: producto || null,
+    exclusividad: exclusividad || null,
+    producto_detalle, exclusividad_detalle,
+    ...calculo,
+  });
+
+  await db.insertEvento({
+    trato_id: trato.id,
+    estado_anterior: null,
+    estado_nuevo: 'solicitado',
+    actor: 'marca',
+    actor_id: marca_id,
+    nota,
+  });
+
+  return { trato, creadora };
+}
+
 module.exports = {
   ESTADOS, ETIQUETAS, LINEA_TIEMPO, TRANSICIONES,
   puedeTransicionar, transicionesDisponibles, esTerminal,
-  aplicarTransicion, contactoVisible, TransicionInvalida,
+  aplicarTransicion, contactoVisible, TransicionInvalida, crearTrato,
 };

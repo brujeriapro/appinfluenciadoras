@@ -89,6 +89,17 @@ app.get('/terminos', async (req, res) => {
 app.post('/webhook/wompi', require('./pagos').manejarEvento);
 
 app.use('/api/pagos', require('./pagos'));
+// Campañas con cupos. Los dos lados del mismo flujo, cada uno con su auth: la
+// marca crea, invita y confirma; la creadora ve y responde.
+//
+// Van ANTES que los routers generales: Express reparte por prefijo y en orden,
+// así que montarlos después dejaría '/api/marcas/cupos' detrás de un router
+// que ya casa con su prefijo.
+const { marcaAuth: soloMarca, creadoraAuth: soloCreadora } = require('./auth');
+const cuposRutas = require('./campanas-cupos');
+app.use('/api/marcas/cupos', soloMarca, cuposRutas.deMarca);
+app.use('/api/creadoras/cupos', soloCreadora, cuposRutas.deCreadora);
+
 app.use('/api/marcas', require('./marcas'));
 app.use('/api/creadoras', require('./creadoras'));
 app.use('/api/catalogo', require('./catalogo'));
@@ -130,6 +141,26 @@ app.post('/api/cron/plazos', adminAuth, async (req, res) => {
  * significa alguien que pagó y no recibió nada, y que solo se descubre cuando
  * reclama.
  */
+/**
+ * Cierra las invitaciones a campañas cuyo plazo venció.
+ *
+ * Con ?dry_run=1 dice qué haría sin tocar nada. Conviene mirarlo así la
+ * primera vez: de acá en adelante esto le cierra la puerta a creadoras sin que
+ * nadie lo mire.
+ */
+app.post('/api/cron/cupos', adminAuth, async (req, res) => {
+  try {
+    const r = await require('./campanas-cupos').cerrarVencidas({
+      simulacro: req.query.dry_run === '1' || req.body?.dry_run === true,
+    });
+    console.log('[cron/cupos]', JSON.stringify(r));
+    res.json(r);
+  } catch (e) {
+    console.error('[cron/cupos]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/cron/pagos', adminAuth, async (req, res) => {
   try {
     const pagos = require('./pagos');
@@ -225,6 +256,13 @@ function programarPlazos() {
       await require('./pagos').avisarPlanesPorVencer();
     } catch (e) {
       console.error('[planes] falló el aviso de vencimiento:', e.message);
+    }
+
+    try {
+      const c = await require('./campanas-cupos').cerrarVencidas();
+      if (c.vencidas || c.cupos_llenos || c.campanas) console.log('[cupos]', JSON.stringify(c));
+    } catch (e) {
+      console.error('[cupos] falló el cierre de vencidas:', e.message);
     }
   };
 
