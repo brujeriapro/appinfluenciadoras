@@ -337,6 +337,14 @@ UGC no es el escalón de las que no llegaron: es otro trabajo, se produce distin
 
 ⚠️ **Cambiar un número tumba la verificación**: si pudiera verificarse en 3.000 y editarlo a 30.000 conservando el sello, el sello no valdría nada. El nivel `conectado` (API de Meta) todavía no está construido.
 
+### Subida de piezas
+
+El tope es **48 MB** (`MK_MAX_SUBIDA_MB`), justo debajo de los 50 MB que permite Supabase Storage, para que el error salga con un mensaje entendible y no con uno críptico del bucket.
+
+Los **videos van en crudo** por `POST /api/creadoras/muestras/video` (el archivo es el cuerpo, lo que lo describe va en la query). Las **fotos van en base64**, que es lo mismo porque el navegador ya las recomprimió a unos cientos de kilobytes. Base64 infla un 33% y obliga al archivo a existir como una cadena gigante en memoria: para una foto da igual, para un video de 40 MB es la diferencia entre que suba y que no.
+
+⚠️ **Nunca pedirle a la creadora que baje la calidad.** Lo que ve la marca es la copia con marca de agua, que generamos a 720p; el original se guarda y no sale por ninguna ruta. Pedirle que comprima no mejora nada — se recomprime igual — y solo le impide subir. Si una pieza no cabe, lo que hay que pedirle es que la **corte más corta**.
+
 ### Correo
 
 `correo.js` aísla al proveedor: cambiarlo es poner otra llave. Soporta **ZeptoMail** (el que corre hoy), Resend y Brevo; gana el primero con llave salvo que `MK_CORREO_PROVEEDOR` diga otra cosa.

@@ -14,7 +14,8 @@ const { resumirTarifas, rangoAlcance, resumirAlcance } = require('./comisiones')
 const { normalizarIncluye, conAhorro } = require('./paquetes');
 const { creadoraAuth, firmarToken, rateLimit } = require('./auth');
 const notificaciones = require('./notificaciones');
-const { subirMuestra, borrarMuestra, subirArchivo, borrarArchivo } = require('./muestras');
+const { subirMuestra, borrarMuestra, subirArchivo, borrarArchivo,
+        MIMES_VIDEO, MAX_BYTES } = require('./muestras');
 
 const router = express.Router();
 
@@ -673,6 +674,39 @@ router.post('/muestras', rateLimit({ windowMs: 300_000, max: 20 }), async (req, 
     res.status(e.status || 500).json({ error: e.message });
   }
 });
+
+/**
+ * Sube un video en crudo, sin pasarlo por base64.
+ *
+ * Base64 infla el archivo un 33% y lo obliga a existir como una cadena gigante
+ * en memoria, a los dos lados. Para una foto ya recomprimida a unos cientos de
+ * kilobytes da igual; para un video de 40 MB es la diferencia entre que suba y
+ * que no.
+ *
+ * El archivo va en el cuerpo tal cual y lo que lo describe va en la query: no
+ * caben las dos cosas en el mismo body cuando el body ES el archivo.
+ */
+router.post('/muestras/video',
+  rateLimit({ windowMs: 300_000, max: 20 }),
+  express.raw({ type: MIMES_VIDEO, limit: `${Math.ceil(MAX_BYTES / 1024 / 1024) + 4}mb` }),
+  async (req, res) => {
+    try {
+      if (!Buffer.isBuffer(req.body) || !req.body.length) {
+        return res.status(400).json({ error: 'El video llegó vacío.' });
+      }
+      const muestra = await subirMuestra(req.usuarioId, {
+        buffer: req.body,
+        mime: req.get('content-type'),
+        titulo: req.query.titulo || null,
+        origen_url: req.query.origen_url || null,
+        subida_por: 'creadora',
+      });
+      res.json({ ok: true, muestra: { id: muestra.id, tipo: muestra.tipo, titulo: muestra.titulo } });
+    } catch (e) {
+      console.error('[creadoras/muestras/video]', e.message);
+      res.status(e.status || 500).json({ error: e.message });
+    }
+  });
 
 router.delete('/muestras/:id', async (req, res) => {
   try {

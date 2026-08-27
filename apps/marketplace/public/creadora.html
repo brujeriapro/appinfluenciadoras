@@ -1314,7 +1314,10 @@ const fechaCorta = (f) => f ? new Date(f).toLocaleDateString('es-CO', { day: '2-
 const netoDe = (monto, pct) => Math.round(monto) - Math.round(monto * pct / 100);
 
 const MAX_LADO = 1600;          // suficiente para verse bien en el catálogo
-const MAX_SUBIDA = 10 * 1024 * 1024;
+// Lo mismo que acepta el servidor. Un reel de 30 segundos de un celular actual
+// pesa entre 20 y 60 MB, así que el tope viejo de 10 MB dejaba fuera a casi
+// todos.
+const MAX_SUBIDA = 48 * 1024 * 1024;
 
 /**
  * Deja el archivo listo para subir.
@@ -1326,21 +1329,48 @@ const MAX_SUBIDA = 10 * 1024 * 1024;
  *
  * Los videos van tal cual: convertirlos en el navegador no es viable.
  */
+/**
+ * Sube una pieza por la ruta que le corresponde.
+ *
+ * El video va en crudo y la foto en base64: la foto ya viene recomprimida a
+ * unos cientos de kilobytes, así que base64 no le hace daño, pero a un video
+ * de 40 MB lo infla un 33% y lo vuelve una cadena gigante en memoria.
+ *
+ * Vive aparte porque hay dos sitios que suben piezas —el portal y el alta
+ * guiada— y la decisión tiene que ser la misma en los dos.
+ */
+async function subirPieza(archivo) {
+  const listo = await prepararArchivo(archivo);
+  if (listo.crudo) {
+    return api('/muestras/video', {
+      method: 'POST',
+      headers: { 'Content-Type': listo.mime },
+      body: listo.archivo,
+    });
+  }
+  return api('/muestras', {
+    method: 'POST',
+    body: JSON.stringify({ archivo_base64: listo.base64, mime: listo.mime }),
+  });
+}
+
 function prepararArchivo(archivo) {
   return new Promise((resolve, reject) => {
     const esVideo = archivo.type.startsWith('video/');
 
     if (esVideo) {
       if (archivo.size > MAX_SUBIDA) {
+        const tope = Math.round(MAX_SUBIDA / 1024 / 1024);
         return reject(new Error(
-          `Ese video pesa ${(archivo.size / 1024 / 1024).toFixed(1)} MB y el máximo son 10 MB. ` +
-          'Súbelo más corto o baja la calidad.'
+          `Ese video pesa ${(archivo.size / 1024 / 1024).toFixed(1)} MB y el máximo son ${tope} MB. ` +
+          'Súbelo más corto. No hace falta que bajes la calidad: nosotros la ajustamos ' +
+          'para el catálogo.'
         ));
       }
-      const lector = new FileReader();
-      lector.onload = () => resolve({ base64: lector.result, mime: archivo.type });
-      lector.onerror = () => reject(new Error('No pude leer ese video.'));
-      return lector.readAsDataURL(archivo);
+      // El video va TAL CUAL, sin pasarlo por base64: eso lo inflaba un 33% y
+      // lo obligaba a existir como una cadena gigante en memoria. Con archivos
+      // de decenas de MB es la diferencia entre que suba y que no.
+      return resolve({ archivo, mime: archivo.type, crudo: true });
     }
 
     const url = URL.createObjectURL(archivo);
@@ -1873,17 +1903,17 @@ function pintarGaleria(muestras, maximo) {
     msg.classList.add('oculto');
 
     try {
+      const esVideo = archivo.type.startsWith('video/');
       msg.className = 'aviso aviso--ok';
-      msg.textContent = 'Preparando la foto…';
+      msg.textContent = esVideo ? 'Preparando el video…' : 'Preparando la foto…';
       msg.classList.remove('oculto');
 
-      const { base64, mime } = await prepararArchivo(archivo);
+      // Un video puede tardar: decir cuánto pesa evita que parezca colgado.
+      msg.textContent = esVideo
+        ? `Subiendo ${(archivo.size / 1024 / 1024).toFixed(1)} MB… puede tardar un momento.`
+        : 'Subiendo…';
 
-      msg.textContent = 'Subiendo…';
-      await api('/muestras', {
-        method: 'POST',
-        body: JSON.stringify({ archivo_base64: base64, mime }),
-      });
+      await subirPieza(archivo);
       const d = await api('/muestras');
       pintarGaleria(d.muestras, d.maximo);
       msg.classList.add('oculto');
@@ -3436,8 +3466,10 @@ function pintarPasoAlta() {
     const msg = $('alta-msg2');
     msg.className = 'aviso aviso--ok'; msg.textContent = 'Subiendo…'; msg.classList.remove('oculto');
     try {
-      const { base64, mime } = await prepararArchivo(archivo);
-      await api('/muestras', { method: 'POST', body: JSON.stringify({ archivo_base64: base64, mime }) });
+      if (archivo.type.startsWith('video/')) {
+        msg.textContent = `Subiendo ${(archivo.size / 1024 / 1024).toFixed(1)} MB… puede tardar un momento.`;
+      }
+      await subirPieza(archivo);
       const d = await api('/muestras');
       const g = $('alta-galeria');
       g.classList.remove('oculto');

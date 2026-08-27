@@ -21,7 +21,24 @@ const { marcarImagen, marcarVideo } = require('./watermark');
 const MIMES_IMAGEN = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
 const MIMES_VIDEO = ['video/mp4', 'video/quicktime', 'video/webm'];
 const MIMES_OK = [...MIMES_IMAGEN, ...MIMES_VIDEO];
-const MAX_BYTES = 10 * 1024 * 1024;
+/**
+ * Cuánto puede pesar una pieza.
+ *
+ * Estaba en 10 MB y era demasiado poco: un reel de treinta segundos grabado
+ * con un celular actual pesa entre 20 y 60 MB. Las creadoras se topaban con un
+ * mensaje que les pedía "bajar la calidad".
+ *
+ * Y ese mensaje era doblemente injusto, porque LA CALIDAD QUE VE LA MARCA NO ES
+ * LA DEL ORIGINAL: lo que se sirve es la copia con marca de agua, que
+ * generamos nosotros a 720p. El original se guarda y no sale por ninguna ruta.
+ * Pedirle a ella que comprima no mejoraba nada — nosotros recomprimimos igual.
+ * Lo único que hacía el tope era impedirle subir.
+ *
+ * El techo de verdad lo pone Supabase Storage (50 MB por defecto en el
+ * proyecto). Se deja justo debajo para que el error salga acá, con un mensaje
+ * entendible, y no allá con uno críptico.
+ */
+const MAX_BYTES = Number(process.env.MK_MAX_SUBIDA_MB || 48) * 1024 * 1024;
 
 class ErrorMuestra extends Error {
   constructor(mensaje, status = 400) {
@@ -45,8 +62,8 @@ class ErrorMuestra extends Error {
  * @param {string} [p.origen_url]  De qué post salió. Uso interno, nunca se sirve.
  * @param {string} [p.subida_por]  creadora | admin
  */
-async function subirMuestra(creadora_id, { archivo_base64, mime, titulo, origen_url, subida_por = 'admin' }) {
-  if (!archivo_base64) throw new ErrorMuestra('Falta el archivo');
+async function subirMuestra(creadora_id, { archivo_base64, buffer: crudo, mime, titulo, origen_url, subida_por = 'admin' }) {
+  if (!archivo_base64 && !crudo) throw new ErrorMuestra('Falta el archivo');
 
   const tipoMime = mime || 'image/jpeg';
   if (!MIMES_OK.includes(tipoMime)) {
@@ -61,11 +78,17 @@ async function subirMuestra(creadora_id, { archivo_base64, mime, titulo, origen_
     );
   }
 
-  const buffer = Buffer.from(String(archivo_base64).replace(/^data:[^;]+;base64,/, ''), 'base64');
+  // Los videos llegan en crudo; las fotos, en base64 porque el navegador ya las
+  // recomprimió a unos cientos de kilobytes antes de mandarlas.
+  const buffer = crudo
+    || Buffer.from(String(archivo_base64).replace(/^data:[^;]+;base64,/, ''), 'base64');
   if (!buffer.length) throw new ErrorMuestra('El archivo llegó vacío');
   if (buffer.length > MAX_BYTES) {
+    const tope = Math.round(MAX_BYTES / 1024 / 1024);
     throw new ErrorMuestra(
-      `La pieza pesa ${(buffer.length / 1024 / 1024).toFixed(1)} MB. El máximo son 10 MB.`,
+      `Esa pieza pesa ${(buffer.length / 1024 / 1024).toFixed(1)} MB y el máximo son ${tope} MB. `
+      + 'Si es un video largo, córtalo — no hace falta que bajes la calidad, '
+      + 'nosotros la ajustamos para el catálogo.',
       413
     );
   }
