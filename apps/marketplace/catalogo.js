@@ -236,16 +236,30 @@ router.get('/:id', async (req, res) => {
 
     await anotarVista(req.usuarioId, req.params.id);
 
-    const [muestras, tarifas, cumplimiento, contenido, paquetes] = await Promise.all([
+    const [muestras, tarifas, cumplimiento, contenido, paquetes, redes] = await Promise.all([
       db.getMuestrasDeCreadora(creadora.id),
       db.getTarifasDeCreadora(creadora.id),
       db.getCumplimientoDeUna(creadora.id),
       db.getPerfilContenidoDeUna(creadora.id),
       db.getPaquetesDeCreadora(creadora.id, { soloActivos: true }),
+      // getRedesDeVarias y no getRedesDeCreadora: esta es la que deja fuera los
+      // seguidores exactos. Es la diferencia entre mostrarle a la marca a
+      // cuánta gente llega —que es lo que decide una contratación— y darle el
+      // número con el que se encuentra el perfil real en un buscador.
+      db.getRedesDeVarias([creadora.id]),
     ]);
 
     res.json({
       ...creadora,
+      // Sus redes con vistas promedio y nivel POR RED: hay creadoras micro en
+      // Instagram y media en TikTok, y contratarlas para TikTok con el número
+      // de Instagram es contratar a ciegas.
+      //
+      // Con la misma forma que en el catálogo a propósito: la tarjeta y la
+      // ficha muestran el mismo dato y no pueden divergir en el camino.
+      redes: (redes[creadora.id] || []).map(r => ({
+        red: r.red, tier: r.tier, principal: r.es_principal, vistas: r.vistas_promedio,
+      })),
       cumplimiento: cumplimiento || { confianza: 'sin_historial' },
       // Cómo trabaja: sale del análisis de sus piezas. Va null mientras no se
       // hayan analizado, y la ficha lo omite en vez de inventar un perfil.

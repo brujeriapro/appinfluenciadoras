@@ -19,8 +19,10 @@
   /* ── Ficha ──────────────────────────────────────────────────────────── */
   .ficha { display: flex; gap: 24px; align-items: flex-start; }
   .ficha__col { flex: 1; min-width: 0; }
-  .ficha__panel { width: 392px; flex: none; position: sticky; top: 76px;
-                  border: 2px solid var(--ink); background: var(--surface); }
+  /* El sticky y el ancho viven en la columna, no en el panel: debajo de las
+     tarifas va "También puedes", y los dos tienen que subir juntos. */
+  .ficha__lado { width: 392px; flex: none; position: sticky; top: 76px; }
+  .ficha__panel { border: 2px solid var(--ink); background: var(--surface); }
   .migas { font-size: 10px; letter-spacing: 1px; color: var(--text-3);
            text-transform: uppercase; margin-bottom: 14px; }
   .migas button { background: none; border: none; color: var(--text-3); cursor: pointer;
@@ -39,7 +41,12 @@
   .obra { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 8px; }
   .obra__princ { aspect-ratio: 4/5; background: var(--border-3); min-width: 0; overflow: hidden;
                  display: grid; place-items: center; font-size: 10px; color: var(--text-4); }
-  .obra__lado { display: grid; grid-template-rows: 1fr 1fr; gap: 8px; min-width: 0; }
+  /* auto-rows y no "1fr 1fr": con una sola pieza al lado, la fila fija dejaba
+     media columna vacía. */
+  .obra__lado { display: grid; grid-auto-rows: 1fr; gap: 8px; min-width: 0; }
+  /* Una sola pieza ocupa el ancho, sin columna al lado que llenar. */
+  .obra--sola { display: block; max-width: 460px; aspect-ratio: 4/5;
+                background: var(--border-3); overflow: hidden; }
   .obra__lado > * { background: var(--border-3); min-width: 0; overflow: hidden;
                     display: grid; place-items: center; font-size: 10px; color: var(--text-4); }
   .obra img { width: 100%; height: 100%; object-fit: cover; }
@@ -71,6 +78,67 @@
                       letter-spacing: -1.8px; color: var(--lima); margin: 6px 0 4px; }
   .panel-pie__nota { font-size: 9px; letter-spacing: 0.8px; color: var(--chip-dark-text);
                      text-transform: uppercase; margin-top: 10px; }
+
+  /* Los tres grupos de números no son una rejilla plana: cada uno contesta una
+     pregunta distinta —a cuánta gente llega, quién la ve, cómo trabaja— y el
+     borde superior de color es lo que los separa de un vistazo. */
+  .grupo-num__nota { padding: 0 14px 12px; font-size: 9.5px; line-height: 1.55;
+                     color: var(--text-3); }
+  .grupo-num--alcance { border-top: 4px solid var(--azul); }
+  .grupo-num--audiencia { border-top: 4px solid var(--border-2); }
+  .grupo-num--trabajo { border-top: 4px solid var(--ink); }
+
+  /* Alcance por red: la cifra manda y el nivel va pegado al nombre de la red,
+     no suelto. Van juntos porque separados se leen como dos datos y son uno:
+     "micro EN INSTAGRAM". */
+  .red-fila { min-width: 128px; }
+  .red-fila__num { font-family: var(--mono-t); font-weight: 800; font-size: 26px;
+                   letter-spacing: -1.3px; line-height: 1.1; }
+  .red-fila__pie { display: flex; align-items: center; gap: 0; margin-top: 5px; }
+  .red-fila__red { font-size: 9.5px; letter-spacing: 0.9px; text-transform: uppercase;
+                   color: var(--text-3); padding-right: 7px; }
+  .tier-pastilla { background: var(--azul); color: #fff; font-size: 9px; font-weight: 700;
+                   letter-spacing: 0.7px; text-transform: uppercase; padding: 3px 7px; }
+
+  /* La audiencia va en barra y no en cifra suelta: "79%" no dice si es mucho,
+     la barra sí. El aria-label lleva la misma frase porque el color solo no
+     comunica. */
+  .barra { margin-top: 7px; height: 6px; background: var(--border-3); }
+  .barra__lleno { height: 100%; background: var(--azul); }
+
+  /* El engagement es la única cifra de este grupo que la marca compara entre
+     creadoras, así que se invierte para que sea la que se ve primero. */
+  .celda-eng { background: var(--ink); padding: 12px 14px; margin: -14px 0 -14px -14px; }
+  .celda-eng .num-medio { color: var(--lima); font-size: 17px; }
+  .celda-eng .metrica__label { color: var(--text-dark-3, #B4B4AE); }
+
+  .tarifa-op.on { background: var(--canvas); border-left-color: var(--magenta); }
+  .tarifa-op.off { cursor: default; }
+  .panel-pie__elegiste { font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+                         color: var(--magenta); margin-bottom: 7px; }
+  .panel-pie__pastilla { display: inline-block; background: var(--magenta); color: var(--ink);
+                         font-family: var(--mono-t); font-weight: 700; font-size: 11px;
+                         letter-spacing: -0.2px; text-transform: uppercase; padding: 5px 9px; }
+  .panel-pie__linea { display: flex; justify-content: space-between; gap: 12px;
+                      font-size: 10.5px; color: var(--chip-dark-text); margin-top: 8px; }
+  .panel-pie__linea--comision { color: var(--magenta); }
+  /* El total lleva el filo lima: es la única cifra de la pantalla que es plata
+     que sale del bolsillo de la marca. */
+  .panel-pie__caja-total { border-left: 5px solid var(--lima); padding-left: 11px;
+                           margin-top: 14px; }
+
+  /* "También puedes": la ficha vieja solo tenía enviar propuesta, que obliga a
+     decidir con el reloj del plan encima. Guardar no gasta nada. */
+  .tambien { border: 2px solid var(--ink); border-top: none; background: var(--surface);
+             padding: 14px; }
+  .tambien__btn { width: 100%; background: var(--surface); border: 2px solid var(--ink);
+                  font-family: var(--mono-t); font-weight: 700; font-size: 10.5px;
+                  letter-spacing: 0.3px; text-transform: uppercase; padding: 11px;
+                  cursor: pointer; text-align: center; }
+  .tambien__btn:hover { background: var(--lima); }
+  .tambien__btn--suave { border-width: 1px; margin-top: 8px; }
+  .tambien__btn--suave.on { background: var(--lima); }
+  .tambien__nota { font-size: 9.5px; line-height: 1.55; color: var(--text-3); margin-top: 10px; }
 
   /* ── Modales ────────────────────────────────────────────────────────── */
   .telon { position: fixed; inset: 0; background: rgba(14,14,14,.6); z-index: 60;
@@ -227,7 +295,18 @@
 
   @media (max-width: 1200px) {
     .ficha, .trato, .perfil { flex-direction: column; }
-    .ficha__panel, .trato__lado, .perfil__lado { width: 100%; position: static; }
+    .ficha__lado, .trato__lado, .perfil__lado { width: 100%; position: static; }
+    /* Las tarifas suben: es lo que la marca vino a ver, y dejarlas al final
+       obliga a scrollear toda la ficha para llegar al precio. */
+    .ficha__lado { order: -1; }
+  }
+  @media (max-width: 900px) {
+    .obra { grid-template-columns: 1fr; }
+    .obra__lado { grid-template-rows: none; grid-template-columns: 1fr 1fr; }
+    .grupo-num__cuerpo { flex-direction: column; gap: 16px; }
+    /* Invertida y a ancho completo, el margen negativo de la izquierda deja de
+       cuadrar contra el padding del cuerpo. */
+    .celda-eng { margin: -14px -14px 0; }
   }
   @media (max-width: 1000px) {
     .modal__cuerpo { flex-direction: column; }

@@ -165,6 +165,132 @@ function historialHTML(cump) {
   </div>`;
 }
 
+/**
+ * Su trabajo: la pieza principal y hasta dos al lado.
+ *
+ * La rejilla se adapta a cuántas tiene. Antes eran siempre tres huecos, así que
+ * una creadora con una sola pieza mostraba su trabajo al lado de dos cajas
+ * grises vacías — que no se leen como "tiene una", se leen como si la pantalla
+ * se hubiera roto. Es justo el perfil que menos puede permitirse eso.
+ */
+function obraHTML(ms = []) {
+  if (!ms.length) return '<p class="p">Todavía no ha subido piezas.</p>';
+  const lado = ms.slice(1, 3);
+  if (!lado.length) return `<div class="obra obra--sola">${pieza(ms[0])}</div>`;
+  return `
+  <div class="obra">
+    <div class="obra__princ">${pieza(ms[0])}</div>
+    <div class="obra__lado">${lado.map(m => `<div>${pieza(m)}</div>`).join('')}</div>
+  </div>`;
+}
+
+/**
+ * Alcance por red: a cuánta gente llega en cada una, no cuántos la siguen.
+ *
+ * El nivel va como pastilla pegada al nombre de la red y no suelto, porque
+ * separados se leen como dos datos y son uno: es MICRO EN INSTAGRAM, no "micro"
+ * a secas. Una creadora puede ser micro en Instagram y media en TikTok, y
+ * contratarla para TikTok con el número de Instagram es contratar a ciegas.
+ *
+ * Sin vistas cargadas va un guion, y se dice por qué. Rellenar con los
+ * seguidores cambiaría la pregunta —"a cuántos podría llegar" en vez de "a
+ * cuántos llega"— y además el número exacto no viaja al catálogo: la vuelve
+ * encontrable con una búsqueda.
+ */
+function alcanceHTML(redes) {
+  const lista = (redes || []).filter(r => r.red);
+  if (!lista.length) return '';
+  const sinVistas = lista.every(r => !corto(r.vistas));
+
+  return `
+  <div class="grupo-num grupo-num--alcance">
+    <div class="grupo-num__cab">Alcance por red · vistas promedio</div>
+    <div class="grupo-num__cuerpo">
+      ${lista.map(r => `
+        <div class="red-fila">
+          <div class="red-fila__num">${corto(r.vistas) ? esc(corto(r.vistas)) : '—'}</div>
+          <div class="red-fila__pie">
+            <span class="red-fila__red">${esc(NOMBRE_RED[r.red] || r.red)}</span>
+            ${r.tier ? `<span class="tier-pastilla">${esc(NOMBRE_TIER[r.tier] || r.tier)}</span>` : ''}
+          </div>
+        </div>`).join('')}
+    </div>
+    ${sinVistas ? `<div class="grupo-num__nota">Todavía no ha cargado sus vistas promedio.
+      El nivel de cada red sale de sus seguidores.</div>` : ''}
+  </div>`;
+}
+
+/**
+ * Su audiencia, en barra y no en cifra suelta.
+ *
+ * "79%" no dice por sí solo si es mucho; la barra sí, y de un vistazo. El
+ * aria-label repite la frase completa porque el color solo no comunica.
+ */
+function audienciaHTML(f) {
+  const filas = [
+    f.audiencia_mujeres != null
+      ? { pct: f.audiencia_mujeres, label: 'Mujeres',
+          frase: `${f.audiencia_mujeres}% de su audiencia son mujeres` }
+      : null,
+    f.audiencia_pais != null
+      ? { pct: f.audiencia_pais, label: 'En su país',
+          frase: `${f.audiencia_pais}% de su audiencia está en su país` }
+      : null,
+  ].filter(Boolean);
+  if (!filas.length) return '';
+
+  return `
+  <div class="grupo-num grupo-num--audiencia">
+    <div class="grupo-num__cab">Su audiencia</div>
+    <div class="grupo-num__cuerpo">
+      ${filas.map(x => `
+        <div style="flex:1;min-width:150px">
+          <div class="num-medio">${Number(x.pct)}%</div>
+          <div class="metrica__label">${esc(x.label)}</div>
+          <div class="barra" role="img" aria-label="${esc(x.frase)}">
+            <div class="barra__lleno" style="width:${Math.min(100, Math.max(0, Number(x.pct)))}%"></div>
+          </div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+/**
+ * Cómo trabaja: el engagement y lo que tarda en entregar.
+ *
+ * El engagement va invertido —lima sobre negro— porque es la única cifra del
+ * grupo que la marca compara entre creadoras, y por eso tiene que ser la
+ * primera que ve.
+ */
+function comoTrabajaHTML(f) {
+  // Si no hay ninguno de los dos, el grupo entero no se pinta. Un recuadro con
+  // dos guiones no dice "todavía no lo sabemos", dice "aquí no hay nada" — y
+  // queda justo donde la marca está decidiendo si paga.
+  //
+  // Hoy esto oculta el grupo en TODAS las creadoras: ninguna tiene engagement
+  // ni días de entrega cargados.
+  if (f.engagement_pct == null && !f.dias_entrega) return '';
+
+  // La celda se invierte solo si hay cifra. Un recuadro negro alrededor de un
+  // guion es peso visual para decir "no sabemos": llama la atención hacia el
+  // único sitio donde no hay nada que mirar.
+  const hayEng = f.engagement_pct != null;
+  return `
+  <div class="grupo-num grupo-num--trabajo">
+    <div class="grupo-num__cab">Cómo trabaja</div>
+    <div class="grupo-num__cuerpo">
+      <div class="${hayEng ? 'celda-eng' : ''}">
+        <div class="num-medio">${hayEng ? Number(f.engagement_pct) + '%' : '—'}</div>
+        <div class="metrica__label">Engagement</div>
+      </div>
+      <div>
+        <div class="num-medio">${f.dias_entrega ? Number(f.dias_entrega) + ' días' : '—'}</div>
+        <div class="metrica__label">Entrega promedio</div>
+      </div>
+    </div>
+  </div>`;
+}
+
 async function vistaFicha(c) {
   c.innerHTML = '<p class="p">Cargando…</p>';
   try {
@@ -213,6 +339,47 @@ async function vistaFicha(c) {
   const ms = FICHA.muestras || [];
   const elegida = tarifas.find(t => t.entregable === TARIFA_SEL);
 
+  // Los tres grupos juntos. Si ninguno tiene datos, el título "Sus números"
+  // tampoco se pinta: un encabezado sin nada debajo se lee como algo roto.
+  const numeros = alcanceHTML(FICHA.redes) + audienciaHTML(FICHA) + comoTrabajaHTML(FICHA);
+
+  /**
+   * El pie del panel: qué eligió, cuánto cobra ella, cuánto cobramos nosotros
+   * y el total.
+   *
+   * Va aparte porque se repinta solo al cambiar de entregable, sin volver a
+   * pedir la ficha. El desglose se muestra completo a propósito: la comisión
+   * escondida dentro de un total es la clase de sorpresa que hace que una
+   * marca no vuelva.
+   */
+  function pieHTML(el) {
+    const pct = Number(E.cfg.comision_marca_pct ?? 12);
+    return `
+      <div class="panel-pie__elegiste">Elegiste</div>
+      ${el
+        ? `<span class="panel-pie__pastilla">${esc(nombreEntregable(el.entregable))}</span>
+           <div class="panel-pie__linea">
+             <span>Su tarifa</span><span>${COP(el.precio)}</span>
+           </div>
+           <div class="panel-pie__linea panel-pie__linea--comision">
+             <span>Comisión plataforma ${pct}%</span>
+             <span>${COP(totalConComision(el.precio) - Number(el.precio))}</span>
+           </div>`
+        : `<div class="etiqueta" style="color:var(--chip-dark-text)">Escoge un entregable</div>`}
+
+      <div class="panel-pie__caja-total">
+        <div class="etiqueta" style="color:var(--chip-dark-text)">Total que tú pagas</div>
+        <div class="panel-pie__total" id="total-ficha" aria-live="polite">
+          ${el ? COP(totalConComision(el.precio)) : '—'}
+        </div>
+      </div>
+
+      <button class="btn btn--magenta" style="width:100%;margin-top:14px" id="abrir-propuesta"
+              ${el ? '' : 'disabled'}>Enviar propuesta →</button>
+      <div class="panel-pie__nota">No se cobra nada hasta que ella acepte.
+        Gasta 1 propuesta de tu plan.</div>`;
+  }
+
   c.innerHTML = `
   <div class="ficha">
     <div class="ficha__col">
@@ -244,101 +411,145 @@ async function vistaFicha(c) {
       ${paquetesHTML(FICHA.paquetes, E.cfg.entregables)}
 
       <div class="h-sec" style="margin:26px 0 4px">Su trabajo</div>
-      <div class="etiqueta" style="margin-bottom:12px">${ms.length} pieza${ms.length === 1 ? '' : 's'} publicadas</div>
-      ${ms.length ? `
-        <div class="obra">
-          <div class="obra__princ">${pieza(ms[0])}</div>
-          <div class="obra__lado">
-            <div>${pieza(ms[1])}</div>
-            <div>${pieza(ms[2])}</div>
-          </div>
-        </div>` : '<p class="p">Todavía no ha subido piezas.</p>'}
+      <div class="etiqueta" style="margin-bottom:12px">
+        ${ms.length === 1 ? '1 pieza publicada' : `${ms.length} piezas publicadas`}
+      </div>
+      ${obraHTML(ms)}
 
+      ${numeros ? `
       <div class="h-sec" style="margin:30px 0 4px">Sus números</div>
       <div class="etiqueta" style="margin-bottom:12px">
         ${FICHA.fuente_metricas === 'verificado' ? 'Conectados a sus cuentas' : 'Declarados por ella'}
       </div>
-
-      <div class="grupo-num">
-        <div class="grupo-num__cab">Alcance por red</div>
-        <div class="grupo-num__cuerpo">
-          <div>
-            <div class="num-grande">${esc(FICHA.rango_instagram || '—')}</div>
-            <div class="metrica__label">Instagram</div>
-          </div>
-          <div>
-            <div class="num-grande">${esc(FICHA.rango_tiktok || '—')}</div>
-            <div class="metrica__label">TikTok</div>
-          </div>
-        </div>
-      </div>
-
-      ${(FICHA.audiencia_mujeres || FICHA.audiencia_pais) ? `
-      <div class="grupo-num">
-        <div class="grupo-num__cab">Su audiencia</div>
-        <div class="grupo-num__cuerpo">
-          ${FICHA.audiencia_mujeres ? `<div><div class="num-medio">${FICHA.audiencia_mujeres}%</div>
-            <div class="metrica__label">Mujeres</div></div>` : ''}
-          ${FICHA.audiencia_pais ? `<div><div class="num-medio">${FICHA.audiencia_pais}%</div>
-            <div class="metrica__label">En su país</div></div>` : ''}
-        </div>
-      </div>` : ''}
-
-      <div class="grupo-num">
-        <div class="grupo-num__cab">Cómo trabaja</div>
-        <div class="grupo-num__cuerpo">
-          <div><div class="num-medio">${FICHA.engagement_pct != null ? FICHA.engagement_pct + '%' : '—'}</div>
-               <div class="metrica__label">Engagement</div></div>
-          <div><div class="num-medio">${FICHA.dias_entrega ? FICHA.dias_entrega + ' días' : '—'}</div>
-               <div class="metrica__label">Entrega promedio</div></div>
-        </div>
-      </div>
+      ${numeros}` : ''}
     </div>
 
-    <aside class="ficha__panel">
-      <div class="bloque__cab" style="border-bottom:2px solid var(--ink)">Sus tarifas</div>
-      <div id="tarifas-lista">
-        ${(E.cfg.entregables || []).map(ent => {
-          const t = tarifas.find(x => x.entregable === ent.clave);
-          if (!t) return `
-            <div class="tarifa-op off">
-              <div>
-                <div class="tarifa-op__nom">${esc(ent.nombre)}</div>
-                <div class="tarifa-op__det">No lo ofrece</div>
-              </div>
-              <div class="tarifa-op__monto">—</div>
-            </div>`;
-          return `
-            <button class="tarifa-op ${TARIFA_SEL === ent.clave ? 'on' : ''}" data-tarifa="${ent.clave}">
-              <div>
-                <div class="tarifa-op__nom">${esc(ent.nombre)}</div>
-                <div class="tarifa-op__det">${esc(ent.subtitulo || '')}</div>
-              </div>
-              <div class="tarifa-op__monto">${COP(t.precio)}</div>
-            </button>`;
-        }).join('')}
+    <aside class="ficha__lado">
+      <div class="ficha__panel">
+        <div class="bloque__cab" style="border-bottom:2px solid var(--ink);display:flex;
+             justify-content:space-between;gap:10px">
+          <span>Sus tarifas</span>
+          <span style="color:var(--text-3)">${tarifas.length} de ${(E.cfg.entregables || []).length}</span>
+        </div>
+        <div id="tarifas-lista" role="radiogroup" aria-label="Entregables de ${esc(FICHA.nombre_publico)}">
+          ${(E.cfg.entregables || []).map(ent => {
+            const t = tarifas.find(x => x.entregable === ent.clave);
+            if (!t) return `
+              <div class="tarifa-op off" aria-disabled="true">
+                <div>
+                  <div class="tarifa-op__nom">${esc(ent.nombre)}</div>
+                  <div class="tarifa-op__det">No lo ofrece</div>
+                </div>
+                <div class="tarifa-op__monto">—</div>
+              </div>`;
+            const on = TARIFA_SEL === ent.clave;
+            return `
+              <button class="tarifa-op ${on ? 'on' : ''}" data-tarifa="${ent.clave}"
+                      role="radio" aria-checked="${on}" tabindex="${on ? '0' : '-1'}">
+                <div>
+                  <div class="tarifa-op__nom">${esc(ent.nombre)}</div>
+                  <div class="tarifa-op__det">${esc(ent.subtitulo || '')}</div>
+                </div>
+                <div class="tarifa-op__monto">${COP(t.precio)}</div>
+              </button>`;
+          }).join('')}
+        </div>
+
+        <div class="panel-pie" id="panel-pie">${pieHTML(elegida)}</div>
       </div>
 
-      <div class="panel-pie">
-        <div class="etiqueta" style="color:var(--chip-dark-text)">
-          ${elegida ? esc(nombreEntregable(elegida.entregable)) : 'Escoge un entregable'}
-        </div>
-        <div class="panel-pie__total" id="total-ficha">
-          ${elegida ? COP(totalConComision(elegida.precio)) : '—'}
-        </div>
-        <div class="etiqueta" style="color:var(--chip-dark-text)">Total a pagar, comisión incluida</div>
-        <button class="btn btn--lima" style="width:100%;margin-top:14px" id="abrir-propuesta"
-                ${elegida ? '' : 'disabled'}>Enviar propuesta</button>
-        <div class="panel-pie__nota">No se cobra nada hasta que ella acepte</div>
+      <div class="tambien">
+        <button class="tambien__btn" id="ficha-campana">Invitarla a una campaña</button>
+        <button class="tambien__btn tambien__btn--suave ${esPre(FICHA.id) ? 'on' : ''}"
+                id="ficha-preselec">
+          ${esPre(FICHA.id) ? '✓ En preseleccionadas' : 'Guardar en preseleccionadas'}
+        </button>
+        <p class="tambien__nota">Guardar no gasta propuesta. Invitarla a una campaña sí.</p>
       </div>
     </aside>
   </div>`;
 
   $('volver-cat').addEventListener('click', () => ir('catalogo'));
-  c.querySelectorAll('[data-tarifa]').forEach(b => {
-    b.addEventListener('click', () => { TARIFA_SEL = b.dataset.tarifa; vistaFicha(c); });
+
+  const opciones = [...c.querySelectorAll('[data-tarifa]')];
+
+  /**
+   * Repinta la selección sin volver a pedir la ficha.
+   *
+   * Antes cada clic en una tarifa rehacía `vistaFicha`, que vuelve a llamar al
+   * servidor solo para cambiar un número que ya teníamos. Además el aria-live
+   * no anunciaba nada: el nodo entero se reemplazaba en vez de cambiar, que es
+   * justo lo que un lector de pantalla no reporta.
+   */
+  const pintarSeleccion = () => {
+    const el = tarifas.find(t => t.entregable === TARIFA_SEL);
+    opciones.forEach(b => {
+      const on = b.dataset.tarifa === TARIFA_SEL;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-checked', String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
+    $('panel-pie').innerHTML = pieHTML(el);
+    $('abrir-propuesta').addEventListener('click', () => abrirPropuesta(FICHA, el));
+  };
+
+  opciones.forEach((b, i) => {
+    b.addEventListener('click', () => { TARIFA_SEL = b.dataset.tarifa; pintarSeleccion(); });
+    // Un grupo de radio se recorre con las flechas, no con tabulador: el
+    // tabulador entra y sale del grupo completo.
+    b.addEventListener('keydown', (ev) => {
+      const paso = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[ev.key];
+      if (!paso) return;
+      ev.preventDefault();
+      const sig = opciones[(i + paso + opciones.length) % opciones.length];
+      TARIFA_SEL = sig.dataset.tarifa;
+      pintarSeleccion();
+      sig.focus();
+    });
   });
+
   $('abrir-propuesta').addEventListener('click', () => abrirPropuesta(FICHA, elegida));
+
+  // Invitarla a una campaña: no se manda nada desde aquí —eso gasta propuesta y
+  // se decide en el flujo de cupos—, pero antes de salir se la deja guardada.
+  // Sin eso, salir de la ficha la pierde y hay que volver a buscarla.
+  $('ficha-campana').addEventListener('click', async (ev) => {
+    const b = ev.currentTarget;
+    b.disabled = true;
+    try {
+      if (!esPre(FICHA.id)) {
+        E.triage = await api('/triage', {
+          method: 'POST',
+          body: JSON.stringify({ creadora_id: FICHA.id, decision: 'preseleccionada' }),
+        });
+      }
+    } catch (_) {
+      // Que no se pueda guardar no puede impedirle llegar a sus campañas.
+    }
+    b.disabled = false;
+    if (typeof abrirCampanaCon === 'function') return abrirCampanaCon([FICHA]);
+    ir('campanas');
+  });
+
+  // Guardar no gasta nada y es reversible: se marca en el momento, sin
+  // confirmación ni salir de la ficha.
+  $('ficha-preselec').addEventListener('click', async (ev) => {
+    const b = ev.currentTarget;
+    b.disabled = true;
+    try {
+      E.triage = await api('/triage', {
+        method: 'POST',
+        body: JSON.stringify({ creadora_id: FICHA.id, decision: 'preseleccionada' }),
+      });
+      const dentro = esPre(FICHA.id);
+      b.classList.toggle('on', dentro);
+      b.textContent = dentro ? '✓ En preseleccionadas' : 'Guardar en preseleccionadas';
+    } catch (e) {
+      alert('No se pudo guardar: ' + e.message);
+    } finally {
+      b.disabled = false;
+    }
+  });
 }
 
 /** La comisión de la marca se suma al monto: es lo que de verdad va a pagar. */
