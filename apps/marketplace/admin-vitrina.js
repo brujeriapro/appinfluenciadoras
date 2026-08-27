@@ -79,16 +79,56 @@ router.delete('/colecciones/:id', async (req, res) => {
   }
 });
 
-/** Reemplaza la lista de creadoras de una colección. El orden es el contenido. */
+/**
+ * Reemplaza la lista de creadoras de una colección. El orden es el contenido.
+ *
+ * Acepta códigos (C-0316) además de ids. Nadie arma una colección pegando
+ * ocho UUID: el código es lo que está impreso en la tarjeta del catálogo y en
+ * la tabla de creadoras, así que es lo que la persona tiene a mano.
+ *
+ * Los códigos que no existen se devuelven en la respuesta en vez de ignorarse.
+ * Una colección a la que le faltan tres perfiles y nadie avisó es peor que un
+ * error: se publica incompleta y se descubre semanas después.
+ */
 router.put('/colecciones/:id/creadoras', async (req, res) => {
   try {
-    const ids = Array.isArray(req.body.creadora_ids) ? req.body.creadora_ids : [];
+    const entrada = Array.isArray(req.body.creadora_ids) ? req.body.creadora_ids : [];
+    const { ids, noEncontrados } = await resolverCreadoras(entrada);
+
     await db.ponerCreadorasEnColeccion(req.params.id, ids);
-    res.json({ ok: true, total: ids.length });
+    res.json({ ok: true, total: ids.length, no_encontrados: noEncontrados });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
+
+/** Un UUID se reconoce por su forma; lo demás se busca como código. */
+const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function resolverCreadoras(entrada = []) {
+  const limpias = entrada.map(x => String(x).trim()).filter(Boolean);
+  const codigos = limpias.filter(x => !ES_UUID.test(x));
+
+  let porCodigo = new Map();
+  if (codigos.length) {
+    const filas = await db.get('mk_creadoras', {
+      select: 'id,codigo',
+      codigo: `in.(${codigos.map(c => c.toUpperCase()).join(',')})`,
+    });
+    porCodigo = new Map(filas.map(f => [String(f.codigo).toUpperCase(), f.id]));
+  }
+
+  const ids = [];
+  const noEncontrados = [];
+  for (const x of limpias) {
+    if (ES_UUID.test(x)) { ids.push(x); continue; }
+    const id = porCodigo.get(x.toUpperCase());
+    id ? ids.push(id) : noEncontrados.push(x);
+  }
+  // Sin repetidos: la tabla tiene un único por (colección, creadora) y un
+  // código pegado dos veces reventaría la inserción entera.
+  return { ids: [...new Set(ids)], noEncontrados };
+}
 
 // ── Destacado del hero ──────────────────────────────────────────────────────
 

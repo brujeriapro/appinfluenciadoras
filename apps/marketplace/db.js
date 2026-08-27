@@ -797,10 +797,25 @@ async function getColecciones({ soloActivas = true } = {}) {
     order: 'orden.asc',
   });
 
-  return cols.map(c => ({
-    ...c,
-    creadora_ids: items.filter(i => i.coleccion_id === c.id).map(i => i.creadora_id),
-  }));
+  // Se devuelven también los códigos: son lo que la persona ve y edita en el
+  // panel. Sin esto habría que traducir en el navegador, que no tiene la tabla.
+  const ids = [...new Set(items.map(i => i.creadora_id))];
+  const codigos = new Map();
+  if (ids.length) {
+    const filas = await get('mk_creadoras', {
+      select: 'id,codigo', id: `in.(${ids.join(',')})`,
+    });
+    filas.forEach(f => codigos.set(f.id, f.codigo));
+  }
+
+  return cols.map(c => {
+    const suyos = items.filter(i => i.coleccion_id === c.id).map(i => i.creadora_id);
+    return {
+      ...c,
+      creadora_ids: suyos,
+      codigos: suyos.map(id => codigos.get(id)).filter(Boolean),
+    };
+  });
 }
 
 const getColeccion = (id) => getUno('mk_coleccion', { id: `eq.${id}`, select: '*' });

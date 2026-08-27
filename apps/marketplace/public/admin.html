@@ -166,6 +166,18 @@
   .error { color: var(--magenta); font-size: 11.5px; margin-top: 10px; }
 
   .oculto { display: none !important; }
+
+  /* Texto de apoyo: explica por qué existe un control, sin competir con él. */
+  .nota { font-size: 11px; line-height: 1.6; color: var(--grey-700); margin: 6px 0 12px; }
+  /* Una fila de controles que se apila sola cuando no cabe. */
+  .fila-controles { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .fila-controles input, .fila-controles select {
+    background: var(--surface-2); border: 1px solid var(--border-input); color: var(--off-white);
+    font-family: var(--mono-body); font-size: 11.5px; padding: 7px 9px;
+  }
+  textarea { background: var(--surface-2); border: 1px solid var(--border-input);
+             color: var(--off-white); font-family: var(--mono-body); font-size: 11.5px;
+             padding: 7px 9px; resize: vertical; }
   .chips { display: flex; gap: 5px; flex-wrap: wrap; }
   .chip { font-size: 10.5px; padding: 2px 6px; background: var(--border-dark); color: var(--grey-500); }
   .chip.on { background: var(--lime); color: var(--ink); cursor: pointer; }
@@ -207,6 +219,7 @@
       <button class="tab" data-vista="marcas">Marcas</button>
       <button class="tab" data-vista="bloqueadas">No pueden entrar</button>
       <button class="tab" data-vista="metricas">Verificar métricas</button>
+      <button class="tab" data-vista="vitrina">Vitrina</button>
       <button class="tab" data-vista="invitaciones">Invitaciones</button>
       <button class="tab" data-vista="ajustes">Ajustes</button>
     </div>
@@ -327,6 +340,9 @@ async function ir(vista) {
   }
 }
 const recargar = () => ir(vistaActual);
+
+/** El API de la vitrina cuelga de /api/admin/vitrina. */
+const apiVit = (ruta, op) => api('/vitrina' + ruta, op);
 
 // ── Vista: Resumen ──────────────────────────────────────────────────────────
 
@@ -1685,6 +1701,305 @@ VISTAS.invitaciones = async () => {
 };
 
 // ── Vista: Ajustes ──────────────────────────────────────────────────────────
+
+// ── Vista: Vitrina ──────────────────────────────────────────────────────────
+//
+// Donde el equipo arma a mano lo que la marca ve al entrar: la selección
+// curada de cada marca, las colecciones del home y la pieza del hero.
+//
+// Es la pantalla que sostiene la promesa "seleccionadas por nuestro equipo".
+// El sistema propone; acá alguien decide. Por eso las razones se editan en un
+// campo de texto y no se muestran como texto fijo: si nadie las puede tocar,
+// no las firmó nadie.
+
+let VIT = { marcaId: null, propuesta: null, items: [], colecciones: [] };
+
+VISTAS.vitrina = async () => {
+  const [marcas, colecciones, destacado] = await Promise.all([
+    api('/marcas'),
+    apiVit('/colecciones'),
+    apiVit('/destacado').catch(() => null),
+  ]);
+  VIT.colecciones = colecciones;
+
+  contenido().innerHTML = `
+    <div class="seccion-titulo">Selección para una marca</div>
+    <p class="nota">Se le promete a la marca en menos de 24 horas. El sistema propone
+    a partir de lo que ella marcó con ✓ y ✕; vos ajustás las razones y publicás.</p>
+
+    <div class="fila-controles">
+      <select id="vit-marca">
+        <option value="">Elegir marca…</option>
+        ${marcas.map(m => `<option value="${m.id}">${esc(m.nombre_empresa || m.email)}</option>`).join('')}
+      </select>
+      <input id="vit-cuantas" type="number" min="3" max="12" value="8" style="width:70px">
+      <button class="btn-mini" id="vit-proponer">Proponer</button>
+    </div>
+    <div id="vit-seleccion"></div>
+
+    <div class="seccion-titulo" style="margin-top:34px">Colecciones del home</div>
+    <p class="nota">Filas del home, armadas a mano. El sistema no las genera: lo que
+    hace que una vitrina valga es que alguien eligió.</p>
+    <div id="vit-colecciones"></div>
+
+    <div class="seccion-titulo" style="margin-top:34px">Pieza del hero</div>
+    <p class="nota">Lo primero que ve una marca al entrar. Se pega el id de una pieza
+    del catálogo — la calidad entra por los ojos antes que cualquier ficha.</p>
+    <div class="fila-controles">
+      <input id="vit-pieza" placeholder="id de la pieza" style="min-width:320px">
+      <input id="vit-titulo" placeholder="Título (opcional)" style="min-width:220px">
+      <button class="btn-mini" id="vit-destacar">Destacar</button>
+    </div>
+    <div id="vit-destacado">${destacadoHTML(destacado)}</div>`;
+
+  pintarColecciones();
+
+  $('vit-proponer').addEventListener('click', proponerSeleccion);
+  $('vit-destacar').addEventListener('click', destacarPieza);
+};
+
+function destacadoHTML(d) {
+  if (!d) return '<div class="vacio" style="padding:14px">Todavía no hay pieza destacada.</div>';
+  return `<div class="aviso aviso--ok">
+    Destacada: <strong>${esc(d.titulo || 'sin título')}</strong> ·
+    ${esc(d.creadora?.nombre_publico || '—')} (${esc(d.creadora?.codigo || '')})
+  </div>`;
+}
+
+async function destacarPieza() {
+  const muestra_id = $('vit-pieza').value.trim();
+  if (!muestra_id) return;
+  try {
+    await apiVit('/destacado', {
+      method: 'POST',
+      body: JSON.stringify({ muestra_id, titulo: $('vit-titulo').value.trim() || null }),
+    });
+    $('vit-destacado').innerHTML = destacadoHTML(await apiVit('/destacado'));
+  } catch (e) {
+    $('vit-destacado').innerHTML = `<div class="aviso">${esc(e.message)}</div>`;
+  }
+}
+
+// ── Selección ───────────────────────────────────────────────────────────────
+
+async function proponerSeleccion() {
+  const marcaId = $('vit-marca').value;
+  if (!marcaId) return;
+  VIT.marcaId = marcaId;
+
+  const caja = $('vit-seleccion');
+  caja.innerHTML = '<div class="vacio">Armando la propuesta…</div>';
+  try {
+    const cuantas = Number($('vit-cuantas').value) || 8;
+    const [prop, guardada] = await Promise.all([
+      apiVit(`/seleccion/${marcaId}/propuesta?cuantas=${cuantas}`),
+      apiVit(`/seleccion/${marcaId}`).catch(() => ({})),
+    ]);
+    VIT.propuesta = prop;
+
+    // Si ya había un borrador, manda ese: alguien ya escribió esas razones y
+    // pisarlas con una propuesta nueva sería tirar su trabajo.
+    const previo = guardada?.borrador?.items || [];
+    VIT.items = previo.length
+      ? previo.map(i => ({ ...i, nombre_publico: nombreDe(prop, i.creadora_id) }))
+      : prop.seleccion.map(s => ({
+          creadora_id: s.creadora_id,
+          nombre_publico: s.nombre_publico,
+          codigo: s.codigo,
+          puntaje: s.puntaje,
+          razon: s.razon || '',
+          razon_sugerida: s.razon || null,
+        }));
+
+    pintarSeleccion(prop, previo.length > 0, guardada?.publicada);
+  } catch (e) {
+    caja.innerHTML = `<div class="aviso">${esc(e.message)}</div>`;
+  }
+}
+
+const nombreDe = (prop, id) =>
+  (prop.seleccion.find(s => s.creadora_id === id) || {}).nombre_publico || '';
+
+function pintarSeleccion(prop, esBorrador, publicada) {
+  const b = prop.busca || prop.marca?.busca || {};
+  const dijo = [b.que_vende, b.canal, b.tipo, b.presupuesto ? COP(b.presupuesto) : null]
+    .filter(Boolean).join(' · ');
+
+  $('vit-seleccion').innerHTML = `
+    <div class="aviso ${prop.sabe ? 'aviso--ok' : ''}">${esc(prop.nota)}</div>
+    ${dijo ? `<p class="nota">En el registro dijo: ${esc(dijo)}</p>`
+           : '<p class="nota">Esta marca no respondió las preguntas del registro.</p>'}
+    ${esBorrador ? '<p class="nota">Se cargó el borrador que ya existía, no la propuesta nueva.</p>' : ''}
+    ${publicada ? `<p class="nota">Ya tiene una selección publicada con ${publicada.items.length} creadoras. Publicar otra la reemplaza.</p>` : ''}
+
+    <div class="tabla-wrap"><table>
+      <thead><tr><th>Creadora</th><th style="width:55%">Por qué ella</th><th></th></tr></thead>
+      <tbody>${VIT.items.map((it, i) => `
+        <tr>
+          <td>
+            <div style="font-weight:700">${esc(it.nombre_publico || '—')}</div>
+            <div class="nota">${esc(it.codigo || '')}${
+              it.puntaje ? ' · afinidad ' + it.puntaje : ''}</div>
+          </td>
+          <td>
+            <textarea data-razon="${i}" rows="2" style="width:100%"
+              placeholder="Por qué se la proponemos a esta marca">${esc(it.razon || '')}</textarea>
+          </td>
+          <td><button class="btn-mini btn-mini--ghost" data-quitar="${i}">Quitar</button></td>
+        </tr>`).join('')}
+      </tbody></table></div>
+
+    <div class="fila-controles" style="margin-top:12px">
+      <button class="btn-mini btn-mini--ghost" id="vit-guardar">Guardar borrador</button>
+      <button class="btn-mini" id="vit-publicar">Publicar y avisar</button>
+      <span class="nota" id="vit-estado"></span>
+    </div>`;
+
+  $('vit-seleccion').querySelectorAll('[data-razon]').forEach(t => {
+    t.addEventListener('input', () => { VIT.items[Number(t.dataset.razon)].razon = t.value; });
+  });
+  $('vit-seleccion').querySelectorAll('[data-quitar]').forEach(b => {
+    b.addEventListener('click', () => {
+      VIT.items.splice(Number(b.dataset.quitar), 1);
+      pintarSeleccion(prop, esBorrador, publicada);
+    });
+  });
+  $('vit-guardar').addEventListener('click', () => guardarSeleccion(false));
+  $('vit-publicar').addEventListener('click', () => guardarSeleccion(true));
+}
+
+/**
+ * Guarda y, si se pide, publica.
+ *
+ * Se guarda SIEMPRE antes de publicar: publicar lee de la base, así que sin
+ * guardar primero se publicaría lo anterior y el texto que la persona acaba de
+ * escribir se perdería sin decir nada.
+ */
+async function guardarSeleccion(publicar) {
+  const estado = $('vit-estado');
+  if (!VIT.items.length) { estado.textContent = 'La selección quedó vacía.'; return; }
+
+  estado.textContent = 'Guardando…';
+  try {
+    await apiVit(`/seleccion/${VIT.marcaId}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        items: VIT.items,
+        decisiones_al_armar: VIT.propuesta?.evaluadas || 0,
+      }),
+    });
+
+    if (!publicar) { estado.textContent = 'Borrador guardado.'; return; }
+
+    const r = await apiVit(`/seleccion/${VIT.marcaId}/publicar`, { method: 'POST' });
+    estado.textContent = `Publicada: ${r.publicadas} creadoras. Se le avisó por correo.`;
+  } catch (e) {
+    estado.textContent = e.message;
+  }
+}
+
+// ── Colecciones ─────────────────────────────────────────────────────────────
+
+const COLORES = [
+  { hex: '#D6FF00', nombre: 'Lima' },
+  { hex: '#FF2E9A', nombre: 'Magenta' },
+  { hex: '#2323F0', nombre: 'Azul' },
+];
+
+function pintarColecciones() {
+  $('vit-colecciones').innerHTML = `
+    <div class="tabla-wrap"><table>
+      <thead><tr><th>Colección</th><th>Descripción</th><th>Creadoras</th><th>Color</th><th></th></tr></thead>
+      <tbody>
+        ${VIT.colecciones.map(c => `
+          <tr>
+            <td><strong>${esc(c.nombre)}</strong>${c.activa ? '' : ' <span class="nota">(apagada)</span>'}</td>
+            <td class="nota">${esc(c.descripcion || '—')}</td>
+            <td>
+              <input data-ids="${c.id}" value="${esc((c.codigos || []).join(', '))}"
+                     placeholder="C-0316, C-0383…" style="width:100%;font-size:11px">
+            </td>
+            <td><span style="display:inline-block;width:26px;height:10px;background:${esc(c.color)}"></span></td>
+            <td>
+              <button class="btn-mini btn-mini--ghost" data-guardar-col="${c.id}">Guardar</button>
+              <button class="btn-mini btn-mini--ghost" data-apagar="${c.id}">${c.activa ? 'Apagar' : 'Prender'}</button>
+            </td>
+          </tr>`).join('') || '<tr><td colspan="5" class="vacio">Todavía no hay colecciones.</td></tr>'}
+      </tbody></table></div>
+
+    <div class="fila-controles" style="margin-top:12px">
+      <input id="col-nombre" placeholder="Nombre de la colección" style="min-width:230px">
+      <input id="col-desc" placeholder="Descripción corta" style="min-width:280px">
+      <select id="col-color">
+        ${COLORES.map(c => `<option value="${c.hex}">${c.nombre}</option>`).join('')}
+      </select>
+      <button class="btn-mini" id="col-crear">Crear</button>
+      <span class="nota" id="col-estado"></span>
+    </div>`;
+
+  $('col-crear').addEventListener('click', crearColeccion);
+  $('vit-colecciones').querySelectorAll('[data-guardar-col]').forEach(b => {
+    b.addEventListener('click', () => guardarCreadorasDe(b.dataset.guardarCol));
+  });
+  $('vit-colecciones').querySelectorAll('[data-apagar]').forEach(b => {
+    b.addEventListener('click', () => alternarColeccion(b.dataset.apagar));
+  });
+}
+
+async function crearColeccion() {
+  const nombre = $('col-nombre').value.trim();
+  if (!nombre) return;
+  try {
+    await apiVit('/colecciones', {
+      method: 'POST',
+      body: JSON.stringify({
+        nombre,
+        descripcion: $('col-desc').value.trim() || null,
+        color: $('col-color').value,
+        orden: VIT.colecciones.length,
+      }),
+    });
+    VIT.colecciones = await apiVit('/colecciones');
+    pintarColecciones();
+  } catch (e) {
+    $('col-estado').textContent = e.message;
+  }
+}
+
+async function guardarCreadorasDe(id) {
+  const campo = $('vit-colecciones').querySelector(`[data-ids="${id}"]`);
+  const ids = campo.value.split(',').map(x => x.trim()).filter(Boolean);
+  try {
+    const r = await apiVit(`/colecciones/${id}/creadoras`, {
+      method: 'PUT',
+      body: JSON.stringify({ creadora_ids: ids }),
+    });
+    VIT.colecciones = await apiVit('/colecciones');
+    pintarColecciones();
+    // Se avisa de los que no existen. Una colección a la que le faltan tres
+    // perfiles y nadie dijo nada se publica incompleta y se descubre semanas
+    // después.
+    $('col-estado').textContent = r.no_encontrados?.length
+      ? `Guardada, pero no existen: ${r.no_encontrados.join(', ')}`
+      : `Guardada: ${r.total} creadoras.`;
+  } catch (e) {
+    $('col-estado').textContent = e.message;
+  }
+}
+
+async function alternarColeccion(id) {
+  const c = VIT.colecciones.find(x => x.id === id);
+  try {
+    await apiVit(`/colecciones/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ activa: !c.activa }),
+    });
+    VIT.colecciones = await apiVit('/colecciones');
+    pintarColecciones();
+  } catch (e) {
+    $('col-estado').textContent = e.message;
+  }
+}
 
 VISTAS.ajustes = async () => {
   const cfg = await api('/config');
