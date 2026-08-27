@@ -48,9 +48,19 @@ app.use((req, res, next) => {
   const host = String(req.hostname || req.headers.host || '').toLowerCase();
   if (!host.startsWith('r.mail.')) return next();
 
-  // A la landing de invitación, no al portal: quien viene del correo no tiene
-  // cuenta todavía, y el login le pide un correo y una clave que no existen.
-  const destino = `${config.base_url}/invitacion.html`;
+  // Quien viene a recuperar su contraseña SÍ tiene cuenta, y mandarla a la
+  // landing de invitación le pierde el token: aterriza en una página que no
+  // sabe qué hacer con él, vuelve a pedir el enlace, y así.
+  //
+  // Es exactamente lo que pasó: 132 pedidos de recuperación en cuatro días y
+  // uno solo usado.
+  const token = req.query?.recuperar;
+  const destino = token
+    ? `${config.base_url}/creadora.html?recuperar=${encodeURIComponent(token)}`
+    // Sin token, a la landing de invitación: quien viene del correo de
+    // invitación no tiene cuenta todavía, y el login le pide un correo y una
+    // clave que no existen.
+    : `${config.base_url}/invitacion.html`;
   // 302 y no 301: es un arreglo temporal y un permanente se queda cacheado en
   // el navegador de la creadora aunque después lo revirtamos.
   res.redirect(302, destino);

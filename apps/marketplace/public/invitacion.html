@@ -144,6 +144,16 @@
 // salto al registro: si se pierde aquí, la creadora entra sin quedar atribuida
 // a nadie y su amiga no ve reflejada la invitación que usó.
 (function () {
+  // Red de seguridad: si alguien llega acá con un token de recuperación —por
+  // una redirección del proveedor de correo, o por un enlace viejo— se le
+  // manda al portal en vez de dejarla en una página que no sabe qué hacer con
+  // él. Antes eso terminaba en "pedí el enlace otra vez" para siempre.
+  var _rec = new URLSearchParams(location.search).get('recuperar')
+    || (location.hash.indexOf('#recuperar=') === 0 ? location.hash.slice(11) : null);
+  if (_rec) {
+    location.replace('/creadora.html?recuperar=' + encodeURIComponent(_rec));
+  }
+
   var ref = new URLSearchParams(location.search).get('ref');
   if (!ref) return;
 

@@ -700,9 +700,22 @@ function subirEnElCatalogo({ creadora, falta = [], codigoRef, cupos = 0 }) {
 }
 
 /** Enlace para volver a entrar. Sirve para creadoras y para marcas. */
+/**
+ * El enlace para volver a entrar.
+ *
+ * El token va en la QUERY y no en el fragmento (`?recuperar=` y no
+ * `#recuperar=`), y la diferencia no es cosmética: el fragmento nunca se manda
+ * al servidor, así que cualquier redirección en el camino lo puede perder sin
+ * que nada falle a la vista.
+ *
+ * Y hay redirecciones en el camino: los proveedores de correo reescriben los
+ * enlaces para contar clics, y este servicio tiene además un middleware que
+ * manda todo lo que llega por el dominio de rastreo a la landing de
+ * invitación. Con el token en la query sobrevive los dos saltos.
+ */
 function resetClave({ email, token, lado }) {
   const pagina = lado === 'marca' ? 'registro.html' : 'creadora.html';
-  const url = `${config.base_url}/${pagina}#recuperar=${token}`;
+  const url = `${config.base_url}/${pagina}?recuperar=${encodeURIComponent(token)}`;
   return enviar(
     email,
     'Recupera tu contraseña · Creators Manager',

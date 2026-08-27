@@ -1117,8 +1117,13 @@ fetch('/api/creadoras/paises')
 
 // El correo de recuperación trae el token en el ancla de la URL.
 let tokenReset = null;
-if (location.hash.startsWith('#recuperar=')) {
-  tokenReset = location.hash.slice('#recuperar='.length);
+// Se lee de la query y también del ancla: los correos nuevos traen el token en
+// `?recuperar=`, pero los enlaces ya enviados usan `#recuperar=` y siguen
+// sirviendo su hora de vida.
+const _tokenDeLaUrl = new URLSearchParams(location.search).get('recuperar')
+  || (location.hash.startsWith('#recuperar=') ? location.hash.slice('#recuperar='.length) : null);
+if (_tokenDeLaUrl) {
+  tokenReset = _tokenDeLaUrl;
   modo = 'recuperar';
   pintarModo();
 }
