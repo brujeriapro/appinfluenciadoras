@@ -705,6 +705,100 @@
     .maestro-detalle:not(.viendo-detalle) .detalle-propuesta { display: none; }
     .volver { display: inline-block; }
   }
+
+  /* ── Invitaciones a campañas ───────────────────────────────────────────────
+
+     En el lenguaje oscuro del portal, porque viven aquí. El lima es el color
+     de su dinero; el azul, de lo informativo; el gris, de lo cerrado — nunca
+     rojo, porque nada de esto es un castigo.                                */
+
+  .bloque-invitaciones { display: flex; flex-direction: column; gap: 14px; margin-bottom: 26px; }
+
+  .inv { border: 2px solid var(--magenta); background: var(--surface-2); padding: 20px; }
+  .inv--espera  { border-color: var(--blue); }
+  .inv--elegida { border-color: var(--lime); }
+  .inv--cerrada { border-color: var(--border-input); }
+
+  .inv__cab { display: flex; align-items: center; justify-content: space-between;
+              gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .inv__eyebrow { font-size: 9.5px; letter-spacing: 1.2px; text-transform: uppercase;
+                  color: var(--text-5); }
+  .inv__chip { font-family: var(--mono-title); font-weight: 700; font-size: 9.5px;
+               letter-spacing: 0.7px; text-transform: uppercase; padding: 5px 9px; }
+  .inv__chip--nueva   { background: var(--magenta); color: var(--ink); }
+  .inv__chip--espera  { background: var(--blue); color: #fff; }
+  .inv__chip--elegida { background: var(--lime); color: var(--ink); }
+  .inv__chip--cerrada { background: var(--border-input); color: var(--text-3); }
+
+  .inv__titulo { font-family: var(--mono-title); font-weight: 800; font-size: 19px;
+                 letter-spacing: -1px; text-transform: uppercase; margin: 0 0 12px;
+                 color: var(--off-white); line-height: 1.15; }
+  .inv__titulo--lima { color: var(--lime); }
+  .inv__texto { font-size: 12.5px; line-height: 1.7; color: var(--text-2); margin: 0 0 10px; }
+  .inv__texto--menor { font-size: 11.5px; color: var(--text-5); }
+
+  /* Los cupos van ARRIBA del brief y del dinero. Si esta advertencia queda al
+     final, se lee después de haber decidido. */
+  .inv__cupos { display: flex; align-items: center; gap: 16px;
+                background: var(--surface-3); border: 1px solid var(--magenta);
+                padding: 14px 16px; margin-bottom: 16px; }
+  .inv__cupos-num { font-family: var(--mono-title); font-weight: 800; font-size: 38px;
+                    letter-spacing: -2px; line-height: 1; color: var(--off-white); flex: none; }
+  .inv__cupos-txt { font-family: var(--mono-title); font-weight: 700; font-size: 12px;
+                    text-transform: uppercase; letter-spacing: -0.2px; color: var(--off-white); }
+  .inv__cupos-aviso { font-size: 11px; line-height: 1.6; color: var(--text-4); margin-top: 4px; }
+
+  .inv__brief { font-size: 12.5px; line-height: 1.75; color: var(--text-2);
+                border-left: 2px solid var(--border-input); padding-left: 14px; margin-bottom: 16px; }
+
+  .inv__condiciones { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                      gap: 1px; background: var(--border-1); margin-bottom: 16px; }
+  .inv__dato { background: var(--surface-2); padding: 10px 12px; }
+  .inv__dato-label { font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+                     color: var(--text-5); }
+  .inv__dato-valor { font-family: var(--mono-title); font-weight: 700; font-size: 11.5px;
+                     color: var(--off-white); margin-top: 4px; }
+
+  .inv__dinero { border: 1px solid var(--lime); padding: 14px 16px; margin-bottom: 16px; }
+  .inv__dinero-fila { display: flex; justify-content: space-between; align-items: baseline;
+                      gap: 12px; font-size: 12px; color: var(--text-4); padding: 4px 0; }
+  .inv__dinero-fila strong { font-family: var(--mono-title); font-weight: 700;
+                             color: var(--off-white); }
+  .inv__resta { color: var(--magenta) !important; }
+  .inv__neto { background: var(--lime); color: var(--ink); padding: 12px 14px; margin-top: 10px; }
+  .inv__neto-label { font-size: 9.5px; letter-spacing: 1.1px; text-transform: uppercase; }
+  .inv__neto-valor { font-family: var(--mono-title); font-weight: 800; font-size: 28px;
+                     letter-spacing: -1.8px; line-height: 1.1; }
+  /* El pie es la mitad del mensaje: el neto es condicional. */
+  .inv__neto-pie { font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; }
+
+  .inv__acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+  .inv__acciones .btn-portal { flex: 1; min-width: 150px; }
+  /* El botón fantasma del portal está pensado para fondo claro: sobre esta
+     tarjeta oscura su texto queda casi invisible. Acá va con borde y texto
+     claros — y sin llamar la atención, porque pasar es una opción legítima
+     pero no la que se está proponiendo. */
+  .inv__acciones .btn-portal--ghost {
+    background: transparent; border-color: var(--border-input); color: var(--text-3);
+  }
+  .inv__acciones .btn-portal--ghost:hover {
+    background: transparent; border-color: var(--off-white); color: var(--off-white);
+  }
+  .inv__plazo { font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase;
+                color: var(--text-5); margin-top: 10px; }
+
+  .inv__nota-azul { background: var(--blue); color: #fff; padding: 12px 14px;
+                    font-size: 12px; line-height: 1.65; margin: 12px 0; }
+  .inv__bueno { border: 1px solid var(--lime); padding: 12px 14px; margin: 12px 0; }
+  .inv__bueno-label { font-family: var(--mono-title); font-weight: 800; font-size: 10px;
+                      letter-spacing: 1px; text-transform: uppercase; color: var(--lime);
+                      margin-bottom: 6px; }
+
+  @media (max-width: 520px) {
+    .inv { padding: 16px 14px; }
+    .inv__cupos { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .inv__acciones .btn-portal { min-width: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -1235,7 +1329,7 @@ const GRUPOS = {
 // ── Navegación ──────────────────────────────────────────────────────────────
 
 let vista = 'perfil';
-let DATOS = { tarifas: null, tratos: [], perfil: null };
+let DATOS = { tarifas: null, tratos: [], perfil: null, invitaciones: [] };
 
 function marcarNav() {
   document.querySelectorAll('.nav-item, .tab-movil').forEach(b => {
@@ -2533,8 +2627,250 @@ async function guardarTarifas() {
 let filtro = 'nuevas';
 let seleccionada = null;
 
+
+// ── Invitaciones a campañas con cupos ───────────────────────────────────────
+//
+// Van arriba de las propuestas porque desde su lado son lo mismo: alguien
+// quiere trabajar con ella. Lo que cambia es que acá hay cupos, así que decir
+// que sí no garantiza el trabajo — y enterarse de eso DESPUÉS de aceptar es lo
+// que hace que alguien no vuelva a responder una invitación.
+//
+// Tres estados del mismo aviso, y las palabras importan en los tres:
+//
+//   A · La invitación      — con los cupos y la advertencia por delante.
+//   B · Aceptó y espera    — sin ansiedad, y sin bloquearla para otras.
+//   C · Cupos completos    — NUNCA un rechazo. La campaña se cierra, no ella.
+//
+// Las palabras que no se usan, y su reemplazo:
+//   "no fuiste seleccionada"        → "los cupos se completaron"
+//   "la marca eligió a otras"       → "quedaste en la lista de la marca"
+//   "tu perfil no cumplió"          → "esto no baja tu nivel"
+
+async function cargarInvitaciones() {
+  try {
+    DATOS.invitaciones = await api('/cupos');
+  } catch (e) {
+    DATOS.invitaciones = [];
+  }
+}
+
+function invitacionesHTML() {
+  const lista = DATOS.invitaciones || [];
+  if (!lista.length) return '';
+
+  const abiertas = lista.filter(i => i.estado === 'invitada');
+  const otras = lista.filter(i => i.estado !== 'invitada');
+
+  return `
+    <section class="bloque-invitaciones">
+      ${abiertas.map(invitacionHTML).join('')}
+      ${otras.map(invitacionHTML).join('')}
+    </section>`;
+}
+
+function invitacionHTML(i) {
+  const c = i.campana;
+  if (!c) return '';
+  if (i.estado === 'invitada') return invitacionAbiertaHTML(i, c);
+  if (i.estado === 'acepto') return enEsperaHTML(i, c);
+  if (i.estado === 'confirmada') return elegidaHTML(i, c);
+  return cuposCompletosHTML(i, c);
+}
+
+/**
+ * El neto de una invitación, con su comisión desglosada.
+ *
+ * Se llama distinto del `netoDe` que ya existía —el de las propuestas, que
+ * devuelve solo la cifra— porque acá hace falta también la comisión para
+ * mostrar el desglose. Dos funciones con el mismo nombre en el mismo ámbito
+ * rompen el script ENTERO de la página, no solo esta pantalla.
+ */
+function desgloseInvitacion(monto) {
+  const pct = Number(DATOS.perfil?.comision_creadora_pct ?? 8);
+  const comision = Math.round(Number(monto) * pct / 100);
+  return { comision, neto: Math.round(Number(monto)) - comision, pct };
+}
+
+function cuandoVence(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
+       + ', ' + d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' });
+}
+
+function horasQueQuedan(iso) {
+  const h = Math.floor((new Date(iso) - Date.now()) / 3600_000);
+  return h > 0 ? h : 0;
+}
+
+// ── A · La invitación ───────────────────────────────────────────────────────
+
+function invitacionAbiertaHTML(i, c) {
+  const { comision, neto, pct } = desgloseInvitacion(c.monto);
+  const horas = horasQueQuedan(c.fecha_limite_respuesta);
+
+  return `
+  <article class="inv" data-inv="${i.invitacion_id}">
+    <header class="inv__cab">
+      <span class="inv__eyebrow">Invitación</span>
+      <span class="inv__chip inv__chip--nueva">Nueva</span>
+    </header>
+
+    <h3 class="inv__titulo">${esc(c.marca || 'Una marca')} te invitó a una campaña</h3>
+
+    <!-- Lo primero, antes del brief y antes del dinero: que aceptar no
+         reserva el cupo. Si esto va al final, se lee después de decidir. -->
+    <div class="inv__cupos">
+      <div class="inv__cupos-num">${c.cupos}</div>
+      <div>
+        <div class="inv__cupos-txt">cupo${c.cupos === 1 ? '' : 's'} disponible${c.cupos === 1 ? '' : 's'}</div>
+        <div class="inv__cupos-aviso">Aceptar no garantiza el cupo. La marca elige entre quienes acepten.</div>
+      </div>
+    </div>
+
+    <div class="inv__brief">${esc(c.brief || '')}</div>
+
+    <div class="inv__condiciones">
+      ${dato('Entregable', (c.entregables || []).join(', ') || '—')}
+      ${dato('Entrega', c.fecha_entrega ? fechaCorta(c.fecha_entrega) : '—')}
+      ${dato('Producto', c.producto || '—')}
+      ${dato('Exclusividad', c.exclusividad || 'Sin exclusividad')}
+    </div>
+
+    <div class="inv__dinero">
+      <div class="inv__dinero-fila">
+        <span>Te ofrecen</span><strong>${COP(c.monto)}</strong>
+      </div>
+      <div class="inv__dinero-fila">
+        <span>Comisión ${pct}%</span><strong class="inv__resta">−${COP(comision)}</strong>
+      </div>
+      <div class="inv__neto">
+        <div class="inv__neto-label">Tu neto</div>
+        <div class="inv__neto-valor">${COP(neto)}</div>
+        <div class="inv__neto-pie">si te dan el cupo</div>
+      </div>
+    </div>
+
+    <div class="inv__acciones">
+      <button class="btn-portal" data-aceptar="${i.invitacion_id}">ME INTERESA →</button>
+      <button class="btn-portal btn-portal--ghost" data-pasar="${i.invitacion_id}">PASAR ESTA VEZ</button>
+    </div>
+    <div class="inv__plazo">Tienes ${horas} horas · vence ${cuandoVence(c.fecha_limite_respuesta)}</div>
+  </article>`;
+}
+
+const dato = (label, valor) =>
+  `<div class="inv__dato"><div class="inv__dato-label">${label}</div>
+   <div class="inv__dato-valor">${esc(String(valor))}</div></div>`;
+
+// ── B · Aceptó y espera ─────────────────────────────────────────────────────
+
+function enEsperaHTML(i, c) {
+  return `
+  <article class="inv inv--espera">
+    <header class="inv__cab">
+      <span class="inv__eyebrow">${esc(c.marca || 'Una marca')}</span>
+      <span class="inv__chip inv__chip--espera">En espera</span>
+    </header>
+    <h3 class="inv__titulo inv__titulo--lima">Dijiste que sí</h3>
+    <p class="inv__texto">${esc(c.marca || 'La marca')} está armando el grupo final.
+    Tiene ${c.cupos} cupo${c.cupos === 1 ? '' : 's'} y varias creadoras interesadas.</p>
+
+    <div class="inv__nota-azul">
+      <strong>Te avisamos apenas decida</strong>, antes del
+      ${cuandoVence(c.fecha_limite_respuesta)}. No tienes que hacer nada más.
+    </div>
+
+    <!-- Quita la ansiedad de quedarse quieta esperando, que es lo que hace
+         que alguien deje de aceptar invitaciones. -->
+    <p class="inv__texto inv__texto--menor">Mientras esperas puedes seguir aceptando
+    otras invitaciones. Esta no te bloquea.</p>
+  </article>`;
+}
+
+// ── B2 · La eligieron ───────────────────────────────────────────────────────
+
+function elegidaHTML(i, c) {
+  return `
+  <article class="inv inv--elegida">
+    <header class="inv__cab">
+      <span class="inv__eyebrow">${esc(c.marca || 'Una marca')}</span>
+      <span class="inv__chip inv__chip--elegida">Te dieron el cupo</span>
+    </header>
+    <h3 class="inv__titulo inv__titulo--lima">Es tuyo</h3>
+    <p class="inv__texto">Ya tienes el trato abierto. Búscalo abajo en tus propuestas:
+    ahí ves el brief completo y entregas cuando esté listo.</p>
+  </article>`;
+}
+
+// ── C · Cupos completos ─────────────────────────────────────────────────────
+
+function cuposCompletosHTML(i, c) {
+  const vencida = i.estado === 'vencida';
+  return `
+  <article class="inv inv--cerrada">
+    <header class="inv__cab">
+      <span class="inv__eyebrow">${esc(c.marca || 'Una marca')}</span>
+      <span class="inv__chip inv__chip--cerrada">Cerrada</span>
+    </header>
+
+    <h3 class="inv__titulo">${vencida ? 'Se venció el plazo' : 'Los cupos se completaron'}</h3>
+    <p class="inv__texto">${vencida
+      ? `Esta campaña cerró antes de que respondieras. Pasa; hay más.`
+      : `${esc(c.marca || 'La marca')} cerró los ${c.cupos} cupos de esta campaña.
+         Gracias por decir que sí.`}</p>
+
+    ${vencida ? '' : `
+      <div class="inv__bueno">
+        <div class="inv__bueno-label">Lo bueno</div>
+        <p class="inv__texto">Quedaste en la lista de la marca. Cuando abra su próxima
+        campaña, eres de las primeras a las que le llega — y no le cuesta una propuesta
+        nueva, así que tiene razones para volver a invitarte.</p>
+      </div>`}
+
+    <!-- Responde el miedo real, que es lo que de verdad la hace dudar antes de
+         aceptar la próxima. -->
+    <div class="inv__nota-azul">
+      <strong>Tu perfil no cambia.</strong> Esto no baja tu nivel, no cuenta como trato
+      incumplido y no lo ve ninguna otra marca.
+    </div>
+  </article>`;
+}
+
+// ── Responder ───────────────────────────────────────────────────────────────
+
+function conectarInvitaciones(raiz) {
+  raiz.querySelectorAll('[data-aceptar]').forEach(b => {
+    b.addEventListener('click', () => responderInvitacion(b.dataset.aceptar, true, b));
+  });
+  raiz.querySelectorAll('[data-pasar]').forEach(b => {
+    b.addEventListener('click', () => {
+      if (!confirm('¿Pasar de esta campaña? No pasa nada con tu perfil, pero no vas a poder aceptarla después.')) return;
+      responderInvitacion(b.dataset.pasar, false, b);
+    });
+  });
+}
+
+async function responderInvitacion(id, acepta, boton) {
+  boton.disabled = true;
+  boton.textContent = acepta ? 'Aceptando…' : 'Un momento…';
+  try {
+    const r = await api(`/cupos/${id}/responder`, {
+      method: 'POST',
+      body: JSON.stringify({ acepta }),
+    });
+    // El aviso de cupos llenos se muestra de una: si no, ella cree que el
+    // trabajo es suyo y se queda esperando.
+    if (r.aviso) alert(r.aviso);
+    await cargarInvitaciones();
+    ir('propuestas');
+  } catch (e) {
+    boton.disabled = false;
+    alert(e.message);
+  }
+}
+
 async function vistaPropuestas() {
-  DATOS.tratos = await api('/tratos');
+  [DATOS.tratos] = await Promise.all([api('/tratos'), cargarInvitaciones()]);
   const cuenta = (g) => DATOS.tratos.filter(t => GRUPOS[g].includes(t.estado)).length;
 
   const nuevas = cuenta('nuevas');
@@ -2543,7 +2879,8 @@ async function vistaPropuestas() {
   badge.classList.toggle('oculto', nuevas === 0);
 
   $('principal').innerHTML =
-    cabecera('Mis propuestas', 'El neto es lo que te queda a ti. Nunca aceptes sin verlo.', 'propuestas') + `
+    cabecera('Mis propuestas', 'El neto es lo que te queda a ti. Nunca aceptes sin verlo.', 'propuestas')
+    + invitacionesHTML() + `
     <div class="maestro-detalle">
       <div class="lista-propuestas">
         <div class="filtros">
@@ -2561,6 +2898,7 @@ async function vistaPropuestas() {
   $('principal').querySelectorAll('[data-f]').forEach(b => {
     b.addEventListener('click', () => { filtro = b.dataset.f; seleccionada = null; ir('propuestas'); });
   });
+  conectarInvitaciones($('principal'));
 
   pintarLista();
 }
