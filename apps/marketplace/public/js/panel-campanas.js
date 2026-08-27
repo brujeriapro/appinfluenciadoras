@@ -46,7 +46,8 @@ async function vistaCampanas(c) {
           <div class="dato-num" style="font-size:18px;border-right:4px solid var(--lima);
                padding-right:10px;margin-top:4px">${COP(comprometido)}</div>
         </div>
-        <button class="btn" id="nueva-campana">+ Nueva campaña</button>
+        <button class="btn btn--linea btn--sm" id="nueva-campana">+ Campaña plantilla</button>
+        <button class="btn btn--magenta" id="nueva-cupos">+ Campaña con cupos</button>
       </div>
     </div>
 
@@ -54,17 +55,22 @@ async function vistaCampanas(c) {
       <div class="h-sec" style="margin-bottom:10px">Campañas activas</div>
       <div class="grilla" style="margin-bottom:28px">
         ${E.campanas.map(camp => `
-          <div class="tarjeta"><div class="tarjeta__cuerpo">
+          <div class="tarjeta" ${camp.cupos ? `data-campana="${camp.id}" style="cursor:pointer"` : ''}>
+            <div class="tarjeta__cuerpo">
             <div class="alias" style="font-size:12.5px">${esc(camp.nombre)}</div>
             <div class="sub-id">
-              ${camp.fecha_fin ? 'Hasta ' + fecha(camp.fecha_fin) : 'Siempre abierta'} ·
+              ${camp.cupos
+                ? `${camp.cupos} cupo${camp.cupos === 1 ? '' : 's'} · ${
+                    camp.estado === 'cerrada' ? 'cerrada' : 'abierta'}`
+                : (camp.fecha_fin ? 'Hasta ' + fecha(camp.fecha_fin) : 'Siempre abierta')} ·
               ${camp.propuestas_enviadas || 0} enviadas
             </div>
             <div class="tarjeta__pie">
               <div class="desde">
                 <div class="desde__valor">${COP(camp.tope_total)}</div>
-                <div class="desde__label">Tope total</div>
+                <div class="desde__label">${camp.cupos ? 'Si se llenan' : 'Tope total'}</div>
               </div>
+              ${camp.cupos ? '<button class="btn btn--sm" data-campana="' + camp.id + '">Ver →</button>' : ''}
             </div>
           </div></div>`).join('')}
       </div>` : ''}
@@ -72,6 +78,10 @@ async function vistaCampanas(c) {
     <div id="tabla-tratos"></div>`;
 
   $('nueva-campana').addEventListener('click', () => abrirCampana());
+  $('nueva-cupos').addEventListener('click', () => irACrearCampana());
+  c.querySelectorAll('[data-campana]').forEach(b => {
+    b.addEventListener('click', (ev) => { ev.stopPropagation(); irACampana(b.dataset.campana); });
+  });
 
   if (!E.tratos.length) {
     $('tabla-tratos').innerHTML = `

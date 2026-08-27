@@ -16,6 +16,7 @@ const db = require('./db');
 const cupos = require('./cupos');
 const maquina = require('./tratos');
 const notificaciones = require('./notificaciones');
+const { catalogoEnriquecido } = require('./catalogo');
 // Se pide en caliente para no cerrar el ciclo de require con marcas.js.
 const topeDePropuestas = (id) => require('./marcas').topeDePropuestas(id);
 
@@ -122,16 +123,19 @@ deMarca.get('/:id', async (req, res) => {
     const datos = await cargar(req.params.id, req.usuarioId);
     if (!datos) return res.status(404).json({ error: 'Campaña no encontrada' });
 
-    // Se adjunta el alias de cada creadora para no obligar al panel a cruzar
-    // contra el catálogo, que puede no estar cargado en esta pantalla.
+    // Se adjunta el perfil COMPLETO de cada creadora, no solo el alias: la fila
+    // de esta pantalla muestra sus redes, su trayectoria y su tarifa, que es
+    // con lo que la marca decide a quién confirmar. Con el alias solo, la fila
+    // sale vacía y la decisión se toma a ciegas.
+    //
+    // No se cruza contra el catálogo desde el navegador porque esta pantalla
+    // puede abrirse directo desde un enlace, sin haber cargado el catálogo.
     const ids = datos.invitaciones.map(i => i.creadora_id);
-    const perfiles = ids.length
-      ? await db.get('mk_creadoras', {
-          select: 'id,codigo,nombre_publico,ciudad,nicho',
-          id: `in.(${ids.join(',')})`,
-        })
-      : [];
-    const porId = new Map(perfiles.map(p => [p.id, p]));
+    const porId = new Map();
+    if (ids.length) {
+      const perfiles = await catalogoEnriquecido({});
+      perfiles.filter(p => ids.includes(p.id)).forEach(p => porId.set(p.id, p));
+    }
 
     res.json({
       campana: datos.campana,

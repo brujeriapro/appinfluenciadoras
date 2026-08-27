@@ -681,3 +681,150 @@ input[type=range]::-moz-range-thumb {
   .col-tira { grid-auto-flow: column; grid-auto-columns: minmax(140px, 1fr);
               grid-template-columns: none; overflow-x: auto; padding-bottom: 6px; }
 }
+
+/* ── Campañas con cupos ──────────────────────────────────────────────────────
+
+   Más peso del negro que en el resto del panel: acá el negro no solo hace
+   bordes y botones, también carga secciones completas de fondo. El claro queda
+   para donde hay que leer y comparar datos.
+
+   Y una licencia: sobre negro el lima se usa como acento tipográfico —títulos
+   de panel, contadores— además de para el dinero. Funciona porque sobre negro
+   es el color de mayor jerarquía disponible.                                */
+
+.cab-negra { background: var(--ink); color: #fff; padding: 22px clamp(16px,2vw,26px);
+             display: flex; align-items: flex-end; justify-content: space-between;
+             gap: 20px; flex-wrap: wrap;
+             margin: 0 calc(-1 * clamp(18px,2.4vw,34px)) 20px; }
+.cab-negra__eyebrow { font-size: 9.5px; letter-spacing: 1.2px; text-transform: uppercase;
+                      color: var(--text-4); display: flex; align-items: center; gap: 10px; }
+.cab-negra__titulo { font-family: var(--mono-t); font-weight: 800; font-size: clamp(19px,2.4vw,26px);
+                     letter-spacing: -1.3px; margin: 8px 0 0; color: #fff; }
+.cab-negra__chips { display: flex; gap: 7px; flex-wrap: wrap; }
+.chip-oscuro { font-family: var(--mono-t); font-weight: 700; font-size: 9.5px;
+               letter-spacing: 0.6px; text-transform: uppercase; padding: 6px 9px;
+               border: 1px solid var(--chip-dark-border); color: var(--chip-dark-text); }
+.chip-estado { font-family: var(--mono-b); font-weight: 700; font-size: 9.5px;
+               letter-spacing: 0.6px; text-transform: uppercase; padding: 4px 8px; color: #fff; }
+.chip-estado--azul { background: var(--azul); }
+
+.cuenta-regresiva { font-family: var(--mono-t); font-weight: 800; font-size: 28px;
+                    letter-spacing: -1.6px; color: var(--lima);
+                    font-variant-numeric: tabular-nums; }
+.cuenta-regresiva--neutra { color: #fff; }
+
+.cupos-layout { display: grid; grid-template-columns: minmax(0,1fr) 372px;
+                gap: 18px; align-items: start; }
+.cupos-layout__col { min-width: 0; }
+.cupos-layout__panel { min-width: 0; }
+
+.tarjeta-plana { background: var(--surface); border: 1px solid var(--border-1); padding: 18px 20px; }
+.cab-interna { background: var(--ink); padding: 14px 18px; display: flex;
+               align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.contador-magenta { background: var(--magenta); color: var(--ink); font-family: var(--mono-t);
+                    font-weight: 800; font-size: 10px; letter-spacing: 0.6px;
+                    text-transform: uppercase; padding: 6px 10px; }
+
+.panel-negro { background: var(--ink); color: #fff; padding: 18px 20px; }
+.panel-negro__titulo { font-family: var(--mono-t); font-weight: 800; font-size: 12px;
+                       letter-spacing: 0.5px; text-transform: uppercase; color: var(--lima); }
+.panel-azul { background: var(--azul); color: #fff; padding: 18px 20px; margin-top: 14px; }
+.nota-oscura { font-size: 11px; line-height: 1.65; color: var(--chip-dark-text); margin: 10px 0 0; }
+.contador-gigante { font-family: var(--mono-t); font-weight: 800; font-size: 48px;
+                    letter-spacing: -3px; line-height: 1; margin: 6px 0 10px; }
+.rango-extremos { display: flex; justify-content: space-between;
+                  font-size: 9.5px; color: var(--text-4); }
+.total-escrow { font-size: 28px; color: var(--lima); margin-top: 4px;
+                border-left: 4px solid var(--lima); padding-left: 10px; }
+
+/* Separadores como fondo, no como borde: da líneas exactas de 1px sin dobles. */
+.filas-cupo { display: flex; flex-direction: column; gap: 1px; background: var(--border-3); }
+.filas-cupo--apagadas { opacity: .55; }
+
+.fila-cupo { background: var(--surface); display: flex; align-items: center;
+             gap: 14px; padding: 12px 16px; border-left: 5px solid transparent;
+             transition: background-color 120ms ease-out; }
+.fila-cupo:hover { background: var(--surface-alt); }
+/* Marcada = fila invertida a negro. Es el peso visual más fuerte de la
+   pantalla, y corresponde: es la decisión que cuesta dinero. */
+.fila-cupo--on { background: var(--ink); color: #fff; border-left-color: var(--magenta); }
+.fila-cupo--on:hover { background: var(--ink); }
+.fila-cupo--on .alias, .fila-cupo--on .desde__valor { color: #fff; }
+.fila-cupo--on .sub-id, .fila-cupo--on .etiqueta { color: var(--chip-dark-text); }
+.fila-cupo--on .metrica__valor { color: #fff; }
+.fila-cupo--on .tier { color: #6FA4FF; }
+.fila-cupo--acepto { border-left-color: var(--magenta); }
+.fila-cupo--invitada { border-left-color: var(--azul); }
+.fila-cupo--paso, .fila-cupo--cupos_llenos { border-left-color: var(--border-2); }
+.fila-cupo--confirmada { border-left-color: var(--ink); }
+
+.fila-cupo__avatar { width: 42px; height: 42px; flex: none; background: var(--border-3);
+                     overflow: hidden; display: grid; place-items: center; }
+.fila-cupo__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.fila-cupo__id { flex: none; width: 176px; min-width: 0; }
+.fila-cupo__metricas { flex: 1; min-width: 0; display: flex; gap: 22px; }
+.fila-cupo__tray { flex: none; width: 182px; }
+.fila-cupo__tarifa { flex: none; width: 112px; text-align: right;
+                     border-right: 4px solid var(--lima); padding-right: 9px; }
+.fila-cupo__estado { flex: none; width: 104px; text-align: right; }
+
+.casilla { width: 22px; height: 22px; flex: none; border: 2px solid var(--ink);
+           background: var(--surface); cursor: pointer; font-size: 12px; line-height: 1;
+           display: grid; place-items: center; }
+.casilla--on { background: var(--magenta); color: var(--ink); }
+
+.pill { font-family: var(--mono-b); font-weight: 700; font-size: 9.5px; letter-spacing: 0.6px;
+        text-transform: uppercase; padding: 4px 8px; display: inline-block; }
+.pill--acepto { background: var(--magenta); color: var(--ink); }
+.pill--invitada { background: var(--surface); border: 1px solid var(--border-2); color: var(--text-3); }
+.pill--paso, .pill--cupos_llenos, .pill--vencida { background: var(--border-3); color: var(--text-3); }
+.pill--confirmada { background: var(--ink); color: #fff; }
+
+.indicadores { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr));
+               gap: 1px; background: var(--border-dark); margin-bottom: 20px; }
+.indicador { background: #141414; color: #fff; padding: 16px 18px; }
+.indicador__cifra { font-family: var(--mono-t); font-weight: 800; font-size: 24px;
+                    letter-spacing: -1.4px; margin: 6px 0 4px; }
+.indicador__nota { font-size: 10.5px; color: var(--chip-dark-text); }
+
+/* Medidor del plan: el trabajo pesado lo hace esto, no la tipografía. Ver ocho
+   celdas magenta llenándose de golpe comunica el costo mejor que un titular. */
+.medidor { display: flex; gap: 3px; flex-wrap: wrap; margin: 10px 0; }
+.medidor__celda { width: 18px; height: 18px; border: 1px solid var(--border-2); }
+.medidor__celda--usada { background: var(--ink); border-color: var(--ink); }
+.medidor__celda--esta { background: var(--magenta); border-color: var(--magenta); }
+.plan-cab { display: flex; justify-content: space-between; align-items: baseline;
+            gap: 12px; font-size: 11px; }
+.plan-linea { display: flex; justify-content: space-between; align-items: center;
+              gap: 12px; padding-top: 10px; border-top: 1px solid var(--border-3);
+              font-size: 11.5px; }
+.plan-delta { font-family: var(--mono-t); font-weight: 800; color: var(--magenta); }
+
+/* El aviso de saldo SÍ es enfático: acá sí hay un error que evitar. */
+.aviso-fuerte { border: 2px solid var(--magenta); background: var(--surface);
+                padding: 14px 16px; margin-top: 14px; }
+
+.chip-claro--on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.btn--linea-oscuro { background: transparent; color: #fff; border-color: var(--chip-dark-border); }
+.btn--linea-oscuro:hover { background: transparent; border-color: #fff; color: #fff; }
+.dinero-fila--oscura { border-bottom-color: var(--border-dark); }
+.dinero-fila--oscura .dinero-fila__label { color: var(--chip-dark-text); }
+
+/* Para lectores de pantalla: lo que hoy solo se comunica por color. */
+.aria-solo { position: absolute; width: 1px; height: 1px; overflow: hidden;
+             clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Las filas de seis columnas fijas no sobreviven a menos de ~1300px: la
+   columna flexible se colapsa y el contenido se monta encima del vecino. Se
+   convierten en tarjeta apilada en vez de dejarlas encogerse. */
+@media (max-width: 1200px) {
+  .cupos-layout { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 1300px) {
+  .fila-cupo { flex-wrap: wrap; align-items: flex-start; }
+  .fila-cupo__id { width: auto; flex: 1; }
+  .fila-cupo__metricas { flex: 1 0 100%; order: 3; }
+  .fila-cupo__tray { width: auto; order: 4; }
+  .fila-cupo__tarifa { order: 5; margin-left: auto; }
+  .fila-cupo__estado { width: auto; order: 2; margin-left: auto; }
+}

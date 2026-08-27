@@ -453,18 +453,27 @@ function irABandeja(clave) {
   ir('catalogo');
 }
 
+// Qué ítem del menú se ve activo en cada vista. Las pantallas de detalle no
+// tienen su propio ítem: viven dentro del que las contiene.
+const DENTRO_DE = {
+  ficha: 'catalogo',
+  trato: 'campanas',
+  'crear-campana': 'campanas',
+  campana: 'campanas',
+  elegir: 'campanas',
+};
+
 function ir(vista, id) {
   E.vista = vista;
   if (vista === 'ficha') E.fichaId = id;
   if (vista === 'trato') E.tratoId = id;
+  if (['campana', 'elegir'].includes(vista)) E.detalleId = id;
+
   document.querySelectorAll('.nav__item[data-vista]').forEach(b => {
-    const activo = b.dataset.vista === vista
-      || (vista === 'ficha' && b.dataset.vista === 'catalogo')
-      || (vista === 'trato' && b.dataset.vista === 'campanas');
-    b.classList.toggle('activo', activo);
+    b.classList.toggle('activo',
+      b.dataset.vista === vista || b.dataset.vista === DENTRO_DE[vista]);
   });
   $('nav').classList.remove('abierto');
-  $('filtros').style.display = vista === 'catalogo' ? '' : 'none';
   render();
 }
 
@@ -825,6 +834,9 @@ function render() {
   if (E.vista === 'catalogo') return vistaCatalogo(c);
   if (E.vista === 'ficha')    return vistaFicha(c);
   if (E.vista === 'campanas') return vistaCampanas(c);
+  if (E.vista === 'crear-campana') return vistaCrearCampana(c);
+  if (E.vista === 'campana')  return vistaCampanaActiva(c, E.detalleId);
+  if (E.vista === 'elegir')   return vistaElegir(c, E.detalleId);
   if (E.vista === 'trato')    return vistaTrato(c);
   if (E.vista === 'perfil')   return vistaPerfil(c);
 }
@@ -1521,6 +1533,7 @@ function pintarVacio(c) {
 </script>
 <script src="/js/panel-ficha.js"></script>
 <script src="/js/panel-campanas.js"></script>
+<script src="/js/panel-cupos.js"></script>
 <script>
   arrancar().then(revisarPagoDeVuelta).then(comprarPlanDelAncla);
 </script>
