@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Panel · Creators Manager</title>
+<link rel="icon" type="image/png" sizes="16x16" href="/icono/icono-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/icono/icono-32.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/icono/icono-64.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icono/icono-180.png">
+<meta name="theme-color" content="#0E0E0E">
+
 <meta name="robots" content="noindex, nofollow">
 <link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/tokens.css">
@@ -20,8 +26,8 @@
     background: var(--ink); border-bottom: 2px solid var(--border-dark);
   }
   .logo { display: flex; align-items: center; gap: 9px; }
-  .logo__marca { width: 24px; height: 24px; background: var(--lime); display: grid; place-items: center;
-                 color: var(--ink); font-family: var(--mono-title); font-weight: 800; font-size: 12px; }
+  .logo__marca { font-family: var(--mono-title); font-weight: 800; font-size: 19px;
+                 letter-spacing: -1.1px; line-height: 1; color: var(--lime); }
   .logo__texto { font-family: var(--mono-title); font-weight: 800; font-size: 13px; letter-spacing: -0.5px; }
 
   .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
@@ -209,7 +215,7 @@
 <div id="app" class="oculto">
   <div class="barra">
     <div class="logo">
-      <div class="logo__marca">C</div>
+      <div class="logo__marca">[C]</div>
       <span class="logo__texto">CREATORS MANAGER</span>
     </div>
     <div class="tabs" id="tabs">

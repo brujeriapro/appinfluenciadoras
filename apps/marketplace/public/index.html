@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Creators Manager · Marketplace de creadoras de Colombia</title>
+<link rel="icon" type="image/png" sizes="16x16" href="/icono/icono-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/icono/icono-32.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/icono/icono-64.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icono/icono-180.png">
+<meta name="theme-color" content="#0E0E0E">
+
 <meta name="description" content="Contrata creadoras colombianas sin arriesgar el pago: el dinero queda retenido hasta que apruebes el contenido, y si no entrega se te devuelve. Catálogo completo con historial de cumplimiento verificado. Empieza gratis.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,11 +27,8 @@
     border-bottom: 2px solid var(--border-dark);
   }
   .logo { display: flex; align-items: center; gap: 10px; }
-  .logo__marca {
-    width: 26px; height: 26px; background: var(--lime);
-    display: grid; place-items: center;
-    color: var(--ink); font-family: var(--mono-title); font-weight: 800; font-size: 13px;
-  }
+  .logo__marca { font-family: var(--mono-title); font-weight: 800; font-size: 19px;
+                 letter-spacing: -1.1px; line-height: 1; color: var(--lime); }
   .logo__texto { font-family: var(--mono-title); font-weight: 800; font-size: 14.5px; letter-spacing: -0.5px; }
 
   .nav { display: flex; align-items: center; gap: clamp(12px, 2vw, 26px); flex-wrap: wrap;
@@ -157,7 +160,7 @@
   <!-- 2 · Header -->
   <header class="header">
     <div class="logo">
-      <div class="logo__marca">C</div>
+      <div class="logo__marca">[C]</div>
       <span class="logo__texto">CREATORS MANAGER</span>
     </div>
     <button class="nav-toggle" aria-expanded="false" aria-controls="nav">MENÚ</button>
@@ -449,7 +452,7 @@
 
   <footer class="footer">
     <div class="logo">
-      <div class="logo__marca" style="width:20px;height:20px;font-size:11px">C</div>
+      <div class="logo__marca" style="font-size:15px">[C]</div>
       <span class="logo__texto" style="font-size:12px;color:var(--off-white)">CREATORS MANAGER</span>
     </div>
     <div class="footer__links">

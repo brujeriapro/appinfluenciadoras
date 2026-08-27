@@ -300,6 +300,16 @@ node scripts/analizar-contenido.js 400 # etiqueta el contenido con IA (pide ANTH
 curl -u admin:CLAVE -X POST "$URL/api/cron/plazos"   # cierra propuestas vencidas
 ```
 
+### Identidad
+
+La marca es **`[C]`** — la C entre corchetes, en Martian Mono ExtraBold. El corchete no es adorno: encierra, protege y contiene lo que está adentro, que es lo que hace el escrow.
+
+Los íconos viven en `public/icono/` y se regeneran con `bash scripts/generar-iconos.sh`. La fuente está versionada en `assets/MartianMono-ExtraBold.ttf` a propósito: el handoff pide que el logo no dependa de que alguien la tenga instalada, y sin ella los íconos salen con otra tipografía sin que nadie lo note hasta verlos.
+
+⚠️ **A 16 px los corchetes se empastan contra la C**, así que ese tamaño lleva solo la C. Vuelven desde 32 px.
+
+Reglas: lima sobre negro, negro sobre claro (el lima sobre claro se pierde). **Sin esquinas redondeadas**, sin sombra, sin degradado. Nunca magenta ni azul en el logo.
+
 ### Identidad visual
 
 Brutalismo digital / Y2K editorial, definido en el handoff de Claude Design y codificado en `public/css/tokens.css`: negro `#0E0E0E`, lima `#D6FF00`, magenta `#FF2E9A`, azul `#2323F0`; Martian Mono + Space Mono; `border-radius: 0` en todo, sin sombras, sin gradientes, bordes duros de 2px. **Nada de la identidad mística de Brujería Capilar.**
