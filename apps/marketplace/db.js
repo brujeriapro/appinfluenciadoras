@@ -962,7 +962,7 @@ async function contarPropuestasDelMes(marca_id) {
   desde.setUTCDate(1); desde.setUTCHours(0, 0, 0, 0);
   const corte = desde.toISOString();
 
-  const [tratos, invitaciones] = await Promise.all([
+  const [tratos, invitaciones, publicas] = await Promise.all([
     get('mk_tratos', {
       marca_id: `eq.${marca_id}`,
       created_at: `gte.${corte}`,
@@ -970,8 +970,28 @@ async function contarPropuestasDelMes(marca_id) {
       select: 'id',
     }),
     contarInvitacionesDelMes(marca_id, corte),
+    // Una campaña abierta cobra sus cupos AL PUBLICARSE, no al invitar. Si no
+    // se contaran acá, publicar saldría gratis y el tope del plan no
+    // significaría nada para quien use campañas abiertas.
+    //
+    // No hay doble cobro con las invitaciones: una postulación no escribe
+    // `invitada_at`, que es por donde cuenta contarInvitacionesDelMes, y el
+    // trato que nace al confirmarla lleva `invitacion_id`, que los tratos de
+    // arriba excluyen.
+    get('mk_campanas', {
+      marca_id: `eq.${marca_id}`,
+      publica: 'is.true',
+      publicada_at: `gte.${corte}`,
+      select: 'propuestas_cobradas,propuestas_devueltas',
+    }).catch(() => []),
   ]);
-  return tratos.length + invitaciones;
+
+  const porCampanasAbiertas = publicas.reduce(
+    (a, c) => a + Math.max(0, Number(c.propuestas_cobradas || 0) - Number(c.propuestas_devueltas || 0)),
+    0
+  );
+
+  return tratos.length + invitaciones + porCampanasAbiertas;
 }
 
 /**

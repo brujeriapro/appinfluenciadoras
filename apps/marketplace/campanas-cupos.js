@@ -14,6 +14,7 @@
 const express = require('express');
 const db = require('./db');
 const cupos = require('./cupos');
+const publicas = require('./campanas-publicas');
 const maquina = require('./tratos');
 const notificaciones = require('./notificaciones');
 const { catalogoEnriquecido } = require('./catalogo');
@@ -268,10 +269,89 @@ deMarca.post('/:id/cerrar', async (req, res) => {
     const datos = await cargar(req.params.id, req.usuarioId);
     if (!datos) return res.status(404).json({ error: 'Campaña no encontrada' });
 
-    await db.updateCampana(datos.campana.id, { estado: 'cerrada' });
+    const cierre = datos.campana.publica
+      ? publicas.alCerrar({ campana: datos.campana, invitaciones: datos.invitaciones })
+      : null;
+
+    await db.updateCampana(datos.campana.id, {
+      estado: 'cerrada',
+      // Se cobraron los cupos al publicar sobre una expectativa. Quedarse con
+      // la plata de un cupo que nadie ocupó sería cobrar por algo que no se
+      // prestó, y castiga justo a quien se anima a probar la campaña abierta.
+      ...(cierre?.devolver ? { propuestas_devueltas: cierre.devolver } : {}),
+    });
     await avisarCuposLlenos(datos);
-    res.json({ ok: true });
+    await avisarPostuladasSinCupo(datos, cierre);
+
+    res.json({ ok: true, ...(cierre ? { devueltas: cierre.devolver, mensaje: cierre.mensaje } : {}) });
   } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Publica la campaña y le avisa a las creadoras que encajan.
+ *
+ * Cobra los cupos por adelantado: una de 6 consume 6 propuestas del plan al
+ * publicarse. Lo que quede sin llenar se devuelve al cerrar.
+ *
+ * El correo sale segmentado por nicho y ciudad, no a las 294. No es por ahorrar
+ * correos: una creadora que recibe cinco convocatorias que no le sirven deja de
+ * abrir la sexta, y ese canal no se recupera.
+ */
+deMarca.post('/:id/publicar', async (req, res) => {
+  try {
+    const datos = await cargar(req.params.id, req.usuarioId);
+    if (!datos) return res.status(404).json({ error: 'Campaña no encontrada' });
+    if (datos.campana.publica) {
+      return res.status(409).json({ error: 'Esta campaña ya está publicada.' });
+    }
+
+    const plan = await topeDePropuestas(req.usuarioId);
+    const veredicto = publicas.puedePublicar({
+      campana: datos.campana,
+      plan: { propuestas_tope: plan.tope, propuestas_enviadas: plan.enviadas || 0 },
+    });
+    if (!veredicto.ok) {
+      return res.status(veredicto.restantes !== undefined ? 402 : 400).json({ error: veredicto.motivo });
+    }
+
+    const dias = Number(req.body.dias) || publicas.DIAS_ABIERTA;
+    const hasta = new Date(Date.now() + dias * 86_400_000).toISOString();
+
+    await db.updateCampana(datos.campana.id, {
+      publica: true,
+      publicada_at: new Date().toISOString(),
+      postulaciones_hasta: hasta,
+      busca_nicho: Array.isArray(req.body.nicho) ? req.body.nicho : null,
+      busca_ciudades: Array.isArray(req.body.ciudades) ? req.body.ciudades : null,
+      propuestas_cobradas: veredicto.consume,
+    });
+
+    const campana = { ...datos.campana, busca_nicho: req.body.nicho, busca_ciudades: req.body.ciudades };
+    const catalogo = await db.getCatalogo({});
+    const aQuienes = publicas.aQuienLeLlega(catalogo, campana);
+
+    const marca = await db.getMarcaById(req.usuarioId);
+    // Los correos no pueden tumbar la publicación: la campaña ya está abierta y
+    // se ve en el portal de la creadora aunque el correo no salga.
+    Promise.all(aQuienes.destinatarias.map(async (c) => {
+      const contacto = await db.getContactoCreadora(c.id).catch(() => null);
+      if (contacto?.email) {
+        return notificaciones.campanaAbierta({ campana: { ...campana, postulaciones_hasta: hasta }, marca, contacto });
+      }
+    })).catch(e => console.error('[notif] campanaAbierta:', e.message));
+
+    res.json({
+      ok: true,
+      cobradas: veredicto.consume,
+      postulaciones_hasta: hasta,
+      encajan: aQuienes.cuantas,
+      se_les_avisa: aQuienes.destinatarias.length,
+      recortadas: aQuienes.recortadas,
+    });
+  } catch (e) {
+    console.error('[cupos/publicar]', e.message);
     res.status(500).json({ error: e.message });
   }
 });
@@ -283,6 +363,30 @@ deMarca.post('/:id/cerrar', async (req, res) => {
  * como un "no" la castiga por haber aceptado. Es la misma regla que sostiene
  * que en este producto no exista sello negativo.
  */
+/**
+ * A quien se postuló y no quedó se le avisa cuando la campaña cierra.
+ *
+ * Se le dice que se llenaron los cupos, no que no la eligieron: en este
+ * producto no hay señalamiento negativo, y "no te eligieron" sin contexto es
+ * información que no le sirve a nadie. Pero callarse tampoco sirve —
+ * postularse y no saber nunca es lo que hace que deje de postularse.
+ */
+async function avisarPostuladasSinCupo(datos, cierre) {
+  if (!cierre || !cierre.avisar.length) return 0;
+
+  for (const creadora_id of cierre.avisar) {
+    const inv = datos.invitaciones.find(i => i.creadora_id === creadora_id);
+    if (inv) await db.actualizarInvitacion(inv.id, { estado: 'cupos_llenos' });
+
+    const contacto = await db.getContactoCreadora(creadora_id).catch(() => null);
+    if (contacto?.email) {
+      notificaciones.cuposCompletos({ campana: datos.campana, contacto })
+        .catch(e => console.error('[notif] cuposCompletos (postulada):', e.message));
+    }
+  }
+  return cierre.avisar.length;
+}
+
 async function avisarCuposLlenos(datos) {
   const enEspera = datos.invitaciones.filter(i => i.estado === 'acepto');
   for (const i of enEspera) {
@@ -297,6 +401,111 @@ async function avisarCuposLlenos(datos) {
 }
 
 // ── Lado creadora ───────────────────────────────────────────────────────────
+
+/**
+ * Las campañas abiertas a las que se puede postular.
+ *
+ * Se muestran las que encajan con su perfil, no todas: una lista donde la
+ * mayoría no le sirve enseña a ignorarla. Y se marca a cuáles ya se postuló,
+ * porque no saber si uno ya aplicó es lo que hace que aplique dos veces.
+ */
+deCreadora.get('/abiertas', async (req, res) => {
+  try {
+    const ahora = new Date().toISOString();
+    const campanas = await db.get('mk_campanas', {
+      select: '*',
+      publica: 'is.true',
+      estado: 'in.(activa,publicada)',
+      postulaciones_hasta: `gte.${ahora}`,
+      order: 'postulaciones_hasta.asc',
+    });
+    if (!campanas.length) return res.json({ campanas: [] });
+
+    const [yo, marcas, invitaciones] = await Promise.all([
+      db.getCreadoraCompleta(req.usuarioId),
+      db.get('mk_marcas', {
+        select: 'id,nombre_empresa,logo_path',
+        id: `in.(${[...new Set(campanas.map(c => c.marca_id))].join(',')})`,
+      }),
+      db.get('mk_campana_invitacion', {
+        select: 'campana_id,estado,origen',
+        campana_id: `in.(${campanas.map(c => c.id).join(',')})`,
+      }),
+    ]);
+
+    const marcaPorId = new Map(marcas.map(m => [m.id, m]));
+    const mias = new Set(
+      (await db.get('mk_campana_invitacion', {
+        select: 'campana_id', creadora_id: `eq.${req.usuarioId}`,
+      })).map(i => i.campana_id)
+    );
+
+    const encajan = campanas.filter(c =>
+      publicas.aQuienLeLlega([yo], c).cuantas > 0);
+
+    res.json({
+      campanas: encajan.map(c => {
+        const suyas = invitaciones.filter(i => i.campana_id === c.id);
+        const estado = publicas.estadoDeConvocatoria(c, suyas);
+        return {
+          id: c.id,
+          nombre: c.nombre,
+          brief: c.brief_base,
+          entregables: c.entregables,
+          producto: c.producto,
+          monto: c.monto_creadora,
+          fecha_entrega: c.fecha_entrega,
+          postulaciones_hasta: c.postulaciones_hasta,
+          marca: marcaPorId.get(c.marca_id)?.nombre_empresa || null,
+          cupos: estado.cupos,
+          libres: estado.libres,
+          ya_me_postule: mias.has(c.id),
+        };
+      }),
+    });
+  } catch (e) {
+    console.error('[cupos/abiertas]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** Se postula. Es gratis para ella: lo que la marca pagó son los cupos. */
+deCreadora.post('/abiertas/:campanaId/postular', async (req, res) => {
+  try {
+    const campana = await db.getUno('mk_campanas', {
+      id: `eq.${req.params.campanaId}`, select: '*',
+    });
+    if (!campana) return res.status(404).json({ error: 'Campaña no encontrada' });
+
+    const [invitaciones, yaPostulada] = await Promise.all([
+      db.get('mk_campana_invitacion', { campana_id: `eq.${campana.id}`, select: 'estado,origen' }),
+      db.getUno('mk_campana_invitacion', {
+        campana_id: `eq.${campana.id}`, creadora_id: `eq.${req.usuarioId}`, select: 'id',
+      }).catch(() => null),
+    ]);
+
+    const veredicto = publicas.puedePostularse({
+      campana, invitaciones, yaPostulada: Boolean(yaPostulada),
+    });
+    if (!veredicto.ok) return res.status(409).json({ error: veredicto.motivo });
+
+    // Sin `invitada_at` a propósito: esa fecha es por donde se cuentan las
+    // propuestas del plan de la marca, y esta campaña ya se cobró al publicarse.
+    await db.post('mk_campana_invitacion', {
+      campana_id: campana.id,
+      creadora_id: req.usuarioId,
+      estado: 'postulada',
+      origen: 'postulacion',
+      postulada_at: new Date().toISOString(),
+      nota: String(req.body.nota || '').trim().slice(0, 400) || null,
+    });
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[cupos/postular]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
 
 /** Las campañas a las que la invitaron y siguen abiertas. */
 deCreadora.get('/', async (req, res) => {

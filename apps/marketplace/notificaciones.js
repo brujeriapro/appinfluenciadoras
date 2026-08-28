@@ -1025,6 +1025,46 @@ function invitacionACampana({ campana, marca, contacto, estado }) {
   );
 }
 
+/**
+ * Una campaña abierta a la que se puede postular.
+ *
+ * Se diferencia de la invitación en una cosa que hay que dejar clarísima: acá
+ * nadie la eligió todavía. Vender esto como "te invitaron" y que después no
+ * quede es la forma más rápida de que deje de creerle a los correos.
+ *
+ * El monto va arriba y en grande por la misma razón que en la invitación: es lo
+ * que decide si sigue leyendo.
+ */
+function campanaAbierta({ campana, marca, contacto }) {
+  const cierra = campana.postulaciones_hasta
+    ? new Date(campana.postulaciones_hasta).toLocaleDateString('es-CO', {
+        day: '2-digit', month: 'long',
+      })
+    : null;
+
+  return enviar(
+    contacto.email,
+    `${marca.nombre_empresa} busca creadoras · ${formatearCOP(campana.monto_creadora)}`,
+    `<p><strong>${marca.nombre_empresa}</strong> abrió una convocatoria y tu perfil
+     encaja con lo que están buscando.</p>
+
+     <p style="background:#D6FF00;padding:10px;border:2px solid #0E0E0E">
+       Pagan <strong style="font-size:16px">${formatearCOP(campana.monto_creadora)}</strong> por creadora
+     </p>
+
+     <p><strong>Qué piden:</strong><br>${(campana.brief_base || '').slice(0, 400)}</p>
+     ${campana.fecha_entrega ? `<p><strong>Entrega:</strong> ${campana.fecha_entrega}</p>` : ''}
+
+     <p>Son <strong>${campana.cupos} cupo${campana.cupos === 1 ? '' : 's'}</strong>
+     ${cierra ? `y se puede postular hasta el <strong>${cierra}</strong>` : ''}.</p>
+
+     <p style="font-size:11px;color:#7A7A7A">Esto es una convocatoria abierta, no una
+     invitación: postularte no reserva el cupo. La marca elige entre las que se postulen
+     y te avisamos apenas decida — quede o no quede.</p>
+     ${boton('VER LA CONVOCATORIA', `${config.base_url}/creadora.html#campanas`)}`
+  );
+}
+
 /** Alguien aceptó: la marca tiene que ir a confirmar. */
 function aceptoLaCampana({ campana, marca, creadora }) {
   return enviar(
@@ -1095,5 +1135,5 @@ module.exports = {
   nuevaSolicitud, tratoAceptado, tratoRechazado,
   pagoRetenido, contenidoEntregado, contenidoAprobado, pagoLiberado,
   reciboSuscripcion, planPorVencer, seleccionLista,
-  invitacionACampana, aceptoLaCampana, cuposCompletos,
+  invitacionACampana, aceptoLaCampana, cuposCompletos, campanaAbierta,
 };
