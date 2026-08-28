@@ -18,7 +18,23 @@ const CATEGORIAS = [
   'Tecnología', 'Mascotas', 'Bebés y maternidad', 'Otra cosa',
 ];
 
-const CANALES = ['tiktok', 'instagram', 'ambas', 'no_publicado'];
+/**
+ * Dónde quiere la marca el contenido. Selección MÚLTIPLE.
+ *
+ * Ya no está "ambas": existía porque solo se podía marcar una cosa, y con
+ * selección múltiple se marcan las dos.
+ *
+ * Tres de estos cruzan contra una red que la creadora declaró; `modelaje`
+ * cruza contra sus tarifas, porque es un entregable y no una red; y los dos
+ * últimos no cruzan contra nada.
+ */
+const CANALES = ['tiktok', 'instagram', 'youtube', 'modelaje', 'no_publicado', 'otra'];
+
+/** Los que NO filtran: no hay contra qué cruzarlos. */
+const CANALES_SIN_FILTRO = ['no_publicado', 'otra'];
+
+/** El que se cruza contra sus tarifas en vez de contra sus redes. */
+const CANAL_ENTREGABLE = 'modelaje';
 const AUDIENCIAS = ['mujeres_18_24', 'mujeres_25_34', 'mujeres_35_mas', 'mixta'];
 const CIUDADES = ['Bogotá', 'Medellín', 'Cali y el Pacífico', 'Barranquilla y la costa', 'Toda Colombia'];
 const TAMANOS = ['nano', 'micro', 'media', 'cualquiera'];
@@ -58,6 +74,7 @@ function normalizarBusqueda(datos = {}) {
   const enLista = (v, lista) => lista.includes(v) ? v : null;
 
   const categorias = [...new Set((datos.categorias || []).filter(c => CATEGORIAS.includes(c)))];
+  const canales = [...new Set((datos.canal || []).filter(c => CANALES.includes(c)))];
 
   let ciudades = [...new Set((datos.ciudades || []).filter(c => CIUDADES.includes(c)))];
   // La última elección manda: si marcó "Toda Colombia" queda solo esa; si
@@ -75,7 +92,12 @@ function normalizarBusqueda(datos = {}) {
     busca_otra: categorias.includes('Otra cosa')
       ? String(datos.otra || '').trim().slice(0, 120) || null
       : null,
-    busca_canal: enLista(datos.canal, CANALES),
+    busca_canal: canales,
+    // Solo tiene sentido si marcó "Otra"; si no, queda un dato que nadie va a
+    // volver a mirar. Mismo patrón que `busca_otra` de las categorías.
+    busca_canal_otra: canales.includes('otra')
+      ? String(datos.canalOtra || '').trim().slice(0, 120) || null
+      : null,
     busca_audiencia: enLista(datos.audiencia, AUDIENCIAS),
     busca_ciudades: ciudades,
     busca_tamano: enLista(datos.tamano, TAMANOS),
@@ -112,10 +134,26 @@ function califica(creadora, busca = {}) {
     if (principal?.tier && principal.tier !== busca.busca_tamano) motivos.push('otro tamaño');
   }
 
-  // Canal: que trabaje la red que la marca quiere.
-  if (busca.busca_canal && !['ambas', 'no_publicado'].includes(busca.busca_canal)) {
+  // Canal: basta con que sirva para UNO de los que marcó. Si una marca pide
+  // TikTok e Instagram, quien solo hace TikTok le sirve — exigir las dos
+  // dejaría fuera justo a las especialistas.
+  //
+  // Los que no cruzan contra nada ("no publicado", "otra") se sacan antes: si
+  // quedaran, una marca que marcó solo esos no vería a nadie.
+  const canales = (busca.busca_canal || []).filter(c => !CANALES_SIN_FILTRO.includes(c));
+  if (canales.length) {
     const redes = (creadora.redes || []).map(r => r.red);
-    if (redes.length && !redes.includes(busca.busca_canal)) motivos.push('no trabaja ese canal');
+    const entregables = (creadora.tarifas || []).map(t => t.entregable);
+
+    const sirve = canales.some(c => c === CANAL_ENTREGABLE
+      // Modelaje es un entregable, no una red: se cruza contra lo que ella
+      // ofrece y cobra.
+      ? entregables.includes(CANAL_ENTREGABLE)
+      // El resto son redes. Sin redes declaradas no se descarta: que su perfil
+      // esté a medias es culpa nuestra, no de ella.
+      : (!redes.length || redes.includes(c)));
+
+    if (!sirve) motivos.push('no trabaja ese canal');
   }
 
   // Presupuesto: contra su tarifa más baja publicada. Sin tarifa NO se descarta
@@ -234,6 +272,7 @@ const ATAJOS = [
 
 module.exports = {
   normalizarBusqueda, califica, puedeEnviar, tiempoRestante,
-  CATEGORIAS, CANALES, AUDIENCIAS, CIUDADES, TAMANOS, TOPES, TOPE_DEPENDE, ATAJOS,
+  CATEGORIAS, CANALES, CANALES_SIN_FILTRO, CANAL_ENTREGABLE,
+  AUDIENCIAS, CIUDADES, TAMANOS, TOPES, TOPE_DEPENDE, ATAJOS,
   MINIMO, MAXIMO, MAX_RAZON, HORAS_PROMESA,
 };

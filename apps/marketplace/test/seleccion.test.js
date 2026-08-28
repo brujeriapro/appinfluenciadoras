@@ -44,10 +44,10 @@ test('el texto libre solo se guarda si eligió "Otra cosa"', () => {
 test('se ignora lo que no está en las listas', () => {
   const r = normalizarBusqueda({
     categorias: ['Maquillaje', 'Criptomonedas'],
-    canal: 'telepatía', tamano: 'gigante', presupuesto: 77,
+    canal: ['telepatía', 'tiktok'], tamano: 'gigante', presupuesto: 77,
   });
   assert.deepEqual(r.busca_categorias, ['Maquillaje']);
-  assert.equal(r.busca_canal, null);
+  assert.deepEqual(r.busca_canal, ['tiktok']);
   assert.equal(r.busca_tamano, null);
   assert.equal(r.busca_presupuesto, null);
 });
@@ -61,7 +61,7 @@ test('no se repiten categorías ni ciudades', () => {
 test('un registro vacío no revienta', () => {
   const r = normalizarBusqueda();
   assert.deepEqual(r.busca_categorias, []);
-  assert.equal(r.busca_canal, null);
+  assert.deepEqual(r.busca_canal, []);
 });
 
 // ── Quién califica ──────────────────────────────────────────────────────────
@@ -80,7 +80,7 @@ test('un dato que falta NO descarta a nadie', () => {
   const pelada = { nicho: [], categorias: [], redes: [], tarifa_min: null };
   const r = califica(pelada, {
     busca_categorias: ['Maquillaje'], busca_tamano: 'micro',
-    busca_canal: 'tiktok', busca_presupuesto: 300_000,
+    busca_canal: ['tiktok'], busca_presupuesto: 300_000,
   });
   assert.equal(r.califica, true);
 });
@@ -111,16 +111,53 @@ test('el tamaño se mide sobre la red principal', () => {
 });
 
 test('descarta a quien no trabaja el canal pedido', () => {
-  const r = califica(creadora(), { busca_canal: 'tiktok' });
+  const r = califica(creadora(), { busca_canal: ['tiktok'] });
   assert.equal(r.califica, false);
-  const ok = califica(creadora(), { busca_canal: 'instagram' });
+  const ok = califica(creadora(), { busca_canal: ['instagram'] });
   assert.equal(ok.califica, true);
 });
 
-test('"ambas" y "no publicado" no filtran por canal', () => {
-  for (const canal of ['ambas', 'no_publicado']) {
-    assert.equal(califica(creadora(), { busca_canal: canal }).califica, true);
+test('basta con que sirva para UNO de los canales marcados', () => {
+  // Si la marca pide TikTok e Instagram, quien solo hace Instagram le sirve.
+  // Exigir las dos dejaría fuera justo a las especialistas.
+  const soloInstagram = creadora({ redes: [{ red: 'instagram', principal: true }] });
+  assert.equal(califica(soloInstagram, { busca_canal: ['tiktok', 'instagram'] }).califica, true);
+});
+
+test('"no publicado" y "otra" no filtran por canal', () => {
+  // No hay contra qué cruzarlos. Si filtraran, una marca que marcó solo esos
+  // no vería a nadie.
+  for (const canal of ['no_publicado', 'otra']) {
+    assert.equal(califica(creadora(), { busca_canal: [canal] }).califica, true);
   }
+});
+
+test('un canal que no filtra no anula a uno que sí', () => {
+  // Marcar "otra" además de TikTok no puede volver el filtro inservible.
+  const soloInstagram = creadora({ redes: [{ red: 'instagram', principal: true }] });
+  assert.equal(califica(soloInstagram, { busca_canal: ['tiktok', 'otra'] }).califica, false);
+});
+
+test('modelaje se cruza contra sus tarifas, no contra sus redes', () => {
+  // Es un entregable, no una red: la creadora lo ofrece con precio desde su
+  // pantalla de tarifas.
+  const conModelaje = creadora({ tarifas: [{ entregable: 'modelaje', precio: 400000 }] });
+  const sinModelaje = creadora({ tarifas: [{ entregable: 'reel', precio: 400000 }] });
+  assert.equal(califica(conModelaje, { busca_canal: ['modelaje'] }).califica, true);
+  assert.equal(califica(sinModelaje, { busca_canal: ['modelaje'] }).califica, false);
+});
+
+test('el texto libre del canal solo se guarda si marcó "otra"', () => {
+  const con = normalizarBusqueda({ canal: ['otra'], canalOtra: 'Para pauta' });
+  assert.equal(con.busca_canal_otra, 'Para pauta');
+
+  const sin = normalizarBusqueda({ canal: ['tiktok'], canalOtra: 'Para pauta' });
+  assert.equal(sin.busca_canal_otra, null);
+});
+
+test('no se repiten canales', () => {
+  const r = normalizarBusqueda({ canal: ['tiktok', 'tiktok', 'youtube'] });
+  assert.deepEqual(r.busca_canal, ['tiktok', 'youtube']);
 });
 
 test('"Otra cosa" no filtra por nicho', () => {

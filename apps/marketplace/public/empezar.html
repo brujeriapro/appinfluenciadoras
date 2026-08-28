@@ -157,8 +157,10 @@ const ROTULO = {
   canal: {
     tiktok: ['TikTok', null],
     instagram: ['Instagram', null],
-    ambas: ['Las dos', null],
+    youtube: ['YouTube', null],
+    modelaje: ['Modelaje', 'Fotos para mi marca, sin publicar'],
     no_publicado: ['No publicado', 'Solo material para mis canales'],
+    otra: ['Otra cosa', 'Nos dices cuál'],
   },
   audiencia: {
     mujeres_18_24: ['Mujeres de 18 a 24', null],
@@ -194,7 +196,7 @@ const rotuloTope = (v) => {
 
 let OPCIONES = null;
 let PASO = 0;
-const R = { categorias: [], otra: '', canal: null, audiencia: null,
+const R = { categorias: [], otra: '', canal: [], canalOtra: '', audiencia: null,
             ciudades: [], ultima: null, tamano: null, presupuesto: null };
 
 // ── Las seis preguntas ──────────────────────────────────────────────────────
@@ -208,12 +210,13 @@ const PASOS = [
       && (!R.categorias.includes('Otra cosa') || R.otra.trim().length > 1),
   },
   {
-    clave: 'canal',
-    pregunta: '¿Para qué canal buscas contenido?',
-    ayuda: 'Cada creadora tiene números distintos por red, así que no es lo mismo '
-         + 'contratarla para TikTok que para Instagram.',
+    clave: 'canal', multiple: true,
+    pregunta: '¿Dónde quieres el contenido?',
+    ayuda: 'Marca todas las que te sirvan. Cada creadora tiene números distintos '
+         + 'por red, así que no es lo mismo contratarla para TikTok que para Instagram.',
     opciones: () => (OPCIONES.canales || []).map(c => [c, ...(ROTULO.canal[c] || [c, null])]),
-    listo: () => Boolean(R.canal),
+    listo: () => R.canal.length > 0
+      && (!R.canal.includes('otra') || R.canalOtra.trim().length > 1),
   },
   {
     clave: 'audiencia',
@@ -268,6 +271,7 @@ function pintar() {
 
   if (p.clave === 'categorias') cuerpoCategorias();
   else if (p.clave === 'ciudades') cuerpoCiudades();
+  else if (p.clave === 'canal') cuerpoCanal();
   else cuerpoOpciones(p);
 
   $('atras').addEventListener('click', () => { if (PASO > 0) { PASO--; pintar(); } });
@@ -344,6 +348,52 @@ function cuerpoCategorias() {
 }
 
 /**
+ * Canal: selección múltiple, con campo libre si marca "Otra cosa".
+ *
+ * Se puede marcar más de uno porque una marca rara vez quiere una sola cosa, y
+ * la opción "Las dos" que había antes existía solo porque no se podía.
+ *
+ * Basta con que la creadora sirva para UNO de los marcados: si pide TikTok e
+ * Instagram, quien solo hace TikTok le sirve. Exigir las dos dejaría fuera a
+ * las especialistas, que suelen ser las mejores en lo suyo.
+ */
+function cuerpoCanal() {
+  const lista = OPCIONES.canales || [];
+  const otra = R.canal.includes('otra');
+
+  $('cuerpo').innerHTML = `
+    <div class="opciones">
+      ${lista.map(c => {
+        const [titulo, sub] = ROTULO.canal[c] || [c, null];
+        return `
+        <button class="opcion ${R.canal.includes(c) ? 'on' : ''}" data-canal="${esc(c)}">
+          ${esc(titulo)}${sub ? `<span class="opcion__sub">${esc(sub)}</span>` : ''}
+        </button>`;
+      }).join('')}
+    </div>
+    ${otra ? `
+      <input class="campo-otra" id="canal-otra" maxlength="120"
+             placeholder="¿Dónde lo quieres? Ej: para pauta, para mi web"
+             value="${esc(R.canalOtra)}">` : ''}`;
+
+  $('cuerpo').querySelectorAll('[data-canal]').forEach(b =>
+    b.addEventListener('click', () => {
+      const c = b.dataset.canal;
+      R.canal = R.canal.includes(c) ? R.canal.filter(x => x !== c) : [...R.canal, c];
+      // Al desmarcar "Otra" se limpia su texto: si no, queda un dato huérfano
+      // que el backend descartaría igual, pero que reaparecería al volver.
+      if (!R.canal.includes('otra')) R.canalOtra = '';
+      cuerpoCanal();
+      refrescarSeguir();
+    }));
+
+  $('canal-otra')?.addEventListener('input', (e) => {
+    R.canalOtra = e.target.value;
+    refrescarSeguir();
+  });
+}
+
+/**
  * Ciudades: "Toda Colombia" es mutuamente exclusiva con las específicas.
  *
  * Sin esa regla se queda en un estado contradictorio —Bogotá + Toda Colombia—
@@ -405,11 +455,15 @@ async function seguir() {
 function cierre(d) {
   const r = d.respuestas || {};
   const nombreDe = (dic, v) => (dic[v] || [v])[0];
+  // Los de selección múltiple llegan como arreglo de claves. Sin esto se
+  // imprimiría "tiktok,no_publicado" — las claves crudas, con guion bajo.
+  const nombresDe = (dic, vs) => (vs || []).map(v => nombreDe(dic, v)).join(' · ');
 
   const filas = [
     ['Qué vende', (r.busca_categorias || []).join(' · ')
       + (r.busca_otra ? ` (${r.busca_otra})` : '')],
-    ['Canal', nombreDe(ROTULO.canal, r.busca_canal)],
+    ['Dónde lo quieres', nombresDe(ROTULO.canal, r.busca_canal)
+      + (r.busca_canal_otra ? ` (${r.busca_canal_otra})` : '')],
     ['Le habla a', nombreDe(ROTULO.audiencia, r.busca_audiencia)],
     ['Dónde', (r.busca_ciudades || []).join(' · ')],
     ['Tamaño', nombreDe(ROTULO.tamano, r.busca_tamano)],

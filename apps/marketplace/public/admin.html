@@ -1935,13 +1935,15 @@ function colaSolicitudesHTML(d) {
           </div>
           <div style="line-height:2.1">
             ${(m.busca_categorias || []).map(chip).join('')}
-            ${m.busca_canal ? chip(m.busca_canal) : ''}
+            ${(m.busca_canal || []).map(chip).join('')}
             ${m.busca_tamano ? chip(m.busca_tamano) : ''}
             ${(m.busca_ciudades || []).map(chip).join('')}
             ${chipPresupuesto(m.busca_presupuesto)}
           </div>
           ${m.busca_otra ? `<p style="font-size:11.5px;color:var(--grey-700);margin:8px 0 0">
             Dijo que vende: ${esc(m.busca_otra)}</p>` : ''}
+          ${m.busca_canal_otra ? `<p style="font-size:11.5px;color:var(--grey-700);margin:6px 0 0">
+            Dónde lo quiere: ${esc(m.busca_canal_otra)}</p>` : ''}
         </div>
         <button class="btn-mini" data-armar="${esc(s.marca_id)}">ARMAR SU SELECCIÓN</button>
       </div>

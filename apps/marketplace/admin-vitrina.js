@@ -198,7 +198,7 @@ router.get('/solicitudes', async (req, res) => {
 });
 
 const COLS_BUSQUEDA = 'id,nombre_empresa,email,ciudad,busca_categorias,busca_otra,'
-                    + 'busca_canal,busca_audiencia,busca_ciudades,busca_tamano,'
+                    + 'busca_canal,busca_canal_otra,busca_audiencia,busca_ciudades,busca_tamano,'
                     + 'busca_presupuesto,busca_completado_at';
 
 /**
@@ -224,7 +224,8 @@ router.get('/solicitudes/:marcaId/candidatas', async (req, res) => {
     res.json({
       busca: {
         categorias: marca.busca_categorias, otra: marca.busca_otra,
-        canal: marca.busca_canal, audiencia: marca.busca_audiencia,
+        canal: marca.busca_canal, canal_otra: marca.busca_canal_otra,
+        audiencia: marca.busca_audiencia,
         ciudades: marca.busca_ciudades, tamano: marca.busca_tamano,
         presupuesto: marca.busca_presupuesto,
       },
@@ -279,10 +280,14 @@ router.get('/seleccion/:marcaId/propuesta', async (req, res) => {
         // Lo que dijo en el registro. Es el único criterio que hay antes de
         // que empiece a triar, así que quien arma la selección tiene que
         // verlo aunque el motor todavía no lo use para puntuar.
+        // `que_vende` y `tipo` eran del tanteo de mk_045; mk_053 los borró y
+        // los reemplazó por las seis respuestas reales. Seguían acá devolviendo
+        // `undefined` en silencio.
         busca: {
-          que_vende: marca.busca_que_vende,
+          categorias: marca.busca_categorias,
+          otra: marca.busca_otra,
           canal: marca.busca_canal,
-          tipo: marca.busca_tipo,
+          canal_otra: marca.busca_canal_otra,
           presupuesto: marca.busca_presupuesto,
         },
       },

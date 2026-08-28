@@ -141,7 +141,7 @@ const COLS_MARCA = [
   // Suscripción. Sin estas dos, todo el mundo es plan gratuito.
   'plan', 'plan_vence_at', 'plan_aviso_at',
   // Qué busca la marca, las seis del registro. Alimenta la selección curada.
-  'busca_categorias', 'busca_otra', 'busca_canal', 'busca_audiencia',
+  'busca_categorias', 'busca_otra', 'busca_canal', 'busca_canal_otra', 'busca_audiencia',
   'busca_ciudades', 'busca_tamano', 'busca_presupuesto', 'busca_completado_at',
 ].join(',');
 

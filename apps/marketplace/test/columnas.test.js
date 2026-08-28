@@ -47,8 +47,9 @@ test('la marca trae las seis respuestas del registro', () => {
   // Alimentan la selección curada y el filtro de candidatas. Sin ellas, quien
   // arma no ve qué pidió la marca y el banco no se puede filtrar.
   const cols = columnasDe('COLS_MARCA');
-  for (const c of ['busca_categorias', 'busca_canal', 'busca_audiencia',
-                   'busca_ciudades', 'busca_tamano', 'busca_presupuesto']) {
+  for (const c of ['busca_categorias', 'busca_otra', 'busca_canal', 'busca_canal_otra',
+                   'busca_audiencia', 'busca_ciudades', 'busca_tamano',
+                   'busca_presupuesto']) {
     assert.ok(cols.includes(c), `COLS_MARCA no trae "${c}"`);
   }
 });
