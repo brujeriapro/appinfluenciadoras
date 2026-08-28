@@ -75,6 +75,12 @@ router.post('/registro', rateLimit({ max: 5 }), async (req, res) => {
       terminos_ip: ipDe(req),
     });
 
+    // Sin await: un correo caído no puede tumbar un registro. Con 300
+    // creadoras y un puñado de marcas, cada registro de marca es el cuello de
+    // botella del negocio moviéndose — vale la pena enterarse el mismo día.
+    notificaciones.marcaNueva({ marca })
+      .catch(e => console.error('[notif] marcaNueva:', e.message));
+
     res.json({ ok: true, token: firmarToken(marca.id, 'marca'), marca_id: marca.id });
   } catch (e) {
     console.error('[marcas/registro]', e.message);

@@ -380,11 +380,58 @@ function bienvenidaCreadora({ creadora }) {
   );
 }
 
+/**
+ * A dónde van los avisos internos.
+ *
+ * Se avisa una vez si no hay dirección configurada. Antes esto era
+ * `config.smtp.user`, que desde que el correo sale por API web puede estar
+ * vacío — y con él vacío los avisos al equipo se caían en silencio, sin log:
+ * nadie se enteraba de que no se estaba enterando de nada.
+ */
+let _avisadoSinEquipo = false;
+function correoDelEquipo() {
+  if (config.smtp.equipo) return config.smtp.equipo;
+  if (!_avisadoSinEquipo) {
+    console.warn('[notif] Sin MK_CORREO_EQUIPO: los avisos internos no se están mandando.');
+    _avisadoSinEquipo = true;
+  }
+  return null;
+}
+
+/**
+ * Al equipo: se registró una marca.
+ *
+ * Es el aviso que más importa hoy — hay 300 creadoras y un puñado de marcas,
+ * así que cada registro de marca es el cuello de botella del negocio moviéndose.
+ * Llega al correo, que es la forma de que suene en el celular sin montar nada.
+ */
+function marcaNueva({ marca }) {
+  const para = correoDelEquipo();
+  if (!para) return Promise.resolve(false);
+
+  return enviar(
+    para,
+    `Marca nueva: ${marca.nombre_empresa}`,
+    `<p style="background:#D6FF00;padding:10px;border:2px solid #0E0E0E">
+       <strong style="font-size:16px">${esc(marca.nombre_empresa)}</strong> se registró.
+     </p>
+     <p>
+       ${esc(marca.email)}<br>
+       ${marca.whatsapp ? `WhatsApp: ${esc(marca.whatsapp)}<br>` : ''}
+       ${marca.ciudad ? `${esc(marca.ciudad)}, ` : ''}${esc(marca.pais || 'CO')}
+     </p>
+     <p style="font-size:11.5px;color:#7A7A7A">Si contesta las seis preguntas del
+     registro, te aparece en Vitrina con 24 horas para armarle la selección.</p>
+     ${boton('VER EN EL PANEL', `${config.base_url}/admin.html`)}`
+  );
+}
+
 /** Al equipo: hay alguien nuevo esperando revisión. */
 function avisoPerfilNuevo({ creadora, instagram, tiktok, alcance }) {
-  if (!config.smtp.user) return Promise.resolve(false);
+  const para = correoDelEquipo();
+  if (!para) return Promise.resolve(false);
   return enviar(
-    config.smtp.user,
+    para,
     `Nueva creadora registrada: ${creadora.nombre_publico}`,
     `<p>Se registró una creadora nueva. Todavía no aparece en el catálogo.</p>
      <p>
@@ -401,9 +448,10 @@ function avisoPerfilNuevo({ creadora, instagram, tiktok, alcance }) {
 
 /** Al equipo: ya puso tarifas, está lista para que la revisen. */
 function avisoListaParaRevisar({ creadora }) {
-  if (!config.smtp.user) return Promise.resolve(false);
+  const para = correoDelEquipo();
+  if (!para) return Promise.resolve(false);
   return enviar(
-    config.smtp.user,
+    para,
     `Lista para revisar: ${creadora.nombre_publico}`,
     `<p><strong>${esc(creadora.nombre_publico)}</strong> ya publicó sus tarifas y está esperando aprobación.</p>
      ${boton('REVISAR', `${config.base_url}/admin.html`)}`
@@ -1132,6 +1180,7 @@ module.exports = {
   recordatorioPerfil, trajisteUna,
   propuestaPorVencer, propuestaExpirada, subirEnElCatalogo,
   bienvenidaCreadora, avisoPerfilNuevo, avisoListaParaRevisar, perfilAprobado, resetClave,
+  marcaNueva,
   nuevaSolicitud, tratoAceptado, tratoRechazado,
   pagoRetenido, contenidoEntregado, contenidoAprobado, pagoLiberado,
   reciboSuscripcion, planPorVencer, seleccionLista,

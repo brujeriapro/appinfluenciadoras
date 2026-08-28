@@ -87,6 +87,14 @@ const config = {
     user: process.env.MK_SMTP_USER || '',
     pass: process.env.MK_SMTP_PASS || '',
     remitente: process.env.MK_SMTP_FROM || 'Creators Manager <no-reply@creatorsmanager.com>',
+    // A dónde llegan los avisos del equipo: alguien se registró, una creadora
+    // pide revisión. NO puede ser el remitente, que es un no-reply.
+    //
+    // Cae a MK_SMTP_USER por compatibilidad: los avisos existentes salían para
+    // allá cuando el correo iba por Gmail. Desde que sale por API web esa
+    // variable puede estar vacía, y con ella vacía los avisos **no se mandaban
+    // y nadie se enteraba** — el envío falla en silencio a propósito.
+    equipo: process.env.MK_CORREO_EQUIPO || process.env.MK_SMTP_USER || '',
   },
 };
 
