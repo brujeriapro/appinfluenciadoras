@@ -392,6 +392,57 @@ async function enviarCampana() {
 
 // ── 2 · Campaña activa ──────────────────────────────────────────────────────
 
+/**
+ * La convocatoria abierta: publicarla, o cómo va si ya está publicada.
+ *
+ * Es la alternativa a elegir a ciegas entre 294 perfiles. Se dice lo que cuesta
+ * ANTES de publicar —los cupos se cobran por adelantado— porque enterarse
+ * después de que se fueron las propuestas del mes es la peor forma de saberlo.
+ */
+function convocatoriaHTML(campana, conv) {
+  if (conv) {
+    const cierra = campana.postulaciones_hasta
+      ? new Date(campana.postulaciones_hasta).toLocaleDateString('es-CO',
+          { day: '2-digit', month: 'short' })
+      : '—';
+    return `
+    <div class="tarjeta-plana" style="margin-bottom:14px;border-left:5px solid var(--azul)">
+      <div class="etiqueta">Convocatoria abierta</div>
+      <div style="font-family:var(--mono-t);font-weight:800;font-size:19px;
+                  letter-spacing:-0.9px;margin:6px 0">
+        ${conv.esperando} esperando respuesta
+      </div>
+      <p class="p" style="font-size:11.5px">${esc(conv.resumen)}.
+        Se puede postular hasta el ${esc(cierra)}.</p>
+      <p class="p" style="font-size:10.5px;color:var(--text-3);margin-top:8px">
+        Los cupos que no llenes se te devuelven al plan cuando cierres la campaña.</p>
+    </div>`;
+  }
+
+  return `
+  <div class="tarjeta-plana" style="margin-bottom:14px">
+    <div class="etiqueta">¿Prefieres que se postulen?</div>
+    <p class="p" style="font-size:11.5px;margin:8px 0 12px">
+      En vez de elegir a ciegas, publicamos la convocatoria y le llega por correo
+      a las creadoras que encajan. Eliges entre las que levanten la mano.
+    </p>
+    <div class="campo" style="margin-bottom:8px">
+      <label class="etiqueta" for="conv-nicho">Nicho (separado por comas)</label>
+      <input id="conv-nicho" placeholder="rizos, cuidado capilar">
+    </div>
+    <div class="campo" style="margin-bottom:8px">
+      <label class="etiqueta" for="conv-ciudad">Ciudad</label>
+      <input id="conv-ciudad" placeholder="Vacío = toda Colombia">
+    </div>
+    <button class="btn btn--magenta" id="publicar-conv" style="width:100%">
+      Abrir a postulaciones →</button>
+    <p class="p" style="font-size:10.5px;color:var(--text-3);margin-top:8px">
+      Te cuesta ${campana.cupos} propuesta${campana.cupos === 1 ? '' : 's'} del plan
+      —una por cupo— y te devolvemos las que no llenes.
+    </p>
+  </div>`;
+}
+
 async function vistaCampanaActiva(c, id) {
   c.innerHTML = '<p class="p">Cargando…</p>';
   let d;
@@ -405,7 +456,7 @@ async function vistaCampanaActiva(c, id) {
   }
   CUPOS.campana = d;
 
-  const { campana, estado, invitaciones } = d;
+  const { campana, estado, invitaciones, convocatoria } = d;
   const resto = faltaPara(campana.fecha_limite_respuesta);
   const grupo = (est) => invitaciones.filter(i => i.estado === est);
 
@@ -447,6 +498,7 @@ async function vistaCampanaActiva(c, id) {
       </div>
 
       <aside class="cupos-layout__panel">
+        ${convocatoriaHTML(campana, convocatoria)}
         <div class="panel-negro">
           <div class="panel-negro__titulo">Te toca a ti</div>
           <h2 class="cab-negra__titulo" style="font-size:19px;margin-top:10px">
@@ -490,8 +542,35 @@ async function vistaCampanaActiva(c, id) {
   $('ir-elegir')?.addEventListener('click', () => irAElegir(campana.id));
   $('cerrar-campana')?.addEventListener('click', async () => {
     if (!confirm('¿Cerrar la campaña? A quienes aceptaron y no elegiste les llega que los cupos se completaron.')) return;
-    await apiCupos(`/${campana.id}/cerrar`, { method: 'POST' });
+    const r = await apiCupos(`/${campana.id}/cerrar`, { method: 'POST' });
+    if (r?.devueltas) alert(r.mensaje);
     vistaCampanaActiva($('contenido'), campana.id);
+  });
+
+  $('publicar-conv')?.addEventListener('click', async (ev) => {
+    const b = ev.currentTarget;
+    const lista = (s) => String(s || '').split(',').map(x => x.trim()).filter(Boolean);
+    const nicho = lista($('conv-nicho').value);
+    const ciudades = lista($('conv-ciudad').value);
+
+    if (!confirm(`Se va a publicar y le llega por correo a las creadoras que encajen. `
+      + `Consume ${campana.cupos} propuestas de tu plan; las que no llenes se te devuelven al cerrar.`)) return;
+
+    b.disabled = true;
+    b.textContent = 'Publicando…';
+    try {
+      const r = await apiCupos(`/${campana.id}/publicar`, {
+        method: 'POST',
+        body: JSON.stringify({ nicho, ciudades }),
+      });
+      alert(`Publicada. Encajan ${r.encajan} creadoras y les estamos escribiendo a ${r.se_les_avisa}.`
+        + (r.recortadas ? ` Quedaron ${r.recortadas} por fuera de esta tanda.` : ''));
+      vistaCampanaActiva($('contenido'), campana.id);
+    } catch (e) {
+      b.disabled = false;
+      b.textContent = 'Abrir a postulaciones →';
+      alert('No se pudo publicar: ' + e.message);
+    }
   });
 }
 

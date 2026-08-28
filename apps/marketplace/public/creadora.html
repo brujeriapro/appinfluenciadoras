@@ -3168,11 +3168,65 @@ let seleccionada = null;
 //   "tu perfil no cumplió"          → "esto no baja tu nivel"
 
 async function cargarInvitaciones() {
-  try {
-    DATOS.invitaciones = await api('/cupos');
-  } catch (e) {
-    DATOS.invitaciones = [];
-  }
+  const [inv, abiertas] = await Promise.all([
+    api('/cupos').catch(() => []),
+    // Las convocatorias abiertas no pueden tumbar la pantalla de propuestas:
+    // lo que ella vino a ver son los tratos que ya tiene.
+    api('/cupos/abiertas').catch(() => ({ campanas: [] })),
+  ]);
+  DATOS.invitaciones = inv;
+  DATOS.abiertas = abiertas.campanas || [];
+}
+
+/**
+ * Las convocatorias abiertas a las que puede postularse.
+ *
+ * Van DESPUÉS de sus invitaciones y sus tratos, no antes: lo que ya tiene vale
+ * más que lo que podría tener, y enterrar una invitación real bajo una lista de
+ * convocatorias sería cambiarle la prioridad.
+ *
+ * Se dice sin adornos que postularse no reserva nada. Vender esto como "te
+ * eligieron" y que después no quede es la forma más rápida de que deje de
+ * creerle a la plataforma.
+ */
+function abiertasHTML() {
+  const lista = DATOS.abiertas || [];
+  if (!lista.length) return '';
+
+  const fecha = (iso) => iso
+    ? new Date(iso).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })
+    : '—';
+
+  return `
+    <section class="bloque-invitaciones">
+      <div class="bloque-perfil__titulo" style="margin-bottom:4px">
+        Convocatorias abiertas · ${lista.length}
+      </div>
+      <div class="bloque-perfil__nota" style="margin-bottom:12px">
+        Marcas buscando creadoras con tu perfil. Postularte es gratis y no reserva
+        el cupo: la marca elige entre las que se postulen y te avisamos quede o no.
+      </div>
+      ${lista.map(c => `
+        <div class="bloque-perfil" style="border-left:5px solid var(--blue)">
+          <div style="display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap">
+            <div style="flex:1;min-width:220px">
+              <div class="bloque-perfil__titulo">${esc(c.marca || 'Una marca')}</div>
+              <div class="bloque-perfil__nota">${esc(c.nombre || '')}</div>
+            </div>
+            <div style="text-align:right">
+              <div class="monto">${COP(desgloseInvitacion(c.monto).neto)}</div>
+              <div class="pista">neto para ti</div>
+            </div>
+          </div>
+          <p class="p" style="margin:12px 0">${esc((c.brief || '').slice(0, 320))}</p>
+          <div class="pista" style="margin-bottom:12px">
+            ${c.libres} de ${c.cupos} cupos libres · cierra el ${esc(fecha(c.postulaciones_hasta))}
+          </div>
+          ${c.ya_me_postule
+            ? '<div class="aviso aviso--ok">Ya te postulaste. Te avisamos cuando la marca decida.</div>'
+            : `<button class="btn-portal" data-postular="${esc(c.id)}">Postularme →</button>`}
+        </div>`).join('')}
+    </section>`;
 }
 
 function invitacionesHTML() {
@@ -3414,10 +3468,27 @@ async function vistaPropuestas() {
       <div class="detalle-propuesta" id="detalle">
         <div class="vacio">Escoge una propuesta para ver el detalle.</div>
       </div>
-    </div>`;
+    </div>`
+    + abiertasHTML();
 
   $('principal').querySelectorAll('[data-f]').forEach(b => {
     b.addEventListener('click', () => { filtro = b.dataset.f; seleccionada = null; ir('propuestas'); });
+  });
+
+  $('principal').querySelectorAll('[data-postular]').forEach(b => {
+    b.addEventListener('click', async () => {
+      b.disabled = true;
+      b.textContent = 'Postulando…';
+      try {
+        await api(`/cupos/abiertas/${b.dataset.postular}/postular`, { method: 'POST' });
+        await cargarInvitaciones();
+        ir('propuestas');
+      } catch (e) {
+        b.disabled = false;
+        b.textContent = 'Postularme →';
+        alert('No se pudo: ' + e.message);
+      }
+    });
   });
   conectarInvitaciones($('principal'));
 

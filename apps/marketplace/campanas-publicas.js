@@ -109,7 +109,21 @@ function puedePublicar({ campana = {}, plan = {} }) {
     cuantas: cupos,
   });
   if (!alcanza.alcanza) {
-    return { ok: false, motivo: alcanza.mensaje, restantes: alcanza.restantes };
+    // Mensaje propio: el de `alcanzaElPlan` habla de invitar, y acá no se está
+    // invitando a nadie — se está abriendo una convocatoria. Leer "invitar a 3
+    // creadoras" cuando uno le dio a publicar deja a la marca sin entender qué
+    // fue lo que no se pudo hacer.
+    const r = alcanza.restantes;
+    return {
+      ok: false,
+      restantes: r,
+      motivo: r === 0
+        ? `Ya usaste las propuestas de tu plan este mes. Una convocatoria cuesta una `
+          + `propuesta por cupo, así que necesitas ${cupos}.`
+        : `Una convocatoria de ${cupos} cupos cuesta ${cupos} propuestas y te `
+          + `queda${r === 1 ? '' : 'n'} ${r}. Bájale a ${r} cupo${r === 1 ? '' : 's'} `
+          + `o cambia de plan.`,
+    };
   }
 
   return { ok: true, consume: cupos, restantes: alcanza.restantes };

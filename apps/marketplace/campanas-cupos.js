@@ -141,6 +141,12 @@ deMarca.get('/:id', async (req, res) => {
     res.json({
       campana: datos.campana,
       estado: datos.estado,
+      // Cómo va la convocatoria abierta, si la hay. Va siempre —aunque sea
+      // null— para que la pantalla no tenga que adivinar si esta campaña es de
+      // las que reciben postulaciones.
+      convocatoria: datos.campana.publica
+        ? publicas.estadoDeConvocatoria(datos.campana, datos.invitaciones)
+        : null,
       invitaciones: datos.invitaciones.map(i => ({
         ...i,
         creadora: porId.get(i.creadora_id) || null,

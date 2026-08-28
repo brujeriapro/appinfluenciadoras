@@ -59,3 +59,14 @@ create unique index if not exists mk_campana_invitacion_uniq
 create index if not exists mk_campanas_publicas_idx
   on mk_campanas (publica, postulaciones_hasta)
   where publica = true;
+
+-- El estado nuevo: se postuló y espera respuesta.
+--
+-- No entra en la lista original porque esa se escribió cuando la única forma de
+-- estar en una campaña era que la marca te invitara. 'postulada' es el
+-- equivalente de 'invitada' del otro lado: levantó la mano y espera.
+alter table mk_campana_invitacion drop constraint if exists mk_campana_invitacion_estado_check;
+alter table mk_campana_invitacion add constraint mk_campana_invitacion_estado_check
+  check (estado = any (array[
+    'invitada', 'acepto', 'paso', 'confirmada', 'cupos_llenos', 'vencida', 'postulada'
+  ]));

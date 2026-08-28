@@ -220,3 +220,15 @@ test('publicar y cerrar sin nadie devuelve todo lo cobrado', () => {
   const r = alCerrar({ campana: campanaOk({ cupos: 4 }), invitaciones: [] });
   assert.equal(r.devolver, 4);
 });
+
+test('el mensaje de "no alcanza" habla de convocatoria, no de invitar', () => {
+  // Leer "invitar a 3 creadoras" cuando uno le dio a publicar deja a la marca
+  // sin entender qué fue lo que no se pudo hacer.
+  const r = puedePublicar({
+    campana: campanaOk({ cupos: 3 }),
+    plan: { propuestas_tope: 3, propuestas_enviadas: 2 },
+  });
+  assert.equal(r.ok, false);
+  assert.match(r.motivo, /convocatoria/i);
+  assert.ok(!/invitar/i.test(r.motivo), r.motivo);
+});
