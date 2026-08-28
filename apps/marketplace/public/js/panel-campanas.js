@@ -318,7 +318,7 @@ function pintarCampana() {
   if (!c.entregables.length) {
     aviso = 'Marca al menos un entregable: sin eso no podemos mostrarte creadoras que sirvan.';
   } else if (!califican) {
-    aviso = `Con ese tope por creadora no califica ninguno de los ${E.catalogo.length} perfiles. Súbelo.`;
+    aviso = 'Con ese tope por creadora no califica ningún perfil. Súbelo.';
   } else {
     aviso = 'El tope por creadora es un máximo, no un precio fijo: a quien cobre menos, le pagas menos.';
   }
@@ -409,7 +409,7 @@ function pintarCampana() {
         </div>
         <div class="dinero-fila">
           <span class="dinero-fila__label">Perfiles que califican</span>
-          <span class="dinero-fila__valor">${califican} de ${E.catalogo.length}</span>
+          <span class="dinero-fila__valor">${califican}</span>
         </div>
 
         <div class="dinero-total">

@@ -16,6 +16,27 @@
 <style>
   /* Piezas propias de este panel. El sistema visual vive en marca.css. */
 
+  /* ── Menú de la cuenta ──────────────────────────────────────────────── */
+  .cuenta { position: relative; }
+  .cuenta__btn { display: flex; align-items: center; gap: 12px; background: none;
+                 border: none; cursor: pointer; padding: 4px; font-family: inherit;
+                 text-align: right; }
+  .cuenta__btn > span:first-child { display: flex; flex-direction: column; gap: 2px; }
+  .cuenta__btn:hover .cab__avatar { background: var(--magenta); }
+  .cuenta__menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 60;
+                  min-width: 210px; background: var(--surface);
+                  border: 2px solid var(--ink); display: flex; flex-direction: column; }
+  .cuenta__menu[hidden] { display: none; }
+  .cuenta__menu > * { display: block; width: 100%; text-align: left; background: none;
+                      border: none; border-bottom: 1px solid var(--border-3);
+                      padding: 12px 14px; cursor: pointer; font-family: var(--mono-t);
+                      font-weight: 700; font-size: 11px; letter-spacing: 0.3px;
+                      text-transform: uppercase; color: var(--ink); text-decoration: none; }
+  .cuenta__menu > *:last-child { border-bottom: none; }
+  .cuenta__menu > *:hover { background: var(--lima); }
+  .cuenta__salir { color: var(--magenta); }
+  .cuenta__salir:hover { background: var(--magenta); color: var(--ink); }
+
   .aviso-empezar { display: flex; gap: 18px; align-items: center; flex-wrap: wrap;
                    justify-content: space-between; background: var(--ink);
                    color: #F2F2F2; padding: 20px 22px; margin-bottom: 18px; }
@@ -372,11 +393,24 @@
       <div class="cab__plan-label">Propuestas este mes</div>
       <div class="cab__plan-cifra" id="plan-cifra">—</div>
     </div>
-    <div>
-      <div class="cab__marca-nombre" id="nombre-marca">—</div>
-      <div class="cab__marca-sub" id="sub-marca"></div>
+    <!-- El nombre y el avatar abren el menú de la cuenta. Antes no eran nada:
+         se veían como un botón, y no había forma de cerrar sesión en toda la
+         aplicación. -->
+    <div class="cuenta">
+      <button class="cuenta__btn" id="btn-cuenta" aria-haspopup="menu" aria-expanded="false">
+        <span>
+          <span class="cab__marca-nombre" id="nombre-marca">—</span>
+          <span class="cab__marca-sub" id="sub-marca"></span>
+        </span>
+        <span class="cab__avatar" id="iniciales">·</span>
+      </button>
+      <div class="cuenta__menu" id="menu-cuenta" role="menu" hidden>
+        <button role="menuitem" data-cuenta="perfil">Mi perfil</button>
+        <button role="menuitem" data-cuenta="plan">Mi plan</button>
+        <a role="menuitem" href="/terminos.html" target="_blank" rel="noopener">Términos</a>
+        <button role="menuitem" data-cuenta="salir" class="cuenta__salir">Cerrar sesión</button>
+      </div>
     </div>
-    <div class="cab__avatar" id="iniciales">·</div>
   </div>
 </header>
 
@@ -723,6 +757,44 @@ async function cargarCatalogo() {
   }
 }
 
+/**
+ * El menú de la cuenta.
+ *
+ * Cerrar sesión no existía en toda la aplicación: la única forma de salir era
+ * borrar los datos del navegador. En un computador compartido —el de la oficina
+ * de una marca— eso deja la cuenta abierta para el que siga.
+ */
+(function menuDeCuenta() {
+  const btn = $('btn-cuenta');
+  const menu = $('menu-cuenta');
+  if (!btn || !menu) return;
+
+  const abrir = (si) => {
+    menu.hidden = !si;
+    btn.setAttribute('aria-expanded', String(si));
+  };
+
+  btn.addEventListener('click', (e) => { e.stopPropagation(); abrir(menu.hidden); });
+  document.addEventListener('click', () => abrir(false));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') abrir(false); });
+  menu.addEventListener('click', (e) => e.stopPropagation());
+
+  menu.querySelectorAll('[data-cuenta]').forEach(b => {
+    b.addEventListener('click', () => {
+      abrir(false);
+      if (b.dataset.cuenta === 'perfil') return ir('perfil');
+      if (b.dataset.cuenta === 'plan') { location.href = '/precios'; return; }
+      if (b.dataset.cuenta === 'salir') {
+        // Se pregunta: salir sin querer desde un menú que se abre con un clic
+        // obliga a volver a entrar con la clave, que casi nadie recuerda.
+        if (!confirm('¿Cerrar sesión?')) return;
+        sessionStorage.removeItem('mk_marca');
+        location.href = '/registro.html';
+      }
+    });
+  });
+})();
+
 async function arrancar() {
   try {
     // Las campañas se cargan de una: el modal de propuesta las necesita para
@@ -738,6 +810,14 @@ async function arrancar() {
     E.cfg = cfg;
     E.triage = triage;
     E.campanas = campanas;
+
+    // La cabecera se pinta apenas se sabe quién es, sin esperar al plan ni al
+    // home: son otras dos llamadas, y con la base lenta dejaban a la marca
+    // mirando un guion donde debería estar su nombre.
+    $('nombre-marca').textContent = marca.nombre_empresa || '—';
+    $('sub-marca').textContent = [marca.ciudad, marca.pais].filter(Boolean).join(' · ');
+    $('iniciales').textContent = (marca.nombre_empresa || 'M')
+      .split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
     // El plan, el home y el catálogo se piden a la vez: no dependen uno del
     // otro y encadenarlos sumaba tres viajes al servidor antes de que la marca
     // viera nada. El catálogo es el más lento de los tres, así que arrancarlo
@@ -753,11 +833,6 @@ async function arrancar() {
     E.plan = plan;
     E.home = home;
     pintarPlan();
-
-    $('nombre-marca').textContent = marca.nombre_empresa || '—';
-    $('sub-marca').textContent = [marca.ciudad, marca.pais].filter(Boolean).join(' · ');
-    $('iniciales').textContent = (marca.nombre_empresa || 'M')
-      .split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
 
     await enCurso;
     cargarTratos();
@@ -992,8 +1067,17 @@ const BANDEJAS = [
   { clave: 'desc',       nombre: 'Descartadas' },
 ];
 
+/**
+ * Qué bandejas muestran su número.
+ *
+ * "Catálogo" y "Por revisar" NO lo muestran: mientras no haya triage, las dos
+ * valen el total del banco, y cuántas creadoras tenemos no se le dice a una
+ * marca. Las otras dos son sus propias decisiones y sí le sirven.
+ */
+const MUESTRA_CONTEO = new Set(['pre', 'desc']);
+
 const TITULOS = {
-  todas: 'Catálogo completo',
+  todas: 'Catálogo',
   pendientes: 'Creadoras por revisar',
   pre: 'Preseleccionadas',
   desc: 'Descartadas',
@@ -1238,11 +1322,19 @@ function vistaCatalogo(c) {
         ${BANDEJAS.map(b => `
           <button role="tab" class="bandeja ${E.bandeja === b.clave ? 'on' : ''}"
                   aria-selected="${E.bandeja === b.clave}" data-bandeja="${b.clave}">
-            ${b.nombre} <span class="bandeja__n" id="c-${b.clave}">${(E.conteos || {})[b.clave] ?? 0}</span>
+            ${b.nombre}${MUESTRA_CONTEO.has(b.clave)
+              ? ` <span class="bandeja__n" id="c-${b.clave}">${(E.conteos || {})[b.clave] ?? 0}</span>`
+              : ''}
           </button>`).join('')}
       </div>
       <div class="barra-bandejas__der">
-        <span class="conteo">${lista.length} de ${E.catalogo.length} perfiles</span>
+        <!-- Solo cuando hay filtro: "294 de 294" le decía a la marca cuántas
+             creadoras tenemos, y ese número no se comparte. Filtrado sí sirve
+             —le dice cuántas quedaron— y no revela el total. Cuando no hay
+             filtro no se pinta el elemento: vacío dejaba una caja con borde. -->
+        ${lista.length < E.catalogo.length
+          ? `<span class="conteo">${lista.length} perfil${lista.length === 1 ? '' : 'es'}</span>`
+          : ''}
         <div class="toggle">
           <button class="${E.layout === 'filas' ? 'on' : ''}" data-layout="filas">Filas</button>
           <button class="${E.layout === 'grid' ? 'on' : ''}" data-layout="grid">Tarjetas</button>
