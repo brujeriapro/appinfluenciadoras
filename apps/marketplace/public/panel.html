@@ -472,6 +472,9 @@ const E = {
   filtros: { nicho: '', ciudad: '', tier: '', red: '', entregable: '', presupuesto: null },
   cfg: null,
   catalogo: [],
+  // Cuántos perfiles se han pintado. La lista sale de a tandas y esto es lo
+  // que hace que repintarla no devuelva a nadie al principio.
+  mostradas: 0,
   plan: null,
   triage: { preseleccionadas: [], descartadas: [] },
   home: null,
@@ -516,8 +519,20 @@ document.addEventListener('click', (ev) => {
   ev.preventDefault();
   ev.stopPropagation();
 
-  const v = marco.querySelector('video');
-  if (!v) return;
+  // La pieza se pinta como portada, sin <video>. El elemento se crea acá, la
+  // primera vez que alguien le da play — que es cuando de verdad hace falta.
+  let v = marco.querySelector('video');
+  if (!v) {
+    if (!marco.dataset.src) return;
+    v = document.createElement('video');
+    v.src = marco.dataset.src;
+    v.className = 'pieza-video';
+    v.muted = true;
+    v.playsInline = true;
+    v.loop = true;
+    marco.querySelector('img, .pieza-sin-portada')?.remove();
+    marco.insertBefore(v, marco.firstChild);
+  }
 
   if (v.paused) {
     // Solo una a la vez: cuatro videos sonando —aunque sean mudos— dejan la
@@ -696,6 +711,8 @@ async function cargarCatalogo() {
 
     const d = await apiCatalogo(q.toString() ? '?' + q : '');
     E.catalogo = d.creadoras || [];
+    // Catálogo nuevo, lista desde arriba.
+    E.mostradas = 0;
     E.cargando = false;
     pintarFiltros();
     render();
@@ -721,10 +738,20 @@ async function arrancar() {
     E.cfg = cfg;
     E.triage = triage;
     E.campanas = campanas;
-    E.plan = await api('/plan').catch(() => null);
-    // El home no puede tumbar el arranque: si la vitrina falla, la marca
-    // igual entra y ve el catálogo, que es lo que de verdad no puede faltar.
-    E.home = await api('/home').catch(() => ({}));
+    // El plan, el home y el catálogo se piden a la vez: no dependen uno del
+    // otro y encadenarlos sumaba tres viajes al servidor antes de que la marca
+    // viera nada. El catálogo es el más lento de los tres, así que arrancarlo
+    // acá en vez de al final es lo que más se nota.
+    //
+    // El home no puede tumbar el arranque: si la vitrina falla, la marca igual
+    // entra y ve el catálogo, que es lo que de verdad no puede faltar.
+    const enCurso = cargarCatalogo();
+    const [plan, home] = await Promise.all([
+      api('/plan').catch(() => null),
+      api('/home').catch(() => ({})),
+    ]);
+    E.plan = plan;
+    E.home = home;
     pintarPlan();
 
     $('nombre-marca').textContent = marca.nombre_empresa || '—';
@@ -732,7 +759,7 @@ async function arrancar() {
     $('iniciales').textContent = (marca.nombre_empresa || 'M')
       .split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
 
-    await cargarCatalogo();
+    await enCurso;
     cargarTratos();
   } catch (e) {
     E.error = e.message;
@@ -1240,14 +1267,66 @@ function vistaCatalogo(c) {
 
   if (!lista.length) return pintarVacio($('lista'));
 
-  $('lista').innerHTML = E.layout === 'filas'
-    ? lista.map(filaHTML).join('')
-    : `<div class="grilla">${lista.map(tarjetaHTML).join('')}</div>`;
+  pintarLista(lista);
+}
 
-  conectarTriage($('lista'));
-  $('lista').querySelectorAll('[data-ficha]').forEach(b => {
-    b.addEventListener('click', () => ir('ficha', b.dataset.ficha));
-  });
+/** Cuántos perfiles entran en cada tanda. */
+const POR_TANDA = 40;
+
+/**
+ * La lista se pinta de a tandas, no entera.
+ *
+ * Pintar las 282 de una dejaba 10.136 nodos en la página y el navegador se
+ * tomaba 1,1 segundos solo en calcular la posición de todo, con la pantalla
+ * congelada. Y no servía de nada: nadie mira el perfil 200 sin haber bajado.
+ *
+ * La siguiente tanda entra cuando el final de la lista se acerca a la pantalla,
+ * así que bajando no se nota corte; solo deja de trabajar por adelantado.
+ */
+function pintarLista(lista) {
+  const caja = $('lista');
+  const grilla = E.layout !== 'filas';
+  caja.innerHTML = `<div id="lista-caja" class="${grilla ? 'grilla' : ''}"></div>
+                    <div id="lista-fin" style="height:1px"></div>`;
+  const destino = $('lista-caja');
+  let pintadas = 0;
+
+  // Cuántas había pintadas antes de repintar. Marcar una creadora con ✓ vuelve
+  // a dibujar la lista —hay que actualizar los conteos de las bandejas— y sin
+  // esto la lista se encogía a la primera tanda: quien había bajado hasta el
+  // perfil 150 y marcaba uno, se encontraba arriba otra vez.
+  const objetivo = Math.min(Math.max(E.mostradas || 0, POR_TANDA), lista.length);
+
+  const siguienteTanda = (cuantas = POR_TANDA) => {
+    const trozo = lista.slice(pintadas, pintadas + cuantas);
+    if (!trozo.length) return false;
+    pintadas += trozo.length;
+    E.mostradas = pintadas;
+
+    const temp = document.createElement('div');
+    temp.innerHTML = trozo.map(grilla ? tarjetaHTML : filaHTML).join('');
+    const nuevos = [...temp.children];
+    nuevos.forEach(n => destino.appendChild(n));
+
+    // Los oyentes van solo sobre lo recién agregado: volver a recorrer la lista
+    // entera dejaría dos oyentes en cada tarjeta ya pintada, y el ✓ marcaría y
+    // desmarcaría en el mismo clic.
+    nuevos.forEach(n => {
+      conectarTriage(n);
+      n.querySelectorAll('[data-ficha]').forEach(b => {
+        b.addEventListener('click', () => ir('ficha', b.dataset.ficha));
+      });
+    });
+    return pintadas < lista.length;
+  };
+
+  siguienteTanda(objetivo);
+
+  const fin = $('lista-fin');
+  const obs = new IntersectionObserver((filas) => {
+    if (filas.some(f => f.isIntersecting) && !siguienteTanda()) obs.disconnect();
+  }, { rootMargin: '600px' });
+  obs.observe(fin);
 }
 
 /**
@@ -1273,10 +1352,23 @@ const pieza = (m) => {
     // Ahora la portada es un JPEG de unos KB que aparece de inmediato, y el
     // video no se descarga hasta que le den play: la pantalla se ve llena y
     // además carga mucho más rápido.
-    const poster = m.poster ? ` poster="/media/${m.id}/poster?t=${TOKEN}"` : '';
-    return `<button type="button" class="pieza-wrap" data-video aria-label="Reproducir pieza de trabajo">
-              <video src="${url}#t=1"${poster} preload="${m.poster ? 'none' : 'metadata'}"
-                     muted playsinline loop class="pieza-video"></video>
+    // El <video> NO existe hasta que le den play.
+    //
+    // Antes se pintaban los 287 del catálogo de una sola vez. Aunque cada uno
+    // llevara preload="none", crear 287 elementos de video y pedir sus 287
+    // portadas a la vez dejaba la pantalla 15 SEGUNDOS antes de mostrar la
+    // primera tarjeta, llenándose de a poco. Y los 49 sin portada usaban
+    // preload="metadata", que se baja el video para sacar el primer fotograma:
+    // esos son los recuadros negros que se ven mientras tanto.
+    //
+    // Ahora la portada es un <img loading="lazy">, así que el navegador solo
+    // pide las que están cerca de la pantalla, y el video se crea al tocarlo.
+    return `<button type="button" class="pieza-wrap" data-video data-src="${url}#t=1"
+                    aria-label="Reproducir pieza de trabajo">
+              ${m.poster
+                ? `<img src="/media/${m.id}/poster?t=${TOKEN}" alt="Pieza de trabajo"
+                        loading="lazy" class="pieza-video">`
+                : '<span class="pieza-sin-portada" aria-hidden="true"></span>'}
               <span class="pieza-play" aria-hidden="true">▶</span>
             </button>`;
   }
