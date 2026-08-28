@@ -327,6 +327,24 @@ input[type=range]::-moz-range-thumb {
   display: grid; place-items: center;
 }
 .tri:hover { border-color: var(--ink); color: var(--ink); }
+/* Los dos que hacen algo, no los que solo marcan. Se distinguen del ✓/✕ para
+   que no parezca que descartar y proponer son la misma clase de decisión. */
+/* Las dos formas de poner el monto de una propuesta. Van como elección y no
+   como atajo: pagarle lo que pide y ofrecerle otra cosa son decisiones
+   distintas, y la segunda hay que tomarla a propósito. */
+.eleccion-monto { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.opcion-monto { background: var(--surface); border: 2px solid var(--border-1);
+                padding: 11px 12px; cursor: pointer; text-align: left;
+                font-family: var(--mono-t); font-weight: 700; font-size: 11px;
+                letter-spacing: -0.2px; color: var(--ink); }
+.opcion-monto:hover { border-color: var(--ink); }
+.opcion-monto.on { background: var(--ink); color: var(--off-white, #F2F2F2); border-color: var(--ink); }
+.opcion-monto__cifra { display: block; font-family: var(--mono-b, 'Space Mono', monospace);
+                       font-weight: 400; font-size: 11px; color: var(--text-3); margin-top: 4px; }
+.opcion-monto.on .opcion-monto__cifra { color: var(--lima); }
+
+.tri--obrar { border-style: dashed; }
+.tri--obrar:hover { background: var(--lima); border-style: solid; }
 /* Preseleccionar es magenta y no lima: el lima está reservado al dinero, y un
    ✓ lima justo al lado del precio hace que los dos dejen de significar algo.
    Magenta es el estado de selección en todo el sistema. */

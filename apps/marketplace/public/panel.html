@@ -1688,6 +1688,12 @@ function filaHTML(c) {
                 aria-label="Preseleccionar ${esc(c.nombre_publico)}">✓</button>
         <button class="tri ${esDesc(c.id) ? 'on-no' : ''}" data-no="${c.id}"
                 aria-label="Descartar ${esc(c.nombre_publico)}">✕</button>
+        <button class="tri tri--obrar" data-invitar="${c.id}"
+                aria-label="Invitar a ${esc(c.nombre_publico)} a una campaña"
+                title="Invitar a una campaña">+</button>
+        <button class="tri tri--obrar" data-proponer="${c.id}"
+                aria-label="Mandarle una propuesta a ${esc(c.nombre_publico)}"
+                title="Mandarle una propuesta">$</button>
       </div>
       <button class="btn btn--sm" data-ficha="${c.id}">Ver ficha →</button>
     </div>
@@ -1712,6 +1718,12 @@ function tarjetaHTML(c) {
                 aria-label="Preseleccionar ${esc(c.nombre_publico)}">✓</button>
         <button class="tri ${esDesc(c.id) ? 'on-no' : ''}" data-no="${c.id}"
                 aria-label="Descartar ${esc(c.nombre_publico)}">✕</button>
+        <button class="tri tri--obrar" data-invitar="${c.id}"
+                aria-label="Invitar a ${esc(c.nombre_publico)} a una campaña"
+                title="Invitar a una campaña">+</button>
+        <button class="tri tri--obrar" data-proponer="${c.id}"
+                aria-label="Mandarle una propuesta a ${esc(c.nombre_publico)}"
+                title="Mandarle una propuesta">$</button>
       </div>
     </div>
     <div class="tarjeta__cuerpo">
@@ -1751,6 +1763,16 @@ function conectarTriage(raiz) {
     b.addEventListener('click', () => marcar(b.dataset.si, 'preseleccionada')));
   raiz.querySelectorAll('[data-no]').forEach(b =>
     b.addEventListener('click', () => marcar(b.dataset.no, 'descartada')));
+
+  // Invitar y proponer viven junto al ✓/✕ porque es donde la marca ya está
+  // decidiendo. Antes había que entrar a la ficha o a la campaña.
+  const deId = (id) => E.catalogo.find(c => c.id === id);
+
+  raiz.querySelectorAll('[data-invitar]').forEach(b =>
+    b.addEventListener('click', () => abrirCampanaCon([deId(b.dataset.invitar)])));
+
+  raiz.querySelectorAll('[data-proponer]').forEach(b =>
+    b.addEventListener('click', () => abrirPropuesta(deId(b.dataset.proponer), null)));
 }
 
 $('comp-quitar').addEventListener('click', async () => {

@@ -177,9 +177,36 @@ const COLS_CATALOGO = [
   'metricas_estado',
 ].join(',');
 
+/**
+ * Columnas que todavía pueden no existir en la base.
+ *
+ * Las migraciones se corren a mano, así que entre desplegar el código y
+ * pegarlas en el SQL Editor hay una ventana. Pedir una columna que no existe
+ * NO devuelve el resto de los datos: PostgREST rechaza la consulta entera con
+ * un 400, así que una columna nueva tumba el catálogo completo.
+ *
+ * Ya pasó —con `orden_fijo`, el mismo día que se escribió esto— y la marca
+ * queda mirando una pantalla de error en lo único que vino a usar. Cuesta poco
+ * y evita que el orden de dos pasos manuales decida si la aplicación funciona.
+ *
+ * Se limpia cuando la migración lleva tiempo aplicada.
+ */
+const COLUMNAS_NUEVAS = ['orden_fijo'];
+let _sinColumnasNuevas = false;
+
+/** El select de siempre, o el de emergencia si la base va atrasada. */
+function selectCatalogo() {
+  if (!_sinColumnasNuevas) return COLS_CATALOGO;
+  return COLS_CATALOGO.split(',').filter(c => !COLUMNAS_NUEVAS.includes(c)).join(',');
+}
+
+/** ¿Este error es "falta una columna nueva" y no un problema de verdad? */
+const esColumnaQueFalta = (e) =>
+  COLUMNAS_NUEVAS.some(c => String(e.message).includes(`${c} does not exist`));
+
 async function getCatalogo({ categoria, nicho, rango_alcance, nivel_tarifa, pais, departamento, ciudad, presupuesto_max } = {}) {
   const params = {
-    select: COLS_CATALOGO,
+    select: selectCatalogo(),
     visible: 'eq.true',
     // ⚠️ Este orden NO es el que ve la marca en el catálogo: `catalogo.js` lo
     // vuelve a ordenar en JavaScript por qué tan completo está cada perfil,
@@ -208,7 +235,19 @@ async function getCatalogo({ categoria, nicho, rango_alcance, nivel_tarifa, pais
   // use el filtro, que es justo lo contrario de lo que queremos ahora que la
   // tarifa dejó de ser obligatoria.
   if (presupuesto_max) params.or = `(tarifa_min.lte.${presupuesto_max},tarifa_min.is.null)`;
-  return get('mk_creadoras', params);
+
+  try {
+    return await get('mk_creadoras', params);
+  } catch (e) {
+    if (!esColumnaQueFalta(e) || _sinColumnasNuevas) throw e;
+    // Falta la migración. Se sigue sirviendo el catálogo sin esa columna —el
+    // orden fijo no funciona, pero todo lo demás sí— y se avisa una sola vez
+    // para que quede en los registros sin llenarlos.
+    console.warn('[db] Falta una migración: el catálogo va sin', COLUMNAS_NUEVAS.join(', '));
+    _sinColumnasNuevas = true;
+    return get('mk_creadoras', { ...params, select: selectCatalogo(), order: params.order
+      .split(',').filter(o => !COLUMNAS_NUEVAS.some(c => o.startsWith(c))).join(',') });
+  }
 }
 
 const getCreadoraCatalogo = (id) =>

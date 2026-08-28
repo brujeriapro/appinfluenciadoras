@@ -443,6 +443,99 @@ function convocatoriaHTML(campana, conv) {
   </div>`;
 }
 
+/**
+ * Invitar a una o varias creadoras a una campaña, sin salir del catálogo.
+ *
+ * Esta función se llamaba desde `panel.html` desde el principio y NUNCA se
+ * construyó: el botón "Invitar a campaña" de la barra caía siempre al `else`,
+ * que solo cambiaba de pestaña. Así que hasta hoy invitar exigía entrar a la
+ * campaña y buscar a la creadora ahí.
+ *
+ * Se dice lo que cuesta ANTES de mandar: cada creadora invitada consume una
+ * propuesta del plan, y enterarse después de que se fueron las del mes es la
+ * peor forma de saberlo.
+ */
+async function abrirCampanaCon(creadoras) {
+  const lista = (creadoras || []).filter(Boolean);
+  if (!lista.length) return;
+
+  // Solo las que todavía pueden recibir a alguien. Ofrecer una campaña cerrada
+  // es ofrecer un callejón sin salida.
+  const abiertas = (E.campanas || []).filter(c => c.estado !== 'cerrada');
+
+  const nombres = lista.length === 1
+    ? esc(lista[0].nombre_publico)
+    : `${lista.length} creadoras`;
+
+  $('modal-hueco').innerHTML = `
+  <div class="modal">
+    <div class="modal__cab">
+      <div>
+        <h2 class="h-sec" style="font-size:15px">Invitar a ${nombres}</h2>
+        <div class="etiqueta" style="margin-top:6px">
+          ${lista.map(c => esc(c.codigo || '')).filter(Boolean).join(' · ')}
+        </div>
+      </div>
+      <button class="cerrar" id="cerrar-modal" aria-label="Cerrar">×</button>
+    </div>
+    <div class="modal__cuerpo" style="display:block">
+      ${abiertas.length ? `
+        <p class="p" style="margin-bottom:14px">Escoge a cuál. Le llega un correo
+        con el brief y el monto, y tiene ${E.cfg.horas_responder || 72} horas para
+        responder.</p>
+        <div id="camp-lista">
+          ${abiertas.map(c => `
+            <button class="tarifa-op" data-camp="${c.id}">
+              <div>
+                <div class="tarifa-op__nom">${esc(c.nombre)}</div>
+                <div class="tarifa-op__det">${c.cupos} cupo${c.cupos === 1 ? '' : 's'}
+                  ${c.monto_creadora ? '· ' + COP(c.monto_creadora) + ' por creadora' : ''}</div>
+              </div>
+              <div class="tarifa-op__monto">→</div>
+            </button>`).join('')}
+        </div>
+        <p class="p" style="font-size:11px;color:var(--text-3);margin-top:12px">
+          Invitar a ${lista.length} ${lista.length === 1 ? 'creadora consume 1 propuesta' : 'creadoras consume ' + lista.length + ' propuestas'}
+          de tu plan.</p>
+      ` : `
+        <p class="p">Todavía no tienes ninguna campaña abierta. Una campaña es un
+        brief y unos cupos: le llega igual a varias creadoras y eliges entre las
+        que acepten.</p>
+        <button class="btn btn--lima" id="camp-crear" style="margin-top:14px">
+          Crear una campaña →</button>`}
+    </div>
+  </div>`;
+
+  $('telon').classList.add('abierto');
+  $('cerrar-modal').addEventListener('click', cerrarModal);
+  $('camp-crear')?.addEventListener('click', () => { cerrarModal(); ir('crear-campana'); });
+
+  $('modal-hueco').querySelectorAll('[data-camp]').forEach(b =>
+    b.addEventListener('click', async () => {
+      b.disabled = true;
+      b.style.opacity = '.5';
+      try {
+        const r = await apiCupos(`/${b.dataset.camp}/invitar`, {
+          method: 'POST',
+          body: JSON.stringify({ creadora_ids: lista.map(c => c.id) }),
+        });
+        cerrarModal();
+        alert(`Invitadas ${r.invitadas}.`
+          + (r.sin_costo ? ` ${r.sin_costo} sin gastar propuesta.` : '')
+          + (r.ignoradas ? ` ${r.ignoradas} ya estaban invitadas.` : ''));
+        // El consumo del plan cambió: hay que repintarlo en la cabecera.
+        E.plan = await api('/plan').catch(() => E.plan);
+        pintarPlan();
+      } catch (e) {
+        b.disabled = false;
+        b.style.opacity = '1';
+        // El 402 trae el texto exacto de por qué no alcanza el plan. Tragárselo
+        // dejaría a la marca sin saber que el problema es el tope y no un fallo.
+        alert(e.message);
+      }
+    }));
+}
+
 async function vistaCampanaActiva(c, id) {
   c.innerHTML = '<p class="p">Cargando…</p>';
   let d;

@@ -564,11 +564,22 @@ let PROP = null;
 
 function abrirPropuesta(creadora, tarifaElegida) {
   const rp = E.cfg.rango_presupuesto || { min: 200000, max: 5000000, paso: 10000 };
+
+  // Desde el catálogo se abre sin entregable elegido, porque ahí no hay dónde
+  // elegirlo. Se toma el más barato que ella publicó —el mismo "desde" que
+  // muestra su tarjeta— para que el modal arranque con SU precio y no con el
+  // mínimo del deslizador, que no sale de ningún lado y la deja anclada abajo.
+  const suyas = (creadora.tarifas || []).filter(t => Number(t.precio) > 0);
+  const barata = suyas.length
+    ? suyas.reduce((a, b) => Number(b.precio) < Number(a.precio) ? b : a)
+    : null;
+  const elegida = tarifaElegida || barata;
+
   PROP = {
     creadora,
-    entregable: tarifaElegida ? tarifaElegida.entregable : null,
-    tarifaPublicada: tarifaElegida ? Number(tarifaElegida.precio) : null,
-    monto: tarifaElegida ? Number(tarifaElegida.precio) : rp.min,
+    entregable: elegida ? elegida.entregable : null,
+    tarifaPublicada: elegida ? Number(elegida.precio) : null,
+    monto: elegida ? Number(elegida.precio) : rp.min,
     origen: E.campanas.length ? 'campana' : 'perso',
     campana_id: E.campanas.length ? E.campanas[0].id : null,
     brief: '',
@@ -664,6 +675,26 @@ function pintarPropuesta() {
         <div class="campo">
           <label>Cuánto le ofreces</label>
 
+          <!-- Las dos opciones, dichas. Antes "Su tarifa" era un atajo más
+               entre "+50 mil" y "−50 mil", así que quien no se fijaba no sabía
+               que el monto de arriba era el precio de ELLA ni que podía
+               cambiarlo. Son dos decisiones distintas y se ven como tales. -->
+          ${p.tarifaPublicada ? `
+            <div class="eleccion-monto">
+              <button type="button" class="opcion-monto ${p.monto === p.tarifaPublicada ? 'on' : ''}"
+                      data-monto="${p.tarifaPublicada}">
+                Pagar su tarifa
+                <span class="opcion-monto__cifra">${COP(p.tarifaPublicada)}</span>
+              </button>
+              <button type="button" class="opcion-monto ${p.monto !== p.tarifaPublicada ? 'on' : ''}"
+                      id="otro-monto">
+                Proponer otro monto
+                <span class="opcion-monto__cifra">Tú lo pones</span>
+              </button>
+            </div>` : `
+            <p class="p" style="font-size:11px;color:var(--text-3);margin-bottom:10px">
+              Todavía no publicó tarifa, así que el monto lo pones tú.</p>`}
+
           <!-- El monto se escribe. El deslizador queda de apoyo para tantear,
                pero con 480 posiciones nunca fue una forma de poner una cifra
                exacta, y menos en un teléfono. -->
@@ -676,7 +707,6 @@ function pintarPropuesta() {
           </div>
 
           <div class="monto-atajos">
-            ${p.tarifaPublicada ? `<button type="button" class="atajo atajo--tarifa" data-monto="${p.tarifaPublicada}">Su tarifa · ${COP(p.tarifaPublicada)}</button>` : ''}
             <button type="button" class="atajo" data-suma="-50000">−50 mil</button>
             <button type="button" class="atajo" data-suma="50000">+50 mil</button>
             <button type="button" class="atajo" data-suma="100000">+100 mil</button>
@@ -838,6 +868,16 @@ function pintarPropuesta() {
 
     const bajo = PROP.tarifaPublicada && m < PROP.tarifaPublicada;
     $('aviso-bajo').classList.toggle('oculto', !bajo);
+
+    // Cuál de las dos opciones está activa. Se recalcula en vez de recordarse:
+    // si escribe justo su tarifa, la elección correcta es "pagar su tarifa",
+    // aunque haya llegado ahí escribiendo.
+    const suTarifa = document.querySelector('.opcion-monto[data-monto]');
+    if (suTarifa) {
+      const igual = m === PROP.tarifaPublicada;
+      suTarifa.classList.toggle('on', igual);
+      $('otro-monto')?.classList.toggle('on', !igual);
+    }
   }
 
   /** Fija el monto y deja de acuerdo los tres controles. */
@@ -868,6 +908,12 @@ function pintarPropuesta() {
         : PROP.monto + Number(b.dataset.suma));
     });
   });
+
+  // "Pagar su tarifa" pone su cifra. "Proponer otro monto" no cambia nada por
+  // su cuenta: lleva el cursor al campo, que es donde se decide.
+  document.querySelector('.opcion-monto[data-monto]')
+    ?.addEventListener('click', (e) => fijarMonto(Number(e.currentTarget.dataset.monto)));
+  $('otro-monto')?.addEventListener('click', () => { campo.focus(); campo.select(); });
   ['brief', 'fecha', 'producto', 'exclusividad'].forEach(id => {
     $(id).addEventListener('change', () => {
       PROP[id] = $(id).value;
