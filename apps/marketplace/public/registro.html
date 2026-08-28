@@ -107,6 +107,9 @@
 
   .oculto { display: none !important; }
 </style>
+<!-- Píxel de Meta. Solo en las páginas a las que se llega desde fuera;
+     los paneles privados no lo llevan. Ver public/js/pixel-meta.js -->
+<script src="/js/pixel-meta.js"></script>
 </head>
 <body>
 
@@ -348,6 +351,13 @@ $('formulario').addEventListener('submit', async (e) => {
     }
 
     sessionStorage.setItem('mk_marca', TOKEN);
+
+    // El evento con el que Meta optimiza la entrega. Sin él la campaña aprende
+    // a conseguir visitas, que es otra cosa y mucho más barata de conseguir
+    // mal. Solo en el registro de verdad: entrar con una cuenta que ya existía
+    // no es una conversión nueva.
+    if (modo === 'registro') window.pixelRegistro?.();
+
     // Quien acaba de registrarse pasa por las seis preguntas: son las que
     // abren su solicitud de selección, que es lo que vino a buscar. Quien ya
     // tiene cuenta entra directo — a esa ya se las hicimos.
