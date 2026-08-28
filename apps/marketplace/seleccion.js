@@ -22,7 +22,21 @@ const CANALES = ['tiktok', 'instagram', 'ambas', 'no_publicado'];
 const AUDIENCIAS = ['mujeres_18_24', 'mujeres_25_34', 'mujeres_35_mas', 'mixta'];
 const CIUDADES = ['Bogotá', 'Medellín', 'Cali y el Pacífico', 'Barranquilla y la costa', 'Toda Colombia'];
 const TAMANOS = ['nano', 'micro', 'media', 'cualquiera'];
-const TOPES = [300_000, 900_000, 2_000_000, 999_999_999];
+/**
+ * "Depende, tengo campañas de distinto presupuesto."
+ *
+ * Va como número negativo y no como texto porque `busca_presupuesto` es `int`
+ * en la base (mk_045), y migrar el tipo por una opción sería mover una columna
+ * que ya usa media aplicación. Es el mismo truco del centinela que ya existe
+ * con 999.999.999 para "más de dos millones".
+ *
+ * ⚠️ Es un valor VÁLIDO pero NO filtra. Si `califica` lo tratara como un tope
+ * de verdad, `tarifa_min > -1` sería cierto siempre y descartaría el catálogo
+ * entero.
+ */
+const TOPE_DEPENDE = -1;
+
+const TOPES = [300_000, 900_000, 2_000_000, 999_999_999, TOPE_DEPENDE];
 
 /** Cuántas creadoras lleva una selección. Los dos extremos tienen motivo. */
 const MINIMO = 6;   // menos se siente pobre y la marca vuelve al catálogo,
@@ -106,7 +120,10 @@ function califica(creadora, busca = {}) {
 
   // Presupuesto: contra su tarifa más baja publicada. Sin tarifa NO se descarta
   // —puede estar abierta a negociar— pero se anota para que quien arme lo sepa.
-  if (busca.busca_presupuesto && creadora.tarifa_min) {
+  // "Depende" no es un tope: es la marca diciendo que no tiene uno. Se guarda
+  // —le sirve a quien arma la selección— pero no descarta a nadie, igual que
+  // "cualquiera" en el tamaño.
+  if (busca.busca_presupuesto !== TOPE_DEPENDE && busca.busca_presupuesto && creadora.tarifa_min) {
     if (Number(creadora.tarifa_min) > Number(busca.busca_presupuesto)) {
       motivos.push('sobre el presupuesto');
     }
@@ -217,6 +234,6 @@ const ATAJOS = [
 
 module.exports = {
   normalizarBusqueda, califica, puedeEnviar, tiempoRestante,
-  CATEGORIAS, CANALES, AUDIENCIAS, CIUDADES, TAMANOS, TOPES, ATAJOS,
+  CATEGORIAS, CANALES, AUDIENCIAS, CIUDADES, TAMANOS, TOPES, TOPE_DEPENDE, ATAJOS,
   MINIMO, MAXIMO, MAX_RAZON, HORAS_PROMESA,
 };

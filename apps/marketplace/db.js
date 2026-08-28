@@ -168,6 +168,9 @@ const COLS_CATALOGO = [
   'engagement_pct', 'dias_entrega', 'audiencia_mujeres', 'audiencia_pais',
   'nivel_tarifa', 'tarifa_min', 'tarifa_max', 'tarifa_abierta', 'prioridad',
   'entregable_tipico', 'bio_corta', 'colaboraciones_completadas',
+  // El puesto fijo al principio del catálogo. Si falta acá, llega `undefined`
+  // al navegador y el orden no ordena nada: sin error, sin log, sin nada.
+  'orden_fijo',
   // De dónde salen sus números: declarados por ella, verificados por el equipo
   // contra una captura, o traídos de la API. La marca merece saberlo antes de
   // pagar, y es lo que hace que verificarse valga la pena.
@@ -178,11 +181,16 @@ async function getCatalogo({ categoria, nicho, rango_alcance, nivel_tarifa, pais
   const params = {
     select: COLS_CATALOGO,
     visible: 'eq.true',
-    // Primero lo que le importa a la marca —quién ha cumplido más—; la
-    // prioridad solo desempata entre perfiles equivalentes. Al revés le
-    // estaríamos mostrando peores opciones primero, que es exactamente lo que
-    // no puede pasar con quien paga.
-    order: 'colaboraciones_completadas.desc,prioridad.desc,created_at.desc',
+    // ⚠️ Este orden NO es el que ve la marca en el catálogo: `catalogo.js` lo
+    // vuelve a ordenar en JavaScript por qué tan completo está cada perfil,
+    // porque eso depende de las piezas y las tarifas, que viven en otras
+    // tablas. Lo que se decide acá es el orden para quien NO pasa por ese
+    // sort: la landing pública y a quién le llega el correo de una
+    // convocatoria abierta.
+    //
+    // Las fijadas van primero también ahí. `nullslast` porque la mayoría no
+    // tiene puesto fijo y sin eso los NULL se irían al principio.
+    order: 'orden_fijo.asc.nullslast,colaboraciones_completadas.desc,prioridad.desc,created_at.desc',
   };
   // categorias y nicho son arrays en Postgres: "cs" = contains
   if (categoria)     params.categorias = `cs.{${categoria}}`;

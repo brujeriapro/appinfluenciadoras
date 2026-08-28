@@ -835,11 +835,35 @@ async function arrancar() {
     pintarPlan();
 
     await enCurso;
+    abrirLoQuePideElEnlace();
     cargarTratos();
   } catch (e) {
     E.error = e.message;
     render();
   }
+}
+
+/** Las vistas a las que se puede llegar por enlace. */
+const VISTAS_POR_ENLACE = ['inicio', 'catalogo', 'campanas', 'perfil'];
+
+/**
+ * Abre la vista que pide el enlace, si la pide.
+ *
+ * El botón "Completar mi perfil" del final del registro manda a
+ * `/panel.html#perfil` y aterrizaba en el home: nadie leía el hash. Un botón
+ * que promete una cosa y hace otra, justo donde la marca acaba de contestar
+ * seis preguntas.
+ *
+ * Se valida contra una lista blanca en vez de confiar en el hash: es texto que
+ * viene de la barra de direcciones, y `ir()` con una vista inventada deja la
+ * pantalla en blanco.
+ */
+function abrirLoQuePideElEnlace() {
+  const pedida = (location.hash || '').replace('#', '').trim();
+  if (!pedida || !VISTAS_POR_ENLACE.includes(pedida)) return;
+  // Se limpia para que recargar no vuelva a saltar a la misma vista: ya llegó.
+  history.replaceState(null, '', location.pathname);
+  ir(pedida);
 }
 
 /** El consumo del plan va en la cabecera: se ve sin tener que buscarlo. */

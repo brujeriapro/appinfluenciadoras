@@ -168,6 +168,29 @@ const queTanCompleto = (c) =>
     metricas_estado: c.metricas_estado,
   }) + (c.cumplimiento?.entregas ? 25 : 0);
 
+/**
+ * El orden con el que la marca ve el catálogo.
+ *
+ * ⚠️ Este comparador —y no el `order` de la consulta— es el que manda. Se
+ * ordena acá porque el puntaje depende de las piezas y las tarifas, que viven
+ * en otras tablas.
+ *
+ * Primero van las fijadas a mano. Es lo único que gana sobre el puntaje del
+ * perfil, y a propósito: son creadoras que alguien del equipo miró y decidió
+ * mostrar, y eso ninguna cuenta automática lo captura. Las demás quedan con
+ * `Infinity`, así que no se mueven de donde estaban.
+ *
+ * Entre las no fijadas manda qué tan completo está el perfil, y con el mismo
+ * puntaje se conserva el orden que trajo la consulta (colaboraciones,
+ * prioridad, fecha) — `Array.prototype.sort` es estable.
+ */
+function ordenDelCatalogo(a, b) {
+  const fa = a.orden_fijo ?? Infinity;
+  const fb = b.orden_fijo ?? Infinity;
+  if (fa !== fb) return fa - fb;
+  return queTanCompleto(b) - queTanCompleto(a);
+}
+
 /** Listado con filtros. */
 router.get('/', async (req, res) => {
   try {
@@ -180,12 +203,7 @@ router.get('/', async (req, res) => {
 
     // Se ordena aquí y no en la consulta porque depende de las piezas y las
     // tarifas, que viven en otras tablas.
-    resultado.sort((a, b) => {
-      const d = queTanCompleto(b) - queTanCompleto(a);
-      // Con el mismo nivel de perfil manda el orden que ya traía la consulta
-      // (colaboraciones, prioridad, fecha), que es el que decidió el negocio.
-      return d !== 0 ? d : 0;
-    });
+    resultado.sort(ordenDelCatalogo);
 
     // "Quiero un reel": se filtra en memoria porque depende de la tabla de
     // tarifas, no de una columna de mk_creadoras.
@@ -287,3 +305,4 @@ router.get('/:id', async (req, res) => {
 module.exports = router;
 module.exports.catalogoEnriquecido = catalogoEnriquecido;
 module.exports.queTanCompleto = queTanCompleto;
+module.exports.ordenDelCatalogo = ordenDelCatalogo;

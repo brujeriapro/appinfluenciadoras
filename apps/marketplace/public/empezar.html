@@ -174,9 +174,23 @@ const ROTULO = {
   },
 };
 
-const rotuloTope = (v) => Number(v) >= 999_000_000
-  ? ['Más de $2.000.000', null]
-  : [`Hasta ${COP(v)}`, null];
+/**
+ * El rótulo de cada tope.
+ *
+ * Los dos casos especiales van antes que el formato de plata: `COP` de un
+ * número negativo imprimiría "$-1", y de un centinela de mil millones,
+ * "$999.999.999".
+ */
+const rotuloTope = (v) => {
+  const n = Number(v);
+  // "Depende" no es un tope, es la marca diciendo que no tiene uno. Existe
+  // porque obligarla a elegir una cifra cuando maneja campañas de distinto
+  // tamaño produce un filtro falso — y el filtro falso lo paga la creadora,
+  // que queda fuera de una búsqueda que sí le servía.
+  if (n < 0) return ['Depende de la campaña', 'Tengo campañas de distinto presupuesto'];
+  if (n >= 999_000_000) return ['Más de $2.000.000', null];
+  return [`Hasta ${COP(v)}`, null];
+};
 
 let OPCIONES = null;
 let PASO = 0;
@@ -399,7 +413,10 @@ function cierre(d) {
     ['Le habla a', nombreDe(ROTULO.audiencia, r.busca_audiencia)],
     ['Dónde', (r.busca_ciudades || []).join(' · ')],
     ['Tamaño', nombreDe(ROTULO.tamano, r.busca_tamano)],
-    ['Tope por colaboración', r.busca_presupuesto ? rotuloTope(r.busca_presupuesto)[0] : '—'],
+    // `!= null` y no un chequeo de verdad: el centinela de "depende" es
+    // negativo y un `?` lo tomaría por vacío.
+    ['Tope por colaboración',
+      r.busca_presupuesto != null ? rotuloTope(r.busca_presupuesto)[0] : '—'],
   ].filter(([, v]) => v && v !== 'undefined');
 
   document.body.innerHTML = `

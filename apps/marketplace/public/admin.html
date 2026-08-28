@@ -1896,6 +1896,23 @@ VISTAS.vitrina = async () => {
  * horas se incumplía sin que nadie lo viera. Es la misma pieza que le faltaba a
  * la cola de métricas.
  */
+/**
+ * El chip del presupuesto que pidió la marca.
+ *
+ * Dos valores no son cifras y hay que decirlos con palabras: el centinela
+ * negativo de "depende" imprimiría "hasta $-1", y el de mil millones —que es
+ * "más de dos millones"— imprimiría "hasta $999.999.999". Quien arma la
+ * selección los leería como topes reales.
+ */
+function chipPresupuesto(v) {
+  if (v == null) return '';
+  const n = Number(v);
+  const texto = n < 0 ? 'presupuesto: depende'
+    : n >= 999_000_000 ? 'más de $2.000.000'
+    : 'hasta $' + n.toLocaleString('es-CO');
+  return `<span class="pill" style="margin-right:6px">${esc(texto)}</span>`;
+}
+
 function colaSolicitudesHTML(d) {
   const lista = (d && d.solicitudes) || [];
   if (!lista.length) {
@@ -1921,7 +1938,7 @@ function colaSolicitudesHTML(d) {
             ${m.busca_canal ? chip(m.busca_canal) : ''}
             ${m.busca_tamano ? chip(m.busca_tamano) : ''}
             ${(m.busca_ciudades || []).map(chip).join('')}
-            ${m.busca_presupuesto ? chip('hasta $' + Number(m.busca_presupuesto).toLocaleString('es-CO')) : ''}
+            ${chipPresupuesto(m.busca_presupuesto)}
           </div>
           ${m.busca_otra ? `<p style="font-size:11.5px;color:var(--grey-700);margin:8px 0 0">
             Dijo que vende: ${esc(m.busca_otra)}</p>` : ''}

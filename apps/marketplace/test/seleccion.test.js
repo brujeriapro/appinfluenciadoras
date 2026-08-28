@@ -211,3 +211,29 @@ test('vencida se dice, pero no bloquea', () => {
 test('sin plazo no inventa uno', () => {
   assert.equal(tiempoRestante(null).vencida, false);
 });
+
+// ── "Depende" del presupuesto ───────────────────────────────────────────────
+
+test('"depende" se guarda como respuesta válida', () => {
+  const { TOPE_DEPENDE } = require('../seleccion');
+  const r = normalizarBusqueda({ presupuesto: TOPE_DEPENDE });
+  assert.equal(r.busca_presupuesto, TOPE_DEPENDE);
+});
+
+test('"depende" NO descarta a nadie por precio', () => {
+  // Es la marca diciendo que no tiene un tope, no un tope de cero. Si se
+  // tratara como cifra, "tarifa_min > -1" sería cierto siempre y se caería el
+  // catálogo entero.
+  const { TOPE_DEPENDE } = require('../seleccion');
+  const cara = creadora({ tarifa_min: 8_000_000 });
+  const r = califica(cara, { busca_presupuesto: TOPE_DEPENDE });
+  assert.equal(r.califica, true);
+  assert.ok(!r.motivos.join().includes('presupuesto'), r.motivos.join());
+});
+
+test('un tope de verdad sigue descartando', () => {
+  // La red de seguridad de la prueba de arriba: que "depende" no filtre no
+  // puede significar que ningún presupuesto filtre.
+  const r = califica(creadora({ tarifa_min: 900_000 }), { busca_presupuesto: 300_000 });
+  assert.equal(r.califica, false);
+});
