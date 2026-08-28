@@ -138,8 +138,8 @@
       <div class="cifra__label">Ciudades con dónde escoger</div></div>
     <div class="cifra"><div class="cifra__valor">48 h</div>
       <div class="cifra__label">Del brief al contenido</div></div>
-    <div class="cifra"><div class="cifra__valor">HASTA 9X</div>
-      <div class="cifra__label">Tus ventas</div></div>
+    <div class="cifra"><div class="cifra__valor">100%</div>
+      <div class="cifra__label">Tu pago retenido hasta que apruebes</div></div>
   </div>
 </section>
 
@@ -337,6 +337,7 @@ fetch('/api/landing')
     const valores = caja.querySelectorAll('.cifra__valor');
     if (d.metricas.perfiles) valores[0].textContent = d.metricas.perfiles;
     if (d.metricas.ciudades) valores[1].textContent = d.metricas.ciudades;
+    if (d.metricas.escrow)   valores[3].textContent = d.metricas.escrow;
   })
   .catch(() => {});
 </script>
