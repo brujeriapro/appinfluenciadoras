@@ -287,10 +287,10 @@ Taxonomía de dos niveles en `mk_config.nichos`: 15 categorías madre (belleza, 
 cd apps/marketplace
 npm install
 node index.js       # http://localhost:3040
-npm test            # 310 pruebas: comisiones, estados, tarifas, Wompi, plazos, correo, análisis, pagos, cupos, aprendizaje y listas externas
+npm test            # 335 pruebas: comisiones, estados, tarifas, Wompi, plazos, correo, análisis, pagos, cupos, aprendizaje y listas externas
 ```
 
-**Migraciones:** los archivos de `apps/marketplace/migrations/` en orden numérico, en el SQL Editor de Supabase. Van por `mk_054`. Además, crear el bucket privado `mk-muestras` en Storage.
+**Migraciones:** los archivos de `apps/marketplace/migrations/` en orden numérico, en el SQL Editor de Supabase. Van por `mk_055`. Además, crear el bucket privado `mk-muestras` en Storage.
 
 **Scripts que se corren a mano** (necesitan las mismas variables que el servidor):
 
@@ -376,6 +376,16 @@ Los **videos van en crudo** por `POST /api/creadoras/muestras/video` (el archivo
 ⚠️ **La reserva es la pieza que faltaba y por eso el problema pasó dos veces.** El tope de la app protegía a los correos de uno en uno de que *nosotros* los bloqueáramos, pero no de que el *proveedor* los rechazara por cuota agotada — que es lo que pasa de verdad. En agosto fue Brevo (353 contra un plan de 300, 16 creadoras dos días sin entrar); después ZeptoMail, que deja **100 al día mientras revisa la cuenta**: una tanda de invitaciones se los comió y 132 recuperaciones de contraseña murieron en silencio.
 
 ⚠️ **`correo_limite_proveedor` está en 100 porque ZeptoMail no ha aprobado la cuenta.** Cuando la apruebe, sube a 10.000 y ahí sí se pueden hacer tandas grandes.
+
+### Convocatorias abiertas
+
+Una campaña puede publicarse para que las creadoras **se postulen**, en vez de que la marca elija a ciegas entre 294 perfiles. Reglas en `campanas-publicas.js`; misma tabla y mismo trato al final que una campaña normal — cambia quién arranca (`mk_campana_invitacion.origen`: `marca` o `postulacion`).
+
+- **El correo va segmentado** por nicho y ciudad, con tope de 60 destinatarias por convocatoria. No es por ahorrar correos: una creadora que recibe cinco convocatorias que no le sirven deja de abrir la sexta, y ese canal no se recupera. Un dato que falta en el perfil **no** la deja por fuera.
+- **Publicar cobra los cupos por adelantado** —una campaña de 6 consume 6 propuestas del plan— y **lo que no se llene se devuelve al cerrar**. Se cobró sobre una expectativa; quedarse con la plata de un cupo vacío sería cobrar por algo que no se prestó.
+- El cobro se cuenta en `db.contarPropuestasDelMes`, el único sitio por donde pasan todos los topes. ⚠️ No hay doble cobro porque una postulación **no escribe `invitada_at`** —por donde cuentan las invitaciones— y el trato que nace al confirmarla lleva `invitacion_id`, que los tratos directos excluyen. Cualquier cambio ahí tiene que respetar esas dos condiciones.
+- A quien se postula y no queda se le avisa que **se llenaron los cupos**, nunca que no la eligieron. Postularse y no saber nunca es lo que hace que deje de postularse.
+- ⚠️ **El catálogo público de convocatorias abiertas no existe todavía** — es la idea siguiente. Hoy cada creadora las ve en *Mis propuestas*, filtradas a las que encajan con su perfil.
 
 ### Listas que comparte una marca aliada
 
