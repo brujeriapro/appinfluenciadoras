@@ -74,6 +74,12 @@ app.use('/api/landing', require('./landing'));
 
 // Precios sin el .html: es la dirección que se pone en una cotización o en un
 // mensaje de WhatsApp, y "creatorsmanager.com/precios" se lee mejor.
+// La landing de marcas, en URL limpia. Es la que se reparte en frío, así que
+// "creatorsmanager.com/marcas" tiene que poder decirse por teléfono.
+app.get('/marcas', (req, res) => {
+  res.sendFile(require('path').join(__dirname, 'public', 'marcas.html'));
+});
+
 app.get('/precios', (req, res) => {
   res.sendFile(require('path').join(__dirname, 'public', 'precios.html'));
 });

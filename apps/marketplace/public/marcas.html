@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Creators Manager · Contenido que vende, hecho por creadoras reales</title>
+<link rel="icon" type="image/png" sizes="16x16" href="/icono/icono-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/icono/icono-32.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/icono/icono-64.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icono/icono-180.png">
+<meta name="theme-color" content="#0E0E0E">
+
+<meta name="description" content="Activa decenas de creadoras colombianas a la vez, mide qué contenido funciona y pon pauta solo en los ganadores. Pago retenido en escrow y historial de cumplimiento verificado. Empieza gratis.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/tokens.css">
+<style>
+  /* Landing para marcas. El sistema visual vive en tokens.css; acá solo va lo
+     que es de esta página. */
+
+  .header { position: sticky; top: 0; z-index: 40; display: flex; align-items: center;
+            justify-content: space-between; gap: 20px; flex-wrap: wrap;
+            padding: 14px var(--pad-x); background: var(--ink);
+            border-bottom: 2px solid var(--border-dark); }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo__marca { font-family: var(--mono-title); font-weight: 800; font-size: 19px;
+                 letter-spacing: -1.1px; line-height: 1; color: var(--lime); }
+  .logo__texto { font-family: var(--mono-title); font-weight: 800; font-size: 14.5px;
+                 letter-spacing: -0.5px; }
+
+  .seccion { padding: var(--pad-y) var(--pad-x); }
+  .seccion--ink  { background: var(--ink); color: var(--off-white); }
+  .seccion--lime { background: var(--lime); color: var(--ink); }
+  .seccion--blue { background: var(--blue); color: #fff; }
+  .seccion--claro { background: #F2F2F2; color: var(--ink); }
+
+  .fila-encabezado { display: flex; justify-content: space-between; align-items: center;
+                     gap: 18px; flex-wrap: wrap; }
+
+  /* El hero. Una sola idea, dicha grande. */
+  .hero { background: var(--ink); padding: clamp(40px, 6vw, 90px) var(--pad-x); }
+  .hero h1 { color: var(--lime); margin: clamp(18px, 3vw, 32px) 0 0; max-width: 17ch; }
+  .hero__bajada { max-width: 56ch; margin-top: clamp(20px, 3vw, 30px); color: var(--text-2); }
+  .hero__ctas { margin-top: clamp(26px, 3.5vw, 42px); display: flex; gap: 12px; flex-wrap: wrap;
+                align-items: center; }
+
+  /* Las cifras del banco. Salen de la base, no escritas a mano. */
+  .cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            margin-top: clamp(34px, 5vw, 60px); border: 2px solid var(--border-dark); }
+  .cifra { padding: 20px 18px; border-right: 2px solid var(--border-dark); }
+  .cifra:last-child { border-right: none; }
+  .cifra__valor { font-family: var(--mono-title); font-weight: 800;
+                  font-size: clamp(26px, 3.4vw, 40px); letter-spacing: -1.8px; color: var(--lime); }
+  .cifra__label { font-size: 10.5px; letter-spacing: 1.1px; text-transform: uppercase;
+                  color: var(--text-5); margin-top: 8px; }
+
+  /* El argumento central: dos columnas enfrentadas. */
+  .contra { display: grid; grid-template-columns: 1fr 1fr; gap: 2px;
+            background: var(--ink); margin-top: clamp(28px, 4vw, 44px); }
+  .contra > div { padding: clamp(20px, 3vw, 32px); }
+  .contra__viejo { background: #1A1A1A; color: var(--text-4); }
+  .contra__nuevo { background: var(--lime); color: var(--ink); }
+  .contra__titulo { font-family: var(--mono-title); font-weight: 800; font-size: 15px;
+                    letter-spacing: -0.6px; text-transform: uppercase; margin-bottom: 14px; }
+  .contra__viejo .contra__titulo { color: var(--grey-600); text-decoration: line-through; }
+
+  .razones { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+             gap: 2px; background: currentColor; margin-top: clamp(30px, 4vw, 48px); }
+  .razon { background: var(--ink); padding: clamp(20px, 2.6vw, 30px); }
+  .seccion--lime .razon { background: var(--lime); }
+  .seccion--blue .razon { background: var(--blue); }
+  .razon__indice { font-family: var(--mono-title); font-weight: 800; font-size: 13px;
+                   opacity: .55; margin-bottom: 12px; }
+  .razon__titulo { font-family: var(--mono-title); font-weight: 800; font-size: 15.5px;
+                   letter-spacing: -0.7px; text-transform: uppercase; margin-bottom: 12px;
+                   line-height: 1.2; }
+
+  /* El dato que sostiene todo el argumento del volumen. */
+  .volumen { display: flex; flex-wrap: wrap; gap: 4px; margin: clamp(24px, 3vw, 36px) 0; }
+  .volumen span { width: 22px; height: 22px; background: rgba(255,255,255,.14); }
+  .volumen .gana { background: var(--lime); }
+
+  .pasos { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+           gap: 2px; background: var(--ink); margin-top: clamp(28px, 4vw, 44px); }
+  .paso { background: var(--lime); padding: clamp(18px, 2.4vw, 26px); }
+  .paso__numero { font-family: var(--mono-title); font-weight: 800; font-size: 26px;
+                  letter-spacing: -1.4px; margin-bottom: 10px; }
+  .paso__titulo { font-family: var(--mono-title); font-weight: 800; font-size: 13px;
+                  letter-spacing: -0.3px; text-transform: uppercase; margin-bottom: 8px; }
+
+  .cierre { background: var(--ink); color: var(--off-white);
+            padding: clamp(50px, 7vw, 100px) var(--pad-x); text-align: center; }
+  .cierre h2 { color: var(--lime); max-width: 18ch; margin: 0 auto; }
+  .cierre__ctas { margin-top: clamp(28px, 4vw, 44px); display: flex; gap: 12px;
+                  flex-wrap: wrap; justify-content: center; }
+  .cierre__nota { font-size: 11.5px; color: var(--text-5); margin-top: 20px; }
+
+  .pie { background: var(--ink); border-top: 2px solid var(--border-dark);
+         padding: 22px var(--pad-x); display: flex; justify-content: space-between;
+         gap: 16px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-5); }
+  .pie a { color: var(--text-2); }
+  .pie a:hover { color: var(--lime); }
+
+  @media (max-width: 720px) {
+    .contra { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a href="/" class="logo">
+    <span class="logo__marca">[C]</span>
+    <span class="logo__texto">CREATORS MANAGER</span>
+  </a>
+  <a href="/registro.html" class="btn btn--header btn--sm">EMPEZAR GRATIS →</a>
+</header>
+
+<!-- ── El hero: una sola idea ──────────────────────────────────────────── -->
+<section class="hero">
+  <span class="tag tag--lime">{PARA MARCAS}</span>
+  <h1 class="h1">TU PRODUCTO EN TODAS PARTES<span class="punto">.</span></h1>
+  <p class="p p--xl hero__bajada">
+    No con un video. Con treinta creadoras publicando la misma semana, cada una
+    a su manera y con su propia gente. Eso es lo que el algoritmo lee como una
+    señal, y es lo que hace que tu marca parezca estar en todos lados.
+  </p>
+  <div class="hero__ctas">
+    <a href="/registro.html" class="btn btn--lime">EMPEZAR GRATIS →</a>
+    <a href="/precios" class="btn btn--ghost">VER LOS PLANES</a>
+  </div>
+
+  <div class="cifras" id="cifras">
+    <div class="cifra"><div class="cifra__valor">—</div>
+      <div class="cifra__label">Creadoras en el banco</div></div>
+    <div class="cifra"><div class="cifra__valor">—</div>
+      <div class="cifra__label">Ciudades con dónde escoger</div></div>
+    <div class="cifra"><div class="cifra__valor">48 h</div>
+      <div class="cifra__label">Del brief al contenido</div></div>
+    <div class="cifra"><div class="cifra__valor">$0</div>
+      <div class="cifra__label">Para empezar</div></div>
+  </div>
+</section>
+
+<!-- ── Lo que cambió ───────────────────────────────────────────────────── -->
+<section class="seccion seccion--claro">
+  <div class="fila-encabezado">
+    <span class="tag tag--ink">{LO QUE CAMBIÓ}</span>
+    <span class="meta">TIKTOK E INSTAGRAM, 2024–2026</span>
+  </div>
+
+  <h2 class="h2 h2--md" style="margin-top:22px;max-width:24ch">
+    EL ALCANCE DEJÓ DE COMPRARSE CON SEGUIDORES
+  </h2>
+  <p class="p p--xl" style="max-width:62ch;margin-top:18px">
+    Las dos plataformas pasaron a repartir por interés, no por audiencia. Un
+    video de alguien con mil seguidores puede llegar a cientos de miles si
+    retiene; uno de alguien con un millón puede no salir de su propia gente.
+    Eso vuelve obsoleta la única razón por la que se pagaba caro: el tamaño de
+    la cuenta.
+  </p>
+
+  <div class="contra">
+    <div class="contra__viejo">
+      <div class="contra__titulo">Pagarle a una cuenta grande</div>
+      <p class="p">
+        Un solo video, un solo día, una sola voz. Si no pega, no hay segunda
+        oportunidad: el presupuesto ya se fue y no queda nada tuyo. Es rentar
+        una valla, no construir algo.
+      </p>
+    </div>
+    <div class="contra__nuevo">
+      <div class="contra__titulo">Activar treinta creadoras</div>
+      <p class="p">
+        Treinta ángulos distintos sobre el mismo producto, publicados a la vez.
+        Si uno falla no pasa nada, porque el resultado no depende de un video
+        sino del conjunto. Y lo que graban queda para tu pauta.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ── El motor: volumen ───────────────────────────────────────────────── -->
+<section class="seccion seccion--ink">
+  <div class="fila-encabezado">
+    <span class="tag tag--lime">{EL MOTOR}</span>
+    <span class="meta">POR QUÉ EL VOLUMEN NO ES CAPRICHO</span>
+  </div>
+
+  <h2 class="h2 h2--md" style="margin-top:22px;max-width:22ch;color:var(--off-white)">
+    DE CUARENTA PIEZAS, UNA EXPLOTA
+  </h2>
+
+  <div class="volumen" id="volumen" aria-label="Cuarenta piezas, una explota"></div>
+
+  <p class="p p--xl" style="max-width:62ch;color:var(--text-2)">
+    Nadie sabe cuál. Ni tú, ni la creadora, ni nosotros — por eso adivinar sale
+    caro y probar sale barato. Con cinco piezas estás apostando; con cuarenta
+    estás midiendo. La diferencia entre las marcas que crecen con contenido y
+    las que se rinden casi nunca es el talento: es cuántas veces intentaron.
+  </p>
+</section>
+
+<!-- ── El puente con la pauta ──────────────────────────────────────────── -->
+<section class="seccion seccion--lime">
+  <div class="fila-encabezado">
+    <span class="tag tag--ink">{DE ORGÁNICO A PAUTA}</span>
+    <span class="meta" style="color:rgba(14,14,14,.6)">EL PUENTE QUE CASI NADIE ARMA</span>
+  </div>
+
+  <h2 class="h2 h2--md" style="margin-top:22px;max-width:26ch">
+    PRIMERO MIDES GRATIS. DESPUÉS PAGAS PAUTA.
+  </h2>
+  <p class="p p--xl" style="max-width:62ch;margin-top:18px">
+    El error caro es al revés: poner plata en un anuncio para averiguar si el
+    mensaje funciona. Con treinta piezas orgánicas ya sabes cuál gancho retuvo,
+    cuál dolor conectó y cuál video la gente vio hasta el final — sin haber
+    gastado un peso en pauta. Recién ahí pones presupuesto, y solo en las que
+    ya demostraron algo.
+  </p>
+
+  <div class="pasos">
+    <div class="paso">
+      <div class="paso__numero">01</div>
+      <div class="paso__titulo">Publicas el brief</div>
+      <p class="p">Producto, entregables y fechas. Diez minutos.</p>
+    </div>
+    <div class="paso">
+      <div class="paso__numero">02</div>
+      <div class="paso__titulo">Publican todas</div>
+      <p class="p">La misma semana, cada una con su voz y su gente.</p>
+    </div>
+    <div class="paso">
+      <div class="paso__numero">03</div>
+      <div class="paso__titulo">Lees los datos</div>
+      <p class="p">Qué gancho retuvo y qué video la vieron completo.</p>
+    </div>
+    <div class="paso">
+      <div class="paso__numero">04</div>
+      <div class="paso__titulo">Pautas los ganadores</div>
+      <p class="p">Presupuesto solo en las piezas que ya funcionaron.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── El dolor operativo: acá entra el producto ───────────────────────── -->
+<section class="seccion seccion--blue">
+  <div class="fila-encabezado">
+    <span class="tag tag--lime">{POR QUÉ NO LO HACES YA}</span>
+    <span class="meta" style="color:var(--blue-text-softer)">EL PROBLEMA REAL</span>
+  </div>
+
+  <h2 class="h2 h2--md" style="margin-top:22px;max-width:24ch">
+    TODO ESTO SE CAE EN LA OPERACIÓN
+  </h2>
+  <p class="p p--xl" style="max-width:62ch;margin-top:18px;color:var(--blue-text-soft)">
+    Coordinar treinta creadoras por WhatsApp es donde muere la estrategia: la
+    que dijo que sí y no entregó, la que entregó tarde, el pago por adelantado
+    que no volvió, la hoja de cálculo que nadie actualiza. No es un problema de
+    marketing. Es un problema de sistema — y es exactamente lo que hacemos.
+  </p>
+
+  <div class="razones">
+    <div class="razon">
+      <div class="razon__indice">{1}</div>
+      <div class="razon__titulo">Tu plata no se mueve</div>
+      <p class="p">Queda retenida hasta que apruebes el contenido. Si no entrega, vuelve a ti.</p>
+    </div>
+    <div class="razon">
+      <div class="razon__indice">{2}</div>
+      <div class="razon__titulo">Historial verificado</div>
+      <p class="p">No lo que dice de sí misma: entregas reales, medidas contra el plazo pactado.</p>
+    </div>
+    <div class="razon">
+      <div class="razon__indice">{3}</div>
+      <div class="razon__titulo">Precio publicado</div>
+      <p class="p">Cada entregable con su tarifa. Sin cotizar por mensaje directo una por una.</p>
+    </div>
+    <div class="razon">
+      <div class="razon__indice">{4}</div>
+      <div class="razon__titulo">Treinta de una</div>
+      <p class="p">Un brief, un lote de creadoras, una sola convocatoria. No treinta conversaciones.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Cierre ──────────────────────────────────────────────────────────── -->
+<section class="cierre">
+  <span class="tag tag--lime">{EMPIEZA HOY}</span>
+  <h2 class="h2 h2--cta" style="margin-top:22px">ARMA TU PRIMERA TANDA</h2>
+  <p class="p p--xl" style="max-width:52ch;margin:22px auto 0;color:var(--text-2)">
+    Registrarte es gratis y toma dos minutos. Contestas seis preguntas y una
+    persona del equipo te arma una selección de creadoras que encajan con lo
+    que vendes — en menos de 24 horas.
+  </p>
+  <div class="cierre__ctas">
+    <a href="/registro.html" class="btn btn--lime">EMPEZAR GRATIS →</a>
+    <a href="/precios" class="btn btn--ghost">VER LOS PLANES</a>
+  </div>
+  <p class="cierre__nota">Sin tarjeta. Sin permanencia. El catálogo completo se ve desde el primer día.</p>
+</section>
+
+<footer class="pie">
+  <span>CREATORS MANAGER · COLOMBIA</span>
+  <span>
+    <a href="/">Inicio</a> ·
+    <a href="/precios">Planes</a> ·
+    <a href="/terminos">Términos</a>
+  </span>
+</footer>
+
+<script>
+// Las cuarenta piezas, con una encendida. Se dibuja en vez de escribirse para
+// que el argumento se vea antes de leerse.
+(function volumen() {
+  const caja = document.getElementById('volumen');
+  if (!caja) return;
+  const gana = 17;  // una cualquiera, ni la primera ni la última
+  caja.innerHTML = Array.from({ length: 40 },
+    (_, i) => `<span class="${i === gana ? 'gana' : ''}"></span>`).join('');
+})();
+
+/**
+ * Las cifras del banco salen de la base, no escritas a mano.
+ *
+ * Es la misma regla que ya corrigió la landing principal: decía "420+ perfiles"
+ * cuando había 220, y una marca que entra por ese número y encuentra la mitad
+ * se siente engañada. Si el dato no llega, se deja el guion — mejor vacío que
+ * inventado.
+ */
+fetch('/api/landing')
+  .then(r => r.ok ? r.json() : null)
+  .then(d => {
+    if (!d || !d.metricas) return;
+    const caja = document.getElementById('cifras');
+    const valores = caja.querySelectorAll('.cifra__valor');
+    if (d.metricas.perfiles) valores[0].textContent = d.metricas.perfiles;
+    if (d.metricas.ciudades) valores[1].textContent = d.metricas.ciudades;
+  })
+  .catch(() => {});
+</script>
+</body>
+</html>
