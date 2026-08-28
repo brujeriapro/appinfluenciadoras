@@ -283,11 +283,26 @@ router.get('/plan', async (req, res) => {
 router.post('/busqueda', async (req, res) => {
   try {
     const limpio = seleccion.normalizarBusqueda(req.body);
+    const respuestas = { ...limpio, busca_completado_at: new Date().toISOString() };
 
-    await db.updateMarca(req.usuarioId, {
-      ...limpio,
-      busca_completado_at: new Date().toISOString(),
-    });
+    try {
+      await db.updateMarca(req.usuarioId, respuestas);
+    } catch (e) {
+      // Mientras mk_057 no esté aplicada, `busca_canal` sigue siendo texto y
+      // mandarle un arreglo rechaza el PATCH ENTERO: se perderían las seis
+      // respuestas, no solo el canal.
+      //
+      // Se guardan las otras cinco y el canal queda vacío. Vacío es honesto —
+      // quien arme la selección ve que falta— y "tiktok" a secas cuando marcó
+      // tres no lo es. En cuanto se corra la migración deja de pasar.
+      const esColumnaVieja = /busca_canal/.test(e.message)
+        && /(invalid input|malformed|does not exist|22P02|42703)/.test(e.message);
+      if (!esColumnaVieja) throw e;
+
+      console.warn('[marcas/busqueda] Falta mk_057: se guarda el registro sin el canal.');
+      const { busca_canal, busca_canal_otra, ...resto } = respuestas;
+      await db.updateMarca(req.usuarioId, resto);
+    }
 
     // Si ya tenía una solicitud abierta se reutiliza: responder el registro dos
     // veces no debería poner al equipo a armar dos selecciones.

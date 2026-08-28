@@ -25,9 +25,51 @@ const HEADERS = {
 
 // ── Helpers genéricos ───────────────────────────────────────────────────────
 
-async function get(tabla, params = {}) {
+/**
+ * Columnas que la base todavía no tiene, aprendidas sobre la marcha.
+ *
+ * Las migraciones de este proyecto se corren A MANO en el SQL Editor, así que
+ * entre desplegar el código y pegarlas hay una ventana. Y pedir una columna que
+ * no existe no devuelve el resto: PostgREST rechaza la consulta ENTERA con un
+ * 400. O sea que una columna nueva en una lista de `select` tumba todo lo que
+ * lea esa tabla.
+ *
+ * Pasó dos veces el mismo día: `orden_fijo` dejó el catálogo sin cargar, y
+ * `busca_canal_otra` tumbó `/me`, que es lo primero que pide el panel — la
+ * marca no podía ni entrar.
+ *
+ * Ahora la primera consulta que se topa con una columna ausente la anota y se
+ * reintenta sin ella. Todo lo demás sigue funcionando, la función nueva no, y
+ * queda un aviso. Cuando la migración corra, el proceso se reinicia y se
+ * olvida sola.
+ */
+const COLUMNAS_AUSENTES = new Set();
+
+/** "column mk_marcas.busca_canal_otra does not exist" → "busca_canal_otra" */
+function columnaQueFalta(texto) {
+  const m = /column [\w.]*?(\w+) does not exist/.exec(texto || '');
+  return m ? m[1] : null;
+}
+
+/** Quita del select y del order las columnas que la base no tiene. */
+function sinAusentes(params) {
+  if (!COLUMNAS_AUSENTES.size) return params;
+  const limpio = { ...params };
+  if (typeof limpio.select === 'string') {
+    limpio.select = limpio.select.split(',')
+      .filter(c => !COLUMNAS_AUSENTES.has(c.trim())).join(',');
+  }
+  if (typeof limpio.order === 'string') {
+    limpio.order = limpio.order.split(',')
+      .filter(o => !COLUMNAS_AUSENTES.has(o.split('.')[0].trim())).join(',');
+    if (!limpio.order) delete limpio.order;
+  }
+  return limpio;
+}
+
+async function get(tabla, params = {}, reintento = false) {
   const url = new URL(`${BASE_URL}/${tabla}`);
-  Object.entries(params).forEach(([k, v]) => {
+  Object.entries(sinAusentes(params)).forEach(([k, v]) => {
     // Un arreglo son varios filtros sobre la MISMA columna, que es como
     // PostgREST expresa un rango: `fecha=gte.X&fecha=lte.Y`. Con `set` los dos
     // se juntarían en "gte.X,lte.Y" y la consulta traería lo que le diera la
@@ -36,8 +78,17 @@ async function get(tabla, params = {}) {
     else url.searchParams.set(k, v);
   });
   const res = await fetch(url.toString(), { headers: HEADERS });
-  if (!res.ok) throw new Error(`Supabase GET ${tabla}: ${res.status} ${await res.text()}`);
-  return res.json();
+  if (res.ok) return res.json();
+
+  const cuerpo = await res.text();
+  const falta = !reintento && columnaQueFalta(cuerpo);
+  if (falta && !COLUMNAS_AUSENTES.has(falta)) {
+    console.warn(`[db] Falta una migración: "${falta}" no existe en la base. `
+               + 'Se sigue sin esa columna.');
+    COLUMNAS_AUSENTES.add(falta);
+    return get(tabla, params, true);
+  }
+  throw new Error(`Supabase GET ${tabla}: ${res.status} ${cuerpo}`);
 }
 
 async function getUno(tabla, params = {}) {
@@ -177,36 +228,9 @@ const COLS_CATALOGO = [
   'metricas_estado',
 ].join(',');
 
-/**
- * Columnas que todavía pueden no existir en la base.
- *
- * Las migraciones se corren a mano, así que entre desplegar el código y
- * pegarlas en el SQL Editor hay una ventana. Pedir una columna que no existe
- * NO devuelve el resto de los datos: PostgREST rechaza la consulta entera con
- * un 400, así que una columna nueva tumba el catálogo completo.
- *
- * Ya pasó —con `orden_fijo`, el mismo día que se escribió esto— y la marca
- * queda mirando una pantalla de error en lo único que vino a usar. Cuesta poco
- * y evita que el orden de dos pasos manuales decida si la aplicación funciona.
- *
- * Se limpia cuando la migración lleva tiempo aplicada.
- */
-const COLUMNAS_NUEVAS = ['orden_fijo'];
-let _sinColumnasNuevas = false;
-
-/** El select de siempre, o el de emergencia si la base va atrasada. */
-function selectCatalogo() {
-  if (!_sinColumnasNuevas) return COLS_CATALOGO;
-  return COLS_CATALOGO.split(',').filter(c => !COLUMNAS_NUEVAS.includes(c)).join(',');
-}
-
-/** ¿Este error es "falta una columna nueva" y no un problema de verdad? */
-const esColumnaQueFalta = (e) =>
-  COLUMNAS_NUEVAS.some(c => String(e.message).includes(`${c} does not exist`));
-
 async function getCatalogo({ categoria, nicho, rango_alcance, nivel_tarifa, pais, departamento, ciudad, presupuesto_max } = {}) {
   const params = {
-    select: selectCatalogo(),
+    select: COLS_CATALOGO,
     visible: 'eq.true',
     // ⚠️ Este orden NO es el que ve la marca en el catálogo: `catalogo.js` lo
     // vuelve a ordenar en JavaScript por qué tan completo está cada perfil,
@@ -236,18 +260,7 @@ async function getCatalogo({ categoria, nicho, rango_alcance, nivel_tarifa, pais
   // tarifa dejó de ser obligatoria.
   if (presupuesto_max) params.or = `(tarifa_min.lte.${presupuesto_max},tarifa_min.is.null)`;
 
-  try {
-    return await get('mk_creadoras', params);
-  } catch (e) {
-    if (!esColumnaQueFalta(e) || _sinColumnasNuevas) throw e;
-    // Falta la migración. Se sigue sirviendo el catálogo sin esa columna —el
-    // orden fijo no funciona, pero todo lo demás sí— y se avisa una sola vez
-    // para que quede en los registros sin llenarlos.
-    console.warn('[db] Falta una migración: el catálogo va sin', COLUMNAS_NUEVAS.join(', '));
-    _sinColumnasNuevas = true;
-    return get('mk_creadoras', { ...params, select: selectCatalogo(), order: params.order
-      .split(',').filter(o => !COLUMNAS_NUEVAS.some(c => o.startsWith(c))).join(',') });
-  }
+  return get('mk_creadoras', params);
 }
 
 const getCreadoraCatalogo = (id) =>
