@@ -92,6 +92,10 @@ router.get('/filtros', async (req, res) => {
       rango_presupuesto: cfg.rango_presupuesto || null,
       comision_marca_pct: cfg.comision_marca_pct,
       comision_creadora_pct: cfg.comision_creadora_pct,
+      // Lo que cuesta un trato por canje. Va acá y no cableado en el modal
+      // porque es un precio: cambiarlo tiene que ser editar una fila, no
+      // desplegar. El respaldo de 4900 es por si mk_058 aún no corrió.
+      canje_comision_fija: cfg.canje_comision_fija ?? 4900,
       horas_responder: cfg.horas_responder,
     });
   } catch (e) {

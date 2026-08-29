@@ -333,6 +333,16 @@ input[type=range]::-moz-range-thumb {
    como atajo: pagarle lo que pide y ofrecerle otra cosa son decisiones
    distintas, y la segunda hay que tomarla a propósito. */
 .eleccion-monto { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+/* Con canje son tres opciones. Se reparten en dos filas y no en tres columnas:
+   a 320 px de ancho, tres cajas dejan cada rotulo en dos lineas y el precio
+   partido, que es justo la cifra que hay que leer de un golpe. */
+.eleccion-monto--tres { grid-template-columns: 1fr 1fr; }
+.eleccion-monto--tres .opcion-monto--canje { grid-column: 1 / -1; }
+/* El canje no mueve la plata de la marca, mueve producto. Se marca en azul
+   (el color de "esto es informacion", no el magenta de "esto cobra") para que
+   no se confunda con las dos opciones que si terminan en un pago grande. */
+.opcion-monto--canje.on { background: var(--azul, #2323F0); border-color: var(--azul, #2323F0); }
+.opcion-monto--canje.on .opcion-monto__cifra { color: #fff; }
 .opcion-monto { background: var(--surface); border: 2px solid var(--border-1);
                 padding: 11px 12px; cursor: pointer; text-align: left;
                 font-family: var(--mono-t); font-weight: 700; font-size: 11px;

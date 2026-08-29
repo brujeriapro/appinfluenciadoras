@@ -78,6 +78,51 @@ function calcularTrato({
 }
 
 /**
+ * Un trato por canje: la creadora recibe producto, no plata.
+ *
+ * Es la mitad del mercado en belleza y no cabía en `calcularTrato`, que exige
+ * un monto positivo — con razón, porque un trato en dinero por cero pesos es
+ * un error, no un canje.
+ *
+ * **Por qué acá no hay escrow y no hace falta.** El escrow protege trabajo ya
+ * hecho: retiene la plata hasta que la marca aprueba, para que nadie grabe
+ * gratis. En un canje la creadora no graba hasta que le llega el producto, así
+ * que si nunca llega, simplemente no hay contenido y nadie perdió nada. No hay
+ * nada que retener porque no hay nada en riesgo.
+ *
+ * Lo que sí se cobra es la comisión fija, y se cobra cuando ELLA ACEPTA
+ * (decisión de María, 29-ago-2026). Es lo mismo que se promete para los tratos
+ * en dinero —no se cobra nada si dice que no— y de paso deja a la marca con
+ * algo puesto, que es lo que la empuja a mandar el producto de verdad.
+ *
+ * La creadora no paga nada: cobrarle un porcentaje de cero es cero, y cobrarle
+ * un fijo sería pedirle plata por recibir un regalo.
+ */
+function calcularCanje({ comision_fija, es_bruja_embajadora = false }) {
+  const fija = es_bruja_embajadora ? 0 : Math.round(Number(comision_fija) || 0);
+  if (fija < 0) throw new Error('La comisión de canje no puede ser negativa');
+
+  return {
+    tipo_pago:                'canje',
+    monto_creadora:           0,
+    comision_marca_pct:       0,
+    comision_creadora_pct:    0,
+    comision_marca_valor:     fija,
+    comision_creadora_valor:  0,
+    comision_total_valor:     fija,
+    // La marca paga SOLO la comisión. El producto lo manda aparte, y su valor
+    // no pasa por acá: no lo cobramos ni lo retenemos, así que ponerlo en la
+    // cuenta sería inventarnos un movimiento de plata que no existe.
+    total_a_pagar_marca:      fija,
+    costo_desembolso_pct:     0,
+    costo_desembolso_valor:   0,
+    // Cero pesos, y se dice explícito. Que ella vea "$0" al lado de "recibes el
+    // producto" es lo que evita el malentendido de creer que además le pagan.
+    neto_a_recibir_creadora:  0,
+  };
+}
+
+/**
  * Devuelve el nivel de presupuesto (inicial | medio | top) que corresponde a
  * una tarifa.
  *
@@ -162,10 +207,24 @@ function resumirAlcance({ instagram, tiktok }, rangos = []) {
   };
 }
 
+/**
+ * Lo que la creadora recibe por un trato, dicho como se le debe decir.
+ *
+ * Existe porque un canje pagado en producto vale `$0` en la base, y escribir
+ * ese cero en un correo —"Nueva propuesta · $0"— es la forma más rápida de que
+ * no lo abra. Vive acá y no en cada plantilla para que el día que cambie la
+ * frase, cambie en los cinco sitios a la vez.
+ */
+function loQueRecibe(trato) {
+  return trato?.tipo_pago === 'canje'
+    ? 'el producto'
+    : formatearCOP(trato?.neto_a_recibir_creadora);
+}
+
 /** Formatea un valor en pesos para mostrar: 1250000 -> "$1.250.000" */
 function formatearCOP(valor) {
   const n = Math.round(Number(valor) || 0);
   return '$' + n.toLocaleString('es-CO');
 }
 
-module.exports = { calcularTrato, nivelPorTarifa, resumirTarifas, rangoAlcance, resumirAlcance, formatearCOP };
+module.exports = { calcularTrato, calcularCanje, loQueRecibe, nivelPorTarifa, resumirTarifas, rangoAlcance, resumirAlcance, formatearCOP };

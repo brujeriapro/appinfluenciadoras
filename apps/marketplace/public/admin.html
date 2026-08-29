@@ -500,6 +500,18 @@ async function verTrato(id) {
         <div class="campo"><label>Referencia o comprobante</label><input id="pe-ref" placeholder="Número de la transacción"></div>
         <button class="btn-mini" id="btn-pago-entrada">REGISTRAR PAGO RECIBIDO →</button>
       </div>`;
+  } else if (t.estado === 'aprobado' && t.tipo_pago === 'canje') {
+    // Un canje no tiene qué girar: la creadora ya cobró, en producto. Ofrecer
+    // "pagar a la creadora" acá sería un botón que el backend rechaza.
+    acciones = `
+      <div class="bloque">
+        <div class="bloque__titulo">Cerrar el canje</div>
+        <p class="p" style="color:var(--grey-600);margin-bottom:12px">
+          Es un canje: no hay transferencia que hacer. Al cerrarlo suma una
+          colaboración al historial de la creadora.
+        </p>
+        <button class="btn-mini" id="btn-cerrar-trato">CERRAR TRATO →</button>
+      </div>`;
   } else if (t.estado === 'aprobado') {
     acciones = `
       <div class="bloque">
@@ -548,15 +560,22 @@ async function verTrato(id) {
     <div style="margin-bottom:16px">${pill(t.estado)}</div>
 
     <div class="bloque">
-      <div class="bloque__titulo">Plata</div>
-      <div class="dato"><span>Monto acordado</span><span class="num">${COP(t.monto_creadora)}</span></div>
-      <div class="dato"><span>Comisión marca (${t.comision_marca_pct}%)</span><span class="num">${COP(t.comision_marca_valor)}</span></div>
-      <div class="dato" style="border-top:1px solid var(--border-dark);padding-top:8px">
-        <span style="color:var(--off-white)">Cobra a la marca</span>
-        <span class="num" style="color:var(--lime)">${COP(t.total_a_pagar_marca)}</span></div>
-      <div class="dato"><span>Comisión creadora (${t.comision_creadora_pct}%)</span><span class="num">${COP(t.comision_creadora_valor)}</span></div>
-      <div class="dato"><span style="color:var(--off-white)">Paga a la creadora</span>
-        <span class="num" style="color:var(--lime)">${COP(t.neto_a_recibir_creadora)}</span></div>
+      <div class="bloque__titulo">Plata${t.tipo_pago === 'canje' ? ' · CANJE' : ''}</div>
+      ${t.tipo_pago === 'canje' ? `
+        <div class="dato"><span>Le pagan en</span><span class="num">Producto</span></div>
+        <div class="dato" style="border-top:1px solid var(--border-dark);padding-top:8px">
+          <span style="color:var(--off-white)">Cobra a la marca (fijo)</span>
+          <span class="num" style="color:var(--lime)">${COP(t.total_a_pagar_marca)}</span></div>
+        <div class="dato"><span style="color:var(--off-white)">Paga a la creadora</span>
+          <span class="num">Nada — el pago es el producto</span></div>` : `
+        <div class="dato"><span>Monto acordado</span><span class="num">${COP(t.monto_creadora)}</span></div>
+        <div class="dato"><span>Comisión marca (${t.comision_marca_pct}%)</span><span class="num">${COP(t.comision_marca_valor)}</span></div>
+        <div class="dato" style="border-top:1px solid var(--border-dark);padding-top:8px">
+          <span style="color:var(--off-white)">Cobra a la marca</span>
+          <span class="num" style="color:var(--lime)">${COP(t.total_a_pagar_marca)}</span></div>
+        <div class="dato"><span>Comisión creadora (${t.comision_creadora_pct}%)</span><span class="num">${COP(t.comision_creadora_valor)}</span></div>
+        <div class="dato"><span style="color:var(--off-white)">Paga a la creadora</span>
+          <span class="num" style="color:var(--lime)">${COP(t.neto_a_recibir_creadora)}</span></div>`}
       <div class="dato" style="border-top:2px solid var(--border-dark);padding-top:8px">
         <span style="color:var(--off-white)">Queda para la plataforma</span>
         <span class="num" style="color:var(--magenta)">${COP(t.comision_total_valor)}</span></div>

@@ -534,7 +534,14 @@ router.post('/tratos', rateLimit({ max: 20 }), async (req, res) => {
             fecha_entrega_esperada, producto, exclusividad,
             producto_detalle, exclusividad_detalle } = req.body;
 
-    if (!creadora_id || !monto) {
+    // Un canje es producto por contenido: no lleva monto, y por eso no puede
+    // pasar por la validación que exige uno. Solo se acepta el valor exacto,
+    // nunca "cualquier cosa distinta de dinero": un typo en el cuerpo no puede
+    // convertir una propuesta de $800.000 en un trato sin plata.
+    const tipo_pago = req.body.tipo_pago === 'canje' ? 'canje' : 'dinero';
+    const esCanje = tipo_pago === 'canje';
+
+    if (!creadora_id || (!esCanje && !monto)) {
       return res.status(400).json({ error: 'Faltan la creadora o el monto' });
     }
 
@@ -579,7 +586,10 @@ router.post('/tratos', rateLimit({ max: 20 }), async (req, res) => {
         producto_detalle: recorta(producto_detalle),
         exclusividad_detalle: recorta(exclusividad_detalle),
       };
-      if (campana.tope_por_creadora && Number(monto) > Number(campana.tope_por_creadora)) {
+      // Un canje no gasta del presupuesto de la campaña, así que su tope no
+      // aplica: compararlo contra un monto que no existe lo dejaría pasar
+      // siempre y de paso escribiría un mensaje de error sin sentido.
+      if (!esCanje && campana.tope_por_creadora && Number(monto) > Number(campana.tope_por_creadora)) {
         return res.status(400).json({
           error: `Ese monto supera el tope por creadora de la campaña (${Math.round(campana.tope_por_creadora).toLocaleString('es-CO')}).`,
         });
@@ -616,7 +626,8 @@ router.post('/tratos', rateLimit({ max: 20 }), async (req, res) => {
       campana_id: campana_id || null,
       brief: base.brief,
       entregables: base.entregables,
-      monto,
+      monto: esCanje ? 0 : monto,
+      tipo_pago,
       fecha_entrega_esperada: base.fecha_entrega_esperada,
       producto: base.producto,
       exclusividad: base.exclusividad,

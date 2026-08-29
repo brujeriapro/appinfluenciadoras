@@ -18,7 +18,7 @@ const correo = require('./correo');
 // Solo para dejar rastro de los envíos. db.js no depende de este archivo, así
 // que no hay ciclo.
 const db = require('./db');
-const { formatearCOP } = require('./comisiones');
+const { formatearCOP, loQueRecibe } = require('./comisiones');
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -669,7 +669,7 @@ function propuestaPorVencer({ trato, creadora, marca, horasRestantes }) {
        Tienes una propuesta esperando.</p>
 
      <p><strong>${esc(marca?.nombre_empresa || 'Una marca')}</strong> te mandó una propuesta
-     de <strong>${formatearCOP(trato.neto_a_recibir_creadora)}</strong> netos y todavía no la
+     de <strong>${loQueRecibe(trato)}</strong> y todavía no la
      has contestado.</p>
 
      <p>Si no respondes en las próximas <strong>${horasRestantes} horas</strong> se cierra sola
@@ -851,12 +851,16 @@ function resetClave({ email, token, lado }) {
 function nuevaSolicitud({ trato, creadora, marca }) {
   return enviar(
     creadora.email,
-    `Nueva propuesta de colaboración · ${formatearCOP(trato.neto_a_recibir_creadora)}`,
+    `Nueva propuesta de colaboración · ${loQueRecibe(trato)}`,
     `<p><strong>${marca?.nombre_empresa || 'Una marca'}</strong> quiere colaborar contigo.</p>
      <p style="background:#D6FF00;padding:10px;border:2px solid #0E0E0E">
-       Recibes: <strong style="font-size:16px">${formatearCOP(trato.neto_a_recibir_creadora)}</strong><br>
-       <span style="font-size:11px;color:#3A3A3A">Monto acordado ${formatearCOP(trato.monto_creadora)} menos ${trato.comision_creadora_pct}% de comisión</span>
+       Recibes: <strong style="font-size:16px">${loQueRecibe(trato)}</strong><br>
+       <span style="font-size:11px;color:#3A3A3A">${trato.tipo_pago === 'canje'
+         ? 'Es un canje: te mandan el producto, no plata. Mira abajo qué es.'
+         : `Monto acordado ${formatearCOP(trato.monto_creadora)} menos ${trato.comision_creadora_pct}% de comisión`}</span>
      </p>
+     ${trato.tipo_pago === 'canje' && trato.producto_detalle
+       ? `<p><strong>Lo que te mandan:</strong> ${trato.producto_detalle}</p>` : ''}
      <p><strong>Brief:</strong> ${trato.brief}</p>
      ${trato.fecha_entrega_esperada ? `<p><strong>Entrega esperada:</strong> ${trato.fecha_entrega_esperada}</p>` : ''}
      <p>Entra a tu perfil para aceptar o rechazar.</p>
@@ -872,9 +876,13 @@ function tratoAceptado({ trato, marca }) {
     `<p>La creadora aceptó tu propuesta.</p>
      <p style="background:#D6FF00;padding:10px;border:2px solid #0E0E0E">
        Total a pagar: <strong style="font-size:16px">${formatearCOP(trato.total_a_pagar_marca)}</strong><br>
-       <span style="font-size:11px;color:#3A3A3A">${formatearCOP(trato.monto_creadora)} + ${trato.comision_marca_pct}% de comisión</span>
+       <span style="font-size:11px;color:#3A3A3A">${trato.tipo_pago === 'canje'
+         ? 'Comisión fija del canje. El producto lo mandas tú, aparte.'
+         : `${formatearCOP(trato.monto_creadora)} + ${trato.comision_marca_pct}% de comisión`}</span>
      </p>
-     <p>Escríbenos para coordinar el pago. Apenas quede retenido, se abren los datos de contacto entre las dos partes y la creadora arranca.</p>
+     <p>${trato.tipo_pago === 'canje'
+       ? 'Escríbenos para coordinar el pago de la comisión. Apenas entre, se abren los datos de contacto y la dirección para que le mandes el producto.'
+       : 'Escríbenos para coordinar el pago. Apenas quede retenido, se abren los datos de contacto entre las dos partes y la creadora arranca.'}</p>
      ${boton('VER EL TRATO', urlTrato('trato', trato.id))}`
   );
 }
@@ -911,7 +919,7 @@ async function pagoRetenido({ trato, marca, contacto }) {
     `Ya está el pago · puedes empezar · ${trato.codigo}`,
     `<p>El pago de <strong>${marca.nombre_empresa}</strong> ya está retenido en la plataforma. Tienes garantizado tu dinero: se te libera apenas la marca apruebe el contenido.</p>
      <p style="background:#D6FF00;padding:10px;border:2px solid #0E0E0E">
-       Recibes al terminar: <strong style="font-size:16px">${formatearCOP(trato.neto_a_recibir_creadora)}</strong>
+       Recibes al terminar: <strong style="font-size:16px">${loQueRecibe(trato)}</strong>
      </p>
      <p><strong>Contacto de la marca:</strong> ${marca.nombre_contacto} · ${marca.email}${marca.whatsapp ? ` · ${marca.whatsapp}` : ''}</p>
      ${boton('VER EL TRATO', urlTrato('creadora', trato.id))}`

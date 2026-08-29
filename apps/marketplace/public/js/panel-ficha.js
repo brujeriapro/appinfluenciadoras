@@ -580,6 +580,9 @@ function abrirPropuesta(creadora, tarifaElegida) {
     entregable: elegida ? elegida.entregable : null,
     tarifaPublicada: elegida ? Number(elegida.precio) : null,
     monto: elegida ? Number(elegida.precio) : rp.min,
+    // 'dinero' o 'canje'. Arranca siempre en dinero: el canje es la excepción
+    // y tiene que elegirse a propósito, no caer por defecto.
+    tipo: 'dinero',
     origen: E.campanas.length ? 'campana' : 'perso',
     campana_id: E.campanas.length ? E.campanas[0].id : null,
     brief: '',
@@ -615,10 +618,16 @@ function pintarPropuesta() {
   const pctMarca = Number(E.cfg.comision_marca_pct ?? 12);
   const pctCreadora = Number(E.cfg.comision_creadora_pct ?? 8);
 
-  const comision = Math.round(p.monto * pctMarca / 100);
-  const total = Math.round(p.monto) + comision;
-  const neto = Math.round(p.monto) - Math.round(p.monto * pctCreadora / 100);
-  const bajoTarifa = p.tarifaPublicada && p.monto < p.tarifaPublicada;
+  const esCanje = p.tipo === 'canje';
+  const fijaCanje = Number(E.cfg.canje_comision_fija ?? 4900);
+
+  const comision = esCanje ? fijaCanje : Math.round(p.monto * pctMarca / 100);
+  const total = esCanje ? fijaCanje : Math.round(p.monto) + comision;
+  const neto = esCanje ? 0 : Math.round(p.monto) - Math.round(p.monto * pctCreadora / 100);
+  const bajoTarifa = !esCanje && p.tarifaPublicada && p.monto < p.tarifaPublicada;
+
+  // Un canje con "NO APLICA" en producto no existe: el producto ES el pago.
+  if (esCanje && p.producto === 'NO APLICA') p.producto = 'ENVIADO';
 
   const campanaActual = E.campanas.find(c => c.id === p.campana_id);
 
@@ -679,25 +688,40 @@ function pintarPropuesta() {
                entre "+50 mil" y "−50 mil", así que quien no se fijaba no sabía
                que el monto de arriba era el precio de ELLA ni que podía
                cambiarlo. Son dos decisiones distintas y se ven como tales. -->
-          ${p.tarifaPublicada ? `
-            <div class="eleccion-monto">
-              <button type="button" class="opcion-monto ${p.monto === p.tarifaPublicada ? 'on' : ''}"
+          <div class="eleccion-monto eleccion-monto--tres">
+            ${p.tarifaPublicada ? `
+              <button type="button" class="opcion-monto ${!esCanje && p.monto === p.tarifaPublicada ? 'on' : ''}"
                       data-monto="${p.tarifaPublicada}">
                 Pagar su tarifa
                 <span class="opcion-monto__cifra">${COP(p.tarifaPublicada)}</span>
-              </button>
-              <button type="button" class="opcion-monto ${p.monto !== p.tarifaPublicada ? 'on' : ''}"
-                      id="otro-monto">
-                Proponer otro monto
-                <span class="opcion-monto__cifra">Tú lo pones</span>
-              </button>
-            </div>` : `
+              </button>` : ''}
+            <button type="button" class="opcion-monto ${!esCanje && p.monto !== p.tarifaPublicada ? 'on' : ''}"
+                    id="otro-monto">
+              Proponer otro monto
+              <span class="opcion-monto__cifra">Tú lo pones</span>
+            </button>
+
+            <!-- El canje es la mitad de los tratos de belleza y hasta ahora se
+                 cerraban por fuera de la plataforma. Va acá y no en otro sitio
+                 porque es la misma decisión: cuánto le ofreces. -->
+            <button type="button" class="opcion-monto opcion-monto--canje ${esCanje ? 'on' : ''}"
+                    id="opcion-canje">
+              Canje · solo producto
+              <span class="opcion-monto__cifra">${COP(fijaCanje)} de comisión</span>
+            </button>
+          </div>
+
+          ${!p.tarifaPublicada && !esCanje ? `
             <p class="p" style="font-size:11px;color:var(--text-3);margin-bottom:10px">
-              Todavía no publicó tarifa, así que el monto lo pones tú.</p>`}
+              Todavía no publicó tarifa, así que el monto lo pones tú.</p>` : ''}
 
           <!-- El monto se escribe. El deslizador queda de apoyo para tantear,
                pero con 480 posiciones nunca fue una forma de poner una cifra
                exacta, y menos en un teléfono. -->
+          <!-- Los controles siguen en el árbol cuando hay canje, solo
+               ocultos: sus escuchas se conectan una sola vez y buscarlos sin
+               encontrarlos rompería el modal entero. -->
+          <div class="${esCanje ? 'oculto' : ''}" id="controles-monto">
           <div class="monto-caja">
             <span class="monto-caja__signo">$</span>
             <input type="text" id="monto-txt" inputmode="numeric" class="monto-caja__campo"
@@ -720,6 +744,13 @@ function pintarPropuesta() {
             <span>${COP(rp.max)}</span>
           </div>
           <span class="alerta-tarifa ${bajoTarifa ? '' : 'oculto'}" id="aviso-bajo">Por debajo de su tarifa</span>
+          </div>
+
+          ${esCanje ? `
+            <p class="p" style="font-size:11.5px;margin-bottom:4px">
+              Ella no recibe plata: recibe el producto que le mandes. Descríbelo
+              abajo con nombre y tamaño — es lo único que tiene para decidir si
+              le sirve.</p>` : ''}
         </div>
 
         <div class="campo">
@@ -775,33 +806,42 @@ function pintarPropuesta() {
         <div class="h-sec" style="font-size:11.5px;margin-bottom:12px">El dinero, en vivo</div>
 
         <div class="dinero-fila">
-          <span class="dinero-fila__label">Monto acordado</span>
-          <span class="dinero-fila__valor" id="d-monto">${COP(p.monto)}</span>
+          <span class="dinero-fila__label">${esCanje ? 'Le pagas en' : 'Monto acordado'}</span>
+          <span class="dinero-fila__valor" id="d-monto">${esCanje ? 'Producto' : COP(p.monto)}</span>
         </div>
         <div class="dinero-fila">
-          <span class="dinero-fila__label">Comisión plataforma ${pctMarca}%</span>
+          <span class="dinero-fila__label">Comisión plataforma${esCanje ? ' (fija)' : ' ' + pctMarca + '%'}</span>
           <span class="dinero-fila__valor" id="d-comision">+${COP(comision)}</span>
         </div>
         <div class="dinero-fila">
           <span class="dinero-fila__label">Ella recibe (neto)</span>
-          <span class="dinero-fila__valor" id="d-neto" style="color:var(--text-3)">${COP(neto)}</span>
+          <span class="dinero-fila__valor" id="d-neto" style="color:var(--text-3)">${
+            esCanje ? COP(0) + ' + el producto' : COP(neto)}</span>
         </div>
 
         <div class="dinero-total">
           <div class="etiqueta" style="color:var(--chip-dark-text)">Total que tú pagas</div>
           <div class="dinero-total__valor" id="d-total">${COP(total)}</div>
           <div class="dinero-total__nota">
-            Se cobra solo si ella acepta. Queda retenido en escrow hasta que apruebes el contenido.
+            ${esCanje
+              ? 'Se cobra solo si ella acepta. No hay escrow porque no hay plata que retener: ella no graba hasta que le llegue el producto.'
+              : 'Se cobra solo si ella acepta. Queda retenido en escrow hasta que apruebes el contenido.'}
           </div>
         </div>
 
         <p class="p" style="font-size:11px;margin-top:14px">
-          Cuando acepte y el pago quede retenido, se revelan su nombre, su cuenta y su contacto.
+          ${esCanje
+            ? 'Cuando acepte y pagues la comisión, se revelan su nombre y su dirección para que le mandes el producto.'
+            : 'Cuando acepte y el pago quede retenido, se revelan su nombre, su cuenta y su contacto.'}
         </p>
 
         <button class="btn btn--lima" style="width:100%;margin-top:14px" id="enviar-prop">
           Enviar propuesta · <span id="d-boton">${COP(total)}</span>
         </button>
+        ${esCanje ? `
+          <div class="etiqueta" style="margin-top:8px;text-align:center">
+            El producto lo mandas tú, aparte
+          </div>` : ''}
         <button class="btn btn--linea" style="width:100%;margin-top:8px" id="cancelar-prop">Cancelar</button>
         <div class="etiqueta" style="margin-top:10px;text-align:center">
           Ella tiene ${E.cfg.horas_responder || 72} horas para responder
@@ -854,6 +894,10 @@ function pintarPropuesta() {
   const rango = E.cfg.rango_presupuesto || { min: 200000, max: 5000000, paso: 10000 };
 
   function refrescarDinero() {
+    // En canje las cifras están fijas y no cuelgan del monto: dejarlas
+    // recalcular escribiría "$0" encima de "Producto". El repintado completo
+    // es el que las pone, al cambiar de opción.
+    if (PROP.tipo === 'canje') return;
     const m = Math.round(PROP.monto);
     const pctM = Number(E.cfg.comision_marca_pct ?? 12);
     const pctC = Number(E.cfg.comision_creadora_pct ?? 8);
@@ -912,8 +956,22 @@ function pintarPropuesta() {
   // "Pagar su tarifa" pone su cifra. "Proponer otro monto" no cambia nada por
   // su cuenta: lleva el cursor al campo, que es donde se decide.
   document.querySelector('.opcion-monto[data-monto]')
-    ?.addEventListener('click', (e) => fijarMonto(Number(e.currentTarget.dataset.monto)));
-  $('otro-monto')?.addEventListener('click', () => { campo.focus(); campo.select(); });
+    ?.addEventListener('click', (e) => {
+      PROP.tipo = 'dinero';
+      fijarMonto(Number(e.currentTarget.dataset.monto));
+      pintarPropuesta();
+    });
+  $('otro-monto')?.addEventListener('click', () => {
+    // Volver de canje a dinero cambia media pantalla, así que se repinta; si
+    // ya estaba en dinero basta con llevar el cursor al campo, que es donde
+    // se decide.
+    if (PROP.tipo === 'canje') { PROP.tipo = 'dinero'; pintarPropuesta(); $('monto-txt').focus(); return; }
+    campo.focus(); campo.select();
+  });
+  $('opcion-canje')?.addEventListener('click', () => {
+    PROP.tipo = 'canje';
+    pintarPropuesta();
+  });
   ['brief', 'fecha', 'producto', 'exclusividad'].forEach(id => {
     $(id).addEventListener('change', () => {
       PROP[id] = $(id).value;
@@ -952,7 +1010,11 @@ async function enviarPropuesta() {
         creadora_id: PROP.creadora.id,
         campana_id: PROP.origen === 'campana' ? PROP.campana_id : null,
         entregables: (E.cfg.entregables || []).find(e => e.clave === PROP.entregable)?.nombre || PROP.entregable,
-        monto: PROP.monto,
+        tipo_pago: PROP.tipo,
+        // Un canje va sin monto. Mandar el que quedó en pantalla antes de
+        // elegir canje crearía un trato que dice pagar una plata que nadie
+        // acordó.
+        monto: PROP.tipo === 'canje' ? 0 : PROP.monto,
         brief: PROP.brief,
         fecha_entrega_esperada: $('fecha').value || null,
         producto: $('producto').value,

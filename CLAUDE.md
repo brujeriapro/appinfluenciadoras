@@ -277,6 +277,29 @@ La marca envía brief + monto; la creadora acepta viendo su neto; la marca paga 
 7. **El número exacto de seguidores no viaja al catálogo**, solo el rango y el nivel: buscar "12.483 seguidores" lleva al perfil real y derrota el catálogo ciego. Las **vistas promedio sí viajan** — deciden la contratación y no sirven para encontrar a nadie.
 8. **Creators Manager no se cuelga de Brujería Capilar.** Ni en la interfaz, ni en los correos, ni en los mensajes de error. Son marcas distintas y cuentas separadas.
 
+### Canje: producto en vez de plata
+
+La mitad del mercado de belleza se mueve por canje, y hasta ahora esos tratos se
+cerraban por fuera de la plataforma — con ellos se iba la comisión y, peor, el
+historial de cumplimiento, que es lo que hace valer el catálogo. Es la tercera
+opción del modal de propuesta, junto a "pagar su tarifa" y "proponer otro monto".
+
+- Cobra una **comisión fija** (`mk_config.canje_comision_fija`, hoy $4.900) en vez
+  de los dos porcentajes, y la paga solo la marca: cobrarle a la creadora un fijo
+  sería pedirle plata por recibir un regalo. Se cobra **cuando ella acepta**, igual
+  que un trato en dinero.
+- **No lleva escrow, y no es un olvido.** El escrow protege trabajo ya hecho; en un
+  canje la creadora no graba hasta que le llega el producto, así que si nunca llega
+  simplemente no hay contenido y nadie perdió nada.
+- ⚠️ **Un canje se cierra desde `aprobado`, saltándose `pagado`** — no hay qué
+  girarle. Ese atajo es también la forma de cerrar un trato en dinero sin haberle
+  pagado nunca a la creadora, así que la guarda de `aplicarTransicion` exige
+  `tipo_pago === 'canje'` y un trato sin la columna se trata como dinero.
+- Todo lo que le muestra a la creadora lo que recibe pasa por `loQueRecibe()`
+  (`comisiones.js` en el servidor, `creadora.html` en el portal): un canje vale $0
+  en la base, y "Nueva propuesta · $0" en el asunto de un correo es la forma más
+  rápida de que no lo abra.
+
 ### Nichos
 
 Taxonomía de dos niveles en `mk_config.nichos`: 15 categorías madre (belleza, moda, fitness, comida, hogar, familia, mascotas, viajes, tecnología, gaming, finanzas, educación, entretenimiento, movilidad, lifestyle) con subnichos. **No es un marketplace solo de belleza**: cubre todo el universo de creadoras. La creadora elige hasta 3 subnichos y la categoría madre se deduce sola.
@@ -290,7 +313,7 @@ node index.js       # http://localhost:3040
 npm test            # 335 pruebas: comisiones, estados, tarifas, Wompi, plazos, correo, análisis, pagos, cupos, aprendizaje y listas externas
 ```
 
-**Migraciones:** los archivos de `apps/marketplace/migrations/` en orden numérico, en el SQL Editor de Supabase. Van por `mk_055`. Además, crear el bucket privado `mk-muestras` en Storage.
+**Migraciones:** los archivos de `apps/marketplace/migrations/` en orden numérico, en el SQL Editor de Supabase. Van por `mk_058`. Además, crear el bucket privado `mk-muestras` en Storage.
 
 **Scripts que se corren a mano** (necesitan las mismas variables que el servidor):
 

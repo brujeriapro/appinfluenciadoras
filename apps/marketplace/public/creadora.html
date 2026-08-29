@@ -1463,6 +1463,13 @@ $('login-form').addEventListener('submit', async (e) => {
 // ── Utilidades ──────────────────────────────────────────────────────────────
 
 const COP = (v) => '$' + Math.round(Number(v) || 0).toLocaleString('es-CO');
+
+// Un canje se paga con producto, así que en la base vale $0. Escribir ese cero
+// en su pantalla —"Tu neto: $0"— se lee como que la están estafando, cuando lo
+// que pasa es que el pago es otra cosa. Todo lo que muestre lo que recibe pasa
+// por acá.
+const esCanje = (t) => t?.tipo_pago === 'canje';
+const loQueRecibe = (t) => esCanje(t) ? 'El producto' : COP(t?.neto_a_recibir_creadora);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fechaCorta = (f) => f ? new Date(f).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }).toUpperCase() : '—';
 
@@ -3523,10 +3530,12 @@ function pintarLista() {
         </div>
         <div class="${esNueva ? 'destacado' : ''}">
           <div class="fp-neto">
-            <span class="fp-neto__label">${pagada ? 'Recibiste' : 'Tu neto'}</span>
-            <span class="fp-neto__valor" ${pagada ? 'style="color:var(--off-white)"' : ''}>${COP(t.neto_a_recibir_creadora)}</span>
+            <span class="fp-neto__label">${esCanje(t) ? 'Te mandan' : (pagada ? 'Recibiste' : 'Tu neto')}</span>
+            <span class="fp-neto__valor" ${pagada ? 'style="color:var(--off-white)"' : ''}>${loQueRecibe(t)}</span>
           </div>
-          ${esNueva ? `<div class="fp-nota">De ${COP(t.monto_creadora)} acordados · ${t.comision_creadora_pct}% comisión</div>` : ''}
+          ${esNueva ? `<div class="fp-nota">${esCanje(t)
+            ? 'Canje: te mandan producto, no plata'
+            : `De ${COP(t.monto_creadora)} acordados · ${t.comision_creadora_pct}% comisión`}</div>` : ''}
         </div>
       </button>`;
   }).join('');
@@ -3590,14 +3599,21 @@ async function verPropuesta(id) {
     </div>
 
     <div class="desglose">
-      <div class="desglose__fila">
-        <span class="desglose__label">Monto acordado</span>
-        <span class="desglose__valor">${COP(t.monto_creadora)}</span>
-      </div>
-      <div class="desglose__fila">
-        <span class="desglose__label">Comisión Creators Manager ${t.comision_creadora_pct}%</span>
-        <span class="desglose__valor desglose__valor--resta">−${COP(t.comision_creadora_valor)}</span>
-      </div>
+      ${esCanje(t) ? `
+        <div class="desglose__fila">
+          <span class="desglose__label">Cómo te pagan
+            <span style="display:block;font-size:10.5px;color:#7A7A7A;margin-top:2px">Con producto, no con plata. La comisión la paga la marca; a ti no te descuentan nada.</span>
+          </span>
+          <span class="desglose__valor">Canje</span>
+        </div>` : `
+        <div class="desglose__fila">
+          <span class="desglose__label">Monto acordado</span>
+          <span class="desglose__valor">${COP(t.monto_creadora)}</span>
+        </div>
+        <div class="desglose__fila">
+          <span class="desglose__label">Comisión Creators Manager ${t.comision_creadora_pct}%</span>
+          <span class="desglose__valor desglose__valor--resta">−${COP(t.comision_creadora_valor)}</span>
+        </div>`}
       <!-- El costo de transferir va como línea aparte y no sumado a la
            comisión: son cosas distintas, y mezclarlas haría que su comisión
            pareciera del 11% cuando el trato dice 8%. Aparece aquí —antes de
@@ -3611,15 +3627,19 @@ async function verPropuesta(id) {
           <span class="desglose__valor desglose__valor--resta">−${COP(t.costo_desembolso_valor)}</span>
         </div>` : ''}
       <div class="desglose__neto">
-        <div class="desglose__neto-label">Tu neto</div>
-        <div class="desglose__neto-valor">${COP(t.neto_a_recibir_creadora)}</div>
-        <div class="desglose__neto-nota">A tu cuenta ${t.horas_pago_tras_aprobar || 48}h después de aprobado</div>
+        <div class="desglose__neto-label">${esCanje(t) ? 'Lo que recibes' : 'Tu neto'}</div>
+        <div class="desglose__neto-valor" ${esCanje(t) ? 'style="font-size:22px"' : ''}>${loQueRecibe(t)}</div>
+        <div class="desglose__neto-nota">${esCanje(t)
+          ? (t.producto_detalle ? esc(t.producto_detalle) : 'Mira arriba qué producto te mandan')
+          : `A tu cuenta ${t.horas_pago_tras_aprobar || 48}h después de aprobado`}</div>
       </div>
     </div>
 
     ${['pago_retenido','entregado','aprobado','pagado','cerrado'].includes(t.estado) ? `
       <div class="nota-escrow">
-        El dinero ya está retenido. Si publicas lo acordado, te lo pagan. No depende de la marca.
+        ${esCanje(t) ? `Este trato es un canje: no hay dinero retenido porque el pago es el producto.
+        No grabes nada hasta que te llegue — si no llega, aquí no perdiste nada.`
+        : `El dinero ya está retenido. Si publicas lo acordado, te lo pagan. No depende de la marca.`}
       </div>` : `
       <div class="nota-escrow">
         Cuando aceptes, la marca paga y el dinero queda retenido antes de que publiques.
@@ -3742,8 +3762,8 @@ async function vistaEntregar() {
 
       <div class="entregar-lado">
         <div class="caja-dato">
-          <div class="caja-dato__label">Se libera al aprobar</div>
-          <div class="caja-dato__valor">${COP(t.neto_a_recibir_creadora)}</div>
+          <div class="caja-dato__label">${esCanje(t) ? 'Te quedas con' : 'Se libera al aprobar'}</div>
+          <div class="caja-dato__valor" ${esCanje(t) ? 'style="font-size:16px"' : ''}>${loQueRecibe(t)}</div>
         </div>
         <div class="caja-dato">
           <div class="caja-dato__label">Fecha acordada</div>

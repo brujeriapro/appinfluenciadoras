@@ -9,7 +9,7 @@
 // y en cualquier punto temprano puede desviarse a rechazado o cancelado.
 
 const db = require('./db');
-const { calcularTrato } = require('./comisiones');
+const { calcularTrato, calcularCanje } = require('./comisiones');
 
 const ESTADOS = [
   'solicitado', 'aceptado', 'pago_retenido', 'entregado',
@@ -61,6 +61,11 @@ const TRANSICIONES = {
   },
   aprobado: {
     pagado: ['admin'],
+    // Solo para canjes: no hay plata que girarle, así que "pagado" no aplica y
+    // el trato se quedaría atascado en "aprobado" para siempre. La guarda de
+    // aplicarTransicion es la que impide que un trato en dinero use esta
+    // salida para saltarse el pago a la creadora.
+    cerrado: ['admin'],
   },
   pagado: {
     cerrado: ['admin', 'sistema'],
@@ -98,11 +103,22 @@ function puedeTransicionar(estadoActual, estadoNuevo, actor) {
   return actores.includes(actor);
 }
 
-/** Estados a los que un actor puede llevar el trato desde donde está. */
-function transicionesDisponibles(estadoActual, actor) {
+/**
+ * Estados a los que un actor puede llevar el trato desde donde está.
+ *
+ * Recibe el tipo de pago porque hay dos salidas que dependen de él: un canje se
+ * cierra desde "aprobado" y un trato en dinero pasa por "pagado". Ofrecer las
+ * dos en el panel sería ofrecer un botón que la guarda va a rechazar.
+ */
+function transicionesDisponibles(estadoActual, actor, tipo_pago = 'dinero') {
+  const esCanje = tipo_pago === 'canje';
   const salidas = TRANSICIONES[estadoActual] || {};
   return Object.entries(salidas)
     .filter(([, actores]) => actores.includes(actor))
+    .filter(([estado]) => {
+      if (estadoActual !== 'aprobado') return true;
+      return esCanje ? estado !== 'pagado' : estado !== 'cerrado';
+    })
     .map(([estado]) => estado);
 }
 
@@ -146,12 +162,25 @@ async function aplicarTransicion(trato, estadoNuevo, actor, datos = {}) {
     }
   }
   if (estadoNuevo === 'pagado') {
+    if (trato.tipo_pago === 'canje') {
+      throw new TransicionInvalida(
+        'Un canje no se paga en dinero: se cierra directo desde "aprobado"'
+      );
+    }
     const pagos = await db.getPagosDeTrato(trato.id);
     if (!pagos.some(p => p.direccion === 'salida')) {
       throw new TransicionInvalida(
         'Falta registrar el pago a la creadora antes de marcar el trato como pagado'
       );
     }
+  }
+  // El atajo de "aprobado" a "cerrado" existe solo porque en un canje no hay
+  // qué girar. Sin esta guarda sería la forma de cerrar un trato en dinero sin
+  // haberle pagado nunca a la creadora.
+  if (estadoNuevo === 'cerrado' && estadoActual === 'aprobado' && trato.tipo_pago !== 'canje') {
+    throw new TransicionInvalida(
+      'Este trato se paga en dinero: hay que registrar el pago a la creadora antes de cerrarlo'
+    );
   }
 
   const ahora = new Date().toISOString();
@@ -212,7 +241,7 @@ function contactoVisible(trato) {
  */
 async function crearTrato({
   marca_id, creadora_id, campana_id = null, invitacion_id = null,
-  brief, entregables = null, monto,
+  brief, entregables = null, monto, tipo_pago = 'dinero',
   fecha_entrega_esperada = null, producto = null, exclusividad = null,
   producto_detalle = null, exclusividad_detalle = null,
   nota = 'Solicitud enviada',
@@ -222,16 +251,27 @@ async function crearTrato({
     db.getConfig(),
   ]);
 
-  const calculo = calcularTrato({
-    monto: Number(monto),
-    comision_marca_pct: Number(cfg.comision_marca_pct ?? 12),
-    comision_creadora_pct: Number(cfg.comision_creadora_pct ?? 8),
-    // Lo que cobra la pasarela por dispersar. Se congela igual que las
-    // comisiones: subirlo mañana no puede cambiar lo que ya se le prometió a
-    // alguien que aceptó hoy.
-    costo_desembolso_pct: Number(cfg.costo_desembolso_pct ?? 0),
-    es_bruja_embajadora: creadora?.es_bruja_embajadora === true,
-  });
+  const esCanje = tipo_pago === 'canje';
+  const embajadora = creadora?.es_bruja_embajadora === true;
+
+  // Un canje no tiene monto sobre el cual sacar porcentaje, así que cobra una
+  // comisión fija. Se congela dentro del trato por la misma razón que los
+  // porcentajes: subir el precio mañana no puede encarecer un trato de hoy.
+  const calculo = esCanje
+    ? calcularCanje({
+        comision_fija: Number(cfg.canje_comision_fija ?? 4900),
+        es_bruja_embajadora: embajadora,
+      })
+    : calcularTrato({
+        monto: Number(monto),
+        comision_marca_pct: Number(cfg.comision_marca_pct ?? 12),
+        comision_creadora_pct: Number(cfg.comision_creadora_pct ?? 8),
+        // Lo que cobra la pasarela por dispersar. Se congela igual que las
+        // comisiones: subirlo mañana no puede cambiar lo que ya se le prometió a
+        // alguien que aceptó hoy.
+        costo_desembolso_pct: Number(cfg.costo_desembolso_pct ?? 0),
+        es_bruja_embajadora: embajadora,
+      });
 
   const trato = await db.insertTrato({
     codigo: await db.siguienteCodigoTrato(),
@@ -244,6 +284,7 @@ async function crearTrato({
     producto: producto || null,
     exclusividad: exclusividad || null,
     producto_detalle, exclusividad_detalle,
+    tipo_pago: esCanje ? 'canje' : 'dinero',
     ...calculo,
   });
 
