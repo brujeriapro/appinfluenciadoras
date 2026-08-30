@@ -133,8 +133,36 @@ function olvidarSesion() {
 const TOKEN = (localStorage.getItem('mk_marca') || sessionStorage.getItem('mk_marca'));
 if (!TOKEN) location.href = '/registro.html';
 
+/**
+ * Una llamada al servidor que aguanta un bache de red.
+ *
+ * `fetch` no lanza por un error del servidor: lanza cuando la petición NO
+ * LLEGÓ — sin señal, o el servidor reiniciando. El navegador lo cuenta como
+ * "Failed to fetch", que es lo que la marca terminaba leyendo en pantalla.
+ *
+ * Se reintenta dos veces porque un reinicio del servidor dura segundos y la
+ * señal de un celular se cae en tramos cortos. Solo se reintenta lo que no
+ * llegó: si el servidor contestó, aunque sea un error, esa respuesta manda.
+ */
+async function conAguante(url, opciones) {
+  let ultimo;
+  for (let intento = 0; intento < 3; intento++) {
+    try {
+      return await fetch(url, opciones);
+    } catch (e) {
+      ultimo = e;
+      if (intento < 2) await new Promise(r => setTimeout(r, 1200 * (intento + 1)));
+    }
+  }
+  const err = new Error('No pudimos conectarnos. Revisa tu señal y vuelve a intentar — '
+    + 'tus respuestas siguen acá, no se perdieron.');
+  err.esDeRed = true;
+  err.causa = ultimo;
+  throw err;
+}
+
 async function api(ruta, opciones = {}) {
-  const res = await fetch('/api/marcas' + ruta, {
+  const res = await conAguante('/api/marcas' + ruta, {
     ...opciones,
     headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json',
                ...(opciones.headers || {}) },
@@ -210,6 +238,33 @@ const rotuloTope = (v) => {
 
 let OPCIONES = null;
 let PASO = 0;
+
+// Las respuestas se guardan en el navegador a medida que avanza.
+//
+// Son seis preguntas: perderlas por un bache de señal en la última es la
+// diferencia entre reintentar y no volver nunca. Van con el token para no
+// mostrarle a una marca lo que contestó otra en el mismo computador.
+const GUARDADO = 'mk_empezar';
+
+function guardarRespuestas() {
+  try {
+    localStorage.setItem(GUARDADO, JSON.stringify({ token: TOKEN, paso: PASO, R }));
+  } catch (e) { /* modo incógnito o disco lleno: no vale tumbar el registro */ }
+}
+
+function recuperarRespuestas() {
+  try {
+    const g = JSON.parse(localStorage.getItem(GUARDADO) || 'null');
+    if (!g || g.token !== TOKEN) return false;
+    Object.assign(R, g.R || {});
+    PASO = Math.min(g.paso || 0, PASOS.length - 1);
+    return true;
+  } catch (e) { return false; }
+}
+
+function olvidarRespuestas() {
+  try { localStorage.removeItem(GUARDADO); } catch (e) {}
+}
 const R = { categorias: [], otra: '', canal: [], canalOtra: '', audiencia: null,
             ciudades: [], ultima: null, tamano: null, presupuesto: null };
 
@@ -442,19 +497,23 @@ function cuerpoCiudades() {
 
 async function seguir() {
   if (!PASOS[PASO].listo()) return;
-  if (PASO < PASOS.length - 1) { PASO++; pintar(); return; }
+  if (PASO < PASOS.length - 1) { PASO++; guardarRespuestas(); pintar(); return; }
+  guardarRespuestas();
 
   const b = $('seguir');
   b.disabled = true;
   b.textContent = 'Guardando…';
   try {
     const d = await api('/busqueda', { method: 'POST', body: JSON.stringify(R) });
+    olvidarRespuestas();
     cierre(d);
   } catch (e) {
     b.disabled = false;
-    b.textContent = 'Ver mi selección →';
+    // Si fue la red, el botón lo dice: "guardar" otra vez suena a que hay que
+    // rehacer algo, y no hay nada que rehacer.
+    b.textContent = e.esDeRed ? 'Reintentar →' : 'Ver mi selección →';
     const err = $('error');
-    err.textContent = 'No se pudo guardar: ' + e.message;
+    err.textContent = e.esDeRed ? e.message : 'No se pudo guardar: ' + e.message;
     err.classList.remove('oculto');
   }
 }
@@ -521,10 +580,16 @@ function cierre(d) {
 (async () => {
   try {
     OPCIONES = await api('/busqueda/opciones');
+    // Si venía a medias —se le cayó la señal, cerró sin querer— retoma donde
+    // iba en vez de empezar de cero. Volver a contestar seis preguntas que ya
+    // contestó es donde se pierde a la marca, no en la primera.
+    recuperarRespuestas();
     pintar();
   } catch (e) {
     $('raiz').innerHTML = `<div class="paso-wrap"><div class="paso-caja">
-      <div class="aviso">No pudimos cargar el registro: ${esc(e.message)}</div>
+      <div class="aviso">${esc(e.message)}</div>
+      <button class="btn btn--lima" style="margin-top:14px"
+              onclick="location.reload()">Reintentar →</button>
     </div></div>`;
   }
 })();
