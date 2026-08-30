@@ -75,6 +75,12 @@
            font-weight: 700; line-height: 1.5; }
   .ok { border: 2px solid var(--ink); background: var(--lima); padding: 12px 14px;
         font-size: 12px; margin-top: 12px; line-height: 1.6; color: var(--ink); }
+  /* No es un error suyo: perdió la sesión o ya tenía cuenta. Va en azul (el
+     color de "esto es información") y no en magenta, que acá significa que
+     algo salió mal. */
+  .aviso { border: 2px solid var(--azul, #2323F0); color: var(--azul, #2323F0);
+           padding: 12px 14px; font-size: 12px; margin-top: 12px;
+           line-height: 1.6; font-weight: 700; }
 
   .enlaces { display: flex; flex-direction: column; align-items: flex-start;
              gap: 7px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border-3); }
@@ -229,7 +235,7 @@
 <script>
 // ── Sesión ──────────────────────────────────────────────────────────────────
 
-let TOKEN = sessionStorage.getItem('mk_marca') || null;
+let TOKEN = (localStorage.getItem('mk_marca') || sessionStorage.getItem('mk_marca')) || null;
 let modo = 'registro';
 let PAISES = [];
 
@@ -350,7 +356,7 @@ $('formulario').addEventListener('submit', async (e) => {
       TOKEN = r.token;
     }
 
-    sessionStorage.setItem('mk_marca', TOKEN);
+    localStorage.setItem('mk_marca', TOKEN);
 
     // El evento con el que Meta optimiza la entrega. Sin él la campaña aprende
     // a conseguir visitas, que es otra cosa y mucho más barata de conseguir
@@ -366,6 +372,16 @@ $('formulario').addEventListener('submit', async (e) => {
     err.className = 'error';
     err.textContent = e.message;
     err.classList.remove('oculto');
+    // "Ya existe una cuenta con ese correo" es un callejón sin salida si no se
+    // le ofrece la puerta: quien lo ve casi siempre es alguien que ya se
+    // registró y volvió, no alguien equivocándose.
+    if (/ya existe una cuenta/i.test(e.message || '')) {
+      modo = 'login';
+      pintarModo();
+      err.className = 'aviso';
+      err.textContent = 'Ya tienes cuenta con ese correo. Entra con tu contraseña.';
+      err.classList.remove('oculto');
+    }
   } finally {
     btn.disabled = false;
     btn.textContent = original;
@@ -374,7 +390,21 @@ $('formulario').addEventListener('submit', async (e) => {
 
 // ── Arranque ────────────────────────────────────────────────────────────────
 
-pintarModo();
+// Quien viene rebotado de las seis preguntas perdió la sesión, no la cuenta.
+// Sin decírselo llena el registro otra vez con el mismo correo y recibe "ya
+// existe una cuenta" al final — un error que no cometió. Se le abre el modo
+// de entrar, que es lo que de verdad necesita.
+if (new URLSearchParams(location.search).get('volver') === 'empezar') {
+  modo = 'login';
+  pintarModo();
+  const aviso = $('error');
+  aviso.className = 'aviso';
+  aviso.textContent = 'Se cerró tu sesión. Entra con tu correo y seguimos donde ibas.';
+  aviso.classList.remove('oculto');
+} else {
+  pintarModo();
+}
+
 // Con sesión abierta no tiene sentido mostrar el formulario.
 if (TOKEN) location.href = '/panel.html';
 </script>

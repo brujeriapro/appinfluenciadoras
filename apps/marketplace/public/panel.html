@@ -444,7 +444,7 @@
 <script>
 // ── Sesión ──────────────────────────────────────────────────────────────────
 
-const TOKEN = sessionStorage.getItem('mk_marca');
+const TOKEN = (localStorage.getItem('mk_marca') || sessionStorage.getItem('mk_marca'));
 if (!TOKEN) location.href = '/registro.html';
 
 const $ = (id) => document.getElementById(id);
@@ -462,7 +462,7 @@ async function api(ruta, opciones = {}) {
     },
   });
   if (res.status === 401) {
-    sessionStorage.removeItem('mk_marca');
+    localStorage.removeItem('mk_marca'); sessionStorage.removeItem('mk_marca');
     location.href = '/registro.html';
     throw new Error('Sesión vencida');
   }
@@ -788,7 +788,7 @@ async function cargarCatalogo() {
         // Se pregunta: salir sin querer desde un menú que se abre con un clic
         // obliga a volver a entrar con la clave, que casi nadie recuerda.
         if (!confirm('¿Cerrar sesión?')) return;
-        sessionStorage.removeItem('mk_marca');
+        localStorage.removeItem('mk_marca'); sessionStorage.removeItem('mk_marca');
         location.href = '/registro.html';
       }
     });

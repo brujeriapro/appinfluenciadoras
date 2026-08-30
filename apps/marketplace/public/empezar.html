@@ -123,7 +123,14 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g,
   c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const COP = (v) => '$' + Math.round(Number(v) || 0).toLocaleString('es-CO');
 
-const TOKEN = sessionStorage.getItem('mk_marca');
+// Se borra de los dos: durante un tiempo van a convivir sesiones viejas
+// guardadas en sessionStorage y nuevas en localStorage.
+function olvidarSesion() {
+  localStorage.removeItem('mk_marca');
+  sessionStorage.removeItem('mk_marca');
+}
+
+const TOKEN = (localStorage.getItem('mk_marca') || sessionStorage.getItem('mk_marca'));
 if (!TOKEN) location.href = '/registro.html';
 
 async function api(ruta, opciones = {}) {
@@ -132,7 +139,14 @@ async function api(ruta, opciones = {}) {
     headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json',
                ...(opciones.headers || {}) },
   });
-  if (res.status === 401) { sessionStorage.removeItem('mk_marca'); location.href = '/registro.html'; return; }
+  if (res.status === 401) {
+    // Se le dice por qué la sacamos. Caer en un formulario de registro en
+    // blanco sin explicación termina en que lo llena de nuevo con el mismo
+    // correo y recibe "ya existe una cuenta" — un error que no cometió.
+    olvidarSesion();
+    location.href = '/registro.html?volver=empezar';
+    return;
+  }
   const t = await res.text();
   const d = t ? JSON.parse(t) : null;
   if (!res.ok) throw new Error((d && d.error) || 'Error ' + res.status);

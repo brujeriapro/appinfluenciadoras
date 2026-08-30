@@ -303,7 +303,7 @@ function planHTML(p, comisionPct) {
  * a quién asignárselo.
  */
 function irAComprar(clave) {
-  const token = sessionStorage.getItem('mk_marca');
+  const token = (localStorage.getItem('mk_marca') || sessionStorage.getItem('mk_marca'));
   if (!token) {
     sessionStorage.setItem('mk_plan_deseado', clave);
     location.href = '/registro.html?plan=' + encodeURIComponent(clave);
