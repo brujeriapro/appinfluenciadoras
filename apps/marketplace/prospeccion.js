@@ -49,13 +49,28 @@ const CADENCIA = [
   { toque: 4, dia: 14, tipo: 'cierre' },       // el último, y se dice que es el último
 ];
 
-// Qué puede salir solo y qué necesita una mano humana.
+// Qué puede salir solo, qué necesita una mano humana, y con qué dato se
+// contacta cada canal.
 const CANALES = {
-  correo:    { automatico: true,  tope_dia: 40 },
-  whatsapp:  { automatico: true,  tope_dia: 25 },
-  instagram: { automatico: false, tope_dia: 20 },
-  linkedin:  { automatico: false, tope_dia: 15 },
+  correo:    { automatico: true,  tope_dia: 40, campo: 'email' },
+  whatsapp:  { automatico: true,  tope_dia: 25, campo: 'telefono' },
+  instagram: { automatico: false, tope_dia: 20, campo: 'instagram' },
+  linkedin:  { automatico: false, tope_dia: 15, campo: 'linkedin' },
 };
+
+/**
+ * ¿Tenemos con qué contactarlo por el canal que tiene asignado?
+ *
+ * Sin esto, un prospecto con canal "correo" y sin correo entra igual a la
+ * tanda, gasta cupo del día y falla. Y lo peor: el intento fallido deja
+ * escrito el toque 1, y como un toque no se repite, cuando consiguiéramos su
+ * dirección ya no se le podría mandar el primer mensaje nunca.
+ */
+function tieneComoContactar(prospecto) {
+  const campo = CANALES[prospecto?.canal]?.campo;
+  if (!campo) return false;
+  return Boolean(String(prospecto[campo] || '').trim());
+}
 
 /** Los canales que el agente puede usar sin que nadie apruebe. */
 function canalesAutomaticos() {
@@ -78,6 +93,10 @@ function toqueQueToca(prospecto, hoy = new Date()) {
   if (prospecto.estado === 'nuevo')          return no('falta investigarlo');
   if (prospecto.no_contactar)                return no('pidió que no le escribamos');
   if (!prospecto.canal)                      return no('sin canal definido');
+  if (!tieneComoContactar(prospecto)) {
+    const campo = CANALES[prospecto.canal]?.campo || 'contacto';
+    return no(`falta su ${campo}: hay que investigarlo antes`);
+  }
 
   const hechos = Number(prospecto.toques_enviados) || 0;
   const siguiente = CADENCIA.find(c => c.toque === hechos + 1);
@@ -230,5 +249,6 @@ function alResponder(texto = '') {
 
 module.exports = {
   ESTADOS, TERMINALES, CADENCIA, CANALES,
-  canalesAutomaticos, toqueQueToca, seAgoto, tandaDelDia, puntuar, alResponder,
+  canalesAutomaticos, tieneComoContactar, toqueQueToca, seAgoto, tandaDelDia,
+  puntuar, alResponder,
 };

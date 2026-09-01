@@ -14,7 +14,8 @@ const HOY = new Date('2026-09-15T12:00:00Z');
 const haceDias = (n) => new Date(HOY.getTime() - n * 86400000).toISOString();
 
 const base = (extra = {}) => ({
-  estado: 'investigado', canal: 'correo', toques_enviados: 0, ...extra,
+  estado: 'investigado', canal: 'correo', email: 'marca@ejemplo.co',
+  toques_enviados: 0, ...extra,
 });
 
 // ── Cuándo toca y cuándo no ────────────────────────────────────────────────
@@ -105,8 +106,8 @@ test('primero salen los de mayor puntaje', () => {
 
 test('Instagram y LinkedIn van a cola, no salen solos', () => {
   const lista = [
-    base({ id: 'ig', canal: 'instagram', puntaje: 99 }),
-    base({ id: 'li', canal: 'linkedin', puntaje: 98 }),
+    base({ id: 'ig', canal: 'instagram', instagram: '@ig', puntaje: 99 }),
+    base({ id: 'li', canal: 'linkedin', linkedin: 'in/li', puntaje: 98 }),
     base({ id: 'em', canal: 'correo', puntaje: 97 }),
   ];
   const r = p.tandaDelDia(lista, { hoy: HOY });
@@ -296,4 +297,32 @@ test('el buscador cubre las 15 categorías, no solo belleza', () => {
 test('los multiplicadores no son todos de belleza', () => {
   const transversales = busc.MULTIPLICADORES.filter(m => m.categoria === 'todas');
   assert.ok(transversales.length >= 4, 'casi todos servían solo para belleza');
+});
+
+test('sin correo no entra a la fila, aunque el canal diga correo', () => {
+  // Lo destapó la cola antes de mandar nada: 12 prospectos "saldrían" por
+  // correo sin tener correo. Habrían gastado cupo, fallado, y —lo peor— el
+  // intento fallido deja escrito el toque 1, que no se repite: cuando
+  // consiguiéramos su dirección ya no se les podría mandar el primero.
+  const t = p.toqueQueToca(base({ canal: 'correo', email: null }), HOY);
+  assert.equal(t.toca, false);
+  assert.match(t.motivo, /falta su email/);
+});
+
+test('cada canal exige su propio dato', () => {
+  assert.equal(p.tieneComoContactar({ canal: 'correo', email: 'a@b.co' }), true);
+  assert.equal(p.tieneComoContactar({ canal: 'correo', instagram: '@x' }), false);
+  assert.equal(p.tieneComoContactar({ canal: 'whatsapp', telefono: '+573001112233' }), true);
+  assert.equal(p.tieneComoContactar({ canal: 'instagram', instagram: '@x' }), true);
+  assert.equal(p.tieneComoContactar({ canal: 'correo', email: '   ' }), false, 'un espacio no es un correo');
+});
+
+test('la tanda deja fuera a los que no tienen cómo contactarse', () => {
+  const lista = [
+    base({ id: 'con', canal: 'correo', email: 'a@b.co', puntaje: 10 }),
+    base({ id: 'sin', canal: 'correo', email: null, puntaje: 99 }),
+  ];
+  const r = p.tandaDelDia(lista, { hoy: HOY });
+  assert.deepStrictEqual(r.salen.map(x => x.prospecto.id), ['con'],
+    'el de puntaje 99 no puede salir si no hay a dónde escribirle');
 });
