@@ -872,7 +872,12 @@ function pintarPlan() {
   const tope = E.plan.propuestas_tope;
   const usadas = E.plan.propuestas_enviadas;
 
-  $('sub-marca').textContent = E.plan.nombre;
+  // Un plan regalado que no se nota no lo agradece nadie, y en octubre la
+  // caída de 40 propuestas a 3 se siente como un castigo en vez de como el fin
+  // de una cortesía. Así que se dice, y se dice hasta cuándo.
+  $('sub-marca').textContent = E.plan.de_lanzamiento
+    ? `${E.plan.nombre} · gratis por lanzamiento`
+    : E.plan.nombre;
 
   // "9 de 12" y no "9/12": el "de" en gris deja claro de un vistazo cuál de
   // los dos números es el que se está gastando.

@@ -257,11 +257,24 @@ router.get('/plan', async (req, res) => {
     const clave = vigente ? (marca.plan || 'demo') : 'demo';
     const actual = planes.find(p => p.clave === clave) || null;
 
+    // ¿Este plan se lo regalamos por el lanzamiento? Se sabe comparando el
+    // vencimiento con la fecha de la promo: quien pagó tiene otro corte. Sin
+    // esto la marca ve "Escala" y no entiende que se lo dimos — y un regalo
+    // que no se nota no agradece nada.
+    const promo = cfg.promo_lanzamiento;
+    const de_lanzamiento = Boolean(
+      vigente && promo?.activa && promo.plan === clave &&
+      marca.plan_vence_at?.slice(0, 10) >= promo.hasta &&
+      new Date(marca.plan_vence_at) - new Date(`${promo.hasta}T23:59:59-05:00`) === 0
+    );
+
     res.json({
       activo: cfg.planes_activos === true,
       plan: clave,
       nombre: actual?.nombre || 'Demo',
       vence_at: vigente ? marca.plan_vence_at : null,
+      de_lanzamiento,
+      promo_hasta: promo?.activa ? promo.hasta : null,
       fichas_vistas: vistas,
       propuestas_tope: actual?.propuestas_mes ?? null,
       propuestas_enviadas: await db.contarPropuestasDelMes(req.usuarioId),
