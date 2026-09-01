@@ -10,10 +10,11 @@
 // exigible ante la Superintendencia de Industria y Comercio, así que tiene que
 // pasar por la abogada antes de publicarse.
 //
-// ⚠️ FALTAN TRES DATOS que solo María puede dar, marcados abajo como
-// PENDIENTE_*: la dirección física, el correo de habeas data y el teléfono. La
-// Ley 1581 exige que el responsable sea localizable; sin eso la política no
-// cumple.
+// ⚠️ FALTA LA DIRECCIÓN FÍSICA, que solo María puede dar. La Ley 1581 exige que
+// el responsable sea localizable, y con el correo solo no basta. Va como
+// marcador visible: una política publicada con "[PENDIENTE]" se nota y se
+// arregla; una con una dirección inventada es un problema que nadie ve hasta
+// que alguien reclama.
 //
 // Dos cosas que sí quedaron dichas y suelen omitirse, porque acá sí pasan:
 //   · Los datos salen de Colombia (Supabase, Railway, Anthropic, Meta). Eso
@@ -28,13 +29,18 @@ const PRIVACIDAD_VERSION = '2026-08-v1';
 // propósito: una política publicada con "[dirección]" es evidente y se arregla;
 // una con una dirección inventada es un problema legal que nadie nota.
 const PENDIENTE_DIRECCION = '[PENDIENTE: dirección física]';
-const PENDIENTE_CORREO    = '[PENDIENTE: correo de habeas data]';
-const PENDIENTE_TELEFONO  = '[PENDIENTE: teléfono]';
+
+// El correo es dato público y no cambia: va como valor por defecto para que la
+// política cumpla sin depender de que alguien configure una variable. Se puede
+// sobreescribir por entorno si algún día cambia el buzón.
+const CORREO_HABEAS_DATA = 'admin@creatorsmanager.com';
 
 function privacidadBody({
   direccion = PENDIENTE_DIRECCION,
-  correo    = PENDIENTE_CORREO,
-  telefono  = PENDIENTE_TELEFONO,
+  correo    = CORREO_HABEAS_DATA,
+  // El teléfono es opcional en la ley: con dirección y correo el responsable ya
+  // es localizable. Si no hay, la fila no se pinta — mejor que enseñar un hueco.
+  telefono  = null,
 } = {}) {
   return `
 <h1 class="tc-title">POLÍTICA DE TRATAMIENTO<br>DE DATOS PERSONALES</h1>
@@ -47,7 +53,7 @@ function privacidadBody({
 <table class="tc-table">
   <tr><th>Dirección</th><td>${direccion}</td></tr>
   <tr><th>Correo</th><td>${correo}</td></tr>
-  <tr><th>Teléfono</th><td>${telefono}</td></tr>
+  ${telefono ? `<tr><th>Teléfono</th><td>${telefono}</td></tr>` : ''}
 </table>
 <p>Ese correo es el canal oficial para ejercer tus derechos. Lo atiende el área de operaciones de la Plataforma.</p>
 
