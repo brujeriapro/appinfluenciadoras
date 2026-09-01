@@ -39,6 +39,35 @@
                      gap: 18px; flex-wrap: wrap; }
 
   /* El hero. Una sola idea, dicha grande. */
+  /* La franja de lanzamiento. Va pegada arriba del hero, en magenta —el color
+     de "esto es acción"— para que se lea antes que nada y no compita con el
+     lima del titular. */
+  .lanzamiento {
+    background: var(--magenta); color: #fff; padding: 11px var(--pad-x);
+    font-family: var(--mono-title); font-weight: 800;
+    font-size: clamp(10px, 1.5vw, 12px); letter-spacing: .1em; text-transform: uppercase;
+    text-align: center; line-height: 1.5;
+  }
+  .lanzamiento b { background: #fff; color: var(--magenta); padding: 1px 6px; }
+
+  /* La promo dentro del hero: caja de borde lima sobre el negro, para que se
+     lea como una oferta con fecha y no como otro párrafo de la página. */
+  .promo {
+    border: 2px solid var(--lime); padding: 16px 18px;
+    margin-top: clamp(22px, 3vw, 32px); max-width: 56ch;
+  }
+  .promo__tit {
+    font-family: var(--mono-title); font-weight: 800;
+    font-size: clamp(14px, 2.2vw, 19px); color: var(--lime); line-height: 1.25;
+    margin-bottom: 8px; letter-spacing: -.02em;
+  }
+  .promo__txt { color: var(--text-2); font-size: 14px; line-height: 1.6; margin: 0; }
+  .promo__hasta {
+    display: inline-block; margin-top: 10px; background: var(--lime); color: var(--ink);
+    font-family: var(--mono-title); font-weight: 800;
+    font-size: 10.5px; letter-spacing: .1em; padding: 3px 8px; text-transform: uppercase;
+  }
+
   .hero { background: var(--ink); padding: clamp(40px, 6vw, 90px) var(--pad-x); }
   .hero h1 { color: var(--lime); margin: clamp(18px, 3vw, 32px) 0 0; max-width: 17ch; }
   .hero__bajada { max-width: 56ch; margin-top: clamp(20px, 3vw, 30px); color: var(--text-2); }
@@ -120,6 +149,12 @@
   <a href="/registro.html" class="btn btn--header btn--sm">EMPEZAR GRATIS →</a>
 </header>
 
+<!-- El anuncio de llegada. Es lo primero que se lee y lo único de la página
+     con fecha de vencimiento, así que va arriba del todo y en su propio color. -->
+<div class="lanzamiento">
+  Llegamos a Colombia · <b>Septiembre gratis para marcas</b> · Solo por lanzamiento
+</div>
+
 <!-- ── El hero: una sola idea ──────────────────────────────────────────── -->
 <section class="hero">
   <span class="tag tag--lime">{PARA MARCAS}</span>
@@ -129,6 +164,17 @@
     a su manera y con su propia gente. Eso es lo que el algoritmo lee como una
     señal, y es lo que hace que tu marca parezca estar en todos lados.
   </p>
+  <div class="promo">
+    <div class="promo__tit">Septiembre es gratis para las primeras marcas</div>
+    <p class="promo__txt">
+      Acabamos de abrir en Colombia y queremos que las primeras marcas prueben
+      la plataforma completa sin pagar: contratas, el dinero queda retenido
+      hasta que apruebes el contenido, y solo decides si sigues cuando ya
+      viste cómo funciona.
+    </p>
+    <span class="promo__hasta">Hasta el 30 de septiembre</span>
+  </div>
+
   <div class="hero__ctas">
     <a href="/registro.html" class="btn btn--lime">EMPEZAR GRATIS →</a>
     <a href="/precios" class="btn btn--ghost">VER LOS PLANES</a>
