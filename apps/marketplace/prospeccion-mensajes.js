@@ -6,9 +6,14 @@
 //
 // ── Cómo se escriben acá ───────────────────────────────────────────────────
 //
-// 1. Va firmado por una persona, no por una empresa. Quien escribe es María,
-//    dueña de una marca de belleza, hablándole a otra dueña de marca. Ese es
-//    el único ángulo que esto tiene y que una agencia no puede copiar.
+// 1. Va firmado por una persona, no por una empresa: la firma es un nombre,
+//    no un departamento.
+//
+//    ⚠️ NUNCA menciona Brujería Capilar ni que quien escribe tenga una marca
+//    de belleza. Es una regla del proyecto —Creators Manager no se cuelga de
+//    Brujería Capilar, ni en la interfaz ni en los correos— y además le juega
+//    en contra en catorce de las quince categorías: a una marca de comida
+//    para perros, "vengo de la belleza" le dice "esto no es para mí".
 // 2. La primera línea dice algo CIERTO y ESPECÍFICO de esa marca. Si no
 //    tenemos nada específico que decir, el prospecto no está investigado y no
 //    se le escribe todavía.
@@ -39,22 +44,18 @@ const enlace = (ruta = '/marcas') => `${config.base_url.replace('://www.', '://'
  */
 function presentacion(p) {
   const razon = p.razon || `vi lo que están haciendo en redes`;
-  const presentada = p.creadora_nombre
-    ? `\n\n${p.creadora_nombre}, que ya ha trabajado con ustedes, está en nuestro catálogo y fue quien me hizo pensar en escribirles.`
-    : '';
-
   return {
     asunto: `${p.nombre}: 30 creadoras publicando la misma semana`,
     cuerpo:
 `Hola${p.contacto ? ' ' + p.contacto : ''},
 
-Soy ${FIRMA}. Tengo una marca de belleza en Medellín y hace unos meses armé Creators Manager, que es donde ahora contrato a las creadoras que antes perseguía por WhatsApp.
+Soy ${FIRMA}, de Creators Manager. Te escribo porque ${razon}.
 
-Te escribo porque ${razon}.${presentada}
+Conectamos marcas con creadoras colombianas para producir contenido en volumen: en vez de una creadora grande y cara, activas treinta pequeñas la misma semana. Tu dinero queda guardado hasta que apruebas el contenido, y cada perfil trae el historial de si cumplió o no en sus trabajos anteriores.
 
-Lo que hacemos es simple: en vez de una creadora grande y cara, activamos treinta pequeñas la misma semana. Tú apruebas el contenido antes de que se libere tu dinero, y cada perfil trae el historial de si cumplió o no en sus trabajos anteriores.
+Septiembre lo tenemos gratis para las marcas que entran ahora: el plan completo, sin pagar nada.
 
-¿Te sirve que hablemos veinte minutos esta semana? Si prefieres, te mando primero un ejemplo de cómo se vería con tus productos.
+¿Te sirve que hablemos veinte minutos esta semana? Si prefieres, te mando primero un ejemplo de cómo se vería con sus productos.
 
 ${FIRMA}
 ${enlace('/marcas')}`,
@@ -168,9 +169,8 @@ function redactar(tipo, prospecto) {
  * el saludo y la pregunta tienen que caber antes del «ver más».
  */
 function paraWhatsApp(p) {
-  const presentada = p.creadora_nombre ? ` ${p.creadora_nombre} me pasó el contacto.` : '';
   return (
-`Hola${p.contacto ? ' ' + p.contacto : ''}, soy ${FIRMA}, de Creators Manager.${presentada}
+`Hola${p.contacto ? ' ' + p.contacto : ''}, soy ${FIRMA}, de Creators Manager.
 
 Conectamos marcas con creadoras colombianas para hacer contenido en volumen. Septiembre está gratis para marcas nuevas.
 
