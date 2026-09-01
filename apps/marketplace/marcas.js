@@ -58,6 +58,12 @@ router.post('/registro', rateLimit({ max: 5 }), async (req, res) => {
       return res.status(409).json({ error: 'Ya existe una cuenta con ese correo' });
     }
 
+    // La promo de apertura, si está viva. Se resuelve antes del insert para que
+    // el plan quede puesto desde el primer segundo: si se hiciera después, una
+    // marca que entra y manda su primera propuesta de inmediato la mandaría
+    // contra el tope de Explora.
+    const promo = await planDeLanzamiento().catch(() => null);
+
     const marca = await db.insertMarca({
       nombre_empresa,
       nombre_contacto: nombre_contacto || null,
@@ -73,6 +79,7 @@ router.post('/registro', rateLimit({ max: 5 }), async (req, res) => {
       terminos_version: TERMINOS_VERSION,
       terminos_aceptados_at: new Date().toISOString(),
       terminos_ip: ipDe(req),
+      ...(promo ? { plan: promo.clave, plan_vence_at: promo.vence_at } : {}),
     });
 
     // Sin await: un correo caído no puede tumbar un registro. Con 300
@@ -503,6 +510,35 @@ router.get('/tratos', async (req, res) => {
  * Un plan vencido vuelve a los límites del gratuito sin quitarle la cuenta: la
  * marca sigue entrando y viendo todo, solo baja su cupo de propuestas.
  */
+/**
+ * El plan de regalo con el que entra una marca nueva, si hay promo viva.
+ *
+ * Devuelve null cuando no aplica, y entonces la marca entra como siempre: sin
+ * plan, o sea Explora.
+ *
+ * La fecha se compara al final del día para que quien se registre el 30 a las
+ * once de la noche alcance a entrar. Un corte a medianoche UTC dejaría por
+ * fuera a media Colombia el último día, que es justo cuando más gente entra.
+ */
+async function planDeLanzamiento() {
+  const cfg = await db.getConfig();
+  const promo = cfg.promo_lanzamiento;
+  if (!promo || promo.activa !== true || !promo.plan || !promo.hasta) return null;
+
+  const vence = new Date(`${promo.hasta}T23:59:59-05:00`);
+  if (!Number.isFinite(vence.getTime()) || vence <= new Date()) return null;
+
+  // Si la clave apunta a un plan que no existe o está apagado, no se regala
+  // nada. Vale más que la marca entre en Explora a que entre con un plan roto.
+  const plan = await db.getPlan(promo.plan);
+  if (!plan || plan.activo === false) {
+    console.warn('[promo] plan_lanzamiento apunta a un plan inexistente:', promo.plan);
+    return null;
+  }
+
+  return { clave: plan.clave, nombre: plan.nombre, vence_at: vence.toISOString() };
+}
+
 async function topeDePropuestas(marca_id) {
   const cfg = await db.getConfig();
   if (cfg.planes_activos !== true) {
