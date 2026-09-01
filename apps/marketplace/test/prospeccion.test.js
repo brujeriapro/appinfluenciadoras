@@ -120,16 +120,16 @@ test('solo correo y WhatsApp se mandan solos', () => {
 
 // ── El puntaje ─────────────────────────────────────────────────────────────
 
-test('que una creadora ya la conozca es lo que más pesa', () => {
-  const conocida = p.puntuar({ creadora_que_la_conoce: true });
-  const sola     = p.puntuar({ trabaja_con_creadoras: true, vende_producto_fisico: true, pais: 'CO' });
-  assert.ok(conocida.puntaje > sola.puntaje);
+test('que ya trabaje con creadoras es lo que más pesa', () => {
+  const yaTrabaja = p.puntuar({ trabaja_con_creadoras: true });
+  const solo = p.puntuar({ vende_producto_fisico: true, tiene_tienda_online: true, pais: 'CO' });
+  assert.ok(yaTrabaja.puntaje > solo.puntaje, 'no hay que explicarle el modelo a quien ya lo compró');
 });
 
 test('el puntaje explica de dónde salió cada punto', () => {
-  const r = p.puntuar({ creadora_que_la_conoce: true, pais: 'CO' });
+  const r = p.puntuar({ trabaja_con_creadoras: true, pais: 'CO' });
   assert.equal(r.porque.length, 2);
-  assert.match(r.porque[0], /creadora/);
+  assert.match(r.porque[0], /creadoras/);
 });
 
 test('una marca demasiado grande puntúa menos', () => {
@@ -140,8 +140,8 @@ test('una marca demasiado grande puntúa menos', () => {
 
 test('quien pidió que no lo contacten queda en cero, sume lo que sume', () => {
   const r = p.puntuar({
-    creadora_que_la_conoce: true, trabaja_con_creadoras: true,
-    vende_producto_fisico: true, pais: 'CO', no_contactar: true,
+    trabaja_con_creadoras: true, vende_producto_fisico: true,
+    tiene_tienda_online: true, pais: 'CO', no_contactar: true,
   });
   assert.equal(r.puntaje, 0);
 });
@@ -237,15 +237,14 @@ test('la misma marca por dos caminos no se duplica', () => {
   assert.equal(r[0].email, 'hola@lumina.co', 'debió completar el correo que faltaba');
 });
 
-test('cuando una marca llega por dos lados, gana la que trae creadora', () => {
-  // Es la diferencia entre escribir en frío y llegar presentada.
+test('cuando una marca llega por dos lados se conserva la mejor señal', () => {
   const r = busc.fusionar([
     [{ nombre: 'Lumina', fuente: 'lista' }],
-    [{ nombre: 'Lumina', fuente: 'creadora', creadora_id: 'c1', creadora_nombre: 'Valentina' }],
+    [{ nombre: 'Lumina', fuente: 'contenido', trabaja_con_creadoras: true, razon: 'ya hacen contenido' }],
   ]);
   assert.equal(r.length, 1);
-  assert.equal(r[0].creadora_que_la_conoce, true);
-  assert.equal(r[0].creadora_nombre, 'Valentina');
+  assert.equal(r[0].trabaja_con_creadoras, true);
+  assert.equal(r[0].razon, 'ya hacen contenido');
 });
 
 test('el mismo correo con otro nombre tampoco se duplica', () => {
@@ -256,13 +255,13 @@ test('el mismo correo con otro nombre tampoco se duplica', () => {
   assert.equal(r.length, 1);
 });
 
-test('las marcas que trae una creadora puntúan más alto', () => {
-  const [conCreadora, sola] = busc.calificar([
-    { nombre: 'A', creadora_id: 'c1', pais: 'CO' },
+test('las marcas que ya hacen contenido puntúan más alto', () => {
+  const [yaHace, apenas] = busc.calificar([
+    { nombre: 'A', fuente: 'contenido', trabaja_con_creadoras: true, pais: 'CO' },
     { nombre: 'B', sitio_web: 'https://b.co', instagram: '@b', email: 'b@b.co', pais: 'CO' },
   ]);
-  assert.ok(conCreadora.puntaje > sola.puntaje);
-  assert.match(conCreadora.puntaje_porque[0], /creadora/);
+  assert.ok(yaHace.puntaje > apenas.puntaje);
+  assert.match(yaHace.puntaje_porque[0], /creadoras/);
 });
 
 test('una lista pegada de Excel se entiende', () => {
@@ -283,4 +282,18 @@ test('las líneas vacías no se vuelven prospectos', () => {
 
 test('S.A.S. y tildes no hacen que una marca parezca dos', () => {
   assert.equal(busc.clave('Cosmética Fauno S.A.S.'), busc.clave('cosmetica fauno'));
+});
+
+test('el buscador cubre las 15 categorías, no solo belleza', () => {
+  // El catálogo tiene creadoras de mascotas, gaming y finanzas. Buscar solo
+  // cosméticos deja por fuera catorce quinceavos del mercado.
+  assert.equal(busc.CATEGORIAS.length, 15);
+  for (const c of ['mascotas', 'gaming', 'finanzas', 'comida', 'movilidad']) {
+    assert.ok(busc.CATEGORIAS.includes(c), `falta ${c}`);
+  }
+});
+
+test('los multiplicadores no son todos de belleza', () => {
+  const transversales = busc.MULTIPLICADORES.filter(m => m.categoria === 'todas');
+  assert.ok(transversales.length >= 4, 'casi todos servían solo para belleza');
 });

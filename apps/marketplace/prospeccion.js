@@ -167,10 +167,12 @@ function tandaDelDia(prospectos = [], { hoy = new Date(), topes = {} } = {}) {
 /**
  * Puntaje de un prospecto: qué tan probable es que le sirva.
  *
- * Suma señales, y cada una vale lo que aporta a la decisión. La más pesada de
- * lejos es que una creadora del catálogo ya haya trabajado con esa marca: no
- * es una señal de encaje, es una puerta abierta — se puede llegar presentado
- * en vez de en frío, que es otra conversación completamente distinta.
+ * Suma señales, y cada una vale lo que aporta a la decisión. La más pesada es
+ * que la marca YA trabaje con creadoras: no hay que explicarle el modelo, ya
+ * lo compró, y la conversación empieza en "cuánto" en vez de en "qué es esto".
+ *
+ * Sirve igual para las 15 categorías. Una marca de comida para perros que ya
+ * hace contenido puntúa como una de skincare que también.
  */
 function puntuar(prospecto = {}) {
   let puntos = 0;
@@ -178,16 +180,15 @@ function puntuar(prospecto = {}) {
 
   const sumar = (n, razon) => { puntos += n; porque.push(razon); };
 
-  // Vale más que las otras tres juntas, y es a propósito: no es una señal de
-  // que encaje, es una puerta abierta. Llegar presentada por alguien que ya
-  // trabajó con ellos es otra conversación, no la misma con más puntos.
-  if (prospecto.creadora_que_la_conoce) sumar(50, 'una creadora del catálogo ya trabajó con ella');
-  if (prospecto.trabaja_con_creadoras)  sumar(18, 'ya trabaja con creadoras: no hay que explicarle el modelo');
-  if (prospecto.vende_producto_fisico)  sumar(12, 'vende producto físico, que es lo que se muestra en video');
-  if (prospecto.pais === 'CO')          sumar(8,  'está en Colombia');
-  if (prospecto.tiene_tienda_online)    sumar(5,  'vende en línea: puede medir lo que pasa');
-  if (prospecto.email)                  sumar(3,  'tenemos por dónde escribirle');
-  if (prospecto.instagram)              sumar(2,  'tiene Instagram');
+  // La más pesada, y por mucho: quien ya contrata creadoras no necesita que le
+  // expliquen para qué sirve esto.
+  if (prospecto.trabaja_con_creadoras)  sumar(45, 'ya trabaja con creadoras: no hay que explicarle el modelo');
+  if (prospecto.vende_producto_fisico)  sumar(15, 'vende algo que se puede mostrar en video');
+  if (prospecto.tiene_tienda_online)    sumar(12, 'vende en línea: puede medir si funcionó');
+  if (prospecto.pais === 'CO')          sumar(10, 'está en Colombia');
+  if (prospecto.categoria)              sumar(5,  'sabemos en qué categoría está');
+  if (prospecto.email)                  sumar(5,  'tenemos por dónde escribirle');
+  if (prospecto.instagram)              sumar(3,  'tiene Instagram');
 
   // Restas. Una marca enorme no es mejor prospecto: tiene agencia, procesos y
   // seis meses de ciclo de compra. Las primeras clientas deciden rápido.

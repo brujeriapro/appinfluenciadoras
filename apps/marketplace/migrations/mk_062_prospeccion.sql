@@ -143,41 +143,13 @@ on conflict (clave) do nothing;
 
 commit;
 
--- ── Las marcas que cada creadora ya conoce ─────────────────────────────────
+-- ── Marca detectada en el contenido ─────────────────────────────────────────
 --
--- La mejor fuente de prospectos que existe, y la única que crece sola: cada
--- creadora que entra trae las marcas con las que ha trabajado. Son marcas que
--- YA contratan creadoras —probado, no supuesto— y que se pueden contactar
--- diciendo quién nos habló de ellas.
---
--- Lo llena la creadora desde su portal, no el equipo. Nadie más sabe con quién
--- ha trabajado.
+-- (Se consideró una tabla de "marcas que cada creadora conoce" y María la
+-- descartó el 1-sep-2026: conseguir clientes no es trabajo de las creadoras.)
 
 begin;
 
-create table if not exists mk_creadora_marcas (
-  id              uuid primary key default gen_random_uuid(),
-  creadora_id     uuid not null references mk_creadoras(id) on delete cascade,
-  marca_nombre    text not null,
-  marca_instagram text,
-  marca_sitio     text,
-  -- Para poder decir "trabajó con ellos el año pasado" en vez de solo "los
-  -- conoce". Opcional: pedir demasiado hace que no llenen ninguno.
-  cuando          text,
-  -- Si ya la contactamos por acá, para no volver a proponerla.
-  prospecto_id    uuid references mk_prospectos(id) on delete set null,
-  created_at      timestamptz default now(),
-
-  -- La misma creadora no reporta dos veces la misma marca.
-  unique (creadora_id, marca_nombre)
-);
-
-comment on table mk_creadora_marcas is
-  'Marcas con las que cada creadora ya trabajó. La mejor fuente de prospectos: permite llegar presentada en vez de en frío.';
-
-create index if not exists mk_creadora_marcas_idx on mk_creadora_marcas (creadora_id);
-
--- ── Marca detectada en el contenido ────────────────────────────────────────
 --
 -- El análisis ya guarda si la etiqueta del producto era legible, pero no de
 -- qué marca. Con esta columna, cada pieza donde se lea una etiqueta se

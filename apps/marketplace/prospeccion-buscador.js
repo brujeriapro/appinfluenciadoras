@@ -1,27 +1,40 @@
 // De dónde salen las marcas a las que hay que escribirles.
 //
-// Cuatro motores, ordenados por lo que rinde de verdad y no por lo que suena
-// impresionante. El primero vale más que los otros tres juntos.
+// ⚠️ Esto NO es un buscador de marcas de belleza. El catálogo tiene creadoras
+// en las 15 categorías —moda, fitness, comida, hogar, familia, mascotas,
+// viajes, tecnología, gaming, finanzas, educación, entretenimiento, movilidad,
+// lifestyle y sí, también belleza— y el prospecto sirve igual si vende comida
+// para perros o cursos de inglés. Cualquier sesgo hacia belleza acá deja por
+// fuera catorce quinceavos del mercado.
 //
-//   1. Las creadoras         · las que ya trabajaron con marcas. Es la mejor
-//                              fuente que existe y es gratis: la marca ya
-//                              contrata creadoras (probado, no supuesto) y hay
-//                              alguien que puede presentarnos.
-//   2. El contenido subido   · las 1000 piezas del catálogo tienen productos
-//                              con etiqueta visible. Cada etiqueta legible es
-//                              una marca que paga por contenido.
-//   3. Los multiplicadores   · una maquila de cosméticos tiene entre 50 y 200
-//                              marcas pequeñas de cliente. Un solo contacto
-//                              bien hecho vale más que cien correos fríos.
-//   4. Búsqueda y listas     · lo de siempre, y lo que menos rinde.
+// Tres motores:
 //
-// ⚠️ Nada de esto rastrea redes sociales de forma automatizada. No es squeamish:
-// hacerlo va contra los términos de Instagram y la cuenta en riesgo sería la de
-// Brujería Capilar. Lo que sí hacemos es leer datos que ya son nuestros y
-// preguntarle a la gente.
+//   1. Los multiplicadores · quien ya agrupa muchas marcas pequeñas: maquilas,
+//                            ferias, gremios, plataformas de comercio. Un solo
+//                            acuerdo trae decenas de marcas y llega con la
+//                            recomendación de alguien en quien ya confían.
+//   2. Búsqueda por categoría · barrer las 15 categorías, no una.
+//   3. Listas pegadas       · lo que ya se hace con las creadoras.
+//
+// ⚠️ Nada de esto rastrea redes sociales de forma automatizada: va contra los
+// términos de Instagram y la cuenta en riesgo sería la de Brujería Capilar.
+//
+// Y una decisión de María (1-sep-2026): las creadoras NO sugieren marcas. Se
+// consideró y se descartó — conseguir clientes no es trabajo de ellas.
 
 const db = require('./db');
 const { puntuar } = require('./prospeccion');
+
+/**
+ * Las 15 categorías del catálogo. El barrido de prospectos las recorre todas:
+ * hay creadoras de mascotas, de gaming y de finanzas esperando trabajo, y sus
+ * marcas no van a aparecer buscando cosméticos.
+ */
+const CATEGORIAS = [
+  'belleza', 'moda', 'fitness', 'comida', 'hogar', 'familia', 'mascotas',
+  'viajes', 'tecnologia', 'gaming', 'finanzas', 'educacion',
+  'entretenimiento', 'movilidad', 'lifestyle',
+];
 
 /** Normaliza un nombre para comparar: sin tildes, sin S.A.S., sin dobles espacios. */
 function clave(nombre = '') {
@@ -36,13 +49,12 @@ function clave(nombre = '') {
 /**
  * Junta prospectos de varias fuentes sin repetir.
  *
- * Dedupe por nombre normalizado y por correo. Importa más de lo que parece:
- * la misma marca puede llegar por una creadora Y por una búsqueda, y
+ * Dedupe por nombre normalizado y por correo. Importa más de lo que parece: la
+ * misma marca puede llegar por el contenido Y por una lista pegada, y
  * escribirle dos veces el mismo día es la forma más rápida de que reporten.
  *
- * Cuando una marca llega por dos caminos se queda con la mejor versión: la que
- * trae creadora que la conoce gana siempre, porque es la que permite llegar
- * presentada.
+ * Cuando llega por dos caminos se completa lo que falte y se conserva la señal
+ * más valiosa: que ya trabaje con creadoras.
  */
 function fusionar(listas = []) {
   const porClave = new Map();
@@ -62,15 +74,16 @@ function fusionar(listas = []) {
       continue;
     }
 
-    // Se completa lo que falte y se prefiere lo que abre puertas.
+    // Se completa lo que falte, sin pisar lo que ya había.
     for (const campo of ['email', 'telefono', 'instagram', 'sitio_web', 'ciudad', 'categoria', 'razon']) {
       if (!yaEsta[campo] && p[campo]) yaEsta[campo] = p[campo];
     }
-    if (p.creadora_id && !yaEsta.creadora_id) {
-      yaEsta.creadora_id = p.creadora_id;
-      yaEsta.creadora_nombre = p.creadora_nombre;
-      yaEsta.creadora_que_la_conoce = true;
-      yaEsta.fuente = 'creadora';
+    // Que ya trabaje con creadoras es la señal que más vale: si cualquiera de
+    // las dos versiones la trae, se conserva.
+    if (p.trabaja_con_creadoras && !yaEsta.trabaja_con_creadoras) {
+      yaEsta.trabaja_con_creadoras = true;
+      yaEsta.fuente = p.fuente || yaEsta.fuente;
+      if (!yaEsta.razon && p.razon) yaEsta.razon = p.razon;
     }
   }
 
@@ -81,9 +94,9 @@ function fusionar(listas = []) {
 function calificar(prospectos = []) {
   return prospectos.map((p) => {
     const señales = {
-      creadora_que_la_conoce: Boolean(p.creadora_id),
-      trabaja_con_creadoras: Boolean(p.creadora_id || p.fuente === 'contenido'),
+      trabaja_con_creadoras: Boolean(p.trabaja_con_creadoras || p.fuente === 'contenido'),
       vende_producto_fisico: p.vende_producto_fisico !== false,
+      categoria: p.categoria,
       tiene_tienda_online: Boolean(p.sitio_web),
       pais: p.pais || 'CO',
       email: p.email,
@@ -97,62 +110,41 @@ function calificar(prospectos = []) {
 }
 
 /**
- * Motor 1 · Las marcas que nuestras creadoras ya conocen.
- *
- * Lee lo que las creadoras respondieron cuando les preguntamos con qué marcas
- * han trabajado. Cada una entra con `creadora_id`, que es lo que después
- * permite escribir «Valentina, que ya trabajó con ustedes, está en nuestro
- * catálogo» en vez de un correo frío.
- *
- * Es el motor más valioso y el único que crece solo: cada creadora nueva trae
- * sus marcas.
- */
-async function desdeCreadoras() {
-  const filas = await db.get('mk_creadora_marcas', {
-    select: 'marca_nombre,marca_instagram,marca_sitio,creadora_id,mk_creadoras(nombre_publico)',
-  }).catch(() => []);
-
-  return filas.map(f => ({
-    nombre: f.marca_nombre,
-    instagram: f.marca_instagram || null,
-    sitio_web: f.marca_sitio || null,
-    creadora_id: f.creadora_id,
-    creadora_nombre: f.mk_creadoras?.nombre_publico || null,
-    creadora_que_la_conoce: true,
-    fuente: 'creadora',
-    razon: f.mk_creadoras?.nombre_publico
-      ? `${f.mk_creadoras.nombre_publico}, que está en nuestro catálogo, ya trabajó con ustedes y me habló bien de la marca`
-      : null,
-  }));
-}
-
-/**
- * Motor 2 · Las marcas visibles en el contenido que ya tenemos.
+ * Motor 1 · Marcas visibles en el contenido que ya tenemos.
  *
  * `mk_analisis_pieza` marca si la etiqueta del producto era legible. Cuando lo
- * es, ahí hay una marca que ya paga por contenido de creadoras — y la creadora
- * que grabó esa pieza está en el catálogo.
+ * es, ahí hay una marca que YA paga por contenido de creadoras — la señal más
+ * fuerte que existe de que el modelo le sirve, y no hay que explicárselo.
+ *
+ * Vale para cualquier categoría: una etiqueta de comida para perros dice lo
+ * mismo que una de skincare.
  *
  * ⚠️ Hoy el análisis guarda SI la etiqueta era legible, pero no DE QUÉ marca.
  * Para que este motor sirva hay que ampliar el análisis y volver a correrlo.
- * Mientras tanto devuelve vacío en vez de inventar.
+ * Mientras tanto devuelve vacío en vez de inventar nombres.
  */
 async function desdeContenido() {
   const filas = await db.get('mk_analisis_pieza', {
-    select: 'creadora_id,marca_detectada,mk_creadoras(nombre_publico)',
+    select: 'marca_detectada',
     marca_detectada: 'not.is.null',
   }).catch(() => null);
 
   if (!filas) return [];   // la columna todavía no existe
 
-  return filas.map(f => ({
-    nombre: f.marca_detectada,
-    creadora_id: f.creadora_id,
-    creadora_nombre: f.mk_creadoras?.nombre_publico || null,
-    creadora_que_la_conoce: true,
-    fuente: 'contenido',
-    razon: 'vi que ya han trabajado con creadoras y que el contenido les funciona',
-  }));
+  // Una misma marca aparece en muchas piezas; acá interesa la marca, no
+  // cuántas veces salió.
+  const vistas = new Map();
+  for (const f of filas) {
+    const k = clave(f.marca_detectada);
+    if (!k || vistas.has(k)) continue;
+    vistas.set(k, {
+      nombre: f.marca_detectada,
+      fuente: 'contenido',
+      trabaja_con_creadoras: true,
+      razon: 'vi que ya trabajan con creadoras y que les está funcionando',
+    });
+  }
+  return [...vistas.values()];
 }
 
 /**
@@ -170,10 +162,21 @@ async function desdeContenido() {
  * con ellos. Automatizar una alianza es la mejor forma de no conseguirla.
  */
 const MULTIPLICADORES = [
-  { nombre: 'TERA LAB S.A.S.', tipo: 'maquila', nota: 'Ya fabrica para Brujería Capilar: la relación existe y es la puerta más fácil de abrir.' },
-  { nombre: 'Nova Makers',     tipo: 'maquila', nota: 'Maquila de cosméticos en Medellín, 13 años. Sus clientes son exactamente el perfil.' },
-  { nombre: 'Beauty Fest',     tipo: 'evento',  nota: 'Reúne marcas emergentes de Cali, Pereira, Bogotá y Medellín.' },
-  { nombre: 'Ettos Beauty Market', tipo: 'aliado', nota: 'Ya compartió su lista de creadoras: hay relación previa.' },
+  // Belleza — donde la relación ya existe y por eso es la puerta más fácil
+  { nombre: 'TERA LAB S.A.S.', categoria: 'belleza', tipo: 'maquila',
+    nota: 'Ya fabrica para Brujería Capilar. La relación existe: es la llamada más fácil de todas.' },
+  { nombre: 'Ettos Beauty Market', categoria: 'belleza', tipo: 'aliado',
+    nota: 'Ya compartió su lista de creadoras. Hay relación previa.' },
+
+  // Transversales — sirven para las 15 categorías, no para una
+  { nombre: 'Cámara de Comercio de Medellín', categoria: 'todas', tipo: 'gremio',
+    nota: 'Programas de emprendimiento con cientos de marcas pequeñas de todo tipo.' },
+  { nombre: 'Agencias de comercio electrónico (socios de Shopify en Colombia)', categoria: 'todas', tipo: 'agencia',
+    nota: 'Cada una maneja entre 10 y 50 tiendas. Les resuelve un problema que sus clientes les piden y ellas no saben resolver.' },
+  { nombre: 'Ferias de emprendimiento y mercados de diseño', categoria: 'todas', tipo: 'evento',
+    nota: 'Un fin de semana concentra decenas de marcas de moda, hogar, comida y accesorios.' },
+  { nombre: 'Maquilas y fabricantes por contrato', categoria: 'todas', tipo: 'maquila',
+    nota: 'Alimentos, suplementos, cosmética, textil: cada fábrica tiene entre 50 y 200 marcas de cliente.' },
 ];
 
 /**
@@ -204,19 +207,15 @@ function desdeTexto(texto = '') {
  * lo que evita seguir gastando esfuerzo en la que no.
  */
 async function buscar({ texto = '' } = {}) {
-  const [creadoras, contenido] = await Promise.all([
-    desdeCreadoras().catch(() => []),
-    desdeContenido().catch(() => []),
-  ]);
+  const contenido = await desdeContenido().catch(() => []);
   const lista = desdeTexto(texto);
 
-  const todos = calificar(fusionar([creadoras, contenido, lista]));
+  const todos = calificar(fusionar([contenido, lista]));
   todos.sort((a, b) => b.puntaje - a.puntaje);
 
   return {
     prospectos: todos,
     porFuente: {
-      creadora: creadoras.length,
       contenido: contenido.length,
       lista: lista.length,
       total_sin_repetir: todos.length,
@@ -226,6 +225,6 @@ async function buscar({ texto = '' } = {}) {
 }
 
 module.exports = {
-  buscar, desdeCreadoras, desdeContenido, desdeTexto,
-  fusionar, calificar, clave, MULTIPLICADORES,
+  buscar, desdeContenido, desdeTexto,
+  fusionar, calificar, clave, MULTIPLICADORES, CATEGORIAS,
 };
