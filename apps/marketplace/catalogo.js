@@ -195,11 +195,33 @@ function ordenDelCatalogo(a, b) {
   return queTanCompleto(b) - queTanCompleto(a);
 }
 
+/**
+ * Las más nuevas primero.
+ *
+ * Existe porque el orden normal las entierra: una creadora que entró ayer no
+ * tiene entregas ni perfil completo, así que queda al final justo cuando es
+ * la que nadie ha invitado todavía.
+ *
+ * ⚠️ Acá las fijadas NO van primero. Si alguien pidió ver lo más reciente,
+ * ponerle arriba tres perfiles fijos —que además son de los más viejos— es
+ * contestarle otra cosa.
+ */
+function ordenPorRecientes(a, b) {
+  const fecha = (c) => new Date(c.created_at || 0).getTime();
+  return fecha(b) - fecha(a);
+}
+
+/** Los órdenes que el catálogo entiende. Lo que no esté acá cae en el normal. */
+const ORDENES = {
+  recomendadas: ordenDelCatalogo,
+  recientes: ordenPorRecientes,
+};
+
 /** Listado con filtros. */
 router.get('/', async (req, res) => {
   try {
     const { categoria, nicho, rango_alcance, nivel_tarifa, pais, departamento,
-            ciudad, presupuesto_max, entregable, tier, red } = req.query;
+            ciudad, presupuesto_max, entregable, tier, red, orden } = req.query;
 
     let resultado = await catalogoEnriquecido({
       categoria, nicho, rango_alcance, nivel_tarifa, pais, departamento, ciudad, presupuesto_max,
@@ -207,7 +229,7 @@ router.get('/', async (req, res) => {
 
     // Se ordena aquí y no en la consulta porque depende de las piezas y las
     // tarifas, que viven en otras tablas.
-    resultado.sort(ordenDelCatalogo);
+    resultado.sort(ORDENES[orden] || ordenDelCatalogo);
 
     // "Quiero un reel": se filtra en memoria porque depende de la tabla de
     // tarifas, no de una columna de mk_creadoras.
@@ -310,3 +332,5 @@ module.exports = router;
 module.exports.catalogoEnriquecido = catalogoEnriquecido;
 module.exports.queTanCompleto = queTanCompleto;
 module.exports.ordenDelCatalogo = ordenDelCatalogo;
+module.exports.ordenPorRecientes = ordenPorRecientes;
+module.exports.ORDENES = ORDENES;

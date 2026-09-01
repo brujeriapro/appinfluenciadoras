@@ -222,6 +222,10 @@ const COLS_CATALOGO = [
   // El puesto fijo al principio del catálogo. Si falta acá, llega `undefined`
   // al navegador y el orden no ordena nada: sin error, sin log, sin nada.
   'orden_fijo',
+  // Cuándo entró. Alimenta el orden "más recientes", que es como se encuentra
+  // a quien nadie ha invitado todavía. Misma trampa que orden_fijo: sin esta
+  // columna el orden se ejecuta contra undefined y deja la lista igual.
+  'created_at',
   // De dónde salen sus números: declarados por ella, verificados por el equipo
   // contra una captura, o traídos de la API. La marca merece saberlo antes de
   // pagar, y es lo que hace que verificarse valga la pena.

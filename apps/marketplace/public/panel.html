@@ -661,6 +661,10 @@ function pintarFiltros() {
   const valor = E.filtros.presupuesto ?? rp.max;
 
   $('grupos-filtro').innerHTML =
+    grupo('Ordenar por', 'orden', [
+      { v: '', t: 'Recomendadas' },
+      { v: 'recientes', t: 'Las más nuevas' },
+    ], 'Recomendadas') +
     grupo('Nicho', 'nicho', nichos, 'Todos') +
     // Nivel y red, y no el rango de seguidores que había antes.
     //
@@ -742,6 +746,10 @@ async function cargarCatalogo() {
     if (E.filtros.red)           q.set('red', E.filtros.red);
     if (E.filtros.entregable)    q.set('entregable', E.filtros.entregable);
     if (E.filtros.presupuesto)   q.set('presupuesto_max', E.filtros.presupuesto);
+    // El orden no filtra nada: cambia quién sale primero. Va en la misma
+    // consulta porque ordenar 375 perfiles en el navegador con las piezas ya
+    // pintadas se siente como un salto.
+    if (E.filtros.orden)         q.set('orden', E.filtros.orden);
 
     const d = await apiCatalogo(q.toString() ? '?' + q : '');
     E.catalogo = d.creadoras || [];
