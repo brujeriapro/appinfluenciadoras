@@ -164,6 +164,48 @@ app.use('/media', require('./media'));
  * Con ?dry_run=1 dice qué haría sin tocar nada. Conviene mirarlo así la
  * primera vez, porque de aquí en adelante esto cancela tratos solo.
  */
+// La tanda de prospección. Va con adminAuth como los demás procesos que
+// mueven cosas hacia afuera: esto manda correos a gente real.
+//
+// `soloIds` permite mandar una tanda puntual sin prender el agente entero, que
+// es como se hace la primera prueba: dos correos, no doscientos.
+app.post('/api/admin/prospeccion/enviar', adminAuth, async (req, res) => {
+  try {
+    const envio = require('./prospeccion-envio');
+    const r = await envio.correrTanda({
+      soloIds: Array.isArray(req.body?.ids) ? req.body.ids : null,
+      limite: req.body?.limite ? Number(req.body.limite) : null,
+    });
+    res.json(r);
+  } catch (e) {
+    console.error('[prospeccion/enviar]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Qué saldría, sin mandar nada. Para poder mirar antes de apretar.
+app.get('/api/admin/prospeccion/cola', adminAuth, async (req, res) => {
+  try {
+    const db2 = require('./db');
+    const prosp = require('./prospeccion');
+    const todos = await db2.get('mk_prospectos', {
+      select: '*', no_contactar: 'is.false', order: 'puntaje.desc',
+    });
+    const { salen, enCola, aplazados } = prosp.tandaDelDia(todos);
+    const corto = (c) => ({
+      id: c.prospecto.id, nombre: c.prospecto.nombre, canal: c.prospecto.canal,
+      email: c.prospecto.email, toque: c.toque, tipo: c.tipo, puntaje: c.prospecto.puntaje,
+    });
+    res.json({
+      saldrian: salen.map(corto),
+      enCola: enCola.map(corto),
+      aplazados: aplazados.length,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/cron/plazos', adminAuth, async (req, res) => {
   try {
     const resumen = await require('./plazos').ejecutar({
