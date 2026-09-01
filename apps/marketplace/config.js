@@ -90,11 +90,11 @@ const config = {
     // A dónde llegan los avisos del equipo: alguien se registró, una creadora
     // pide revisión. NO puede ser el remitente, que es un no-reply.
     //
-    // Cae a MK_SMTP_USER por compatibilidad: los avisos existentes salían para
-    // allá cuando el correo iba por Gmail. Desde que sale por API web esa
-    // variable puede estar vacía, y con ella vacía los avisos **no se mandaban
-    // y nadie se enteraba** — el envío falla en silencio a propósito.
-    equipo: process.env.MK_CORREO_EQUIPO || process.env.MK_SMTP_USER || '',
+    // Ya NO cae a MK_SMTP_USER. Ese respaldo venía de cuando el correo salía
+    // por Gmail, y era lo que mandaba los avisos a una cuenta personal
+    // (brujeriapro@gmail.com) mucho después de que Gmail dejara de usarse.
+    // Ahora el buzón del negocio es el default y no depende de nadie.
+    equipo: process.env.MK_CORREO_EQUIPO || 'admin@creatorsmanager.com',
   },
 };
 
