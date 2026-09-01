@@ -136,6 +136,76 @@ app.get('/api/influencers/con-telefono', async (req, res) => {
   }
 });
 
+// ── Creators Manager: traer creadoras de una campaña ───────────────────────
+//
+// Brujería usa Creators Manager como cualquier otra marca —crea su campaña,
+// invita creadoras— y desde acá se leen las que quedaron vinculadas. El
+// marketplace no sabe que esto existe, que es justo el punto: no tiene por qué
+// llevar un botón que solo le sirve a una de sus clientas.
+
+/** Las campañas de Brujería en el marketplace. */
+app.get('/api/marketplace/campanas', async (req, res) => {
+  try {
+    const mp = require('./marketplace');
+    res.json(await mp.campanas());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** Quiénes quedaron vinculadas a una campaña, y cuáles ya están en el Programa. */
+app.get('/api/marketplace/campanas/:id/creadoras', async (req, res) => {
+  try {
+    const mp = require('./marketplace');
+    const cr = await mp.creadorasDeCampana(req.params.id);
+    res.json({
+      total: cr.length,
+      ya_en_programa: cr.filter(c => c.ya_en_programa).length,
+      nuevas: cr.filter(c => !c.ya_en_programa).length,
+      creadoras: cr,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Trae al Programa las creadoras de una campaña.
+ *
+ * Devuelve la invitación de cada una SIN mandarla. Es a propósito: quien
+ * invita a un programa de gifting debería poder leer lo que se le va a decir
+ * antes de que salga, y son dos marcas distintas.
+ */
+app.post('/api/marketplace/campanas/:id/traer', async (req, res) => {
+  try {
+    const mp = require('./marketplace');
+    const todas = await mp.creadorasDeCampana(req.params.id);
+
+    const soloIds = Array.isArray(req.body?.creadora_ids) ? req.body.creadora_ids : null;
+    const objetivo = soloIds ? todas.filter(c => soloIds.includes(c.id)) : todas;
+
+    const resultados = [];
+    for (const c of objetivo) {
+      const r = await mp.traer(c).catch(e => ({ ok: false, motivo: e.message }));
+      resultados.push({ nombre: c.nombre_publico, creadora_id: c.id, ...r });
+    }
+
+    res.json({
+      creadas: resultados.filter(r => r.creada).length,
+      ya_estaban: resultados.filter(r => r.yaEstaba).length,
+      fallidas: resultados.filter(r => !r.ok).length,
+      // Solo las nuevas necesitan que se les escriba.
+      por_invitar: resultados.filter(r => r.creada).map(r => ({
+        nombre: r.nombre, influencer_id: r.influencer_id, invitacion: r.invitacion,
+      })),
+      detalle: resultados,
+    });
+  } catch (e) {
+    console.error('[marketplace/traer]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/influencers', async (req, res) => {
   try {
     const { status, tier, nivel_bruja } = req.query;

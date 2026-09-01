@@ -243,60 +243,6 @@ router.get('/reputacion', async (req, res) => {
   }
 });
 
-// ── El puente con el Programa Creadoras ────────────────────────────────────
-//
-// Solo la marca configurada como operadora del Programa ve estas rutas. Las
-// demás reciben el mismo 403 que si no existieran: una marca no tiene por qué
-// enterarse de que otra tiene un programa de gifting.
-
-/** ¿Esta marca puede invitar al Programa? Lo usa el panel para pintar o no el botón. */
-router.get('/programa/estado', async (req, res) => {
-  try {
-    const puente = require('./programa-creadoras');
-    const r = await puente.puedeInvitar(req.usuarioId);
-    res.json({ puede: r.puede, motivo: r.puede ? null : r.motivo });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-/**
- * Invita a una o varias creadoras al Programa.
- *
- * No manda el correo desde acá: devuelve el texto listo. Es a propósito —
- * quien invita al programa de gifting de Brujería Capilar debería poder leer
- * lo que se le va a decir a la creadora antes de que salga, sobre todo la
- * primera vez.
- */
-router.post('/programa/invitar', rateLimit({ max: 30 }), async (req, res) => {
-  try {
-    const puente = require('./programa-creadoras');
-    const ids = Array.isArray(req.body?.creadora_ids) ? req.body.creadora_ids : [];
-    if (!ids.length) return res.status(400).json({ error: 'Falta a quién invitar' });
-
-    const permiso = await puente.puedeInvitar(req.usuarioId);
-    if (!permiso.puede) return res.status(403).json({ error: permiso.motivo });
-
-    const resultados = [];
-    for (const id of ids) {
-      const r = await puente.invitar(id, { marca_id: req.usuarioId })
-        .catch(e => ({ ok: false, motivo: e.message }));
-      resultados.push({ creadora_id: id, ...r });
-    }
-
-    res.json({
-      ok: true,
-      creadas: resultados.filter(r => r.creada).length,
-      ya_estaban: resultados.filter(r => r.yaEstaba).length,
-      fallidas: resultados.filter(r => !r.ok).length,
-      detalle: resultados,
-    });
-  } catch (e) {
-    console.error('[programa/invitar]', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
 /** Su plan, lo que lleva consumido y qué otros planes hay. */
 router.get('/plan', async (req, res) => {
   try {
