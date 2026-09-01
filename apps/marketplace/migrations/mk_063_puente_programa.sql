@@ -28,13 +28,16 @@ insert into mk_config (clave, valor, descripcion)
 values (
   'programa_creadoras',
   jsonb_build_object(
-    'activo', false,
+    'activo', true,
     'marca_id', '310fde10-f81c-45da-b66a-883ada6423c9',
-    'formulario_url', '',
+    'formulario_url', 'https://tally.so/r/9qlKZ1',
     'nombre_programa', 'el Programa Creadoras de Brujería Capilar'
   ),
-  'Puente con el Programa Creadoras. marca_id es la ÚNICA marca autorizada a invitar. Arranca apagado: falta el enlace del formulario.'
+  'Puente con el Programa Creadoras. marca_id es la ÚNICA marca autorizada a invitar.'
 )
+-- No pisa lo que ya esté: la configuración viva manda sobre la migración.
+-- Apagar el puente o cambiar el formulario se hace editando la fila, no
+-- volviendo a correr esto.
 on conflict (clave) do nothing;
 
 commit;
