@@ -326,3 +326,61 @@ test('la tanda deja fuera a los que no tienen cómo contactarse', () => {
   assert.deepStrictEqual(r.salen.map(x => x.prospecto.id), ['con'],
     'el de puntaje 99 no puede salir si no hay a dónde escribirle');
 });
+
+// ── Sacar el contacto del sitio ────────────────────────────────────────────
+
+const ct = require('../prospeccion-contacto');
+
+test('encuentra el correo del mailto antes que el suelto en el texto', () => {
+  const html = 'texto suelto@marca.co más texto <a href="mailto:hola@marca.co">escríbenos</a>';
+  assert.equal(ct.correosDe(html)[0], 'hola@marca.co',
+    'el del mailto es el que la marca puso para que le escriban');
+});
+
+test('descarta los correos que pone la plantilla, no la marca', () => {
+  const html = 'a@sentry.io b@wixpress.com noreply@marca.co real@marca.co';
+  assert.deepStrictEqual(ct.correosDe(html), ['real@marca.co']);
+});
+
+test('el WhatsApp sale de wa.me y de los tel:', () => {
+  assert.deepStrictEqual(
+    ct.whatsappDe('<a href="https://wa.me/573001112233">Escríbenos</a>'),
+    ['+573001112233']);
+  assert.deepStrictEqual(
+    ct.whatsappDe('<a href="tel:+57 300 111 2233">Llámanos</a>'),
+    ['+573001112233']);
+});
+
+test('un número que no es celular colombiano no pasa por WhatsApp', () => {
+  // Sin esto entran números de factura, NIT y códigos de seguimiento.
+  assert.deepStrictEqual(ct.whatsappDe('tel:6013456789'), [], 'eso es un fijo');
+  assert.deepStrictEqual(ct.whatsappDe('Factura 900123456-7'), []);
+});
+
+test('el mismo número con y sin indicativo es uno solo', () => {
+  const r = ct.whatsappDe('wa.me/573001112233 y tel:3001112233');
+  assert.equal(r.length, 1);
+});
+
+test('de Instagram se saca la cuenta, no la ruta de un post', () => {
+  const html = 'instagram.com/p/ABC123 instagram.com/marcareal instagram.com/marcareal';
+  assert.equal(ct.instagramDe(html)[0], '@marcareal');
+});
+
+test('gana el usuario que más se repite: es el del pie de página', () => {
+  const html = 'instagram.com/lamarca instagram.com/lamarca instagram.com/unafotografa';
+  assert.equal(ct.instagramDe(html)[0], '@lamarca');
+});
+
+test('con WhatsApp y correo se prefiere WhatsApp', () => {
+  // En marcas pequeñas colombianas contesta más y más rápido.
+  assert.equal(ct.canalPara({ email: 'a@b.co', telefono: '+573001112233' }), 'whatsapp');
+  assert.equal(ct.canalPara({ email: 'a@b.co' }), 'correo');
+  assert.equal(ct.canalPara({ instagram: '@x' }), 'instagram');
+  assert.equal(ct.canalPara({}), null);
+});
+
+test('una dirección de sitio inválida no revienta', async () => {
+  const r = await ct.contactosDeSitio('no es una url');
+  assert.equal(r.ok, false);
+});

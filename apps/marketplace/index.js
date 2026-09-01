@@ -183,6 +183,62 @@ app.post('/api/admin/prospeccion/enviar', adminAuth, async (req, res) => {
   }
 });
 
+/**
+ * Busca los datos de contacto de los prospectos que no los tienen, leyendo su
+ * propio sitio.
+ *
+ * Es lo que destraba la prospección: encontrar marcas es fácil, conseguir a
+ * dónde escribirles es el trabajo. Y no cuesta nada — leer una página pública
+ * no necesita ninguna API de pago.
+ */
+app.post('/api/admin/prospeccion/contactos', adminAuth, async (req, res) => {
+  try {
+    const db2 = require('./db');
+    const ct = require('./prospeccion-contacto');
+
+    // Solo los que tienen sitio y les falta con qué contactarlos.
+    const todos = await db2.get('mk_prospectos', {
+      select: 'id,nombre,sitio_web,email,telefono,instagram,canal',
+      sitio_web: 'not.is.null',
+      no_contactar: 'is.false',
+    });
+    const pendientes = todos.filter(p => !p.email && !p.telefono);
+    const limite = Number(req.body?.limite) || 25;
+
+    const resultados = [];
+    for (const p of pendientes.slice(0, limite)) {
+      const r = await ct.contactosDeSitio(p.sitio_web).catch(e => ({ ok: false, motivo: e.message }));
+
+      if (!r.ok) { resultados.push({ nombre: p.nombre, ok: false, motivo: r.motivo }); continue; }
+
+      const cambios = {};
+      if (r.email && !p.email)           cambios.email = r.email;
+      if (r.telefono && !p.telefono)     cambios.telefono = r.telefono;
+      if (r.instagram && !p.instagram)   cambios.instagram = r.instagram;
+      const canal = ct.canalPara({ ...p, ...cambios });
+      if (canal && !p.canal)             cambios.canal = canal;
+
+      if (Object.keys(cambios).length) {
+        await db2.patch('mk_prospectos', { id: p.id }, cambios).catch(() => {});
+      }
+      resultados.push({ nombre: p.nombre, ok: true, ...cambios });
+    }
+
+    res.json({
+      revisados: resultados.length,
+      con_contacto: resultados.filter(r => r.ok && (r.email || r.telefono)).length,
+      sin_suerte: resultados.filter(r => !r.ok).length,
+      // Los que quedaron por fuera del límite, dichos: una tanda que calla lo
+      // que no alcanzó se lee como "no había más".
+      quedan: Math.max(0, pendientes.length - resultados.length),
+      detalle: resultados,
+    });
+  } catch (e) {
+    console.error('[prospeccion/contactos]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Qué saldría, sin mandar nada. Para poder mirar antes de apretar.
 app.get('/api/admin/prospeccion/cola', adminAuth, async (req, res) => {
   try {

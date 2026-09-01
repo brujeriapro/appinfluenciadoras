@@ -417,6 +417,16 @@ VISTAS.prospeccion = async () => {
         </p>
       </div>` : ''}
 
+    <div class="bloque">
+      <div class="bloque__titulo">Buscarles el correo</div>
+      <p class="p" style="color:var(--grey-600);margin-bottom:12px">
+        Entra al sitio de cada marca que todavía no tiene contacto y saca el
+        correo, el WhatsApp y el Instagram de su página. Es gratis y suele
+        estar en el pie.
+      </p>
+      <button class="btn-mini" id="btn-prosp-contactos">BUSCAR CONTACTOS →</button>
+    </div>
+
     <div id="prosp-resultado"></div>`;
 
   const mandar = async (ids, boton) => {
@@ -450,6 +460,34 @@ VISTAS.prospeccion = async () => {
     boton.textContent = 'VOLVER A CARGAR';
     boton.onclick = () => recargar();
   };
+
+  $('btn-prosp-contactos')?.addEventListener('click', async (e) => {
+    const b = e.currentTarget;
+    b.disabled = true; b.textContent = 'BUSCANDO…';
+    try {
+      const r = await api('/prospeccion/contactos', { method: 'POST', body: JSON.stringify({ limite: 25 }) });
+      const filas = (r.detalle || []).map(d => `
+        <div class="dato">
+          <span>${esc(d.nombre)}</span>
+          <span style="color:${d.ok && (d.email || d.telefono) ? 'var(--lime)' : 'var(--grey-600)'};font-size:11.5px">
+            ${d.ok ? esc([d.email, d.telefono, d.instagram].filter(Boolean).join(' · ') || 'nada visible en su sitio')
+                   : esc(d.motivo || 'no se pudo')}
+          </span>
+        </div>`).join('');
+      $('prosp-resultado').innerHTML = `
+        <div class="bloque">
+          <div class="bloque__titulo">Contactos encontrados</div>
+          <div class="dato"><span>Con correo o WhatsApp</span><span class="num">${r.con_contacto || 0}</span></div>
+          <div class="dato"><span>Sin suerte</span><span class="num">${r.sin_suerte || 0}</span></div>
+          ${r.quedan ? `<div class="dato"><span>Quedan para la próxima</span><span class="num">${r.quedan}</span></div>` : ''}
+          <div style="margin-top:12px">${filas}</div>
+        </div>`;
+    } catch (err) {
+      $('prosp-resultado').innerHTML = `<div class="aviso">No se pudo: ${esc(err.message)}</div>`;
+    }
+    b.disabled = false; b.textContent = 'VOLVER A CARGAR';
+    b.onclick = () => recargar();
+  });
 
   $('btn-prosp-enviar')?.addEventListener('click', (e) =>
     mandar(salen.map(p => p.id), e.currentTarget));
