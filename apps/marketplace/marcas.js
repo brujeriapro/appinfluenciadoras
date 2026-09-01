@@ -276,7 +276,7 @@ router.get('/plan', async (req, res) => {
       de_lanzamiento,
       promo_hasta: promo?.activa ? promo.hasta : null,
       fichas_vistas: vistas,
-      propuestas_tope: actual?.propuestas_mes ?? null,
+      propuestas_tope: marca?.tope_propuestas_mes ?? actual?.propuestas_mes ?? null,
       propuestas_enviadas: await db.contarPropuestasDelMes(req.usuarioId),
       planes,
     });
@@ -562,7 +562,11 @@ async function topeDePropuestas(marca_id) {
   const vigente = marca?.plan_vence_at && new Date(marca.plan_vence_at) > new Date();
   const clave = vigente ? (marca.plan || 'demo') : 'demo';
   const plan = await db.getPlan(clave);
-  const tope = plan?.propuestas_mes ?? null;
+
+  // El tope propio manda sobre el del plan, y no depende de que el plan esté
+  // vigente: es un acuerdo aparte, no una compra. Nulo —lo normal— deja todo
+  // como siempre.
+  const tope = marca?.tope_propuestas_mes ?? plan?.propuestas_mes ?? null;
 
   if (tope === null) return { bloqueada: false, plan: clave, enviadas: null, tope: null };
 

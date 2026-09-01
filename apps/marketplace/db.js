@@ -189,6 +189,7 @@ const COLS_MARCA = [
   'pais', 'departamento', 'ciudad', 'sitio_web', 'estado', 'logo_path', 'bio',
   'categoria', 'instagram', 'tiktok', 'que_espera', 'libertad_creativa',
   'contacto_creadoras', 'terminos_version', 'terminos_aceptados_at', 'created_at',
+  'tope_propuestas_mes',
   // Suscripción. Sin estas dos, todo el mundo es plan gratuito.
   'plan', 'plan_vence_at', 'plan_aviso_at',
   // Qué busca la marca, las seis del registro. Alimenta la selección curada.
