@@ -30,7 +30,34 @@ const BASURA = [
   /@2x\./i, /@sentry-cdn/i,
 ];
 
-const esUtil = (correo) => !BASURA.some(re => re.test(correo));
+/**
+ * Un correo de verdad, no cualquier cosa con arroba.
+ *
+ * El caso que lo destapó: `intl-segmenter@11.7.10`, que es la versión de una
+ * librería de JavaScript escrita en el código de la página. Tiene arroba,
+ * puntos y pasa cualquier expresión regular ingenua — y si sale un mensaje
+ * para allá, rebota y le hace daño a la reputación del dominio.
+ *
+ * La regla que lo mata: la parte final después del último punto tiene que ser
+ * solo letras. Ningún dominio termina en números.
+ */
+function esUtil(correo) {
+  if (BASURA.some(re => re.test(correo))) return false;
+
+  const [usuario, dominio] = correo.split('@');
+  if (!usuario || !dominio) return false;
+
+  const partes = dominio.split('.');
+  const tld = partes[partes.length - 1];
+  if (!/^[a-z]{2,}$/i.test(tld)) return false;      // .co, .com — nunca .10
+  if (partes.some(p => /^\d+$/.test(p))) return false;  // ningún tramo solo numérico
+
+  // Versiones de paquetes: algo@1.2.3 se cuela por todos lados en el HTML de
+  // una tienda moderna.
+  if (/^\d+(\.\d+)+$/.test(dominio)) return false;
+
+  return true;
+}
 
 /**
  * Los correos que aparecen en un texto.

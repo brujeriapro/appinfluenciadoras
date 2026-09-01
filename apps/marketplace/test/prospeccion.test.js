@@ -384,3 +384,19 @@ test('una dirección de sitio inválida no revienta', async () => {
   const r = await ct.contactosDeSitio('no es una url');
   assert.equal(r.ok, false);
 });
+
+test('una versión de librería no es un correo', () => {
+  // Caso real: `intl-segmenter@11.7.10` salió del sitio de Avanfit y se
+  // guardó como su correo de contacto. Un mensaje ahí rebota y le hace daño a
+  // la reputación del dominio.
+  assert.equal(ct.esUtil('intl-segmenter@11.7.10'), false);
+  assert.equal(ct.esUtil('react@18.2.0'), false);
+  assert.equal(ct.esUtil('algo@1.2'), false);
+});
+
+test('los correos de verdad siguen pasando', () => {
+  for (const c of ['hola@fauno.com.co', 'ventas@naturaltoys.co',
+                   'info@paramosnacks.com', 'a.b+c@marca.com.co']) {
+    assert.equal(ct.esUtil(c), true, c);
+  }
+});
