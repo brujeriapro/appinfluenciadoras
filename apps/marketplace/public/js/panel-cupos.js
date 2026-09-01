@@ -481,7 +481,7 @@ async function abrirCampanaCon(creadoras) {
     <div class="modal__cuerpo" style="display:block">
       ${abiertas.length ? `
         <p class="p" style="margin-bottom:14px">Escoge a cuál. Le llega un correo
-        con el brief y el monto, y tiene ${E.cfg.horas_responder || 72} horas para
+        con las instrucciones y el monto, y tiene ${E.cfg.horas_responder || 72} horas para
         responder.</p>
         <div id="camp-lista">
           ${abiertas.map(c => `
@@ -499,7 +499,7 @@ async function abrirCampanaCon(creadoras) {
           de tu plan.</p>
       ` : `
         <p class="p">Todavía no tienes ninguna campaña abierta. Una campaña es un
-        brief y unos cupos: le llega igual a varias creadoras y eliges entre las
+        unas instrucciones y unos cupos: le llega igual a varias creadoras y eliges entre las
         que acepten.</p>
         <button class="btn btn--lima" id="camp-crear" style="margin-top:14px">
           Crear una campaña →</button>`}

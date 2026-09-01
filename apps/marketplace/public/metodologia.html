@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La metodología · Creators Manager</title>
+<link rel="icon" type="image/png" sizes="16x16" href="/icono/icono-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/icono/icono-32.png">
+<link rel="icon" type="image/png" sizes="64x64" href="/icono/icono-64.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icono/icono-180.png">
+<meta name="theme-color" content="#0E0E0E">
+
+<meta name="description" content="El algoritmo dejó de dejarte segmentar y ahora segmenta con tu creativo. Por eso escalar en Meta hoy es un problema de producción de contenido, no de presupuesto. La metodología de Creators Manager, explicada por sus mecanismos.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/tokens.css">
+<style>
+  /* La metodología. El sistema visual vive en tokens.css; acá solo lo de esta
+     página, que es más documento que landing: se lee de arriba abajo y el
+     argumento carga el peso, no los botones. */
+
+  .header { position: sticky; top: 0; z-index: 40; display: flex; align-items: center;
+            justify-content: space-between; gap: 20px; flex-wrap: wrap;
+            padding: 14px var(--pad-x); background: var(--ink);
+            border-bottom: 2px solid var(--border-dark); }
+  .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+  .logo__marca { font-family: var(--mono-title); font-weight: 800; font-size: 19px;
+                 letter-spacing: -1.1px; line-height: 1; color: var(--lime); }
+  .logo__texto { font-family: var(--mono-title); font-weight: 800; font-size: 14.5px;
+                 letter-spacing: -0.5px; }
+
+  .seccion { padding: var(--pad-y) var(--pad-x); }
+  .seccion--ink   { background: var(--ink); color: var(--off-white); }
+  .seccion--lime  { background: var(--lime); color: var(--ink); }
+  .seccion--blue  { background: var(--blue); color: #fff; }
+  .seccion--claro { background: #F2F2F2; color: var(--ink); }
+  .ancho { max-width: 940px; margin: 0 auto; }
+
+  .hero { background: var(--ink); padding: clamp(44px, 7vw, 100px) var(--pad-x); }
+  .hero h1 { color: var(--lime); margin: clamp(18px, 3vw, 30px) 0 0; max-width: 20ch; }
+  .hero__bajada { max-width: 58ch; margin-top: clamp(20px, 3vw, 30px); color: var(--text-2); }
+
+  /* ── Las cuatro fuerzas ─────────────────────────────────────────────────
+     Numeradas porque son cuatro cosas distintas que hay que poder referenciar
+     por separado, no porque sean pasos: pasaron al tiempo, no en orden. */
+  .fuerza { border-top: 2px solid var(--border-dark); padding: clamp(28px, 4vw, 44px) 0; }
+  .fuerza:last-child { border-bottom: 2px solid var(--border-dark); }
+  .fuerza__cab { display: flex; gap: clamp(14px, 2.5vw, 26px); align-items: baseline; }
+  .fuerza__n {
+    font-family: var(--mono-title); font-weight: 800; font-size: clamp(30px, 6vw, 58px);
+    line-height: .85; color: var(--lime); flex-shrink: 0; letter-spacing: -.04em;
+  }
+  .fuerza__tit {
+    font-family: var(--mono-title); font-weight: 800; letter-spacing: -.03em;
+    font-size: clamp(17px, 2.8vw, 27px); line-height: 1.15; margin: 0;
+  }
+  .fuerza__cuerpo { margin-top: 18px; padding-left: clamp(44px, 8.5vw, 84px); max-width: 66ch; }
+  .fuerza__cuerpo p { margin: 0 0 14px; }
+  .fuerza__cuerpo p:last-child { margin-bottom: 0; }
+
+  /* El mecanismo: la parte que la marca puede comprobar sola */
+  .mecanismo {
+    border-left: 4px solid var(--lime); padding: 2px 0 2px 16px; margin: 18px 0;
+    font-family: var(--mono-body, 'Space Mono', monospace); font-size: 14px; line-height: 1.65;
+  }
+
+  .dato { display: flex; gap: 14px; align-items: baseline; margin: 16px 0; }
+  .dato__n {
+    font-family: var(--mono-title); font-weight: 800; font-size: clamp(22px, 3.4vw, 32px);
+    line-height: 1; color: var(--lime); flex-shrink: 0; letter-spacing: -.03em;
+  }
+  .dato__t { font-size: 14.5px; line-height: 1.5; }
+  .dato__f { display: block; font-size: 11.5px; color: var(--text-3, #9A9A9A); margin-top: 3px; }
+
+  .h-sec {
+    font-family: var(--mono-title); font-weight: 800; letter-spacing: -.03em;
+    font-size: clamp(22px, 4vw, 38px); line-height: 1.08; margin: 0 0 clamp(16px, 2.5vw, 26px);
+    max-width: 22ch;
+  }
+  .p { font-size: clamp(14.5px, 1.6vw, 16.5px); line-height: 1.7; max-width: 66ch; margin: 0 0 16px; }
+  .p--xl { font-size: clamp(16px, 2vw, 20px); }
+
+  .tag { display: inline-block; font-family: var(--mono-title); font-weight: 700;
+         font-size: 10.5px; letter-spacing: .14em; padding: 5px 10px; }
+  .tag--lime { background: var(--lime); color: var(--ink); }
+  .tag--ink  { background: var(--ink); color: var(--lime); }
+
+  /* La caja de honestidad sobre las cifras */
+  .honesto { border: 2px solid var(--ink); padding: clamp(20px, 3vw, 30px); background: #fff; }
+  .honesto__t { font-family: var(--mono-title); font-weight: 800; font-size: clamp(16px, 2.4vw, 22px);
+                letter-spacing: -.02em; margin: 0 0 14px; }
+  .tachado { text-decoration: line-through; color: #8A8A8A; }
+
+  .antes-despues { display: grid; gap: 14px; margin-top: clamp(20px, 3vw, 30px); }
+  @media (min-width: 700px) { .antes-despues { grid-template-columns: 1fr 1fr; } }
+  .ad { border: 2px solid currentColor; padding: 18px 20px; }
+  .ad__r { font-family: var(--mono-title); font-size: 10px; font-weight: 700; letter-spacing: .14em;
+           text-transform: uppercase; opacity: .65; margin-bottom: 10px; }
+  .ad__t { font-family: var(--mono-title); font-weight: 800; font-size: clamp(15px, 2.2vw, 19px);
+           line-height: 1.25; letter-spacing: -.02em; }
+
+  .cierre__ctas { margin-top: clamp(24px, 3.5vw, 38px); display: flex; gap: 12px; flex-wrap: wrap; }
+
+  .pie { background: var(--ink); color: var(--text-3, #9A9A9A); padding: 30px var(--pad-x);
+         font-size: 12px; line-height: 1.8; border-top: 2px solid var(--border-dark); }
+  .pie a { color: var(--text-2); }
+
+  .fuentes { font-size: 12px; line-height: 1.8; color: var(--text-3, #7A7A7A); max-width: 70ch; }
+  .fuentes strong { color: inherit; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a href="/" class="logo">
+    <span class="logo__marca">[C]</span>
+    <span class="logo__texto">CREATORS MANAGER</span>
+  </a>
+  <a href="/registro.html" class="btn btn--header btn--sm">EMPEZAR GRATIS →</a>
+</header>
+
+<!-- ── El hero: la tesis, en una frase que se puede comprobar ───────────── -->
+<section class="hero">
+  <div class="ancho">
+    <span class="tag tag--lime">{LA METODOLOGÍA}</span>
+    <h1 class="h1">YA NO ELIGES A QUIÉN LE HABLAS<span class="punto">.</span></h1>
+    <p class="p p--xl hero__bajada">
+      Tu contenido lo elige por ti. Eso cambió qué hace falta para vender en
+      redes, y todavía casi nadie está operando como si hubiera cambiado.
+    </p>
+    <p class="p hero__bajada" style="color:var(--text-3,#9A9A9A);font-size:14px">
+      Abajo están las cuatro cosas que pasaron y qué implica cada una. Sin
+      múltiplos inventados: puros mecanismos que puedes verificar tú misma.
+    </p>
+  </div>
+</section>
+
+<!-- ── Las cuatro fuerzas ──────────────────────────────────────────────── -->
+<section class="seccion seccion--ink">
+  <div class="ancho">
+    <h2 class="h-sec">CUATRO COSAS QUE PASARON AL TIEMPO</h2>
+    <p class="p" style="color:var(--text-2)">
+      Ninguna tiene que ver con que el contenido de creadoras sea «más bonito» o
+      «más auténtico». Es un cambio en cómo funciona la distribución.
+    </p>
+
+    <div class="fuerza">
+      <div class="fuerza__cab">
+        <span class="fuerza__n">01</span>
+        <h3 class="fuerza__tit">Se rompió la segmentación,<br>y el creativo ocupó su lugar</h3>
+      </div>
+      <div class="fuerza__cuerpo">
+        <p style="color:var(--text-2)">
+          Las restricciones de privacidad y la pérdida de señal obligaron a Meta y
+          a Google a quitarle el control manual de audiencias al anunciante. Con
+          Advantage+ y Performance Max, elegir a mano a quién le hablas
+          prácticamente desapareció.
+        </p>
+        <div class="mecanismo" style="color:var(--text-2)">
+          El algoritmo lee tu anuncio —el visual, el texto, el tono— y usa eso
+          para encontrar a quién mostrárselo. Si el video muestra a una mamá
+          agotada a las seis de la mañana, el sistema busca a quien se
+          identifique con esa sensación. <strong style="color:var(--lime)">El
+          contenido es el targeting.</strong>
+        </div>
+        <p style="color:var(--text-2)">
+          Y el motor nuevo lo amplifica: evalúa en paralelo miles de veces más
+          variantes de anuncio que el anterior. Eso corrió la palanca de escalar
+          desde la audiencia hacia la <strong>diversidad creativa</strong>.
+        </p>
+        <p style="color:var(--text-2)">
+          La consecuencia operativa es dura: <strong style="color:var(--lime)">escalar
+          hoy es un problema de producción</strong>. Si tu volumen de contenido no
+          crece junto con tu presupuesto, el rendimiento cae. El sistema necesita
+          material para probar.
+        </p>
+      </div>
+    </div>
+
+    <div class="fuerza">
+      <div class="fuerza__cab">
+        <span class="fuerza__n">02</span>
+        <h3 class="fuerza__tit">Los seguidores dejaron<br>de decidir el alcance</h3>
+      </div>
+      <div class="fuerza__cuerpo">
+        <p style="color:var(--text-2)">
+          Todas las plataformas grandes pasaron del grafo de seguidores al grafo
+          de intereses. Tener seguidores ya no garantiza que te vean: el
+          contenido se gana la distribución por tiempo de visualización,
+          velocidad de interacción y qué tanto coincide con lo que esa persona ya
+          consume.
+        </p>
+        <p style="color:var(--text-2)">
+          Antes, una creadora pequeña tenía un techo duro de alcance atado a su
+          base de seguidores. <strong style="color:var(--lime)">La distribución
+          por intereses le quitó ese techo.</strong>
+        </p>
+        <p style="color:var(--text-2)">
+          Es lo que vuelve viable trabajar con muchas creadoras pequeñas en vez
+          de una grande. Y lo que explica que una cuenta nueva, sin un solo
+          seguidor, pueda funcionar desde el primer video.
+        </p>
+      </div>
+    </div>
+
+    <div class="fuerza">
+      <div class="fuerza__cab">
+        <span class="fuerza__n">03</span>
+        <h3 class="fuerza__tit">La confianza se movió<br>de la marca a la persona</h3>
+      </div>
+      <div class="fuerza__cuerpo">
+        <div class="dato">
+          <span class="dato__n">88%</span>
+          <span class="dato__t" style="color:var(--text-2)">
+            de los consumidores confía más en recomendaciones de gente que conoce
+            que en cualquier otro canal publicitario.
+            <span class="dato__f">Nielsen</span>
+          </span>
+        </div>
+        <div class="dato">
+          <span class="dato__n">80%</span>
+          <span class="dato__t" style="color:var(--text-2)">
+            acude a sus pares, y no a los voceros de marca, cuando busca
+            información en la que confiar.
+            <span class="dato__f">Edelman</span>
+          </span>
+        </div>
+        <p style="color:var(--text-2)">
+          Es el dato más viejo de los cuatro y el más estable. No cambió con el
+          algoritmo: cambió qué tan barato es actuar en consecuencia.
+        </p>
+      </div>
+    </div>
+
+    <div class="fuerza">
+      <div class="fuerza__cab">
+        <span class="fuerza__n">04</span>
+        <h3 class="fuerza__tit">Comprar atención<br>se encareció</h3>
+      </div>
+      <div class="fuerza__cuerpo">
+        <p style="color:var(--text-2)">
+          El costo de adquirir un cliente subió más del 60% en cinco años, y en
+          social pagado es peor: los CPM vienen subiendo cerca de 20% año contra
+          año.
+        </p>
+        <p style="color:var(--text-2)">
+          Frente a eso, el gasto en programas de creadores creció 171% en 2025, y
+          cerca de dos tercios de las marcas movieron para acá plata que antes
+          iba a canales tradicionales.
+        </p>
+        <p style="color:var(--text-2)">
+          Las marcas que van adelante ya tratan el contenido de creadoras
+          <strong>como medio de rendimiento</strong>: lo miden con CAC, ticket
+          promedio y retorno, igual que la pauta. No como «relaciones públicas».
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── La conclusión operativa ─────────────────────────────────────────── -->
+<section class="seccion seccion--lime">
+  <div class="ancho">
+    <h2 class="h-sec">EL CUELLO DE BOTELLA SE MOVIÓ</h2>
+    <p class="p p--xl">
+      Si el creativo es el nuevo targeting y el sistema exige producción
+      continua, entonces lo escaso ya no es el presupuesto de medios.
+    </p>
+
+    <div class="antes-despues">
+      <div class="ad">
+        <div class="ad__r">Antes lo difícil era</div>
+        <div class="ad__t">Tener plata para pauta<br>y saber a quién apuntarle</div>
+      </div>
+      <div class="ad" style="background:var(--ink);color:var(--lime);border-color:var(--ink)">
+        <div class="ad__r">Ahora lo difícil es</div>
+        <div class="ad__t">Producir contenido en volumen,<br>seguido, y que cumpla</div>
+      </div>
+    </div>
+
+    <p class="p" style="margin-top:26px">
+      Y ahí está el problema real: <strong>no falta gente que produzca</strong>.
+      Las creadoras pequeñas son ya la enorme mayoría de la base en Instagram.
+      Lo que falta es encontrar a las correctas y confiar en que van a entregar
+      — casi la mitad de quienes hacen mercadeo dicen que descubrir creadoras
+      sigue siendo su mayor dificultad.
+    </p>
+  </div>
+</section>
+
+<!-- ── La honestidad sobre las cifras: el diferenciador ─────────────────── -->
+<section class="seccion seccion--claro">
+  <div class="ancho">
+    <div class="honesto">
+      <h2 class="honesto__t">Lo que no vas a leer en esta página</h2>
+      <p class="p">
+        Hay cifras que circulan en todos los blogs que venden justo este
+        servicio, casi siempre sin una fuente que se pueda rastrear:
+      </p>
+      <p class="p">
+        <span class="tachado">«270% más conversión»</span> ·
+        <span class="tachado">«$5,78 por cada dólar invertido»</span> ·
+        <span class="tachado">«6,9 veces más interacción»</span>
+      </p>
+      <p class="p">
+        No las usamos. Se desinflan con una búsqueda, y una marca que las revisa
+        y encuentra el hueco deja de creerte todo lo demás — incluido lo que sí
+        era cierto.
+      </p>
+      <p class="p" style="margin-bottom:0">
+        <strong>Preferimos los mecanismos.</strong> «El algoritmo ya no te deja
+        segmentar, ahora segmenta con tu creativo, y por eso necesitas volumen»
+        es algo que puedes comprobar tú misma abriendo tu Administrador de
+        Anuncios. Un múltiplo te toca creérnoslo.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Qué hacemos con eso ─────────────────────────────────────────────── -->
+<section class="seccion seccion--blue">
+  <div class="ancho">
+    <span class="tag tag--ink">{QUÉ HACEMOS NOSOTROS}</span>
+    <h2 class="h-sec" style="margin-top:20px">NO VENDEMOS ALCANCE.<br>VENDEMOS QUE CUMPLAN.</h2>
+    <p class="p p--xl">
+      Si lo escaso es la capacidad de producir contenido seguido y confiable,
+      entonces el trabajo no es conseguirte a la creadora con más seguidores.
+      Es conseguirte a treinta que entreguen.
+    </p>
+    <p class="p">
+      Por eso el catálogo no está ordenado por audiencia. Cada perfil dice
+      <strong>cómo trabaja</strong> —dónde graba, qué formatos repite, cómo
+      produce— y <strong>si cumple</strong>, con un historial que sale de
+      entregas reales, no de lo que ella dice de sí misma.
+    </p>
+    <p class="p">
+      El dinero queda retenido hasta que apruebas el contenido. La creadora sabe
+      que le van a pagar; tú sabes que no pagas por algo que no viste. Es la
+      única forma de que treinta colaboraciones a la vez no se vuelvan treinta
+      problemas.
+    </p>
+
+    <div class="cierre__ctas">
+      <a href="/registro.html" class="btn btn--lime">EMPEZAR GRATIS →</a>
+      <a href="/marcas" class="btn btn--ghost">CÓMO FUNCIONA</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Fuentes ─────────────────────────────────────────────────────────── -->
+<section class="seccion seccion--claro" style="padding-top:34px;padding-bottom:34px">
+  <div class="ancho">
+    <p class="fuentes">
+      <strong>Sobre estos datos.</strong> Las cifras de confianza son de Nielsen
+      y Edelman. Las de costo de adquisición, CPM y crecimiento del gasto en
+      creadores vienen de reportes de industria de 2025 y 2026, y las
+      estimaciones varían bastante entre quién las publica — por eso las damos
+      como orden de magnitud y no como precisión. Lo de la segmentación
+      automática y el grafo de intereses no es una estimación: es la
+      documentación pública de Meta y de TikTok sobre cómo funcionan sus
+      sistemas hoy, y se puede verificar en sus propios centros de ayuda.
+    </p>
+  </div>
+</section>
+
+<footer class="pie">
+  <span>Creators Manager es un servicio de COLBELLEZA LATAM S.A.S. · NIT 901.519.449-0 · Medellín, Colombia</span><br>
+  <a href="/">Inicio</a> ·
+  <a href="/marcas">Para marcas</a> ·
+  <a href="/precios">Planes</a> ·
+  <a href="/terminos">Términos</a> ·
+  <a href="/privacidad">Privacidad</a>
+</footer>
+
+<script src="/js/pixel-meta.js"></script>
+</body>
+</html>

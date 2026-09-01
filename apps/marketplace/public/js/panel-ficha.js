@@ -403,7 +403,7 @@ async function vistaFicha(c) {
         <div>
           <div class="h-sec" style="font-size:11.5px;margin-bottom:6px">Contratas por trabajo, no por nombre</div>
           <p class="p" style="font-size:11.5px">Su nombre real, su cuenta de redes y su contacto
-          se revelan solos en el momento en que el pago queda retenido en escrow.
+          se revelan solos en el momento en que el pago queda guardado.
           No tienes que pedirlo ni ella tiene que enviarlo.</p>
         </div>
       </div>
@@ -754,7 +754,7 @@ function pintarPropuesta() {
         </div>
 
         <div class="campo">
-          <label>El brief</label>
+          <label>Qué quieres que haga</label>
           <textarea id="brief" rows="5" placeholder="Qué quieres que muestre, cómo y con qué producto">${esc(p.brief)}</textarea>
         </div>
 
@@ -824,8 +824,8 @@ function pintarPropuesta() {
           <div class="dinero-total__valor" id="d-total">${COP(total)}</div>
           <div class="dinero-total__nota">
             ${esCanje
-              ? 'Se cobra solo si ella acepta. No hay escrow porque no hay plata que retener: ella no graba hasta que le llegue el producto.'
-              : 'Se cobra solo si ella acepta. Queda retenido en escrow hasta que apruebes el contenido.'}
+              ? 'Se cobra solo si ella acepta. No hay nada que guardar porque no hay plata de por medio: ella no graba hasta que le llegue el producto.'
+              : 'Se cobra solo si ella acepta. Tu dinero queda guardado y protegido hasta que apruebes el contenido.'}
           </div>
         </div>
 

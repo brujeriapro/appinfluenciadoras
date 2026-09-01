@@ -6,7 +6,7 @@
 const ESTADO_TRATO = {
   solicitado:    { texto: 'Esperando respuesta', clase: '' },
   aceptado:      { texto: 'Falta pagar',         clase: 'pastilla--alerta' },
-  pago_retenido: { texto: 'En escrow',           clase: '' },
+  pago_retenido: { texto: 'Pago protegido',      clase: '' },
   entregado:     { texto: 'Acción requerida',    clase: 'pastilla--alerta' },
   aprobado:      { texto: 'Aprobado',            clase: 'pastilla--cerrado' },
   pagado:        { texto: 'Pagado',              clase: 'pastilla--cerrado' },
@@ -129,8 +129,8 @@ async function vistaCampanas(c) {
 
 const PASOS = [
   { clave: 'solicitado',    nom: 'Solicitado',          desc: 'Enviaste la propuesta. Ella tiene 72 horas para responder.' },
-  { clave: 'aceptado',      nom: 'Aceptado',            desc: 'Aceptó el brief y el monto sin contrapropuesta.' },
-  { clave: 'pago_retenido', nom: 'Pago retenido',       desc: 'El dinero quedó en escrow. Aquí se revela su identidad.' },
+  { clave: 'aceptado',      nom: 'Aceptado',            desc: 'Aceptó las instrucciones y el monto sin contrapropuesta.' },
+  { clave: 'pago_retenido', nom: 'Pago protegido',      desc: 'El dinero ya está guardado. Aquí se revela su identidad.' },
   { clave: 'entregado',     nom: 'Contenido entregado', desc: 'Subió el link de lo publicado. Tienes 48 horas para aprobar.' },
   { clave: 'aprobado',      nom: 'Aprobado',            desc: 'Aprobaste la pieza.' },
   { clave: 'pagado',        nom: 'Pagado',              desc: 'Se liberó el pago a su cuenta.' },
@@ -160,7 +160,7 @@ async function vistaTrato(c) {
     : (t.creadora?.nombre_publico || 'Trato');
 
   const etiquetaMonto = ['pagado', 'cerrado'].includes(t.estado) ? 'Total pagado'
-    : revelado ? 'Retenido en escrow' : 'Total a pagar';
+    : revelado ? 'Guardado y protegido' : 'Total a pagar';
 
   // Qué le toca hacer a ella ahora. Solo aparece cuando hay algo que hacer.
   const TOCA = {
@@ -217,11 +217,11 @@ async function vistaTrato(c) {
             <div class="barra-oculta" style="width:82%"></div>
             <div class="barra-oculta" style="width:58%"></div>
             <p class="p" style="font-size:11.5px;margin-top:12px">
-              Sus datos se revelan solos en el momento en que el pago queda retenido en escrow.
+              Sus datos se revelan solos en el momento en que el pago queda guardado.
               Ni tú ni ella tienen que pedirlo.
             </p>
             <div class="chip-claro" style="margin-top:12px;display:inline-block">
-              Falta: ${t.estado === 'solicitado' ? 'que ella acepte la propuesta' : 'retener el pago en escrow'}
+              Falta: ${t.estado === 'solicitado' ? 'que ella acepte la propuesta' : 'que el pago quede guardado'}
             </div>
           </div>
         </div>`}
@@ -344,7 +344,7 @@ function pintarCampana() {
           </select>
         </div>
         <div class="campo">
-          <label>Brief base</label>
+          <label>Instrucciones base</label>
           <textarea id="c-brief" rows="4"
             placeholder="Se envía a todas las creadoras de esta campaña">${esc(c.brief_base)}</textarea>
         </div>

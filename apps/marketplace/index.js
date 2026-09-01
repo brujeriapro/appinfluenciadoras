@@ -80,6 +80,10 @@ app.get('/marcas', (req, res) => {
   res.sendFile(require('path').join(__dirname, 'public', 'marcas.html'));
 });
 
+app.get('/metodologia', (req, res) => {
+  res.sendFile(require('path').join(__dirname, 'public', 'metodologia.html'));
+});
+
 app.get('/precios', (req, res) => {
   res.sendFile(require('path').join(__dirname, 'public', 'precios.html'));
 });

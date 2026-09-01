@@ -1581,7 +1581,7 @@ let MONEDA_UNICA = true;
 const PILL = {
   solicitado:    { texto: 'Nueva',       clase: 'nueva' },
   aceptado:      { texto: 'Aceptada',    clase: 'aceptada' },
-  pago_retenido: { texto: 'En escrow',   clase: 'aceptada' },
+  pago_retenido: { texto: 'Pago listo',  clase: 'aceptada' },
   entregado:     { texto: 'En revisión', clase: 'neutra' },
   aprobado:      { texto: 'Aprobada',    clase: 'aceptada' },
   pagado:        { texto: 'Pagada',      clase: 'neutra' },
@@ -3380,7 +3380,7 @@ function elegidaHTML(i, c) {
     </header>
     <h3 class="inv__titulo inv__titulo--lima">Es tuyo</h3>
     <p class="inv__texto">Ya tienes el trato abierto. Búscalo abajo en tus propuestas:
-    ahí ves el brief completo y entregas cuando esté listo.</p>
+    ahí ves las instrucciones completas y entregas cuando esté listo.</p>
   </article>`;
 }
 
@@ -3583,7 +3583,7 @@ async function verPropuesta(id) {
       ${t.exclusividad ? '<span class="det-chip">Con exclusividad</span>' : ''}
     </div>
 
-    <div class="det-rotulo">El brief</div>
+    <div class="det-rotulo">Lo que te piden</div>
     <div class="det-brief">${esc(t.brief)}</div>
 
     <div class="condiciones" style="margin-top:20px">
