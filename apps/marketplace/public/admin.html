@@ -228,6 +228,7 @@
       <button class="tab" data-vista="vitrina">Vitrina</button>
       <button class="tab" data-vista="invitaciones">Invitaciones</button>
       <button class="tab" data-vista="listas">Creadoras por invitar</button>
+      <button class="tab" data-vista="prospeccion">Buscar marcas</button>
       <button class="tab" data-vista="ajustes">Ajustes</button>
     </div>
   </div>
@@ -350,6 +351,111 @@ const recargar = () => ir(vistaActual);
 
 /** El API de la vitrina cuelga de /api/admin/vitrina. */
 const apiVit = (ruta, op) => api('/vitrina' + ruta, op);
+
+// ── Vista: Buscar marcas (prospección) ──────────────────────────────────────
+//
+// Lo que muestra es la decisión, no la base de datos: a quién se le va a
+// escribir hoy, a quién no y por qué. El "por qué no" importa tanto como el
+// resto: casi siempre es "le falta el correo", que es una tarea concreta para
+// alguien y no un error.
+
+VISTAS.prospeccion = async () => {
+  const cola = await api('/prospeccion/cola');
+  const salen = cola.saldrian || [];
+  const enCola = cola.enCola || [];
+
+  const fila = (p) => `
+    <tr>
+      <td><strong>${esc(p.nombre)}</strong></td>
+      <td>${esc(p.canal || '—')}</td>
+      <td style="font-size:11.5px;color:var(--grey-600)">${esc(p.email || '—')}</td>
+      <td class="num">${p.puntaje}</td>
+      <td>toque ${p.toque}</td>
+    </tr>`;
+
+  contenido().innerHTML = `
+    <div class="bloque">
+      <div class="bloque__titulo">Listas para escribirles hoy · ${salen.length}</div>
+      ${salen.length ? `
+        <p class="p" style="color:var(--grey-600);margin-bottom:12px">
+          Estas salen solas por correo apenas le des al botón. Se manda un mensaje
+          distinto según el toque que les toque, y ninguna recibe dos veces lo mismo.
+        </p>
+        <table class="tabla">
+          <thead><tr><th>Marca</th><th>Canal</th><th>Contacto</th><th>Puntaje</th><th></th></tr></thead>
+          <tbody>${salen.map(fila).join('')}</tbody>
+        </table>
+        <button class="btn-mini" id="btn-prosp-enviar" style="margin-top:14px">
+          ENVIAR ${salen.length} ${salen.length === 1 ? 'MENSAJE' : 'MENSAJES'} →
+        </button>`
+        : '<div class="vacio">Ninguna lista. Casi siempre es porque les falta el correo.</div>'}
+    </div>
+
+    <div class="bloque">
+      <div class="bloque__titulo">Para mandar a mano · ${enCola.length}</div>
+      <p class="p" style="color:var(--grey-600);margin-bottom:12px">
+        Instagram y LinkedIn no se automatizan: sus reglas lo prohíben y la cuenta
+        que se arriesga es la tuya. El mensaje se escribe igual y queda guardado;
+        lo copias y lo mandas tú.
+      </p>
+      ${enCola.length ? `
+        <table class="tabla">
+          <thead><tr><th>Marca</th><th>Canal</th><th>Contacto</th><th>Puntaje</th><th></th></tr></thead>
+          <tbody>${enCola.map(fila).join('')}</tbody>
+        </table>
+        <button class="btn-mini" id="btn-prosp-preparar" style="margin-top:14px">
+          PREPARAR LOS ${enCola.length} MENSAJES →
+        </button>`
+        : '<div class="vacio">Nada en cola.</div>'}
+    </div>
+
+    ${cola.aplazados ? `
+      <div class="bloque">
+        <div class="bloque__titulo">Aplazados por cupo · ${cola.aplazados}</div>
+        <p class="p" style="color:var(--grey-600)">
+          Llegaron al tope del día. Salen mañana, empezando por los de mayor puntaje.
+        </p>
+      </div>` : ''}
+
+    <div id="prosp-resultado"></div>`;
+
+  const mandar = async (ids, boton) => {
+    boton.disabled = true;
+    boton.textContent = 'ENVIANDO…';
+    try {
+      const r = await api('/prospeccion/enviar', {
+        method: 'POST', body: JSON.stringify({ ids }),
+      });
+      // Se dice lo que pasó con cada uno, incluidos los que no salieron: una
+      // tanda que solo cuenta los éxitos esconde justo lo que hay que arreglar.
+      const detalle = (r.detalle || []).map(d => `
+        <div class="dato">
+          <span>${esc(d.nombre)}</span>
+          <span style="color:${d.ok ? 'var(--lime)' : 'var(--grey-600)'}">
+            ${d.ok ? (d.enCola ? 'listo para mandar a mano' : 'enviado') : esc(d.motivo || d.error || 'no salió')}
+          </span>
+        </div>`).join('');
+      $('prosp-resultado').innerHTML = `
+        <div class="bloque">
+          <div class="bloque__titulo">Resultado</div>
+          <div class="dato"><span>Enviados</span><span class="num">${r.enviados || 0}</span></div>
+          <div class="dato"><span>Listos para mandar a mano</span><span class="num">${r.enCola || 0}</span></div>
+          ${r.fallidos ? `<div class="dato"><span>Fallaron</span><span class="num">${r.fallidos}</span></div>` : ''}
+          <div style="margin-top:12px">${detalle}</div>
+        </div>`;
+    } catch (e) {
+      $('prosp-resultado').innerHTML = `<div class="aviso">No se pudo: ${esc(e.message)}</div>`;
+    }
+    boton.disabled = false;
+    boton.textContent = 'VOLVER A CARGAR';
+    boton.onclick = () => recargar();
+  };
+
+  $('btn-prosp-enviar')?.addEventListener('click', (e) =>
+    mandar(salen.map(p => p.id), e.currentTarget));
+  $('btn-prosp-preparar')?.addEventListener('click', (e) =>
+    mandar(enCola.map(p => p.id), e.currentTarget));
+};
 
 // ── Vista: Resumen ──────────────────────────────────────────────────────────
 

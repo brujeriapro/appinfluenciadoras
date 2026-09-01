@@ -412,6 +412,38 @@ Una campaña puede publicarse para que las creadoras **se postulen**, en vez de 
 - A quien se postula y no queda se le avisa que **se llenaron los cupos**, nunca que no la eligieron. Postularse y no saber nunca es lo que hace que deje de postularse.
 - ⚠️ **El catálogo público de convocatorias abiertas no existe todavía** — es la idea siguiente. Hoy cada creadora las ve en *Mis propuestas*, filtradas a las que encajan con su perfil.
 
+### Agente de prospección — conseguir marcas
+
+El cuello de botella del negocio no es el producto: son las marcas. El agente
+encuentra marcas colombianas, las investiga, les escribe y persigue la respuesta
+hasta conseguir reunión. Se opera desde la pestaña **Buscar marcas** del panel
+admin.
+
+- **Cubre las 15 categorías, no belleza.** Un sesgo hacia cosméticos deja por
+  fuera catorce quinceavos del catálogo. Los multiplicadores —gremios, agencias
+  de comercio electrónico, ferias, maquilas de cualquier sector— son
+  transversales a propósito.
+- **Cadencia de cuatro toques** (días 0, 3, 7 y 14) y se acabó. El día 3 es el
+  que más responde. Cada toque dice algo distinto: el tercero *da* una idea en
+  vez de preguntar «¿viste mi correo?».
+- ⚠️ **Correo y WhatsApp salen solos; Instagram y LinkedIn NO.** Automatizar sus
+  DMs va contra sus reglas y la cuenta en riesgo sería la de Brujería Capilar.
+  El agente redacta y deja el mensaje en cola para que una persona lo mande.
+- ⚠️ **Los mensajes NUNCA mencionan Brujería Capilar ni belleza.** Es la regla 8
+  de arriba, y además a una marca de comida para perros «vengo de la belleza» le
+  dice «esto no es para mí».
+- ⚠️ **Sin razón concreta no se manda el primer contacto**: `redactar()` lanza.
+  Sin ella el correo dice «vi lo que están haciendo en redes», que es la frase
+  que delata un envío masivo y gasta el contacto para siempre.
+- ⚠️ **Sin dato de contacto no se entra a la fila.** Un intento fallido igual
+  deja escrito el toque, y un toque no se repite: el prospecto quedaría sin
+  poder recibir nunca su primer mensaje.
+- `no_contactar` es una puerta de una sola dirección. Una vez en true, el código
+  no la devuelve a false.
+- Estado: **construido y APAGADO** (`mk_config.prospeccion.activa = false`). Se
+  prende cuando los textos estén probados. La primera tanda se manda por `ids`,
+  sin prender el agente entero.
+
 ### Listas que comparte una marca aliada
 
 Pestaña **Creadoras por invitar** del panel. Ojo con el nombre: lo que trae la lista son **creadoras**, no marcas — la marca es quien la comparte, no lo que está adentro. Todo lo demás invita a gente que ya está en `influencers` repartida en cuatro olas por su estado; esto es lo otro: contactos que una marca aliada comparte, que llegan **con celular y sin correo** y no encajan en ninguna ola. Por eso la invitación sale por WhatsApp.
