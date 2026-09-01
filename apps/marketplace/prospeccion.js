@@ -53,7 +53,14 @@ const CADENCIA = [
 // contacta cada canal.
 const CANALES = {
   correo:    { automatico: true,  tope_dia: 40, campo: 'email' },
-  whatsapp:  { automatico: true,  tope_dia: 25, campo: 'telefono' },
+  // ⚠️ WhatsApp NO sale solo, y no es un olvido: Meta solo deja escribir
+  // primero con una plantilla que ELLOS aprueban, y las que hay están escritas
+  // para invitar creadoras — a una marca le llegaría un mensaje que no tiene
+  // nada que ver. Aprobar una nueva toma días.
+  //
+  // Mientras tanto el mensaje se redacta igual y queda en cola para mandarlo a
+  // mano. Cuando exista la plantilla aprobada, esto pasa a true y ya.
+  whatsapp:  { automatico: false, tope_dia: 25, campo: 'telefono' },
   instagram: { automatico: false, tope_dia: 20, campo: 'instagram' },
   linkedin:  { automatico: false, tope_dia: 15, campo: 'linkedin' },
 };

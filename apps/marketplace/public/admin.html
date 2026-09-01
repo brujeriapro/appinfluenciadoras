@@ -360,7 +360,10 @@ const apiVit = (ruta, op) => api('/vitrina' + ruta, op);
 // alguien y no un error.
 
 VISTAS.prospeccion = async () => {
-  const cola = await api('/prospeccion/cola');
+  const [cola, hist] = await Promise.all([
+    api('/prospeccion/cola'),
+    api('/prospeccion/historial').catch(() => ({ salieron: [], en_cola: [], fallaron: [] })),
+  ]);
   const salen = cola.saldrian || [];
   const enCola = cola.enCola || [];
 
@@ -426,6 +429,32 @@ VISTAS.prospeccion = async () => {
       </p>
       <button class="btn-mini" id="btn-prosp-contactos">BUSCAR CONTACTOS →</button>
     </div>
+
+    <div class="bloque">
+      <div class="bloque__titulo">Lo que ya se mandó</div>
+      ${(hist.salieron || []).length ? `
+        <p class="p" style="color:var(--grey-600);margin-bottom:10px">
+          Estos salieron y el proveedor los aceptó. Si llegaron a la bandeja o
+          cayeron en spam no se puede saber desde acá — la única señal de
+          verdad es que contesten.
+        </p>
+        ${hist.salieron.map(t => `
+          <div class="dato">
+            <span>${esc(t.nombre)} <span style="color:var(--grey-700);font-size:11px">· toque ${t.toque} · ${esc(t.canal)}</span></span>
+            <span style="font-size:11.5px;color:var(--grey-600)">${esc(t.destino || '')} · ${fecha(t.cuando)}</span>
+          </div>`).join('')}`
+        : '<div class="vacio">Todavía no se ha mandado ninguno.</div>'}
+    </div>
+
+    ${(hist.fallaron || []).length ? `
+      <div class="bloque">
+        <div class="bloque__titulo">No salieron · ${hist.fallaron.length}</div>
+        ${hist.fallaron.map(t => `
+          <div class="dato">
+            <span>${esc(t.nombre)}</span>
+            <span style="font-size:11.5px;color:var(--magenta)">${esc(t.error || 'sin motivo')}</span>
+          </div>`).join('')}
+      </div>` : ''}
 
     <div id="prosp-resultado"></div>`;
 

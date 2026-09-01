@@ -239,6 +239,48 @@ app.post('/api/admin/prospeccion/contactos', adminAuth, async (req, res) => {
   }
 });
 
+/**
+ * Qué se ha mandado y qué pasó con cada mensaje.
+ *
+ * Es la respuesta a «¿sí salieron?». Distingue tres cosas que se confunden:
+ * lo que SALIÓ (el proveedor lo aceptó), lo que está EN COLA esperando que una
+ * persona lo mande, y lo que FALLÓ, con el motivo.
+ *
+ * Lo que NO puede decir, y por eso no lo inventa: si el correo llegó a la
+ * bandeja o cayó en spam. Eso no se sabe sin meter un píxel de rastreo, y un
+ * píxel en un correo en frío empeora justo lo que queremos cuidar.
+ */
+app.get('/api/admin/prospeccion/historial', adminAuth, async (req, res) => {
+  try {
+    const db2 = require('./db');
+    const toques = await db2.get('mk_prospecto_toques', {
+      select: '*,mk_prospectos(nombre,email,telefono,estado)',
+      order: 'created_at.desc',
+      limit: 100,
+    });
+
+    const corto = (t) => ({
+      nombre: t.mk_prospectos?.nombre || '—',
+      canal: t.canal,
+      toque: t.toque,
+      tipo: t.tipo,
+      destino: t.mk_prospectos?.email || t.mk_prospectos?.telefono || null,
+      cuando: t.enviado_at || t.created_at,
+      error: t.error || null,
+      estado_prospecto: t.mk_prospectos?.estado,
+      cuerpo: t.cuerpo || null,
+    });
+
+    res.json({
+      salieron: toques.filter(t => t.ok === true).map(corto),
+      en_cola:  toques.filter(t => t.ok === null).map(corto),
+      fallaron: toques.filter(t => t.ok === false).map(corto),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Qué saldría, sin mandar nada. Para poder mirar antes de apretar.
 app.get('/api/admin/prospeccion/cola', adminAuth, async (req, res) => {
   try {

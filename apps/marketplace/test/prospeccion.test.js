@@ -115,8 +115,10 @@ test('Instagram y LinkedIn van a cola, no salen solos', () => {
   assert.deepStrictEqual(r.enCola.map(x => x.prospecto.id), ['ig', 'li']);
 });
 
-test('solo correo y WhatsApp se mandan solos', () => {
-  assert.deepStrictEqual(p.canalesAutomaticos().sort(), ['correo', 'whatsapp']);
+test('hoy solo el correo se manda solo', () => {
+  // WhatsApp está en manual hasta que Meta apruebe una plantilla para marcas:
+  // las que hay están escritas para invitar creadoras.
+  assert.deepStrictEqual(p.canalesAutomaticos(), ['correo']);
 });
 
 // ── El puntaje ─────────────────────────────────────────────────────────────
