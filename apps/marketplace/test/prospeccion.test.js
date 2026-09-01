@@ -180,3 +180,46 @@ test('quien respondió nunca se marca como agotado', () => {
   const r = base({ estado: 'respondio', toques_enviados: 4, ultimo_toque_at: haceDias(30) });
   assert.equal(p.seAgoto(r, HOY), false);
 });
+
+// ── Los mensajes ───────────────────────────────────────────────────────────
+
+const msg = require('../prospeccion-mensajes');
+
+test('no se manda un primer contacto sin razón concreta', () => {
+  // Es la guarda más importante del redactor: sin razón, el mensaje dice "vi
+  // lo que están haciendo en redes", que es la frase que delata un envío
+  // masivo. Gasta el contacto y no se recupera.
+  assert.throws(() => msg.redactar('presentacion', { nombre: 'Marca X' }), /razón concreta/);
+});
+
+test('los cuatro toques dicen cosas distintas', () => {
+  const p = { nombre: 'Marca X', razon: 'hacen algo específico', categoria: 'skincare' };
+  const cuerpos = ['presentacion', 'recordatorio', 'valor', 'cierre']
+    .map(t => msg.redactar(t, p).cuerpo);
+  assert.equal(new Set(cuerpos).size, 4);
+});
+
+test('todos ofrecen una salida', () => {
+  const p = { nombre: 'Marca X', razon: 'algo' };
+  for (const t of ['presentacion', 'recordatorio', 'valor', 'cierre']) {
+    const c = msg.redactar(t, p).cuerpo.toLowerCase();
+    const haySalida = /no te escribo m|dímelo|no es para ustedes|avísame|si prefieres/.test(c);
+    assert.ok(haySalida, `el toque ${t} no deja salida`);
+  }
+});
+
+test('el asunto no repite la palabra marcas', () => {
+  const a = msg.redactar('valor', { nombre: 'X', categoria: 'skincare' }).asunto;
+  assert.ok(!/marcas de marcas/.test(a), a);
+});
+
+test('firma una persona, no una empresa', () => {
+  assert.match(msg.REMITENTE, /^[A-ZÁÉÍÓÚÑ][^<]*</);
+});
+
+test('el mensaje de WhatsApp cabe antes del "ver más"', () => {
+  // La primera línea es lo único que se ve en la notificación.
+  const t = msg.paraWhatsApp({ nombre: 'X', contacto: 'Ana' });
+  assert.ok(t.split('\n')[0].length < 120, 'la primera línea es muy larga');
+  assert.match(t, /no te escribo m/);
+});

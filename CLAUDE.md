@@ -313,7 +313,7 @@ node index.js       # http://localhost:3040
 npm test            # 335 pruebas: comisiones, estados, tarifas, Wompi, plazos, correo, análisis, pagos, cupos, aprendizaje y listas externas
 ```
 
-**Migraciones:** los archivos de `apps/marketplace/migrations/` en orden numérico, en el SQL Editor de Supabase. Van por `mk_058`. Además, crear el bucket privado `mk-muestras` en Storage.
+**Migraciones:** los archivos de `apps/marketplace/migrations/` en orden numérico, en el SQL Editor de Supabase. Van por `mk_062`. Además, crear el bucket privado `mk-muestras` en Storage.
 
 **Scripts que se corren a mano** (necesitan las mismas variables que el servidor):
 
@@ -382,7 +382,9 @@ Los **videos van en crudo** por `POST /api/creadoras/muestras/video` (el archivo
 
 ### Correo
 
-`correo.js` aísla al proveedor: cambiarlo es poner otra llave. Soporta **ZeptoMail** (el que corre hoy), Resend y Brevo; gana el primero con llave salvo que `MK_CORREO_PROVEEDOR` diga otra cosa.
+`correo.js` aísla al proveedor: cambiarlo es poner otra llave. Soporta ZeptoMail, Resend y **Brevo**; gana el primero con llave salvo que `MK_CORREO_PROVEEDOR` diga otra cosa.
+
+⚠️ **Quien manda hoy es Brevo, no ZeptoMail** (verificado en `mk_correos_log` el 1-sep-2026: los últimos 300 correos, todos por Brevo). Importa saberlo porque cambia dos cosas que se dan por ciertas: el tope de 100 al día es de ZeptoMail y **no aplica** —el 1 de septiembre salieron 169 sin problema—, y la firma DKIM que sí existe en el DNS es la de Brevo (`brevo1`/`brevo2._domainkey`), así que los correos **sí van firmados**. Diagnosticar el correo mirando ZeptoMail lleva a conclusiones equivocadas.
 
 ⚠️ **Railway bloquea el SMTP saliente.** Todo sale por API web.
 
@@ -398,7 +400,7 @@ Los **videos van en crudo** por `POST /api/creadoras/muestras/video` (el archivo
 
 ⚠️ **La reserva es la pieza que faltaba y por eso el problema pasó dos veces.** El tope de la app protegía a los correos de uno en uno de que *nosotros* los bloqueáramos, pero no de que el *proveedor* los rechazara por cuota agotada — que es lo que pasa de verdad. En agosto fue Brevo (353 contra un plan de 300, 16 creadoras dos días sin entrar); después ZeptoMail, que deja **100 al día mientras revisa la cuenta**: una tanda de invitaciones se los comió y 132 recuperaciones de contraseña murieron en silencio.
 
-⚠️ **`correo_limite_proveedor` está en 100 porque ZeptoMail no ha aprobado la cuenta.** Cuando la apruebe, sube a 10.000 y ahí sí se pueden hacer tandas grandes.
+⚠️ **`correo_limite_proveedor` está en 100 y ese número es de ZeptoMail, que hoy no se usa.** Con Brevo corriendo, el freno real es el de su plan, no este. El valor quedó desactualizado y conviene revisarlo antes de planear una tanda grande: hoy hace que el sistema se crea más limitado de lo que está.
 
 ### Convocatorias abiertas
 
