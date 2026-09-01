@@ -84,6 +84,18 @@ app.get('/precios', (req, res) => {
   res.sendFile(require('path').join(__dirname, 'public', 'precios.html'));
 });
 
+// La política de tratamiento de datos. Va por su propia ruta y no dentro de
+// los términos porque la Ley 1581 la trata como documento aparte: se acepta
+// aparte y se puede consultar sin tener cuenta.
+app.get('/privacidad', (req, res) => {
+  const { privacidadHTML } = require('./privacidad');
+  res.type('html').send(privacidadHTML({
+    direccion: process.env.MK_LEGAL_DIRECCION,
+    correo:    process.env.MK_LEGAL_CORREO,
+    telefono:  process.env.MK_LEGAL_TELEFONO,
+  }));
+});
+
 app.get('/terminos', async (req, res) => {
   try {
     const cfg = await db.getConfig();
