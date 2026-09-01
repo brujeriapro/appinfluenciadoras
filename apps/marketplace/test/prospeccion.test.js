@@ -223,3 +223,64 @@ test('el mensaje de WhatsApp cabe antes del "ver más"', () => {
   assert.ok(t.split('\n')[0].length < 120, 'la primera línea es muy larga');
   assert.match(t, /no te escribo m/);
 });
+
+// ── El buscador ────────────────────────────────────────────────────────────
+
+const busc = require('../prospeccion-buscador');
+
+test('la misma marca por dos caminos no se duplica', () => {
+  const r = busc.fusionar([
+    [{ nombre: 'Lumina Skin S.A.S.', fuente: 'lista' }],
+    [{ nombre: 'lumina skin', email: 'hola@lumina.co', fuente: 'lista' }],
+  ]);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].email, 'hola@lumina.co', 'debió completar el correo que faltaba');
+});
+
+test('cuando una marca llega por dos lados, gana la que trae creadora', () => {
+  // Es la diferencia entre escribir en frío y llegar presentada.
+  const r = busc.fusionar([
+    [{ nombre: 'Lumina', fuente: 'lista' }],
+    [{ nombre: 'Lumina', fuente: 'creadora', creadora_id: 'c1', creadora_nombre: 'Valentina' }],
+  ]);
+  assert.equal(r.length, 1);
+  assert.equal(r[0].creadora_que_la_conoce, true);
+  assert.equal(r[0].creadora_nombre, 'Valentina');
+});
+
+test('el mismo correo con otro nombre tampoco se duplica', () => {
+  const r = busc.fusionar([
+    [{ nombre: 'Lumina Skin', email: 'hola@lumina.co' }],
+    [{ nombre: 'Lumina Colombia', email: 'HOLA@LUMINA.CO' }],
+  ]);
+  assert.equal(r.length, 1);
+});
+
+test('las marcas que trae una creadora puntúan más alto', () => {
+  const [conCreadora, sola] = busc.calificar([
+    { nombre: 'A', creadora_id: 'c1', pais: 'CO' },
+    { nombre: 'B', sitio_web: 'https://b.co', instagram: '@b', email: 'b@b.co', pais: 'CO' },
+  ]);
+  assert.ok(conCreadora.puntaje > sola.puntaje);
+  assert.match(conCreadora.puntaje_porque[0], /creadora/);
+});
+
+test('una lista pegada de Excel se entiende', () => {
+  const r = busc.desdeTexto(
+    'Lumina Skin\thola@lumina.co\t@luminaskin\n' +
+    'Fauno Cosmética\tcontacto@fauno.co'
+  );
+  assert.equal(r.length, 2);
+  assert.equal(r[0].nombre, 'Lumina Skin');
+  assert.equal(r[0].email, 'hola@lumina.co');
+  assert.equal(r[0].instagram, '@luminaskin');
+  assert.equal(r[1].email, 'contacto@fauno.co');
+});
+
+test('las líneas vacías no se vuelven prospectos', () => {
+  assert.equal(busc.desdeTexto('\n\n  \n').length, 0);
+});
+
+test('S.A.S. y tildes no hacen que una marca parezca dos', () => {
+  assert.equal(busc.clave('Cosmética Fauno S.A.S.'), busc.clave('cosmetica fauno'));
+});
