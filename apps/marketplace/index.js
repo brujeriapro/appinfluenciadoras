@@ -80,6 +80,94 @@ app.get('/marcas', (req, res) => {
   res.sendFile(require('path').join(__dirname, 'public', 'marcas.html'));
 });
 
+// ── El diagnóstico ──────────────────────────────────────────────────────────
+//
+// La pauta de captación: cinco preguntas y un diagnóstico distinto según lo que
+// conteste. Es público y sin sesión — pedir cuenta antes de dar algo es lo que
+// hace cerrar la pestaña.
+
+app.get('/diagnostico', (req, res) => {
+  res.sendFile(require('path').join(__dirname, 'public', 'diagnostico.html'));
+});
+
+app.get('/api/diagnostico/preguntas', (req, res) => {
+  const { PREGUNTAS } = require('./diagnostico');
+  res.json({ preguntas: PREGUNTAS });
+});
+
+app.post('/api/diagnostico', rateLimit({ max: 60 }), (req, res) => {
+  const { diagnosticar } = require('./diagnostico');
+  const r = diagnosticar(req.body?.respuestas || {});
+  // La razón se calcula acá pero NO se devuelve al navegador: es para el
+  // seguimiento, no para la marca. Verla se sentiría como que la están
+  // fichando mientras contesta.
+  const { razon, ...paraElla } = r;
+  res.json(paraElla);
+});
+
+/**
+ * Los datos de quien terminó el diagnóstico.
+ *
+ * Entra como prospecto ya INVESTIGADO, no como «nuevo»: sus propias respuestas
+ * son la razón concreta que el primer mensaje necesita, y sin eso el redactor
+ * se niega a escribir. Un lead del diagnóstico llega mejor calificado que
+ * cualquiera que encontremos buscando.
+ */
+app.post('/api/diagnostico/contacto', rateLimit({ max: 20 }), async (req, res) => {
+  try {
+    const { nombre, email, telefono, respuestas, perfil } = req.body || {};
+    if (!nombre || !email) return res.status(400).json({ error: 'Faltan el nombre y el correo' });
+
+    const db2 = require('./db');
+    const { diagnosticar } = require('./diagnostico');
+    const dg = diagnosticar(respuestas || {});
+
+    const fila = {
+      nombre: String(nombre).trim().slice(0, 120),
+      email: String(email).toLowerCase().trim(),
+      telefono: telefono || null,
+      fuente: 'lista',
+      estado: 'investigado',
+      canal: 'correo',
+      razon: dg.razon,
+      // Se guarda lo que contestó: es lo que permite escribirle sobre SU
+      // problema y no sobre el nuestro.
+      notas: `Diagnóstico: ${perfil || dg.perfil}. Respuestas: ${JSON.stringify(respuestas || {})}`,
+      puntaje: 60,
+      puntaje_porque: ['contestó el diagnóstico completo y dejó sus datos'],
+      pais: 'CO',
+    };
+
+    // Si ya estaba, se completa en vez de duplicar: puede haber contestado
+    // antes o haber llegado por otra vía.
+    const previo = await db2.get('mk_prospectos', {
+      email: `eq.${fila.email}`, select: 'id,no_contactar',
+    }).catch(() => []);
+
+    if (previo.length) {
+      if (!previo[0].no_contactar) {
+        await db2.patch('mk_prospectos', { id: previo[0].id }, {
+          razon: fila.razon, notas: fila.notas, telefono: fila.telefono || undefined,
+        }).catch(() => {});
+      }
+    } else {
+      await db2.post('mk_prospectos', fila);
+    }
+
+    // Al equipo, para que pueda responder rápido: un lead del diagnóstico está
+    // caliente ahora, no mañana.
+    const notif = require('./notificaciones');
+    notif.marcaNueva?.({ marca: { nombre_empresa: fila.nombre, email: fila.email,
+                                  whatsapp: fila.telefono, notas_admin: dg.titulo } })
+      .catch(() => {});
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[diagnostico/contacto]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/metodologia', (req, res) => {
   res.sendFile(require('path').join(__dirname, 'public', 'metodologia.html'));
 });
