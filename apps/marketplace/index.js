@@ -168,6 +168,48 @@ app.post('/api/diagnostico/contacto', rateLimit({ max: 20 }), async (req, res) =
   }
 });
 
+/**
+ * Pidió el manual completo.
+ *
+ * Sus datos ya se guardaron antes de ver el análisis; acá solo se marca el
+ * interés. Es la señal más fuerte que deja alguien en esta página —pidió algo
+ * de propia iniciativa después de leer— así que sube el puntaje y cambia a
+ * quién le escribe primero el equipo.
+ */
+app.post('/api/diagnostico/manual', rateLimit({ max: 20 }), async (req, res) => {
+  try {
+    const { email, telefono, nombre } = req.body || {};
+    const db2 = require('./db');
+
+    const filtro = email ? { email: `eq.${String(email).toLowerCase().trim()}` }
+                 : telefono ? { telefono: `eq.${telefono}` } : null;
+    if (filtro) {
+      const p = await db2.get('mk_prospectos', { ...filtro, select: 'id,notas,puntaje' })
+        .catch(() => []);
+      if (p.length) {
+        await db2.patch('mk_prospectos', { id: p[0].id }, {
+          puntaje: Math.max(Number(p[0].puntaje) || 0, 80),
+          notas: `${p[0].notas || ''}
+PIDIÓ EL MANUAL COMPLETO.`.trim(),
+        }).catch(() => {});
+      }
+    }
+
+    // Al equipo, con el asunto diciendo qué pidió: es a quien hay que
+    // contestarle primero.
+    const notif = require('./notificaciones');
+    notif.marcaNueva?.({ marca: {
+      nombre_empresa: `${nombre || 'Una marca'} — PIDIÓ EL MANUAL`,
+      email: email || '(sin correo)', whatsapp: telefono,
+    } }).catch(() => {});
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[diagnostico/manual]', e.message);
+    res.json({ ok: false });   // no se le traba la pantalla por esto
+  }
+});
+
 app.get('/metodologia', (req, res) => {
   res.sendFile(require('path').join(__dirname, 'public', 'metodologia.html'));
 });

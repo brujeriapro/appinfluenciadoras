@@ -91,6 +91,14 @@ const PREGUNTAS = [
 const PERFILES = {
   sin_materia: {
     titulo: 'Tu pauta se está quedando sin material',
+    // Las cifras de referencia van por perfil y son del sector, no de la marca:
+    // decirle "tú estás en 3 y el que crece está en 25" es un espejo, no una
+    // promesa. Todas salen de fuentes citables — nada de múltiplos inventados.
+    cifras: [
+      { n: '20-30', q: 'piezas al mes que produce una marca que escala su pauta' },
+      { n: '+20%', q: 'sube al año lo que cuesta mostrarle tu anuncio a mil personas' },
+      { n: '1 de 3', q: 'anuncios que el sistema descarta antes de gastarte plata: por eso necesita opciones' },
+    ],
     diagnostico:
       'Estás pagando por anuncios pero produces menos de un video por semana. Hoy Instagram y ' +
       'TikTok deciden a quién mostrarle tu anuncio mirando el video, así que con tres piezas el ' +
@@ -106,6 +114,11 @@ const PERFILES = {
 
   eligio_mal: {
     titulo: 'El problema no fue el canal, fue a quién elegiste',
+    cifras: [
+      { n: '88%', q: 'confía más en una persona que en cualquier anuncio (Nielsen)' },
+      { n: '75%', q: 'de las creadoras en Instagram tienen cuentas pequeñas: ahí está la oferta' },
+      { n: '48%', q: 'de las marcas dice que su mayor dolor es saber a quién contratar' },
+    ],
     diagnostico:
       'Probaste con creadoras y no funcionó. Pasa casi siempre por lo mismo: se elige por número ' +
       'de seguidores, y los seguidores dejaron de decidir quién ve un video. Hoy el contenido se ' +
@@ -121,6 +134,11 @@ const PERFILES = {
 
   invisible: {
     titulo: 'Tu producto es bueno, pero casi nadie lo ha visto',
+    cifras: [
+      { n: '80%', q: 'busca la opinión de otra persona antes de comprar, no la de la marca (Edelman)' },
+      { n: '+60%', q: 'subió en cinco años lo que cuesta conseguir un cliente nuevo pagando' },
+      { n: '0', q: 'seguidores necesita hoy un video para llegar lejos: el alcance ya no depende de la cuenta' },
+    ],
     diagnostico:
       'Vendes de boca en boca o sin saber bien de dónde llegan los clientes, y produces muy poco ' +
       'contenido. Eso significa que tu crecimiento depende de que alguien se acuerde de ' +
@@ -136,6 +154,11 @@ const PERFILES = {
 
   escalar: {
     titulo: 'Ya te funciona. El problema es sostenerlo',
+    cifras: [
+      { n: '171%', q: 'creció en 2025 lo que las marcas gastan trabajando con creadoras' },
+      { n: '2 de 3', q: 'marcas movieron para acá plata que antes iba a otros canales' },
+      { n: '10+', q: 'horas al mes se van coordinando, persiguiendo entregas y pagando a mano' },
+    ],
     diagnostico:
       'Trabajas con creadoras y publicas seguido, así que el modelo ya te sirve. Lo que se te ' +
       'está volviendo cuello de botella es la coordinación: encontrar, negociar, perseguir ' +
@@ -151,6 +174,11 @@ const PERFILES = {
 
   mostrar: {
     titulo: 'Lo tuyo se vende mostrándolo, y no lo estás mostrando',
+    cifras: [
+      { n: '88%', q: 'confía más en alguien como ellos que en el anuncio de la marca (Nielsen)' },
+      { n: '3 seg', q: 'tienes para que alguien decida si sigue viendo tu video' },
+      { n: '20-30', q: 'piezas al mes produce una marca que hoy está creciendo en tu categoría' },
+    ],
     diagnostico:
       'Vendes algo que se entiende viéndolo funcionar —una textura, un antes y después, un ' +
       'sabor— y eso no cabe en una foto de producto ni en una descripción. La gente compra ' +
