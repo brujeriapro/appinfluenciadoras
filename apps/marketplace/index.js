@@ -14,7 +14,7 @@ const path = require('path');
 
 const config = require('./config');
 const db = require('./db');
-const { adminAuth } = require('./auth');
+const { adminAuth, rateLimit } = require('./auth');
 const { terminosHTML } = require('./terminos');
 
 const app = express();
