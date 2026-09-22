@@ -197,6 +197,7 @@ app.post('/api/marketplace/campanas/:id/traer', async (req, res) => {
       // Solo las nuevas necesitan que se les escriba.
       por_invitar: resultados.filter(r => r.creada).map(r => ({
         nombre: r.nombre, influencer_id: r.influencer_id, invitacion: r.invitacion,
+        wa: r.wa, invitacion_wa: r.invitacion_wa,
       })),
       detalle: resultados,
     });

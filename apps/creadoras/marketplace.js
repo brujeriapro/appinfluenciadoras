@@ -167,7 +167,48 @@ async function traer(creadora) {
   return {
     ok: true, creada: true, influencer_id: nueva.id,
     invitacion: invitacion(creadora.nombre_publico),
+    // WhatsApp responde mucho más que el correo, pero solo si el número sirve.
+    // Cuando no, la pantalla se queda con el correo y no ofrece un botón roto.
+    wa: telefonoWA(creadora.whatsapp),
+    invitacion_wa: invitacionWA(creadora.nombre_publico),
   };
+}
+
+/**
+ * El número en el formato que entiende wa.me: indicativo pegado y sin símbolos.
+ *
+ * Los celulares colombianos se guardan a diez dígitos empezando por 3, sin
+ * indicativo. Lo que no tenga esa forma devuelve null en vez de adivinar: un
+ * enlace de WhatsApp a un número mal armado abre un chat con un desconocido, y
+ * el mensaje se manda igual.
+ */
+function telefonoWA(whatsapp) {
+  const d = String(whatsapp || '').replace(/\D/g, '');
+  if (/^3\d{9}$/.test(d)) return '57' + d;
+  if (/^573\d{9}$/.test(d)) return d;
+  return null;
+}
+
+/**
+ * La misma invitación, para WhatsApp.
+ *
+ * No es el correo recortado. Dice lo mismo —quiénes somos, de dónde salió su
+ * contacto, qué le ofrecemos y cómo salirse— pero el saludo y el motivo tienen
+ * que caber antes del «ver más», o se lee como un reenvío masivo y no lo abre.
+ */
+function invitacionWA(nombre) {
+  return (
+`Hola ${nombre || ''}! Te escribimos de Brujería Capilar, una marca colombiana de cuidado capilar.
+
+Te encontramos en Creators Manager, donde estás registrada como creadora.
+
+Tenemos un programa donde te mandamos productos sin costo para que los pruebes y, si te gustan, hagas contenido con ellos. No es un trato pago ni tiene obligación: si el producto no te convence, no publicas y no pasa nada.
+
+Si te interesa, déjanos tus datos de envío acá:
+${FORMULARIO}
+
+Si no te interesa, respóndenos y no te volvemos a escribir por este tema.`
+  );
 }
 
 /**
@@ -199,5 +240,6 @@ Si no te interesa, ignora este mensaje y no te volvemos a escribir por este tema
 
 module.exports = {
   campanas, creadorasDeCampana, traer, buscarEnPrograma, invitacion,
+  invitacionWA, telefonoWA,
   MARCA_ID, FORMULARIO, ESTADO_INICIAL,
 };

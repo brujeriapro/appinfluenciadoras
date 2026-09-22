@@ -247,9 +247,19 @@ Rutas (`index.js`, detrás de `adminAuth` como todo el panel):
 - ⚠️ **Solo trae a las que aceptaron o confirmaron.** A quien apenas fue invitada
   y no contestó no se le manda un kit.
 - ⚠️ **No copia en silencio y no manda nada.** Nacen como `Prospectada` y la
-  pantalla devuelve el texto de la invitación para copiarlo a mano. Para
+  pantalla devuelve el texto de la invitación para mandarlo a mano. Para
   despachar un kit hace falta la dirección de envío, que el marketplace no pide
   nunca — por eso la invitación lleva al formulario de Tally.
+- **Dos canales, y WhatsApp primero.** 433 de las 434 creadoras visibles tienen
+  celular, y en Colombia contesta mucho más que el correo. La pantalla arma un
+  enlace `wa.me` con el mensaje ya escrito (`invitacionWA`, texto propio y no el
+  correo recortado); el correo queda de respaldo. `telefonoWA()` devuelve `null`
+  a lo que no tenga forma de celular colombiano en vez de adivinar: un enlace
+  mal armado abre el chat de un desconocido y el mensaje sale igual.
+- ⚠️ **Sale del WhatsApp de una persona, no de la API de Meta.** No hay plantilla
+  aprobada de por medio, así que hay que ir en tandas: muchos mensajes seguidos a
+  números que no nos tienen agendados terminan en reportes y en el número
+  bloqueado.
 - ⚠️ **La invitación dice que somos otra marca y de dónde salió su contacto.**
   Ella se registró en Creators Manager, no en Brujería: un mensaje de una marca
   desconocida al correo que dio para otra cosa quema la confianza en las dos.

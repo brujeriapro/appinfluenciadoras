@@ -2411,8 +2411,10 @@
               {invitaciones.length > 0 && (
                 <div>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-                    Ninguna invitación se mandó. Copia cada una y envíala tú: el texto le dice que
-                    somos otra marca y de dónde salió su contacto, y la manda a completar la dirección de envío.
+                    Ninguna invitación se mandó. Envíalas tú: el texto le dice que somos otra marca
+                    y de dónde salió su contacto, y la manda a completar la dirección de envío.
+                    <strong style={{ color: 'var(--text)' }}> Por WhatsApp responden mucho más que por correo</strong> —
+                    el botón verde abre el chat con el mensaje ya escrito, solo tienes que darle enviar.
                   </p>
                   {invitaciones.map(d => {
                     const texto = `${d.invitacion.asunto}\n\n${d.invitacion.cuerpo}`;
@@ -2423,11 +2425,25 @@
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
                           <strong style={{ fontSize: 13 }}>{d.nombre}</strong>
                           {correo && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{correo}</span>}
-                          <button className="btn btn-secondary btn-sm" style={{ marginLeft: 'auto' }}
-                            onClick={() => copiar(texto, d.creadora_id)}>
-                            {copiada === d.creadora_id ? '✓ Copiada' : 'Copiar'}
-                          </button>
+                          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                            {d.wa && (
+                              <a className="btn btn-sm" href={`https://wa.me/${d.wa}?text=${encodeURIComponent(d.invitacion_wa)}`}
+                                target="_blank" rel="noopener noreferrer"
+                                style={{ background: '#25D366', color: '#0b1a10', fontWeight: 600, textDecoration: 'none' }}>
+                                Abrir WhatsApp
+                              </a>
+                            )}
+                            <button className="btn btn-secondary btn-sm"
+                              onClick={() => copiar(texto, d.creadora_id)}>
+                              {copiada === d.creadora_id ? '✓ Copiado' : 'Copiar correo'}
+                            </button>
+                          </div>
                         </div>
+                        {!d.wa && (
+                          <div style={{ fontSize: 11, color: 'var(--yellow)', marginBottom: 8 }}>
+                            Sin WhatsApp válido — a esta toca escribirle por correo.
+                          </div>
+                        )}
                         <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{d.invitacion.asunto}</div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
                           {d.invitacion.cuerpo}
