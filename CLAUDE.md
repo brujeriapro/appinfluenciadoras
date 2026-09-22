@@ -228,6 +228,39 @@ Web app (Node.js + Express + React CDN) para administrar el Programa Creadoras. 
 | Contenidos | Todas las piezas entregadas con scores y links |
 | ROI | Selector de período: ventas Shopify vs costo kits → ROI global del programa |
 | Portal Influencer (`/influencer`) | Landing pública, login (email+contraseña), dashboard personal con nivel de Magia, progreso, contenidos y ventas |
+| Creators Manager | Trae al Programa las creadoras que aceptaron una campaña de Brujería en el marketplace (ver abajo) |
+
+### El puente con Creators Manager
+
+Brujería usa Creators Manager **como cualquier otra marca**: crea su campaña e
+invita creadoras allá. El Programa lee lo que quedó vinculado. La pieza vive en
+`apps/creadoras/marketplace.js`, no en el marketplace — y eso es lo que la hace
+funcionar: si el panel de Creators Manager tuviera un botón de "mandar al
+Programa Creadoras", sería funcionalidad de una sola clienta metida en el
+producto de todas. Invirtiendo la dirección, el marketplace no se entera. Las
+dos apps comparten la base de Supabase, así que leer no cuesta nada.
+
+Rutas (`index.js`, detrás de `adminAuth` como todo el panel):
+`GET /api/marketplace/campanas`, `GET /api/marketplace/campanas/:id/creadoras`,
+`POST /api/marketplace/campanas/:id/traer`.
+
+- ⚠️ **Solo trae a las que aceptaron o confirmaron.** A quien apenas fue invitada
+  y no contestó no se le manda un kit.
+- ⚠️ **No copia en silencio y no manda nada.** Nacen como `Prospectada` y la
+  pantalla devuelve el texto de la invitación para copiarlo a mano. Para
+  despachar un kit hace falta la dirección de envío, que el marketplace no pide
+  nunca — por eso la invitación lleva al formulario de Tally.
+- ⚠️ **La invitación dice que somos otra marca y de dónde salió su contacto.**
+  Ella se registró en Creators Manager, no en Brujería: un mensaje de una marca
+  desconocida al correo que dio para otra cosa quema la confianza en las dos.
+- ⚠️ **Busca duplicados en el mismo orden que el webhook de Tally** (correo →
+  Instagram → TikTok → teléfono). Si buscara distinto, la misma persona podría
+  no encontrarse acá y sí al llenar el formulario, y quedaría registrada dos
+  veces.
+- `MK_MARCA_ID` es el id de Brujería como marca en el marketplace
+  (`310fde10-f81c-45da-b66a-883ada6423c9`, cuenta `brujeriapro@gmail.com`, tope
+  de 200 propuestas/mes). Si el id no cuadra, la pantalla se ve vacía sin
+  explicar por qué.
 
 ### Stack
 
