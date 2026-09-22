@@ -251,15 +251,24 @@ Rutas (`index.js`, detrás de `adminAuth` como todo el panel):
   despachar un kit hace falta la dirección de envío, que el marketplace no pide
   nunca — por eso la invitación lleva al formulario de Tally.
 - **Dos canales, y WhatsApp primero.** 433 de las 434 creadoras visibles tienen
-  celular, y en Colombia contesta mucho más que el correo. La pantalla arma un
-  enlace `wa.me` con el mensaje ya escrito (`invitacionWA`, texto propio y no el
-  correo recortado); el correo queda de respaldo. `telefonoWA()` devuelve `null`
-  a lo que no tenga forma de celular colombiano en vez de adivinar: un enlace
-  mal armado abre el chat de un desconocido y el mensaje sale igual.
-- ⚠️ **Sale del WhatsApp de una persona, no de la API de Meta.** No hay plantilla
-  aprobada de por medio, así que hay que ir en tandas: muchos mensajes seguidos a
-  números que no nos tienen agendados terminan en reportes y en el número
-  bloqueado.
+  celular, y en Colombia contesta mucho más que el correo. `POST
+  /api/marketplace/invitar-wa` manda la plantilla `invitacion_creators_manager`
+  a las que se acaban de traer; el correo queda de respaldo.
+- ⚠️ **La plantilla la tiene que aprobar Meta y todavía no existe.** Texto exacto
+  y pasos: [apps/creadoras/PLANTILLA-WHATSAPP-MARKETPLACE.md](apps/creadoras/PLANTILLA-WHATSAPP-MARKETPLACE.md).
+  Mientras no esté, la pantalla ofrece un enlace `wa.me` con el mensaje escrito
+  (`invitacionWA`) para mandarlo a mano — y ese camino sale de un número
+  personal, así que va en tandas chicas.
+- ⚠️ **Los teléfonos del envío se leen de la base por id, nunca del navegador.**
+  Un endpoint que acepta a qué número escribir es un endpoint para mandarle lo
+  que sea a quien sea. `telefonoWA()` devuelve `null` a lo que no tenga forma de
+  celular colombiano en vez de adivinar.
+- **No se manda dos veces:** queda en `notificaciones_enviadas` con el nombre de
+  la plantilla y el envío salta a quien ya lo recibió. Tope por tanda en
+  `MK_WA_TOPE_TANDA` (30).
+- ⚠️ **Nadie lee las respuestas.** El mensaje promete que quien responda SALIR no
+  recibe más y no hay webhook de WhatsApp entrante: hay que revisar la bandeja a
+  mano después de cada tanda.
 - ⚠️ **La invitación dice que somos otra marca y de dónde salió su contacto.**
   Ella se registró en Creators Manager, no en Brujería: un mensaje de una marca
   desconocida al correo que dio para otra cosa quema la confianza en las dos.

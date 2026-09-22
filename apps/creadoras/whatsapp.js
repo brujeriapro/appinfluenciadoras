@@ -190,6 +190,20 @@ async function enviarAcuerdo(influencer) {
   return enviarTemplate(influencer.telefono, 'acuerdo_creadoras_brujeria', [nombre], influencer.id);
 }
 
+// Invitación a las creadoras que vienen de Creators Manager
+// Template: invitacion_creators_manager · Variables: {{1}} nombre
+// Botón URL estático → formulario de registro (Tally)
+//
+// ⚠️ Es una plantilla aparte y no se puede reusar otra. Meta aprueba cada texto
+// por separado, y esta tiene que decir dos cosas que ninguna otra dice: que
+// somos una marca que ella no conoce, y de dónde sacamos su número. Sin eso el
+// mensaje se lee como spam y lo reportan — y los reportes se los cobra el
+// número entero, no este envío.
+async function enviarInvitacionMarketplace(telefono, nombre) {
+  const primerNombre = nombre?.split(' ')[0] || nombre || 'creadora';
+  return enviarTemplate(telefono, 'invitacion_creators_manager', [primerNombre]);
+}
+
 // Onboarding Día 0 — el regalo va en camino (se envía al crear el pedido)
 // Template: regalo_en_camino_brujeria · Variables: {{1}} nombre · Botón URL estático → /guia-ugc
 async function enviarRegaloEnCamino(influencer) {
@@ -262,4 +276,5 @@ module.exports = {
   enviarCierreQuincena,
   enviarCuponSinUsar,
   enviarRecordarCodigoReportar,
+  enviarInvitacionMarketplace,
 };

@@ -9,7 +9,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido, enviarResetPassword } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida, enviarUGCConfirmacionRegistro, enviarAcuerdo, enviarRegaloEnCamino, enviarRegaloLlego, enviarIdeasVideo, enviarChecklistPublicar, enviarVenderMas, enviarCierreQuincena, enviarCuponSinUsar, enviarRecordarCodigoReportar } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida, enviarUGCConfirmacionRegistro, enviarAcuerdo, enviarRegaloEnCamino, enviarRegaloLlego, enviarIdeasVideo, enviarChecklistPublicar, enviarVenderMas, enviarCierreQuincena, enviarCuponSinUsar, enviarRecordarCodigoReportar, enviarInvitacionMarketplace } = require('./whatsapp');
 const acuerdo = require('./acuerdo');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
@@ -203,6 +203,69 @@ app.post('/api/marketplace/campanas/:id/traer', async (req, res) => {
     });
   } catch (e) {
     console.error('[marketplace/traer]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Manda la invitación por WhatsApp a las que se acaban de traer.
+ *
+ * Se manda por plantilla aprobada de Meta y no por un enlace wa.me, que era lo
+ * que había antes: un enlace obliga a una persona a darle enviar una por una, y
+ * los mensajes salen de un número personal. Con plantilla salen solos y con las
+ * reglas de Meta de por medio.
+ *
+ * ⚠️ Los teléfonos NO vienen del navegador: se leen de la base con el id. Un
+ * endpoint que acepta a qué número escribir es un endpoint para mandar lo que
+ * sea a quien sea.
+ */
+app.post('/api/marketplace/invitar-wa', async (req, res) => {
+  const PLANTILLA = 'invitacion_creators_manager';
+  try {
+    const ids = Array.isArray(req.body?.influencer_ids) ? req.body.influencer_ids : [];
+    if (!ids.length) return res.status(400).json({ error: 'No llegó a quién escribirle' });
+
+    // Tope por tanda. Meta cuenta destinatarios únicos en 24 h y una cuenta
+    // joven que dispara cien mensajes de golpe se gana una revisión de calidad.
+    const TOPE = Number(process.env.MK_WA_TOPE_TANDA || 30);
+    if (ids.length > TOPE) {
+      return res.status(400).json({
+        error: `Son ${ids.length} y el tope por tanda es ${TOPE}. Manda las primeras ${TOPE} y sigue en un rato.`,
+      });
+    }
+
+    const resultados = [];
+    for (const id of ids) {
+      const inf = await supabase.getInfluencerById(id).catch(() => null);
+      if (!inf)          { resultados.push({ id, ok: false, motivo: 'no está en el Programa' }); continue; }
+      if (!inf.telefono) { resultados.push({ id, nombre: inf.nombre, ok: false, motivo: 'no tiene celular' }); continue; }
+
+      // Que un doble clic no le mande dos veces el mismo mensaje.
+      if (await supabase.yaEnviadoTemplate(id, PLANTILLA).catch(() => false)) {
+        resultados.push({ id, nombre: inf.nombre, ok: false, motivo: 'ya se le había mandado' });
+        continue;
+      }
+
+      try {
+        const r = await enviarInvitacionMarketplace(inf.telefono, inf.nombre);
+        if (r?.skipped) {
+          resultados.push({ id, nombre: inf.nombre, ok: false, motivo: 'WhatsApp no está configurado o el número no sirve' });
+          continue;
+        }
+        await supabase.registrarNotificacion(id, PLANTILLA, 'marketplace').catch(() => {});
+        resultados.push({ id, nombre: inf.nombre, ok: true });
+      } catch (e) {
+        resultados.push({ id, nombre: inf.nombre, ok: false, motivo: e.message });
+      }
+    }
+
+    res.json({
+      enviados: resultados.filter(r => r.ok).length,
+      fallidos: resultados.filter(r => !r.ok).length,
+      detalle: resultados,
+    });
+  } catch (e) {
+    console.error('[marketplace/invitar-wa]', e.message);
     res.status(500).json({ error: e.message });
   }
 });

@@ -2213,6 +2213,8 @@
       const [trayendo, setTrayendo]           = useState(false);
       const [resultado, setResultado]         = useState(null);
       const [copiada, setCopiada]             = useState(null);
+      const [mandandoWA, setMandandoWA]       = useState(false);
+      const [envioWA, setEnvioWA]             = useState(null);
 
       useEffect(() => {
         API('/api/marketplace/campanas')
@@ -2223,7 +2225,7 @@
 
       async function abrirCampana(id) {
         setCampanaId(id);
-        setDatos(null); setResultado(null); setMarcadas(new Set()); setError(null);
+        setDatos(null); setResultado(null); setMarcadas(new Set()); setError(null); setEnvioWA(null);
         if (!id) return;
         setCargandoLista(true);
         try {
@@ -2260,6 +2262,18 @@
           setMarcadas(new Set());
         } catch (e) { setError(e.message); }
         setTrayendo(false);
+      }
+
+      async function mandarWA() {
+        const ids = invitaciones.filter(d => d.wa).map(d => d.influencer_id);
+        if (!ids.length) return;
+        if (!confirm(`Se le va a mandar la invitación por WhatsApp a ${ids.length} creadora${ids.length>1?'s':''}. ¿Seguimos?`)) return;
+        setMandandoWA(true);
+        try {
+          const r = await POSTJSON('/api/marketplace/invitar-wa', { influencer_ids: ids });
+          setEnvioWA(r);
+        } catch (e) { setError(e.message); }
+        setMandandoWA(false);
       }
 
       async function copiar(texto, clave) {
@@ -2411,10 +2425,44 @@
               {invitaciones.length > 0 && (
                 <div>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-                    Ninguna invitación se mandó. Envíalas tú: el texto le dice que somos otra marca
+                    Todavía no se les ha mandado nada. El texto le dice que somos otra marca
                     y de dónde salió su contacto, y la manda a completar la dirección de envío.
-                    <strong style={{ color: 'var(--text)' }}> Por WhatsApp responden mucho más que por correo</strong> —
-                    el botón verde abre el chat con el mensaje ya escrito, solo tienes que darle enviar.
+                  </p>
+
+                  {/* El camino normal: sale solo, por plantilla aprobada de Meta. */}
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 14,
+                                marginBottom: 16, background: 'var(--bg2)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>
+                        Mandar la invitación por WhatsApp
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, marginTop: 2 }}>
+                          {invitaciones.filter(d => d.wa).length} con celular · responden mucho más que por correo
+                        </div>
+                      </div>
+                      <button className="btn btn-sm" style={{ marginLeft: 'auto', background: '#25D366', color: '#0b1a10', fontWeight: 600 }}
+                        onClick={mandarWA} disabled={mandandoWA || !invitaciones.some(d => d.wa) || Boolean(envioWA)}>
+                        {mandandoWA ? 'Mandando…' : envioWA ? 'Ya se mandaron' : `Mandar a ${invitaciones.filter(d => d.wa).length}`}
+                      </button>
+                    </div>
+
+                    {envioWA && (
+                      <div style={{ marginTop: 12, fontSize: 12 }}>
+                        <div style={{ color: 'var(--green)', fontWeight: 600 }}>
+                          Enviados: {envioWA.enviados}
+                          {envioWA.fallidos > 0 && <span style={{ color: 'var(--yellow)' }}> · No salieron: {envioWA.fallidos}</span>}
+                        </div>
+                        {envioWA.detalle.filter(r => !r.ok).map(r => (
+                          <div key={r.id} style={{ color: 'var(--text-muted)', marginTop: 4 }}>
+                            <strong>{r.nombre || r.id}</strong> — {r.motivo}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12 }}>
+                    Si el envío automático falla, cada recuadro trae abajo el botón verde para abrir
+                    el chat a mano, y el correo como último recurso.
                   </p>
                   {invitaciones.map(d => {
                     const texto = `${d.invitacion.asunto}\n\n${d.invitacion.cuerpo}`;
