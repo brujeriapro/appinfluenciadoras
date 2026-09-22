@@ -2192,6 +2192,257 @@
       );
     }
 
+    // ── CREATORS MANAGER ──────────────────────────────────────────
+    //
+    // Brujería usa Creators Manager como cualquier otra marca: crea su campaña
+    // e invita creadoras allá. Acá se leen las que quedaron vinculadas y se
+    // traen al Programa.
+    //
+    // Traerlas NO les manda nada. Nacen como «Prospectada» y la pantalla
+    // devuelve el texto de la invitación para que alguien lo lea antes de que
+    // salga: son dos marcas distintas, y para despachar un kit hace falta la
+    // dirección de envío, que el marketplace no pide nunca.
+    function CreatorsManager() {
+      const [campanas, setCampanas]           = useState([]);
+      const [campanaId, setCampanaId]         = useState('');
+      const [datos, setDatos]                 = useState(null);
+      const [cargando, setCargando]           = useState(true);
+      const [cargandoLista, setCargandoLista] = useState(false);
+      const [error, setError]                 = useState(null);
+      const [marcadas, setMarcadas]           = useState(new Set());
+      const [trayendo, setTrayendo]           = useState(false);
+      const [resultado, setResultado]         = useState(null);
+      const [copiada, setCopiada]             = useState(null);
+
+      useEffect(() => {
+        API('/api/marketplace/campanas')
+          .then(setCampanas)
+          .catch(e => setError(e.message))
+          .finally(() => setCargando(false));
+      }, []);
+
+      async function abrirCampana(id) {
+        setCampanaId(id);
+        setDatos(null); setResultado(null); setMarcadas(new Set()); setError(null);
+        if (!id) return;
+        setCargandoLista(true);
+        try {
+          const d = await API(`/api/marketplace/campanas/${id}/creadoras`);
+          setDatos(d);
+          // Vienen marcadas las que faltan: es lo que se quiere hacer casi
+          // siempre, y desmarcar una es más fácil que marcar veinte.
+          setMarcadas(new Set(d.creadoras.filter(c => !c.ya_en_programa).map(c => c.id)));
+        } catch (e) { setError(e.message); }
+        setCargandoLista(false);
+      }
+
+      function alternar(id) {
+        setMarcadas(prev => {
+          const s = new Set(prev);
+          if (s.has(id)) s.delete(id); else s.add(id);
+          return s;
+        });
+      }
+
+      async function traer() {
+        if (!marcadas.size) return;
+        setTrayendo(true); setError(null);
+        try {
+          const r = await POSTJSON(`/api/marketplace/campanas/${campanaId}/traer`,
+            { creadora_ids: [...marcadas] });
+          setResultado(r);
+          // Las que entraron dejan de aparecer como pendientes, sin recargar.
+          const entraron = new Set(r.detalle.filter(d => d.ok).map(d => d.creadora_id));
+          setDatos(prev => prev && {
+            ...prev,
+            creadoras: prev.creadoras.map(c => entraron.has(c.id) ? { ...c, ya_en_programa: true } : c),
+          });
+          setMarcadas(new Set());
+        } catch (e) { setError(e.message); }
+        setTrayendo(false);
+      }
+
+      async function copiar(texto, clave) {
+        try {
+          await navigator.clipboard.writeText(texto);
+          setCopiada(clave);
+          setTimeout(() => setCopiada(null), 1800);
+        } catch (e) { alert('No se pudo copiar. Selecciona el texto a mano.'); }
+      }
+
+      const emailDe = (creadora_id) => {
+        const c = datos && datos.creadoras.find(x => x.id === creadora_id);
+        return c ? c.email : null;
+      };
+
+      const nuevas = datos ? datos.creadoras.filter(c => !c.ya_en_programa) : [];
+      const invitaciones = resultado ? resultado.detalle.filter(d => d.creada && d.invitacion) : [];
+
+      if (cargando) return <div className="loading">Cargando campañas de Creators Manager...</div>;
+
+      return (
+        <div>
+          <h1>Creators Manager</h1>
+          <p className="page-subtitle">
+            Las creadoras que aceptaron una campaña de Brujería en el marketplace, para traerlas al Programa.
+          </p>
+
+          {error && <div className="error-msg" style={{ marginBottom: 16 }}>{error}</div>}
+
+          {campanas.length === 0 ? (
+            <div className="empty-state" style={{ padding: 40 }}>
+              Brujería todavía no tiene campañas en Creators Manager. Créala allá y vuelve acá cuando alguien haya aceptado.
+            </div>
+          ) : (
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Campaña</label>
+              <select value={campanaId} onChange={e => abrirCampana(e.target.value)}
+                style={{ fontSize: 13, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)',
+                         background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer', minWidth: 320 }}>
+                <option value="">Elige una campaña...</option>
+                {campanas.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre} · {c.estado}{c.cupos ? ` · ${c.cupos} cupos` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {cargandoLista && <div className="loading">Cargando creadoras...</div>}
+
+          {datos && !cargandoLista && (
+            <div>
+              <div className="stat-grid" style={{ marginBottom: 20 }}>
+                <StatCard label="Aceptaron la campaña" value={datos.total} />
+                <StatCard label="Ya en el Programa" color="green"
+                  value={datos.creadoras.filter(c => c.ya_en_programa).length} />
+                <StatCard label="Faltan por traer" color="gold" value={nuevas.length} />
+              </div>
+
+              {datos.total === 0 ? (
+                <div className="empty-state" style={{ padding: 40 }}>
+                  Nadie ha aceptado esta campaña todavía. Solo se traen las que aceptaron o confirmaron —
+                  a quien apenas fue invitada y no contestó no se le manda un kit.
+                </div>
+              ) : (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
+                    <button className="btn btn-secondary btn-sm"
+                      onClick={() => setMarcadas(new Set(nuevas.map(c => c.id)))}
+                      disabled={!nuevas.length}>Marcar todas</button>
+                    <button className="btn btn-secondary btn-sm"
+                      onClick={() => setMarcadas(new Set())}
+                      disabled={!marcadas.size}>Quitar marcas</button>
+                    <button className="btn btn-primary btn-sm" style={{ marginLeft: 'auto' }}
+                      onClick={traer} disabled={!marcadas.size || trayendo}>
+                      {trayendo ? 'Trayendo...' : `Traer al Programa (${marcadas.size})`}
+                    </button>
+                  </div>
+
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th style={{ width: 36 }}></th>
+                          <th>Creadora</th>
+                          <th>Redes</th>
+                          <th>Ciudad</th>
+                          <th>Contacto</th>
+                          <th>En el Programa</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {datos.creadoras.map(c => (
+                          <tr key={c.id}>
+                            <td>
+                              <input type="checkbox" checked={marcadas.has(c.id)}
+                                disabled={c.ya_en_programa}
+                                onChange={() => alternar(c.id)}
+                                style={{ cursor: c.ya_en_programa ? 'default' : 'pointer' }} />
+                            </td>
+                            <td style={{ fontWeight: 500 }}>
+                              <div>{c.nombre_publico || '—'}</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.codigo || ''}</div>
+                            </td>
+                            <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                              {c.instagram ? <div>IG @{String(c.instagram).replace('@', '')}</div> : null}
+                              {c.tiktok ? <div>TT @{String(c.tiktok).replace('@', '')}</div> : null}
+                              {!c.instagram && !c.tiktok ? '—' : null}
+                            </td>
+                            <td className="td-muted" style={{ fontSize: 12 }}>{c.ciudad || '—'}</td>
+                            <td style={{ fontSize: 11 }}>
+                              {c.email
+                                ? <div className="td-muted">{c.email}</div>
+                                : <div style={{ color: 'var(--yellow)' }}>sin correo</div>}
+                              {c.whatsapp ? <div className="td-muted">{c.whatsapp}</div> : null}
+                            </td>
+                            <td style={{ fontSize: 12 }}>
+                              {c.ya_en_programa
+                                ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>Sí</span>
+                                : <span style={{ color: 'var(--text-muted)' }}>No</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {resultado && (
+            <div style={{ marginTop: 28 }}>
+              <h2 style={{ fontSize: 16, marginBottom: 4 }}>Resultado</h2>
+              <p className="page-subtitle">
+                {resultado.creadas} nuevas · {resultado.ya_estaban} ya estaban · {resultado.fallidas} no se pudieron
+              </p>
+
+              {resultado.fallidas > 0 && (
+                <div style={{ background: 'rgba(234,179,8,0.10)', border: '1px solid var(--yellow)',
+                              borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 12 }}>
+                  {resultado.detalle.filter(d => !d.ok).map(d => (
+                    <div key={d.creadora_id}><strong>{d.nombre}</strong> — {d.motivo}</div>
+                  ))}
+                </div>
+              )}
+
+              {invitaciones.length > 0 && (
+                <div>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                    Ninguna invitación se mandó. Copia cada una y envíala tú: el texto le dice que
+                    somos otra marca y de dónde salió su contacto, y la manda a completar la dirección de envío.
+                  </p>
+                  {invitaciones.map(d => {
+                    const texto = `${d.invitacion.asunto}\n\n${d.invitacion.cuerpo}`;
+                    const correo = emailDe(d.creadora_id);
+                    return (
+                      <div key={d.creadora_id} style={{ border: '1px solid var(--border)', borderRadius: 8,
+                                                        padding: 14, marginBottom: 12, background: 'var(--bg2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
+                          <strong style={{ fontSize: 13 }}>{d.nombre}</strong>
+                          {correo && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{correo}</span>}
+                          <button className="btn btn-secondary btn-sm" style={{ marginLeft: 'auto' }}
+                            onClick={() => copiar(texto, d.creadora_id)}>
+                            {copiada === d.creadora_id ? '✓ Copiada' : 'Copiar'}
+                          </button>
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{d.invitacion.asunto}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                          {d.invitacion.cuerpo}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
     // ── APP ROOT ──────────────────────────────────────────────────
     function App() {
       const [view, setView] = useState('dashboard');
@@ -2215,6 +2466,7 @@
             <button className={view === 'candidatas' ? 'active' : ''} onClick={() => navigate('candidatas')}>Candidatas TikTok</button>
             <button className={view === 'seguimiento' ? 'active' : ''} onClick={() => navigate('seguimiento')}>📋 Seguimiento</button>
             <button className={view === 'ugc' ? 'active' : ''} onClick={() => navigate('ugc')} style={{color:'var(--gold)'}}>💰 UGC</button>
+            <button className={view === 'creators-manager' ? 'active' : ''} onClick={() => navigate('creators-manager')} style={{color:'var(--purple-light)'}}>[C] Creators Manager</button>
           </nav>
           <main>
             {view === 'dashboard' && <Dashboard onNavigate={navigate} />}
@@ -2227,6 +2479,7 @@
             {view === 'candidatas' && <Candidatas />}
             {view === 'seguimiento' && <SeguimientoUGC />}
             {view === 'ugc' && <UGC />}
+            {view === 'creators-manager' && <CreatorsManager />}
           </main>
         </div>
       );
