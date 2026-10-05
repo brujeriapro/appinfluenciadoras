@@ -291,6 +291,18 @@ app.get('/api/seguimiento/deben-contenido', async (req, res) => {
         .catch(() => [])).map(n => n.influencer_id)
     );
 
+    // A quién ya le escribió una persona desde esta pantalla, y cuándo. Con 189
+    // creadoras y varios días de revisión, sin esto se le escribe dos veces a la
+    // misma — que es justo lo que molesta a quien ya contestó.
+    const contactos = new Map();
+    for (const n of await supabase.supabaseGet('notificaciones_enviadas', {
+      template_name: 'eq.seguimiento_manual',
+      select: 'influencer_id,fecha_envio',
+    }).catch(() => [])) {
+      const previa = contactos.get(n.influencer_id);
+      if (!previa || n.fecha_envio > previa) contactos.set(n.influencer_id, n.fecha_envio);
+    }
+
     const hoy = Date.now();
     const filas = todas.map(inf => {
       const dias = inf.fecha_envio
@@ -306,6 +318,10 @@ app.get('/api/seguimiento/deben-contenido', async (req, res) => {
         fecha_envio: inf.fecha_envio || null,
         dias_desde_envio: dias,
         ya_recordada: yaRecordadas.has(inf.id),
+        contactada_at: contactos.get(inf.id) || null,
+        dias_desde_contacto: contactos.get(inf.id)
+          ? Math.floor((hoy - new Date(contactos.get(inf.id)).getTime()) / 86400000)
+          : null,
         // Sin fecha de envío no se puede saber hace cuánto se le mandó: son
         // casos a revisar a mano, no a perseguir.
         sin_fecha: !inf.fecha_envio,
@@ -334,7 +350,25 @@ app.get('/api/seguimiento/deben-contenido', async (req, res) => {
   }
 });
 
-/** Deja de esperar contenido de alguien: pasa a Descartada con el motivo. */
+/** Deja constancia de que una persona le escribió a mano desde el panel. */
+app.post('/api/seguimiento/:id/contactada', async (req, res) => {
+  try {
+    await supabase.registrarNotificacion(req.params.id, 'seguimiento_manual', 'panel');
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[seguimiento/contactada]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Deja de esperar contenido de alguien: pasa a Descartada con el motivo.
+ *
+ * ⚠️ SIN BOTÓN EN EL PANEL por decisión de María (5-oct-2026): por ahora no se
+ * descarta a nadie, solo se registra quién publicó o se le insiste. La ruta se
+ * conserva para cuando se decida depurar la lista; para volver a exponerla basta
+ * con devolver el botón a la pantalla.
+ */
 app.post('/api/seguimiento/:id/cerrar', async (req, res) => {
   try {
     const motivo = String(req.body?.motivo || 'No entregó contenido').slice(0, 200);

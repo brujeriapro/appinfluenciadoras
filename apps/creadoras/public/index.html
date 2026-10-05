@@ -2518,7 +2518,7 @@
       const [cargando, setCargando] = useState(true);
       const [error, setError]     = useState(null);
       const [tramo, setTramo]     = useState('todas');
-      const [cerrando, setCerrando] = useState(null);
+      const [escribiendo, setEscribiendo] = useState(null);
 
       useEffect(() => { cargar(); }, []);
 
@@ -2527,18 +2527,6 @@
         try { setDatos(await API('/api/seguimiento/deben-contenido')); }
         catch (e) { setError(e.message); }
         setCargando(false);
-      }
-
-      async function cerrar(c) {
-        if (!confirm(`¿Dejar de esperar contenido de ${c.nombre}?\n\nPasa a "Descartada" y sale de esta lista. No se le escribe nada.`)) return;
-        setCerrando(c.id);
-        try {
-          await POSTJSON(`/api/seguimiento/${c.id}/cerrar`, {
-            motivo: `No entregó contenido tras ${c.dias_desde_envio ?? '?'} días`,
-          });
-          setDatos(prev => ({ ...prev, creadoras: prev.creadoras.filter(x => x.id !== c.id) }));
-        } catch (e) { alert('Error: ' + e.message); }
-        setCerrando(null);
       }
 
       // Revisión manual: muchas publicaron y nunca lo reportaron, así que el
@@ -2570,15 +2558,31 @@
 
       // El mensaje ya escrito, para no redactarlo 148 veces. Se abre en WhatsApp
       // y la persona lo revisa antes de enviar: no sale nada solo.
-      function escribirWA(c) {
+      async function escribirWA(c) {
         const tel = String(c.telefono || '').replace(/\D/g, '');
         if (!tel) return alert('Esta creadora no tiene teléfono registrado.');
         const nombre = (c.nombre || '').split(' ')[0];
-        const texto =
-          `Hola ${nombre} 💜 ¿cómo vas con el kit que te enviamos?\n\n` +
-          `No es afán — queremos saber si lo pudiste probar y si te gustó. ` +
-          `Si necesitas ideas para el contenido o algo no te funcionó, cuéntanos y te ayudamos.`;
+        const texto = c.contactada_at
+          ? `Hola ${nombre} 💜 te escribimos hace unos días por el kit que te enviamos.\n\n` +
+            `¿Alcanzaste a probarlo? Si necesitas ideas para el contenido o algo no te funcionó, ` +
+            `cuéntanos y te ayudamos — sin afán.`
+          : `Hola ${nombre} 💜 ¿cómo vas con el kit que te enviamos?\n\n` +
+            `No es afán — queremos saber si lo pudiste probar y si te gustó. ` +
+            `Si necesitas ideas para el contenido o algo no te funcionó, cuéntanos y te ayudamos.`;
         window.open(`https://wa.me/${tel.length === 10 ? '57' + tel : tel}?text=${encodeURIComponent(texto)}`, '_blank');
+
+        // Deja constancia de que alguien ya le insistió. Con 189 creadoras y
+        // varios días de revisión, sin esto se le escribe dos veces a la misma.
+        setEscribiendo(c.id);
+        try {
+          await POSTJSON(`/api/seguimiento/${c.id}/contactada`, {});
+          setDatos(prev => ({
+            ...prev,
+            creadoras: prev.creadoras.map(x =>
+              x.id === c.id ? { ...x, contactada_at: new Date().toISOString(), dias_desde_contacto: 0 } : x),
+          }));
+        } catch (_) { /* el mensaje ya se abrió: no vale la pena alarmar por el registro */ }
+        setEscribiendo(null);
       }
 
       if (cargando) return <div className="loading">Cargando...</div>;
@@ -2618,6 +2622,8 @@
             Esta lista dice quién no ha reportado, no quién no ha publicado. Para revisarlas:
             abre <strong>Ver IG</strong>, mira si hay contenido de la marca, y si lo hay dale a{' '}
             <strong>Sí publicó</strong> y pega el link — queda registrado y sale de la lista.
+            Si no publicó, <strong>Escribirle</strong> abre WhatsApp con un mensaje listo y deja
+            constancia, para que nadie le escriba dos veces.
           </div>
 
           <div className="stat-grid" style={{ marginBottom: 20 }}>
@@ -2645,7 +2651,7 @@
               <thead>
                 <tr>
                   <th>Creadora</th><th>Hace</th><th>¿Ya se le recordó?</th>
-                  <th>Contacto</th><th>Acciones</th>
+                  <th>¿Le escribimos?</th><th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -2665,8 +2671,12 @@
                         ? <span style={{ color: 'var(--text-muted)' }}>sí, y no publicó</span>
                         : <span style={{ color: 'var(--gold)', fontWeight: 600 }}>todavía no</span>}
                     </td>
-                    <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                      {c.telefono || '—'}
+                    <td style={{ fontSize: 12 }}>
+                      {c.contactada_at
+                        ? <span style={{ color: 'var(--green)', fontWeight: 600 }}>
+                            {c.dias_desde_contacto === 0 ? 'hoy' : `hace ${c.dias_desde_contacto} d`}
+                          </span>
+                        : <span style={{ color: 'var(--text-muted)' }}>todavía no</span>}
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -2679,12 +2689,8 @@
                           Sí publicó
                         </button>
                         <button className="btn btn-sm" style={{ background: '#25D366', color: '#0b1a10', fontWeight: 600 }}
-                          onClick={() => escribirWA(c)} disabled={!c.telefono}>
-                          Escribirle
-                        </button>
-                        <button className="btn btn-secondary btn-sm"
-                          onClick={() => cerrar(c)} disabled={cerrando === c.id}>
-                          {cerrando === c.id ? '...' : 'Ya no la espero'}
+                          onClick={() => escribirWA(c)} disabled={!c.telefono || escribiendo === c.id}>
+                          {c.contactada_at ? 'Insistir' : 'Escribirle'}
                         </button>
                       </div>
                     </td>
