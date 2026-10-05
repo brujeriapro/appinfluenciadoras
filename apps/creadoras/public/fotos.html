@@ -138,12 +138,17 @@
 
   // Las fotos del celular pesan 4-8 MB y suben lentísimo con mala señal, que es
   // justo cuando la gente abandona. Se reducen aquí antes de enviarlas: para un
-  // carrusel de Instagram, 1600px de lado largo sobra.
+  // carrusel de Instagram, 1400px de lado largo sobra.
+  //
+  // La calidad baja de 0.9 a 0.82 a propósito: a 0.9 una foto quedaba en 400 KB a
+  // 1 MB, y en base64 eso crece un tercio más. Al ojo no se distingue y sube en la
+  // mitad de tiempo.
   function reducir(archivo) {
     return new Promise(resolve => {
+      const url = URL.createObjectURL(archivo);
       const img = new Image();
       img.onload = () => {
-        const MAX = 1600;
+        const MAX = 1400;
         let { width: w, height: h } = img;
         if (Math.max(w, h) > MAX) {
           const k = MAX / Math.max(w, h);
@@ -154,10 +159,21 @@
         const ctx = lienzo.getContext('2d');
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, w, h);
-        resolve(lienzo.toDataURL('image/jpeg', 0.9));
+        URL.revokeObjectURL(url);
+        resolve(lienzo.toDataURL('image/jpeg', 0.82));
       };
-      img.onerror = () => resolve(null);
-      img.src = URL.createObjectURL(archivo);
+      // Si el navegador no sabe dibujar el archivo —pasa con los HEIC del iPhone
+      // en algunos Android y navegadores embebidos— antes devolvía null sin más y
+      // la creadora acababa leyendo "Falta la foto" habiéndola elegido. Ahora se
+      // manda el original tal cual: pesa más, pero llega.
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        const lector = new FileReader();
+        lector.onload = ev => resolve(ev.target.result);
+        lector.onerror = () => resolve(null);
+        lector.readAsDataURL(archivo);
+      };
+      img.src = url;
     });
   }
 
@@ -181,6 +197,9 @@
         const chica = await reducir(f.archivo);
         if (chica) imagenes.push(chica);
       }
+      if (!imagenes.length) {
+        throw new Error('No pudimos leer esa foto. Intenta con otra, o tómale una captura de pantalla y manda esa.');
+      }
       const r = await fetch('/api/fotos-comunidad', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -191,8 +210,17 @@
           imagenes,
         }),
       });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || 'No pudimos recibir tu foto');
+      // Cuando el servidor rechaza por tamaño responde HTML, no JSON, y el
+      // r.json() reventaba con un error de sintaxis que la creadora veía tal cual.
+      let d = {};
+      try { d = await r.json(); } catch (_) {}
+      if (!r.ok) {
+        throw new Error(
+          r.status === 413
+            ? 'La foto pesa demasiado. Intenta con una sola, o con una más liviana.'
+            : (d.error || 'No pudimos recibir tu foto. Inténtalo de nuevo en un momento.')
+        );
+      }
 
       $('tarjeta').innerHTML =
         '<div class="listo"><div class="emoji">💜</div>' +

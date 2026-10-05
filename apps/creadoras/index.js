@@ -86,6 +86,15 @@ const app = express();
 const PORT = process.env.PORT || 3030;
 
 app.use(cors());
+
+// El formulario de fotos manda las imágenes en base64 dentro del JSON, y
+// express.json() acepta 100 KB por defecto: una foto de celular ya reducida pesa
+// entre 400 KB y 1,3 MB en base64, así que Express la rechazaba con 413 ANTES de
+// entrar a la ruta — sin dejar rastro en los logs y con un error ilegible para la
+// creadora. Pasó de verdad: el 5-oct-2026 varias no pudieron subir su foto.
+// El límite alto va SOLO en esta ruta; subirlo para toda la app dejaría cualquier
+// endpoint abierto a peticiones de 25 MB.
+app.use('/api/fotos-comunidad', express.json({ limit: '25mb' }));
 app.use(express.json());
 
 // Mini-conector de solo lectura para El Cerebro (hub central) — antes de adminAuth,
@@ -299,20 +308,28 @@ app.post('/api/fotos-comunidad',
 
     for (let i = 0; i < imagenes.length; i++) {
       const dato = String(imagenes[i] || '');
-      const m = dato.match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/);
+      // heic entra porque es el formato por defecto del iPhone: cuando el
+      // navegador no logra convertirla, la página manda el original tal cual.
+      const m = dato.match(/^data:(image\/(jpeg|png|webp|heic|heif));base64,(.+)$/);
       if (!m) return res.status(400).json({ error: 'Formato de imagen no admitido' });
       const binario = Buffer.from(m[3], 'base64');
-      // 8 MB ya recortadas: el navegador las reduce antes de enviarlas, así que
-      // algo más grande que esto no viene de nuestra página.
-      if (binario.length > 8 * 1024 * 1024) return res.status(400).json({ error: 'La foto pesa demasiado' });
+      // 15 MB: lo normal es que lleguen reducidas a unos cientos de KB, pero un
+      // original de iPhone sin convertir pesa varios MB y vale más recibirlo que
+      // perder la foto.
+      if (binario.length > 15 * 1024 * 1024) return res.status(400).json({ error: 'La foto pesa demasiado' });
 
-      const nombre = `${sello}_${ig}_${i + 1}.jpg`;
+      const esHeic = m[2] === 'heic' || m[2] === 'heif';
+      const ext = m[2] === 'png' ? 'png' : m[2] === 'webp' ? 'webp' : esHeic ? 'heic' : 'jpg';
+      // El bucket admite image/heic pero no image/heif: son el mismo formato con
+      // dos nombres, y mandarlo con el segundo lo hace rebotar.
+      const tipo = esHeic ? 'image/heic' : m[1];
+      const nombre = `${sello}_${ig}_${i + 1}.${ext}`;
       const r = await fetch(`${config.supabase.url}/storage/v1/object/fotos-comunidad/${nombre}`, {
         method: 'POST',
         headers: {
           apikey: config.supabase.service_role_key,
           Authorization: `Bearer ${config.supabase.service_role_key}`,
-          'Content-Type': m[1],
+          'Content-Type': tipo,
         },
         body: binario,
       });
