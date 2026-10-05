@@ -2507,6 +2507,154 @@
       );
     }
 
+    // ── DEBEN CONTENIDO ───────────────────────────────────────────────────
+    //
+    // Quién recibió kit y no ha publicado. El cron manda un recordatorio a los
+    // 6 días y nunca más; para octubre de 2026 eso ya se había mandado a 162 de
+    // las 189 pendientes sin resultado. Lo que falta no es otro mensaje
+    // automático: es poder verlas, escribirles a mano y cerrar las que no van.
+    function DebenContenido() {
+      const [datos, setDatos]     = useState(null);
+      const [cargando, setCargando] = useState(true);
+      const [error, setError]     = useState(null);
+      const [tramo, setTramo]     = useState('todas');
+      const [cerrando, setCerrando] = useState(null);
+
+      useEffect(() => { cargar(); }, []);
+
+      async function cargar() {
+        setCargando(true);
+        try { setDatos(await API('/api/seguimiento/deben-contenido')); }
+        catch (e) { setError(e.message); }
+        setCargando(false);
+      }
+
+      async function cerrar(c) {
+        if (!confirm(`¿Dejar de esperar contenido de ${c.nombre}?\n\nPasa a "Descartada" y sale de esta lista. No se le escribe nada.`)) return;
+        setCerrando(c.id);
+        try {
+          await POSTJSON(`/api/seguimiento/${c.id}/cerrar`, {
+            motivo: `No entregó contenido tras ${c.dias_desde_envio ?? '?'} días`,
+          });
+          setDatos(prev => ({ ...prev, creadoras: prev.creadoras.filter(x => x.id !== c.id) }));
+        } catch (e) { alert('Error: ' + e.message); }
+        setCerrando(null);
+      }
+
+      // El mensaje ya escrito, para no redactarlo 148 veces. Se abre en WhatsApp
+      // y la persona lo revisa antes de enviar: no sale nada solo.
+      function escribirWA(c) {
+        const tel = String(c.telefono || '').replace(/\D/g, '');
+        if (!tel) return alert('Esta creadora no tiene teléfono registrado.');
+        const nombre = (c.nombre || '').split(' ')[0];
+        const texto =
+          `Hola ${nombre} 💜 ¿cómo vas con el kit que te enviamos?\n\n` +
+          `No es afán — queremos saber si lo pudiste probar y si te gustó. ` +
+          `Si necesitas ideas para el contenido o algo no te funcionó, cuéntanos y te ayudamos.`;
+        window.open(`https://wa.me/${tel.length === 10 ? '57' + tel : tel}?text=${encodeURIComponent(texto)}`, '_blank');
+      }
+
+      if (cargando) return <div className="loading">Cargando...</div>;
+      if (error) return <div className="error-msg">{error}</div>;
+      if (!datos) return null;
+
+      const lista = datos.creadoras.filter(c => {
+        if (tramo === 'todas') return true;
+        if (tramo === 'sin_fecha') return c.sin_fecha;
+        if (c.sin_fecha) return false;
+        if (tramo === 'viejas') return c.dias_desde_envio > 60;
+        if (tramo === 'medias') return c.dias_desde_envio > 30 && c.dias_desde_envio <= 60;
+        return c.dias_desde_envio <= 30;
+      });
+
+      const CHIPS = [
+        { k: 'todas',     t: 'Todas',             n: datos.total },
+        { k: 'viejas',    t: 'Más de 60 días',    n: datos.mas_de_60 },
+        { k: 'medias',    t: '31 a 60 días',      n: datos.entre_30_y_60 },
+        { k: 'nuevas',    t: '30 días o menos',   n: datos.menos_de_30 },
+        { k: 'sin_fecha', t: 'Sin fecha de envío', n: datos.sin_fecha },
+      ];
+
+      const color = (c) => c.sin_fecha ? 'var(--text-muted)'
+        : c.dias_desde_envio > 60 ? 'var(--red)'
+        : c.dias_desde_envio > 30 ? 'var(--gold)' : 'var(--green)';
+
+      return (
+        <div>
+          <h1>Recibieron kit y no han publicado</h1>
+          <p className="page-subtitle">
+            Ordenadas por lo más viejo primero, que es donde está el producto que ya salió sin volver.
+          </p>
+
+          <div className="stat-grid" style={{ marginBottom: 20 }}>
+            <StatCard label="Sin publicar" value={datos.total} />
+            <StatCard label="Más de 60 días" value={datos.mas_de_60} color="gold" />
+            <StatCard label="31 a 60 días" value={datos.entre_30_y_60} />
+            <StatCard label="Sin fecha de envío" value={datos.sin_fecha} sub="revisar a mano" />
+          </div>
+
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+            {CHIPS.map(ch => (
+              <button key={ch.k} onClick={() => setTramo(ch.k)}
+                style={{ fontSize: 12, padding: '6px 12px', borderRadius: 16, cursor: 'pointer',
+                  border: tramo === ch.k ? '1px solid var(--purple)' : '1px solid var(--border)',
+                  background: tramo === ch.k ? 'var(--purple)' : 'var(--bg2)',
+                  color: tramo === ch.k ? '#fff' : 'var(--text-muted)',
+                  fontWeight: tramo === ch.k ? 600 : 400 }}>
+                {ch.t} <span style={{ opacity: .75 }}>({ch.n})</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Creadora</th><th>Hace</th><th>¿Ya se le recordó?</th>
+                  <th>Contacto</th><th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lista.length === 0 ? (
+                  <tr><td colSpan="5" className="empty-state">Nadie en este grupo. 🎉</td></tr>
+                ) : lista.map(c => (
+                  <tr key={c.id}>
+                    <td style={{ fontWeight: 500 }}>
+                      <div>{c.nombre}</div>
+                      {c.instagram && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>@{c.instagram}</div>}
+                    </td>
+                    <td style={{ color: color(c), fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {c.sin_fecha ? 'sin fecha' : `${c.dias_desde_envio} días`}
+                    </td>
+                    <td style={{ fontSize: 12 }}>
+                      {c.ya_recordada
+                        ? <span style={{ color: 'var(--text-muted)' }}>sí, y no publicó</span>
+                        : <span style={{ color: 'var(--gold)', fontWeight: 600 }}>todavía no</span>}
+                    </td>
+                    <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      {c.telefono || '—'}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-sm" style={{ background: '#25D366', color: '#0b1a10', fontWeight: 600 }}
+                          onClick={() => escribirWA(c)} disabled={!c.telefono}>
+                          Escribirle
+                        </button>
+                        <button className="btn btn-secondary btn-sm"
+                          onClick={() => cerrar(c)} disabled={cerrando === c.id}>
+                          {cerrando === c.id ? '...' : 'Ya no la espero'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
     // ── APP ROOT ──────────────────────────────────────────────────
     function App() {
       const [view, setView] = useState('dashboard');
@@ -2530,6 +2678,7 @@
             <button className={view === 'candidatas' ? 'active' : ''} onClick={() => navigate('candidatas')}>Candidatas TikTok</button>
             <button className={view === 'seguimiento' ? 'active' : ''} onClick={() => navigate('seguimiento')}>📋 Seguimiento</button>
             <button className={view === 'ugc' ? 'active' : ''} onClick={() => navigate('ugc')} style={{color:'var(--gold)'}}>💰 UGC</button>
+            <button className={view === 'deben' ? 'active' : ''} onClick={() => navigate('deben')} style={{color:'var(--red)'}}>⏳ Deben contenido</button>
             <button className={view === 'creators-manager' ? 'active' : ''} onClick={() => navigate('creators-manager')} style={{color:'var(--purple-light)'}}>[C] Creators Manager</button>
           </nav>
           <main>
@@ -2543,6 +2692,7 @@
             {view === 'candidatas' && <Candidatas />}
             {view === 'seguimiento' && <SeguimientoUGC />}
             {view === 'ugc' && <UGC />}
+            {view === 'deben' && <DebenContenido />}
             {view === 'creators-manager' && <CreatorsManager />}
           </main>
         </div>

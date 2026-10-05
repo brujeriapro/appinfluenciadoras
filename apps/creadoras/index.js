@@ -270,6 +270,89 @@ app.post('/api/marketplace/invitar-wa', async (req, res) => {
   }
 });
 
+// ── Quién recibió producto y no ha publicado ─────────────────────────────────
+//
+// El cron de seguimiento manda UN recordatorio a los 6 días y nunca más. A
+// 5-oct-2026 hay 189 creadoras con kit despachado y sin contenido, 148 de ellas
+// con más de un mes — y 162 ya habían recibido ese recordatorio. Es decir: el
+// mensaje automático ya se usó y no alcanzó. Lo que falta no es otro mensaje
+// automático, es que alguien las vea y las trabaje.
+//
+// Esta ruta es la lista para hacerlo. Ordena por lo más viejo primero, que es
+// donde está el producto regalado sin retorno.
+app.get('/api/seguimiento/deben-contenido', async (req, res) => {
+  try {
+    const todas = await supabase.getInfluencers({ status: 'Producto Enviado' });
+
+    // Quién ya recibió el recordatorio automático. Una sola consulta en vez de
+    // una por creadora: con 189 filas, lo segundo tumba la página.
+    const yaRecordadas = new Set(
+      (await supabase.getNotificadosPorTemplate('explicacion_contenido_brujeria')
+        .catch(() => [])).map(n => n.influencer_id)
+    );
+
+    const hoy = Date.now();
+    const filas = todas.map(inf => {
+      const dias = inf.fecha_envio
+        ? Math.floor((hoy - new Date(inf.fecha_envio).getTime()) / 86400000)
+        : null;
+      return {
+        id: inf.id,
+        nombre: inf.nombre,
+        telefono: inf.telefono || null,
+        email: inf.email || null,
+        instagram: inf.instagram_handle || null,
+        tier: inf.tier || null,
+        fecha_envio: inf.fecha_envio || null,
+        dias_desde_envio: dias,
+        ya_recordada: yaRecordadas.has(inf.id),
+        // Sin fecha de envío no se puede saber hace cuánto se le mandó: son
+        // casos a revisar a mano, no a perseguir.
+        sin_fecha: !inf.fecha_envio,
+      };
+    });
+
+    // Lo más viejo primero. Las que no tienen fecha van al final: no se sabe
+    // qué tan urgentes son y perseguirlas sin ese dato es trabajo a ciegas.
+    filas.sort((a, b) => {
+      if (a.sin_fecha !== b.sin_fecha) return a.sin_fecha ? 1 : -1;
+      return (b.dias_desde_envio || 0) - (a.dias_desde_envio || 0);
+    });
+
+    const conDias = filas.filter(f => !f.sin_fecha);
+    res.json({
+      total: filas.length,
+      mas_de_60: conDias.filter(f => f.dias_desde_envio > 60).length,
+      entre_30_y_60: conDias.filter(f => f.dias_desde_envio > 30 && f.dias_desde_envio <= 60).length,
+      menos_de_30: conDias.filter(f => f.dias_desde_envio <= 30).length,
+      sin_fecha: filas.filter(f => f.sin_fecha).length,
+      creadoras: filas,
+    });
+  } catch (e) {
+    console.error('[deben-contenido]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** Deja de esperar contenido de alguien: pasa a Descartada con el motivo. */
+app.post('/api/seguimiento/:id/cerrar', async (req, res) => {
+  try {
+    const motivo = String(req.body?.motivo || 'No entregó contenido').slice(0, 200);
+    const inf = await supabase.getInfluencerById(req.params.id);
+    if (!inf) return res.status(404).json({ error: 'No existe esa creadora' });
+    // La columna es `notas_equipo`, no `notas`: PostgREST rechaza la escritura
+    // entera si el nombre no existe, y el cierre fallaría en silencio.
+    await supabase.updateInfluencer(req.params.id, {
+      status: 'Descartada',
+      notas_equipo: `${inf.notas_equipo ? inf.notas_equipo + '\n' : ''}[${new Date().toISOString().slice(0, 10)}] ${motivo}`,
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[seguimiento/cerrar]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/influencers', async (req, res) => {
   try {
     const { status, tier, nivel_bruja } = req.query;
