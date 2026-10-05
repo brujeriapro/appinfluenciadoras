@@ -2519,6 +2519,9 @@
       const [error, setError]     = useState(null);
       const [tramo, setTramo]     = useState('todas');
       const [escribiendo, setEscribiendo] = useState(null);
+      const [registrando, setRegistrando] = useState(null);  // id de la fila abierta
+      const [urlReg, setUrlReg]   = useState('');
+      const [guardando, setGuardando] = useState(false);
 
       useEffect(() => { cargar(); }, []);
 
@@ -2533,27 +2536,31 @@
       // estado "Producto Enviado" no significa "no publicó" — significa "no
       // sabemos". Esto convierte la revisión en: ver su perfil, pegar el link,
       // siguiente.
-      async function siPublico(c) {
-        const url = prompt(
-          `Link de la publicación de ${c.nombre}:
-
-` +
-          `Pega la URL del reel o post. Queda registrado como contenido entregado.`
-        );
-        if (!url || !url.trim()) return;
+      // Antes esto pedía el link con prompt() del navegador. Si la persona marca
+      // "impedir que esta página genere diálogos" —o el navegador los bloquea por
+      // su cuenta— prompt() devuelve null sin avisar y el botón no hace nada:
+      // exactamente el síntoma reportado el 5-oct-2026. El campo va en la fila.
+      async function guardarPublicacion(c) {
+        const url = (urlReg || '').trim();
+        if (!url) return;
+        if (!/^https?:\/\//i.test(url)) {
+          return alert('Pega la URL completa, empezando por https://');
+        }
+        setGuardando(true);
         try {
           await POSTJSON('/api/contenidos', {
             influencer_id: c.id,
-            url_contenido: url.trim(),
+            url_contenido: url,
             plataforma: /tiktok/i.test(url) ? 'TikTok' : 'Instagram',
           });
           setDatos(prev => ({ ...prev, creadoras: prev.creadoras.filter(x => x.id !== c.id) }));
-        } catch (e) { alert('Error: ' + e.message); }
+          setRegistrando(null); setUrlReg('');
+        } catch (e) { alert('No se pudo registrar: ' + e.message); }
+        setGuardando(false);
       }
 
-      function verInstagram(c) {
-        if (!c.instagram) return alert('Esta creadora no tiene Instagram registrado.');
-        window.open('https://instagram.com/' + String(c.instagram).replace('@', '').trim(), '_blank');
+      function abrirPerfil(handle, base) {
+        window.open(base + String(handle).replace(/^@/, '').trim(), '_blank');
       }
 
       // El mensaje ya escrito, para no redactarlo 148 veces. Se abre en WhatsApp
@@ -2620,7 +2627,8 @@
                         padding: '12px 14px', marginBottom: 18, fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
             <strong style={{ color: 'var(--text)' }}>Varias ya publicaron y no lo reportaron.</strong>{' '}
             Esta lista dice quién no ha reportado, no quién no ha publicado. Para revisarlas:
-            abre <strong>Ver IG</strong>, mira si hay contenido de la marca, y si lo hay dale a{' '}
+            abre <strong>Ver IG</strong> o <strong>Ver TikTok</strong> —según la red que tenga—,
+            mira si hay contenido de la marca, y si lo hay dale a{' '}
             <strong>Sí publicó</strong> y pega el link — queda registrado y sale de la lista.
             Si no publicó, <strong>Escribirle</strong> abre WhatsApp con un mensaje listo y deja
             constancia, para que nadie le escriba dos veces.
@@ -2661,7 +2669,11 @@
                   <tr key={c.id}>
                     <td style={{ fontWeight: 500 }}>
                       <div>{c.nombre}</div>
-                      {c.instagram && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>@{c.instagram}</div>}
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        {c.instagram && <span>IG @{c.instagram}</span>}
+                        {c.instagram && c.tiktok && <span> · </span>}
+                        {c.tiktok && <span>TikTok @{c.tiktok}</span>}
+                      </div>
                     </td>
                     <td style={{ color: color(c), fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {c.sin_fecha ? 'sin fecha' : `${c.dias_desde_envio} días`}
@@ -2679,20 +2691,54 @@
                         : <span style={{ color: 'var(--text-muted)' }}>todavía no</span>}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        <button className="btn btn-secondary btn-sm"
-                          onClick={() => verInstagram(c)} disabled={!c.instagram}>
-                          Ver IG
-                        </button>
-                        <button className="btn btn-sm" style={{ background: 'var(--purple)', color: '#fff', fontWeight: 600 }}
-                          onClick={() => siPublico(c)}>
-                          Sí publicó
-                        </button>
-                        <button className="btn btn-sm" style={{ background: '#25D366', color: '#0b1a10', fontWeight: 600 }}
-                          onClick={() => escribirWA(c)} disabled={!c.telefono || escribiendo === c.id}>
-                          {c.contactada_at ? 'Insistir' : 'Escribirle'}
-                        </button>
-                      </div>
+                      {registrando === c.id ? (
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <input type="text" value={urlReg} autoFocus
+                            onChange={e => setUrlReg(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') guardarPublicacion(c);
+                              if (e.key === 'Escape') { setRegistrando(null); setUrlReg(''); }
+                            }}
+                            placeholder="Pega el link del reel o post"
+                            style={{ padding: '6px 10px', minWidth: 230, flex: 1, fontSize: 12 }} />
+                          <button className="btn btn-sm" style={{ background: 'var(--purple)', color: '#fff', fontWeight: 600 }}
+                            onClick={() => guardarPublicacion(c)} disabled={guardando || !urlReg.trim()}>
+                            {guardando ? '...' : 'Guardar'}
+                          </button>
+                          <button className="btn btn-secondary btn-sm"
+                            onClick={() => { setRegistrando(null); setUrlReg(''); }}>
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {/* 25 de las 199 solo tienen TikTok. Un boton fijo de "Ver IG"
+                              las mandaba a una pagina que no existe. */}
+                          {c.instagram && (
+                            <button className="btn btn-secondary btn-sm"
+                              onClick={() => abrirPerfil(c.instagram, 'https://instagram.com/')}>
+                              Ver IG
+                            </button>
+                          )}
+                          {c.tiktok && (
+                            <button className="btn btn-secondary btn-sm"
+                              onClick={() => abrirPerfil(c.tiktok, 'https://tiktok.com/@')}>
+                              Ver TikTok
+                            </button>
+                          )}
+                          {!c.instagram && !c.tiktok && (
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>sin redes</span>
+                          )}
+                          <button className="btn btn-sm" style={{ background: 'var(--purple)', color: '#fff', fontWeight: 600 }}
+                            onClick={() => { setRegistrando(c.id); setUrlReg(''); }}>
+                            Sí publicó
+                          </button>
+                          <button className="btn btn-sm" style={{ background: '#25D366', color: '#0b1a10', fontWeight: 600 }}
+                            onClick={() => escribirWA(c)} disabled={!c.telefono || escribiendo === c.id}>
+                            {c.contactada_at ? 'Insistir' : 'Escribirle'}
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

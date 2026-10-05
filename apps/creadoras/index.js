@@ -393,6 +393,11 @@ app.get('/api/seguimiento/deben-contenido', async (req, res) => {
         telefono: inf.telefono || null,
         email: inf.email || null,
         instagram: inf.instagram_handle || null,
+        // 25 de las 199 llegaron por TikTok y no tienen Instagram. Sin este
+        // campo la pantalla les armaba un enlace de instagram.com con el
+        // usuario de TikTok, que lleva a "página no encontrada" — y quien
+        // revisa concluye que el perfil no existe en vez de ir a mirar a TikTok.
+        tiktok: inf.tiktok_handle || null,
         tier: inf.tier || null,
         fecha_envio: inf.fecha_envio || null,
         dias_desde_envio: dias,
