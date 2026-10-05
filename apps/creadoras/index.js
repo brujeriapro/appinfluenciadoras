@@ -341,6 +341,7 @@ app.post('/api/fotos-comunidad',
 
     console.log(`[fotos] @${ig} mandó ${guardadas.length} foto(s)`);
     res.json({ ok: true, recibidas: guardadas.length });
+    // (las rutas para revisarlas están más abajo, bajo /api/admin/fotos)
   } catch (e) {
     console.error('[fotos-comunidad]', e.message);
     res.status(500).json({ error: 'No pudimos recibir tu foto. Inténtalo de nuevo en un momento.' });
@@ -348,6 +349,85 @@ app.post('/api/fotos-comunidad',
 });
 
 app.get('/fotos', (req, res) => res.sendFile(path.join(__dirname, 'public', 'fotos.html')));
+
+// ── Revisar las fotos que manda la comunidad ─────────────────────────────────
+//
+// ⚠️ Van bajo /api/admin/ a propósito. RUTAS_PUBLICAS compara con startsWith, y
+// '/api/fotos-comunidad' está ahí para que el formulario pueda recibir sin
+// login: colgar la lectura de ese mismo prefijo dejaría las fotos de las
+// creadoras y sus autorizaciones abiertas a cualquiera con el enlace.
+const BUCKET_FOTOS = 'fotos-comunidad';
+
+function _storage(ruta, opciones = {}) {
+  return fetch(`${config.supabase.url}/storage/v1/${ruta}`, {
+    ...opciones,
+    headers: {
+      apikey: config.supabase.service_role_key,
+      Authorization: `Bearer ${config.supabase.service_role_key}`,
+      ...(opciones.headers || {}),
+    },
+  });
+}
+
+app.get('/api/admin/fotos', async (req, res) => {
+  try {
+    const r = await _storage(`object/list/${BUCKET_FOTOS}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefix: '', limit: 500, sortBy: { column: 'created_at', order: 'desc' } }),
+    });
+    const archivos = await r.json();
+    if (!Array.isArray(archivos)) throw new Error(archivos?.message || 'No se pudo leer el bucket');
+
+    // Cada envío deja una ficha .json con el @ y la autorización, más sus
+    // imágenes. Se agrupa por ficha para mostrar un envío por tarjeta.
+    const fichas = archivos.filter(a => a.name.endsWith('.json'));
+    const envios = await Promise.all(fichas.map(async f => {
+      try {
+        const d = await (await _storage(`object/${BUCKET_FOTOS}/${encodeURIComponent(f.name)}`)).json();
+        return {
+          instagram: d.instagram || null,
+          mensaje: d.mensaje || '',
+          autorizo: d.autorizo_publicacion === true,
+          recibido_at: d.recibido_at || f.created_at,
+          fotos: Array.isArray(d.fotos) ? d.fotos : [],
+        };
+      } catch { return null; }
+    }));
+
+    const limpios = envios.filter(Boolean)
+      .sort((a, b) => String(b.recibido_at).localeCompare(String(a.recibido_at)));
+
+    res.json({
+      total_envios: limpios.length,
+      total_fotos: limpios.reduce((n, e) => n + e.fotos.length, 0),
+      // Las primeras subidas fueron pruebas mías al montar el formulario; se
+      // marcan en vez de borrarlas, para no esconder que el buzón funciona.
+      envios: limpios.map(e => ({ ...e, es_prueba: /^prueba/i.test(e.instagram || '') })),
+    });
+  } catch (e) {
+    console.error('[admin/fotos]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/** Sirve una foto del bucket privado. Nunca se expone la URL de Supabase. */
+app.get('/api/admin/fotos/archivo/:nombre', async (req, res) => {
+  try {
+    const nombre = String(req.params.nombre);
+    // Solo nombres del propio bucket: sin barras ni '..' no hay forma de pedir
+    // otro objeto del proyecto a través de esta ruta.
+    if (nombre.includes('/') || nombre.includes('..')) return res.status(400).end();
+    const r = await _storage(`object/${BUCKET_FOTOS}/${encodeURIComponent(nombre)}`);
+    if (!r.ok) return res.status(404).end();
+    res.set('Content-Type', r.headers.get('content-type') || 'image/jpeg');
+    res.set('Cache-Control', 'private, max-age=600');
+    res.send(Buffer.from(await r.arrayBuffer()));
+  } catch (e) {
+    console.error('[admin/fotos/archivo]', e.message);
+    res.status(500).end();
+  }
+});
 
 // ── Quién recibió producto y no ha publicado ─────────────────────────────────
 //

@@ -2507,6 +2507,131 @@
       );
     }
 
+    // ── FOTOS DE LA COMUNIDAD ─────────────────────────────────────────────
+    //
+    // Lo que llega por el formulario /fotos, para armar el carrusel "Nuestras
+    // rizadas". El bucket es privado, así que las imágenes se piden al propio
+    // servidor: nunca sale una URL de Supabase al navegador.
+    function FotosComunidad() {
+      const [datos, setDatos] = useState(null);
+      const [cargando, setCargando] = useState(true);
+      const [error, setError] = useState(null);
+      const [grande, setGrande] = useState(null);   // foto abierta a pantalla completa
+      const [verPruebas, setVerPruebas] = useState(false);
+
+      useEffect(() => { cargar(); }, []);
+
+      async function cargar() {
+        setCargando(true); setError(null);
+        try { setDatos(await API('/api/admin/fotos')); }
+        catch (e) { setError(e.message); }
+        setCargando(false);
+      }
+
+      if (cargando) return <div className="loading">Cargando...</div>;
+      if (error) return <div className="error-msg">{error}</div>;
+      if (!datos) return null;
+
+      const src = n => '/api/admin/fotos/archivo/' + encodeURIComponent(n);
+      const envios = datos.envios.filter(e => verPruebas || !e.es_prueba);
+      const pruebas = datos.envios.filter(e => e.es_prueba).length;
+      const reales  = datos.envios.length - pruebas;
+      const fotosReales = datos.envios.filter(e => !e.es_prueba)
+        .reduce((n, e) => n + e.fotos.length, 0);
+
+      const fecha = s => {
+        if (!s) return '';
+        const d = new Date(s);
+        return isNaN(d) ? '' : d.toLocaleDateString('es-CO', {
+          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+        });
+      };
+
+      return (
+        <div>
+          <h1>Fotos de la comunidad</h1>
+          <p className="page-subtitle">
+            Lo que mandan las creadoras por el formulario, para el carrusel de Nuestras rizadas.
+            Todas autorizaron que publiquemos su foto etiquetándolas.
+          </p>
+
+          <div className="stat-grid" style={{ marginBottom: 20 }}>
+            <StatCard label="Creadoras que mandaron" value={reales} />
+            <StatCard label="Fotos recibidas" value={fotosReales} />
+          </div>
+
+          {pruebas > 0 && (
+            <label style={{ display: 'flex', gap: 7, alignItems: 'center', fontSize: 12,
+                            color: 'var(--text-muted)', marginBottom: 16, cursor: 'pointer' }}>
+              <input type="checkbox" checked={verPruebas} onChange={e => setVerPruebas(e.target.checked)} />
+              Mostrar también las {pruebas} prueba(s) que se hicieron al montar el formulario
+            </label>
+          )}
+
+          {envios.length === 0 ? (
+            <div className="empty-state" style={{ padding: '40px 20px', textAlign: 'center' }}>
+              <div style={{ fontSize: 38, marginBottom: 10 }}>📸</div>
+              <p style={{ margin: '0 0 6px', fontWeight: 600 }}>Todavía no ha llegado ninguna foto.</p>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
+                Aparecen aquí solas, sin tener que recargar nada más que esta pantalla.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+              {envios.map((e, i) => (
+                <div key={i} style={{ background: 'var(--bg2)', border: '1px solid var(--border)',
+                                      borderRadius: 10, overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', gap: 2, background: '#000' }}>
+                    {e.fotos.map(f => (
+                      <img key={f} src={src(f)} alt="" loading="lazy"
+                        onClick={() => setGrande(src(f))}
+                        style={{ width: `${100 / Math.max(1, e.fotos.length)}%`, height: 230,
+                                 objectFit: 'cover', cursor: 'zoom-in', display: 'block' }} />
+                    ))}
+                  </div>
+                  <div style={{ padding: '11px 13px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+                      <a href={'https://instagram.com/' + String(e.instagram || '').replace(/^@/, '')}
+                         target="_blank" rel="noopener"
+                         style={{ fontWeight: 600, color: 'var(--purple-light)', fontSize: 13.5 }}>
+                        @{e.instagram}
+                      </a>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        {fecha(e.recibido_at)}
+                      </span>
+                    </div>
+                    {e.mensaje && (
+                      <p style={{ margin: '8px 0 0', fontSize: 12.5, lineHeight: 1.5,
+                                  color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                        "{e.mensaje}"
+                      </p>
+                    )}
+                    <div style={{ marginTop: 9, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {e.fotos.map((f, j) => (
+                        <a key={f} href={src(f)} download style={{ fontSize: 11, color: 'var(--text-muted)',
+                                                                   textDecoration: 'underline' }}>
+                          Descargar {e.fotos.length > 1 ? `foto ${j + 1}` : 'foto'}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {grande && (
+            <div onClick={() => setGrande(null)}
+                 style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.9)', zIndex: 999,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'zoom-out', padding: 20 }}>
+              <img src={grande} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+            </div>
+          )}
+        </div>
+      );
+    }
+
     // ── DEBEN CONTENIDO ───────────────────────────────────────────────────
     //
     // Quién recibió kit y no ha publicado. El cron manda un recordatorio a los
@@ -2774,6 +2899,7 @@
             <button className={view === 'ugc' ? 'active' : ''} onClick={() => navigate('ugc')} style={{color:'var(--gold)'}}>💰 UGC</button>
             <button className={view === 'deben' ? 'active' : ''} onClick={() => navigate('deben')} style={{color:'var(--red)'}}>⏳ Deben contenido</button>
             <button className={view === 'creators-manager' ? 'active' : ''} onClick={() => navigate('creators-manager')} style={{color:'var(--purple-light)'}}>[C] Creators Manager</button>
+            <button className={view === 'fotos' ? 'active' : ''} onClick={() => navigate('fotos')} style={{color:'var(--green)'}}>📸 Fotos</button>
           </nav>
           <main>
             {view === 'dashboard' && <Dashboard onNavigate={navigate} />}
@@ -2788,6 +2914,7 @@
             {view === 'ugc' && <UGC />}
             {view === 'deben' && <DebenContenido />}
             {view === 'creators-manager' && <CreatorsManager />}
+            {view === 'fotos' && <FotosComunidad />}
           </main>
         </div>
       );
