@@ -2541,6 +2541,33 @@
         setCerrando(null);
       }
 
+      // Revisión manual: muchas publicaron y nunca lo reportaron, así que el
+      // estado "Producto Enviado" no significa "no publicó" — significa "no
+      // sabemos". Esto convierte la revisión en: ver su perfil, pegar el link,
+      // siguiente.
+      async function siPublico(c) {
+        const url = prompt(
+          `Link de la publicación de ${c.nombre}:
+
+` +
+          `Pega la URL del reel o post. Queda registrado como contenido entregado.`
+        );
+        if (!url || !url.trim()) return;
+        try {
+          await POSTJSON('/api/contenidos', {
+            influencer_id: c.id,
+            url_contenido: url.trim(),
+            plataforma: /tiktok/i.test(url) ? 'TikTok' : 'Instagram',
+          });
+          setDatos(prev => ({ ...prev, creadoras: prev.creadoras.filter(x => x.id !== c.id) }));
+        } catch (e) { alert('Error: ' + e.message); }
+      }
+
+      function verInstagram(c) {
+        if (!c.instagram) return alert('Esta creadora no tiene Instagram registrado.');
+        window.open('https://instagram.com/' + String(c.instagram).replace('@', '').trim(), '_blank');
+      }
+
       // El mensaje ya escrito, para no redactarlo 148 veces. Se abre en WhatsApp
       // y la persona lo revisa antes de enviar: no sale nada solo.
       function escribirWA(c) {
@@ -2585,6 +2612,13 @@
           <p className="page-subtitle">
             Ordenadas por lo más viejo primero, que es donde está el producto que ya salió sin volver.
           </p>
+          <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8,
+                        padding: '12px 14px', marginBottom: 18, fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            <strong style={{ color: 'var(--text)' }}>Varias ya publicaron y no lo reportaron.</strong>{' '}
+            Esta lista dice quién no ha reportado, no quién no ha publicado. Para revisarlas:
+            abre <strong>Ver IG</strong>, mira si hay contenido de la marca, y si lo hay dale a{' '}
+            <strong>Sí publicó</strong> y pega el link — queda registrado y sale de la lista.
+          </div>
 
           <div className="stat-grid" style={{ marginBottom: 20 }}>
             <StatCard label="Sin publicar" value={datos.total} />
@@ -2635,7 +2669,15 @@
                       {c.telefono || '—'}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <button className="btn btn-secondary btn-sm"
+                          onClick={() => verInstagram(c)} disabled={!c.instagram}>
+                          Ver IG
+                        </button>
+                        <button className="btn btn-sm" style={{ background: 'var(--purple)', color: '#fff', fontWeight: 600 }}
+                          onClick={() => siPublico(c)}>
+                          Sí publicó
+                        </button>
                         <button className="btn btn-sm" style={{ background: '#25D366', color: '#0b1a10', fontWeight: 600 }}
                           onClick={() => escribirWA(c)} disabled={!c.telefono}>
                           Escribirle
