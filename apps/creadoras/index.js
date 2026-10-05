@@ -1349,7 +1349,68 @@ app.post('/api/preferencias', async (req, res) => {
   }
 });
 
-// â”€â”€ CRON SEGUIMIENTO (Railway cron â†’ POST cada lunes) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── TANDAS DE MENSAJES AUTOMÁTICOS ─────────────────────────────────────
+//
+// El 5-oct-2026 una creadora recibió el mismo recordatorio cuatro veces en
+// diez minutos y contestó preguntando por qué le llegaba tanto spam. La causa
+// no fue el envío: fue el orden. Los crons mandaban primero y anotaban
+// después, así que cualquier corte entre las dos cosas —un reinicio, un
+// timeout de Railway, un fallo de red al anotar— dejaba el mensaje mandado y
+// sin constancia, y la corrida siguiente lo volvía a mandar. Peor: estos
+// endpoints respondían al terminar todo el bucle, así que Railway los cortaba
+// por tiempo y los reintentaba, repitiendo la tanda entera.
+//
+// Aquí se invierte: se anota ANTES de mandar. Si algo se cae en el medio, lo
+// que se pierde es un mensaje, no la confianza de la creadora ni el número de
+// WhatsApp —a Meta le bastan unos cuantos reportes de spam para tumbarlo—.
+// Si el envío falla de verdad, se borra la anotación para poder reintentarlo.
+const _tandasCorriendo = new Set();
+
+async function correrTanda({ clave, candidatas, template, enviar, forzar = false }) {
+  if (_tandasCorriendo.has(clave)) {
+    console.warn(`[${clave}] ya hay una tanda corriendo — se omite esta`);
+    return { omitida: true };
+  }
+  _tandasCorriendo.add(clave);
+  const r = { enviados: 0, yaTenian: 0, errores: 0 };
+  try {
+    for (const inf of candidatas) {
+      try {
+        if (!forzar && await supabase.yaEnviadoTemplate(inf.id, template)) { r.yaTenian++; continue; }
+        // Reservar el envío. A partir de aquí, ninguna otra corrida lo repite.
+        if (!forzar) await supabase.registrarNotificacion(inf.id, template, 'cron');
+        // Solo se devuelve la reserva que acabamos de hacer nosotros. En modo
+        // forzado no hay reserva nueva: borrar ahí tumbaría la constancia del
+        // envío legítimo anterior.
+        const devolverReserva = () => forzar
+          ? Promise.resolve()
+          : supabase.borrarNotificacion(inf.id, template).catch(() => {});
+        try {
+          const wa = await enviar(inf);
+          if (wa?.sent) r.enviados++;
+          else {
+            // No salió (teléfono inválido, WhatsApp apagado): devolver la
+            // reserva, o esta creadora no lo recibe nunca.
+            await devolverReserva();
+            r.errores++;
+          }
+        } catch (e) {
+          await devolverReserva();
+          throw e;
+        }
+      } catch (e) {
+        r.errores++;
+        console.error(`[${clave}] ${inf.nombre}:`, e.message);
+      }
+    }
+  } finally {
+    _tandasCorriendo.delete(clave);
+  }
+  console.log(`[${clave}] enviados:${r.enviados} ya_tenian:${r.yaTenian} errores:${r.errores}`);
+  return r;
+}
+
+// ── CRON SEGUIMIENTO (Railway cron → POST cada lunes) ─────────────────
 app.post('/api/cron/seguimiento', async (req, res) => {
   // Validar secret para que solo Railway pueda llamarlo
   const secret = req.headers['x-cron-secret'] || req.query.secret;
@@ -1359,29 +1420,42 @@ app.post('/api/cron/seguimiento', async (req, res) => {
 
   try {
     const pendientes = await supabase.getInfluencersPendingSeguimiento();
-    const resultados = [];
 
-    for (const inf of pendientes) {
-      try {
-        const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'explicacion_contenido_brujeria');
-        if (yaEnviado) {
-          console.log(`[cron/seguimiento] ${inf.nombre}: ya recibiÃ³ este mensaje, skip`);
-          continue;
-        }
+    // El mensaje dice "te quedan N días para publicar", con N = 30 menos los
+    // días desde el envío. Pasados los 30 queda en cero, y le estábamos
+    // escribiendo a gente con meses de atraso para decirle que tiene "0 días
+    // para publicar": no significa nada y suena a cobro. A esas no les sirve un
+    // automático — van a la pantalla de revisión manual, que para eso existe.
+    const aTiempo = pendientes.filter(inf => {
+      if (!inf.fecha_envio) return false;
+      const dias = Math.floor((Date.now() - new Date(inf.fecha_envio).getTime()) / 86400000);
+      return dias < 30;
+    });
+
+    // Responder ya. Si este endpoint tarda, Railway lo corta y lo reintenta —
+    // y un reintento es otra tanda de mensajes.
+    res.json({
+      ok: true,
+      candidatas: aTiempo.length,
+      fuera_de_plazo: pendientes.length - aTiempo.length,
+      mensaje: 'Procesando en background',
+    });
+
+    setImmediate(() => correrTanda({
+      clave: 'cron/seguimiento',
+      candidatas: aTiempo,
+      template: 'explicacion_contenido_brujeria',
+      enviar: async (inf) => {
         const wa = await enviarRecordatorioWhatsApp(inf);
-        const email = await enviarRecordatorioContenido(inf);
-        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'explicacion_contenido_brujeria', 'cron');
-        resultados.push({ nombre: inf.nombre, whatsapp: wa, email });
-      } catch (e) {
-        resultados.push({ nombre: inf.nombre, error: e.message });
-      }
-    }
-
-    console.log(`[cron/seguimiento] ${resultados.length} influencers procesadas`);
-    res.json({ ok: true, total: resultados.length, resultados });
+        // El correo es complemento: que falle no debe tumbar el envío.
+        await enviarRecordatorioContenido(inf).catch(e =>
+          console.warn('[cron/seguimiento] email:', e.message));
+        return wa;
+      },
+    }));
   } catch (e) {
     console.error('[cron/seguimiento] Error:', e.message);
-    res.status(500).json({ error: e.message });
+    if (!res.headersSent) res.status(500).json({ error: e.message });
   }
 });
 
@@ -1394,22 +1468,22 @@ app.post('/api/cron/ideas', async (req, res) => {
 
   try {
     const pendientes = await supabase.getInfluencersPendingIdeas();
-    const resultados = [];
 
-    for (const inf of pendientes) {
-      try {
-        const wa = await enviarIdeasContenido(inf);
-        resultados.push({ nombre: inf.nombre, whatsapp: wa });
-      } catch (e) {
-        resultados.push({ nombre: inf.nombre, error: e.message });
-      }
-    }
+    // Este cron no comprobaba nada ni dejaba constancia: la ventana de
+    // candidatas es de 3 a 5 días desde el envío, así que corriendo a diario la
+    // misma creadora lo recibía hasta tres veces. correrTanda lo anota, y con
+    // eso una sola vez por persona.
+    res.json({ ok: true, candidatas: pendientes.length, mensaje: 'Procesando en background' });
 
-    console.log(`[cron/ideas] ${resultados.length} influencers procesadas`);
-    res.json({ ok: true, total: resultados.length, resultados });
+    setImmediate(() => correrTanda({
+      clave: 'cron/ideas',
+      candidatas: pendientes,
+      template: 'ideas_contenido_brujeria1',
+      enviar: enviarIdeasContenido,
+    }));
   } catch (e) {
     console.error('[cron/ideas] Error:', e.message);
-    res.status(500).json({ error: e.message });
+    if (!res.headersSent) res.status(500).json({ error: e.message });
   }
 });
 
@@ -1493,23 +1567,16 @@ app.post('/api/cron/confirmacion-llegada', async (req, res) => {
     const force = req.query.force === '1';
     // Responder inmediato — procesar en background para no exceder timeout de Railway
     res.json({ ok: true, candidatas: candidatas.length, mensaje: 'Procesando en background' });
-    setImmediate(async () => {
-      let enviados = 0, skippedYaEnviado = 0, errores = 0;
-      for (const inf of candidatas) {
-        try {
-          if (!force) {
-            const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'confirmacion_llegada_influencers');
-            if (yaEnviado) { skippedYaEnviado++; continue; }
-          }
-          const wa = await enviarConfirmacionLlegada(inf);
-          if (wa?.sent) { await supabase.registrarNotificacion(inf.id, 'confirmacion_llegada_influencers', 'cron'); enviados++; }
-        } catch (e) {
-          errores++;
-          console.error(`[cron confirmacion-llegada] error ${inf.nombre}:`, e.message);
-        }
-      }
-      console.log(`[cron confirmacion-llegada] done — enviados:${enviados} skipped:${skippedYaEnviado} errores:${errores}`);
-    });
+    // force=1 reenvía a quien ya lo recibió. Es una puerta para reparar un
+    // envío fallido a mano, no para la corrida normal — por eso solo salta la
+    // comprobación cuando viene explícito en la URL.
+    setImmediate(() => correrTanda({
+      clave: 'cron/confirmacion-llegada',
+      candidatas,
+      template: 'confirmacion_llegada_influencers',
+      enviar: enviarConfirmacionLlegada,
+      ...(force ? { forzar: true } : {}),
+    }));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -1532,21 +1599,16 @@ app.post('/api/cron/seguimiento-productos', async (req, res) => {
       return dias >= 7;
     });
 
-    const resultados = [];
-    for (const inf of candidatas) {
-      try {
-        const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'seguimiento_productos_brujeria');
-        if (yaEnviado) continue;
-        const wa = await enviarSeguimientoProductos(inf);
-        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'seguimiento_productos_brujeria', 'cron');
-        resultados.push({ nombre: inf.nombre, ok: true });
-      } catch (e) {
-        resultados.push({ nombre: inf.nombre, error: e.message });
-      }
-    }
-    res.json({ ok: true, total: resultados.length, resultados });
+    res.json({ ok: true, candidatas: candidatas.length, mensaje: 'Procesando en background' });
+
+    setImmediate(() => correrTanda({
+      clave: 'cron/seguimiento-productos',
+      candidatas,
+      template: 'seguimiento_productos_brujeria',
+      enviar: enviarSeguimientoProductos,
+    }));
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    if (!res.headersSent) res.status(500).json({ error: e.message });
   }
 });
 
@@ -3158,41 +3220,44 @@ async function runOnboardingVentas() {
 async function runCronIdeas() {
   console.log('[cron/ideas] Ejecutando...');
   try {
-    const pendientes = await supabase.getInfluencersPendingIdeas();
-    for (const inf of pendientes) {
-      try {
-        const yaEnviado = await supabase.yaEnviadoTemplate(inf.id, 'ideas_contenido_brujeria1');
-        if (yaEnviado) {
-          console.log(`[cron/ideas] ${inf.nombre}: ya recibiÃ³ este mensaje, skip`);
-          continue;
-        }
-        const wa = await enviarIdeasContenido(inf);
-        console.log(`[cron/ideas] ${inf.nombre}:`, wa);
-        if (wa?.sent) await supabase.registrarNotificacion(inf.id, 'ideas_contenido_brujeria1', 'cron');
-      } catch (e) {
-        console.error(`[cron/ideas] ${inf.nombre} error:`, e.message);
-      }
-    }
-    console.log(`[cron/ideas] ${pendientes.length} procesadas`);
+    await correrTanda({
+      clave: 'cron/ideas',
+      candidatas: await supabase.getInfluencersPendingIdeas(),
+      template: 'ideas_contenido_brujeria1',
+      enviar: enviarIdeasContenido,
+    });
   } catch (e) {
     console.error('[cron/ideas] Error:', e.message);
   }
 }
 
+// Esta era la fuga. No comprobaba si ya se había mandado ni dejaba constancia:
+// le escribía a TODAS las pendientes cada vez que corría. Y el reloj interno la
+// dispara 30 segundos después de cada arranque, así que cada redeploy de
+// Railway era otra tanda completa — tres despliegues seguidos arreglando otra
+// cosa, tres mensajes idénticos a la misma creadora. El comentario de más abajo
+// decía que el dedup lo protegía; esta función nunca lo llamó.
 async function runCronSeguimiento() {
   console.log('[cron/seguimiento] Ejecutando...');
   try {
     const pendientes = await supabase.getInfluencersPendingSeguimiento();
-    for (const inf of pendientes) {
-      try {
+    // Mismo criterio que el endpoint: a quien ya pasó los 30 días no se le
+    // manda un automático que le diría "tienes 0 días para publicar".
+    const aTiempo = pendientes.filter(inf => {
+      if (!inf.fecha_envio) return false;
+      return Math.floor((Date.now() - new Date(inf.fecha_envio).getTime()) / 86400000) < 30;
+    });
+    await correrTanda({
+      clave: 'cron/seguimiento',
+      candidatas: aTiempo,
+      template: 'explicacion_contenido_brujeria',
+      enviar: async (inf) => {
         const wa = await enviarRecordatorioWhatsApp(inf);
-        const email = await enviarRecordatorioContenido(inf);
-        console.log(`[cron/seguimiento] ${inf.nombre}:`, { wa, email });
-      } catch (e) {
-        console.error(`[cron/seguimiento] ${inf.nombre} error:`, e.message);
-      }
-    }
-    console.log(`[cron/seguimiento] ${pendientes.length} procesadas`);
+        await enviarRecordatorioContenido(inf).catch(e =>
+          console.warn('[cron/seguimiento] email:', e.message));
+        return wa;
+      },
+    });
   } catch (e) {
     console.error('[cron/seguimiento] Error:', e.message);
   }
@@ -3203,7 +3268,13 @@ async function runCronSeguimiento() {
 const CRON_SKIP_DATE = '2026-07-16';
 
 // Robusto ante redeploys: dispara si YA PASÓ la hora programada y aún no corrió hoy
-// (>= en vez de == exacto). El dedup (yaEnviadoTemplate) evita reenvíos si corre de más.
+// (>= en vez de == exacto).
+//
+// ⚠️ "Ya corrió hoy" vive en memoria del proceso, así que cada redeploy lo
+// olvida y vuelve a disparar. Lo que impide que eso repita mensajes NO es esta
+// función: es que correrTanda anota el envío en notificaciones_enviadas antes
+// de mandarlo. Cualquier tanda nueva que se salte correrTanda vuelve a abrir la
+// fuga —fue exactamente lo que pasó el 5-oct-2026—.
 function revisarCrons() {
   const now = new Date();
   const hoy = now.toISOString().split('T')[0];

@@ -228,6 +228,24 @@ async function registrarNotificacion(influencer_id, template_name, enviado_por =
   return supabasePost('notificaciones_enviadas', { influencer_id, template_name, enviado_por });
 }
 
+/**
+ * Deshace un registro de notificación. Existe para un solo caso: los crons
+ * anotan el envío ANTES de mandarlo, para que un corte entre las dos cosas
+ * deje un mensaje sin mandar en vez de uno mandado cuatro veces. Si el envío
+ * falla, hay que devolver la anotación o esa creadora no lo recibe nunca.
+ *
+ * Deliberadamente no es un delete genérico: borra una fila concreta por
+ * (influencer_id, template_name) y nada más.
+ */
+async function borrarNotificacion(influencer_id, template_name) {
+  const url = new URL(`${BASE_URL}/notificaciones_enviadas`);
+  url.searchParams.set('influencer_id', `eq.${influencer_id}`);
+  url.searchParams.set('template_name', `eq.${template_name}`);
+  const res = await fetch(url.toString(), { method: 'DELETE', headers: HEADERS });
+  if (!res.ok) throw new Error(`Supabase DELETE notificaciones_enviadas: ${res.status}`);
+  return true;
+}
+
 async function getNotificacionesDeInfluencer(influencer_id) {
   return supabaseGet('notificaciones_enviadas', {
     influencer_id: `eq.${influencer_id}`,
@@ -449,4 +467,4 @@ async function getAcuerdosFirmados() {
 // Los tres helpers genéricos se exportan para que marketplace.js pueda leer
 // las tablas mk_* de Creators Manager, que viven en esta misma base pero no
 // tienen funciones propias acá — ni deberían: son de otro producto.
-module.exports = { supabaseGet, supabasePost, supabasePatch, getCandidatas, getCandidataById, updateCandidataStatus, aprobarCandidataComoInfluencer, getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, getInfluencerByTelefono, getInfluencerByTikTok, getInfluencerByInstagram, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate, contarNotificaciones, getNotificadosPorTemplate, insertSolicitudReenvio, getSolicitudesReenvio, updateSolicitudReenvio, enrollUGC, getUGCCreadoras, insertUGCVenta, getUGCVentas, getUGCVentasTotales, insertUGCPago, getUGCPagos, insertUGCRegalo, getUGCRegalos, getUGCRegaloById, updateUGCRegalo, getUGCRegalosAllPendientes, getUGCRegalosEnviados, insertAcuerdo, getAcuerdoByInfluencer, getAcuerdosFirmados };
+module.exports = { supabaseGet, supabasePost, supabasePatch, getCandidatas, getCandidataById, updateCandidataStatus, aprobarCandidataComoInfluencer, getInfluencers, getInfluencerById, updateInfluencer, updateEnvio, getContenidos, getKits, getStats, getInfluencerByEmail, getInfluencerByTelefono, getInfluencerByTikTok, getInfluencerByInstagram, updatePasswordHash, insertInfluencer, insertContenido, getContenidoById, updateContenido, getInfluencersPendingSeguimiento, getInfluencersPendingIdeas, getInfluencersConTelefono, registrarNotificacion, borrarNotificacion, getNotificacionesDeInfluencer, yaEnviadoTemplate, contarNotificaciones, getNotificadosPorTemplate, insertSolicitudReenvio, getSolicitudesReenvio, updateSolicitudReenvio, enrollUGC, getUGCCreadoras, insertUGCVenta, getUGCVentas, getUGCVentasTotales, insertUGCPago, getUGCPagos, insertUGCRegalo, getUGCRegalos, getUGCRegaloById, updateUGCRegalo, getUGCRegalosAllPendientes, getUGCRegalosEnviados, insertAcuerdo, getAcuerdoByInfluencer, getAcuerdosFirmados };
