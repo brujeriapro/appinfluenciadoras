@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manda tu foto — Brujería Capilar</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --fondo:#FDF7FB; --tarjeta:#FFFFFF; --rosa:#FCE9F1;
+    --tinta:#2D1B33; --tinta-2:#6B5572; --tinta-3:#9B8AA1;
+    --linea:#F0DDEA; --magia:#B0245E; --verde:#2F6F4E;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fondo);color:var(--tinta);
+       font-family:Inter,system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.6;
+       padding:24px 16px 60px;-webkit-font-smoothing:antialiased}
+  .hoja{max-width:460px;margin:0 auto}
+  .marca{text-align:center;font-family:'Playfair Display',Georgia,serif;font-size:15px;
+         letter-spacing:.22em;text-transform:uppercase;color:var(--magia);margin-bottom:24px}
+  .tarjeta{background:var(--tarjeta);border-radius:18px;padding:28px 24px;
+           box-shadow:0 1px 3px rgba(45,27,51,.06)}
+  h1{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:29px;line-height:1.18;
+     margin:0 0 12px}
+  h1 em{font-style:italic;color:var(--magia)}
+  .intro{color:var(--tinta-2);margin:0 0 24px;font-size:15.5px}
+  label{display:block;font-weight:600;font-size:14.5px;margin:20px 0 6px}
+  .ayuda{font-weight:400;color:var(--tinta-3);font-size:13px;margin-top:-4px;margin-bottom:8px}
+  input[type=text],textarea{width:100%;padding:12px 14px;border:1px solid var(--linea);
+    border-radius:10px;font-family:inherit;font-size:16px;background:#fff;color:var(--tinta)}
+  input[type=text]:focus,textarea:focus{outline:2px solid var(--magia);outline-offset:-1px;border-color:transparent}
+  textarea{resize:vertical;min-height:76px}
+  .zona{border:2px dashed var(--linea);border-radius:14px;padding:26px 16px;text-align:center;
+        background:#FFFCFE;cursor:pointer}
+  .zona:hover{border-color:var(--magia)}
+  .zona p{margin:0;color:var(--tinta-2);font-size:14.5px}
+  .zona strong{color:var(--magia)}
+  input[type=file]{display:none}
+  .previas{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .previa{position:relative;width:88px;height:88px;border-radius:10px;overflow:hidden;border:1px solid var(--linea)}
+  .previa img{width:100%;height:100%;object-fit:cover;display:block}
+  .previa button{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;
+    border:none;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:13px;line-height:1}
+  .check{display:flex;gap:11px;align-items:flex-start;margin:22px 0 0;
+         background:var(--rosa);border-radius:12px;padding:15px 16px}
+  .check input{margin:2px 0 0;width:18px;height:18px;accent-color:var(--magia);flex-shrink:0}
+  .check label{margin:0;font-weight:400;font-size:14.5px;line-height:1.55;color:var(--tinta)}
+  button.enviar{width:100%;margin-top:24px;padding:16px;border:none;border-radius:999px;
+    background:var(--magia);color:#fff;font-family:inherit;font-size:16.5px;font-weight:700;cursor:pointer}
+  button.enviar:disabled{opacity:.45;cursor:default}
+  .error{background:#FBEDE9;border:1px solid #C0342A;color:#C0342A;border-radius:10px;
+         padding:12px 14px;margin-top:16px;font-size:14.5px;display:none}
+  .pie{text-align:center;color:var(--tinta-3);font-size:12.5px;margin-top:22px;line-height:1.6}
+  .listo{text-align:center;padding:16px 0}
+  .listo .emoji{font-size:46px;margin-bottom:10px}
+  .listo h2{font-family:'Playfair Display',Georgia,serif;font-weight:600;font-size:26px;margin:0 0 10px}
+  .listo p{color:var(--tinta-2);margin:0 0 6px}
+</style>
+</head>
+<body>
+
+<div class="hoja">
+  <div class="marca">Brujería Capilar</div>
+
+  <div class="tarjeta" id="tarjeta">
+    <h1>Queremos tus rizos<br><em>en nuestro feed</em></h1>
+    <p class="intro">
+      Estamos armando un carrusel con fotos reales de los rizos de nuestra comunidad.
+      Con el producto o sin él — lo que buscamos son tus rizos.
+    </p>
+
+    <form id="form">
+      <label for="ig">Tu usuario de Instagram</label>
+      <div class="ayuda">Para etiquetarte cuando publiquemos tu foto.</div>
+      <input type="text" id="ig" placeholder="@tuusuario" autocomplete="off" required>
+
+      <label>Tu foto</label>
+      <div class="ayuda">Una o dos. Desde el celular está perfecto.</div>
+      <div class="zona" id="zona">
+        <p><strong>Toca para elegir</strong><br>JPG o PNG, hasta 15 MB</p>
+      </div>
+      <input type="file" id="archivo" accept="image/*" multiple>
+      <div class="previas" id="previas"></div>
+
+      <label for="mensaje">¿Qué le dirías a alguien que está empezando con sus rizos?</label>
+      <div class="ayuda">Opcional, pero nos encanta ponerlo junto a tu foto.</div>
+      <textarea id="mensaje" maxlength="280" placeholder="Lo que a ti te hubiera servido escuchar..."></textarea>
+
+      <div class="check">
+        <input type="checkbox" id="permiso" required>
+        <label for="permiso">
+          Autorizo a Brujería Capilar a publicar esta foto en sus redes sociales,
+          etiquetando mi cuenta.
+        </label>
+      </div>
+
+      <button type="submit" class="enviar" id="enviar">Mandar mi foto</button>
+      <div class="error" id="error"></div>
+    </form>
+  </div>
+
+  <div class="pie">Tus fotos solo se usan para el contenido de la marca.<br>Si cambias de opinión, escríbenos y las quitamos.</div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  let fotos = [];   // { archivo, dataUrl }
+
+  $('zona').addEventListener('click', () => $('archivo').click());
+
+  $('archivo').addEventListener('change', e => {
+    for (const f of e.target.files) {
+      if (fotos.length >= 2) break;
+      if (!f.type.startsWith('image/')) continue;
+      const lector = new FileReader();
+      lector.onload = ev => { fotos.push({ archivo: f, dataUrl: ev.target.result }); pintar(); };
+      lector.readAsDataURL(f);
+    }
+    e.target.value = '';
+  });
+
+  function pintar() {
+    $('previas').innerHTML = fotos.map((f, i) =>
+      `<div class="previa"><img src="${f.dataUrl}" alt=""><button type="button" onclick="quitar(${i})">×</button></div>`
+    ).join('');
+  }
+  window.quitar = i => { fotos.splice(i, 1); pintar(); };
+
+  // Las fotos del celular pesan 4-8 MB y suben lentísimo con mala señal, que es
+  // justo cuando la gente abandona. Se reducen aquí antes de enviarlas: para un
+  // carrusel de Instagram, 1600px de lado largo sobra.
+  function reducir(archivo) {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1600;
+        let { width: w, height: h } = img;
+        if (Math.max(w, h) > MAX) {
+          const k = MAX / Math.max(w, h);
+          w = Math.round(w * k); h = Math.round(h * k);
+        }
+        const lienzo = document.createElement('canvas');
+        lienzo.width = w; lienzo.height = h;
+        const ctx = lienzo.getContext('2d');
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(lienzo.toDataURL('image/jpeg', 0.9));
+      };
+      img.onerror = () => resolve(null);
+      img.src = URL.createObjectURL(archivo);
+    });
+  }
+
+  $('form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const err = $('error');
+    err.style.display = 'none';
+
+    const ig = $('ig').value.trim().replace(/^@/, '');
+    if (!ig) return mostrar('Déjanos tu usuario de Instagram para poder etiquetarte.');
+    if (!fotos.length) return mostrar('Falta la foto 💜');
+    if (!$('permiso').checked) return mostrar('Necesitamos tu autorización para poder publicarla.');
+
+    const boton = $('enviar');
+    boton.disabled = true;
+    boton.textContent = 'Subiendo...';
+
+    try {
+      const imagenes = [];
+      for (const f of fotos) {
+        const chica = await reducir(f.archivo);
+        if (chica) imagenes.push(chica);
+      }
+      const r = await fetch('/api/fotos-comunidad', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instagram: ig,
+          mensaje: $('mensaje').value.trim(),
+          autoriza: true,
+          imagenes,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'No pudimos recibir tu foto');
+
+      $('tarjeta').innerHTML =
+        '<div class="listo"><div class="emoji">💜</div>' +
+        '<h2>¡Gracias!</h2>' +
+        '<p>Ya tenemos tu foto.</p>' +
+        '<p>Si la publicamos, te etiquetamos como <strong>@' + ig.replace(/[<>&"]/g, '') + '</strong>.</p></div>';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e2) {
+      mostrar(e2.message);
+      boton.disabled = false;
+      boton.textContent = 'Mandar mi foto';
+    }
+
+    function mostrar(m) { err.textContent = m; err.style.display = 'block'; }
+  });
+</script>
+
+</body>
+</html>

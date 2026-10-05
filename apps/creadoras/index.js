@@ -13,7 +13,7 @@ const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, e
 const acuerdo = require('./acuerdo');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro', '/acuerdo', '/api/acuerdo/', '/api/wa-status', '/api/onboarding-status'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro', '/acuerdo', '/api/acuerdo/', '/api/wa-status', '/api/onboarding-status', '/fotos', '/api/fotos-comunidad'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -269,6 +269,85 @@ app.post('/api/marketplace/invitar-wa', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// ── Fotos de la comunidad ────────────────────────────────────────────────────
+//
+// Recibe las fotos de la campaña "Nuestras rizadas". La página es /fotos y es
+// pública: la creadora llega por un enlace del correo, sin cuenta ni login.
+//
+// Por eso el endpoint trae sus propias defensas: tope de envíos por rato, tope
+// de peso, y solo acepta imágenes. Una ruta pública que guarda archivos sin
+// límites es una invitación a que alguien llene el almacenamiento.
+//
+// Las fotos van a un bucket PRIVADO: son de personas identificables y no deben
+// quedar en una URL que cualquiera pueda adivinar. Junto a cada una se guarda
+// un .json con el @ de la autora, su mensaje y la constancia de que autorizó
+// la publicación — ese permiso es lo que nos deja usarla.
+app.post('/api/fotos-comunidad',
+  rateLimit({ windowMs: 10 * 60 * 1000, max: 12 }),
+  async (req, res) => {
+  try {
+    const { instagram, mensaje, autoriza, imagenes } = req.body || {};
+    const ig = String(instagram || '').trim().replace(/^@/, '').replace(/[^A-Za-z0-9_.]/g, '');
+    if (!ig) return res.status(400).json({ error: 'Falta tu usuario de Instagram' });
+    if (!autoriza) return res.status(400).json({ error: 'Necesitamos tu autorización para publicarla' });
+    if (!Array.isArray(imagenes) || !imagenes.length) return res.status(400).json({ error: 'Falta la foto' });
+    if (imagenes.length > 2) return res.status(400).json({ error: 'Máximo dos fotos' });
+
+    const sello = new Date().toISOString().replace(/[:.]/g, '-');
+    const guardadas = [];
+
+    for (let i = 0; i < imagenes.length; i++) {
+      const dato = String(imagenes[i] || '');
+      const m = dato.match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/);
+      if (!m) return res.status(400).json({ error: 'Formato de imagen no admitido' });
+      const binario = Buffer.from(m[3], 'base64');
+      // 8 MB ya recortadas: el navegador las reduce antes de enviarlas, así que
+      // algo más grande que esto no viene de nuestra página.
+      if (binario.length > 8 * 1024 * 1024) return res.status(400).json({ error: 'La foto pesa demasiado' });
+
+      const nombre = `${sello}_${ig}_${i + 1}.jpg`;
+      const r = await fetch(`${config.supabase.url}/storage/v1/object/fotos-comunidad/${nombre}`, {
+        method: 'POST',
+        headers: {
+          apikey: config.supabase.service_role_key,
+          Authorization: `Bearer ${config.supabase.service_role_key}`,
+          'Content-Type': m[1],
+        },
+        body: binario,
+      });
+      if (!r.ok) throw new Error('No pudimos guardar la foto: ' + (await r.text()).slice(0, 120));
+      guardadas.push(nombre);
+    }
+
+    // La constancia de la autorización va junto a las fotos, no en otro lado:
+    // si alguna vez hay que demostrar que se dio permiso, está donde está la foto.
+    const ficha = {
+      instagram: ig,
+      mensaje: String(mensaje || '').slice(0, 280),
+      autorizo_publicacion: true,
+      recibido_at: new Date().toISOString(),
+      fotos: guardadas,
+    };
+    await fetch(`${config.supabase.url}/storage/v1/object/fotos-comunidad/${sello}_${ig}.json`, {
+      method: 'POST',
+      headers: {
+        apikey: config.supabase.service_role_key,
+        Authorization: `Bearer ${config.supabase.service_role_key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(ficha, null, 2),
+    }).catch(() => {});
+
+    console.log(`[fotos] @${ig} mandó ${guardadas.length} foto(s)`);
+    res.json({ ok: true, recibidas: guardadas.length });
+  } catch (e) {
+    console.error('[fotos-comunidad]', e.message);
+    res.status(500).json({ error: 'No pudimos recibir tu foto. Inténtalo de nuevo en un momento.' });
+  }
+});
+
+app.get('/fotos', (req, res) => res.sendFile(path.join(__dirname, 'public', 'fotos.html')));
 
 // ── Quién recibió producto y no ha publicado ─────────────────────────────────
 //
