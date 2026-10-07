@@ -303,6 +303,8 @@ Requiere `scripts/influencers/config_influencers.json` con credenciales válidas
 
 ## Creators Manager — Marketplace de Creadoras (apps/marketplace/)
 
+> ⚠️ **APAGADO desde el 7-oct-2026.** El servicio corre con `MK_APAGADO=1`: no monta rutas ni procesos automáticos, no manda correos ni WhatsApp, y redirige todo a creatorsmanager.com, que ahora es el sitio de la agencia Creators Manager (repo aparte `brujeriapro/creators-manager-web`). No se avisó a creadoras ni a marcas, a propósito. **No mandar invitaciones ni la plantilla `invitacion_creators_manager`.** El código y las tablas `mk_*` siguen intactos; para volver a prenderlo, ver [apps/marketplace/APAGADO.md](apps/marketplace/APAGADO.md).
+
 Marketplace de dos lados: marcas de belleza y consumo colombianas contratan colaboraciones pagas con un banco de creadoras, y la plataforma cobra comisión por cada trato cerrado. **Es una marca y un producto aparte de Brujería Capilar.** Comparte la base de datos de Supabase con el Programa Creadoras (para no duplicar el banco de creadoras) pero corre en su propio proceso, con su propio dominio, su propio panel admin y sus propios secretos. No importa código de `apps/creadoras/`.
 
 Documentación completa: [apps/marketplace/README.md](apps/marketplace/README.md) · Plan: [plans/2026-08-20-marketplace-creadoras-fase1.md](plans/2026-08-20-marketplace-creadoras-fase1.md)

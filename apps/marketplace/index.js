@@ -19,6 +19,36 @@ const { terminosHTML } = require('./terminos');
 
 const app = express();
 
+// ── Interruptor de apagado ──────────────────────────────────────────────────
+//
+// Desde el 7-oct-2026 el marketplace está apagado y creatorsmanager.com es el
+// sitio de la agencia (repo creators-manager-web). Ver APAGADO.md.
+//
+// Por qué una variable y no simplemente detener el servicio en Railway: este
+// repo autodespliega con cada push a main, y el Programa Creadoras recibe
+// pushes casi a diario. Un servicio "detenido" volvía a arrancar con el
+// siguiente push, y con él programarPlazos(): plazos que se cierran, pagos que
+// se concilian y avisos de vencimiento que les llegan a las marcas. Justo lo
+// que se decidió no hacer.
+//
+// Con MK_APAGADO=1 no se monta ninguna ruta ni corre ningún proceso: solo
+// /health y una redirección. Para volver a prenderlo basta con borrar la
+// variable — el resto del archivo queda exactamente como estaba.
+if (process.env.MK_APAGADO === '1') {
+  const destino = process.env.MK_APAGADO_DESTINO || 'https://creatorsmanager.com';
+  app.get('/health', (req, res) => {
+    res.json({ ok: true, servicio: 'creatorsmanager.com', estado: 'apagado' });
+  });
+  // 302 y no 301: un permanente se queda cacheado en el navegador y estorbaría
+  // el día que esto se vuelva a prender.
+  app.use((req, res) => res.redirect(302, destino));
+  app.listen(config.puerto, () => {
+    console.log(`[marketplace] APAGADO (MK_APAGADO=1): solo /health y redirección a ${destino}. Ver APAGADO.md`);
+  });
+  module.exports = app;
+  return;
+}
+
 app.use(cors());
 // Las muestras se suben en base64 dentro del JSON, y base64 infla el archivo
 // cerca de un 33%. El bucket acepta hasta 10 MB, así que el cuerpo tiene que

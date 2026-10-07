@@ -1,5 +1,7 @@
 # Creators Manager — marketplace de creadoras
 
+> ⚠️ **Apagado desde el 7-oct-2026** con `MK_APAGADO=1`. creatorsmanager.com es ahora el sitio de la agencia. Estado y cómo volver a prenderlo: [APAGADO.md](APAGADO.md).
+
 Marketplace de dos lados: marcas colombianas contratan colaboraciones pagas con un banco de creadoras de todos los nichos — belleza, moda, fitness, comida, hogar, viajes, tech y más. La plataforma cobra comisión por cada trato cerrado y retiene el pago hasta que el contenido se entrega y se aprueba.
 
 **Es un producto y una marca aparte de Brujería Capilar.** Comparte la base de datos con el Programa Creadoras (`apps/creadoras/`) para no duplicar el banco de creadoras, pero corre en su propio proceso, con su propio dominio, su propio panel admin y sus propios secretos. No importa una sola línea de código de la otra app.
