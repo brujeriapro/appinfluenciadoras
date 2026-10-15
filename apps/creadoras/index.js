@@ -3312,6 +3312,7 @@ let ultimoIdeas = null;
 let ultimoSeguimiento = null;
 let ultimoOnboarding = null;
 let ultimoPedirFoto = null;
+let ultimoLlegada = null;
 
 // Secuencia de onboarding de ventas — un paso por creadora por corrida, sin repetir
 const SECUENCIA_ONBOARDING = [
@@ -3322,19 +3323,27 @@ const SECUENCIA_ONBOARDING = [
   { dia: 12, template: 'cupon_sin_usar_brujeria',     enviar: enviarCuponSinUsar, soloSinVentas: true },
 ];
 
+// Hasta dónde mira la secuencia hacia atrás. La última etapa es el día 12, así
+// que 30 deja margen de sobra para quien entró tarde — y corta a quien recibió
+// el producto hace meses, que no puede recibir hoy un "tu regalo ya llegó".
+const ONBOARDING_DIAS_MAX = Number(process.env.ONBOARDING_DIAS_MAX || 30);
+
 async function runOnboardingVentas() {
   console.log('[cron/onboarding] Ejecutando...');
   let enviadosCount = 0;
   try {
-    const enviados = await supabase.getUGCRegalosEnviados();
-    // Tomar el primer regalo (más antiguo) de cada creadora
+    // Antes esto leía `ugc_regalos`, la tabla del botón "Enviar regalo" del
+    // panel. Ese flujo se dejó de usar el 16-jul-2026 —40 regalos con fecha,
+    // ninguno después— así que la secuencia llevaba meses corriendo en vacío
+    // mientras los despachos seguían, registrados en el perfil de la creadora.
+    // Ahora lee de ahí, que es donde el equipo sí deja constancia.
+    const todas = await supabase.getInfluencersConTelefono();
     const porInf = {};
-    for (const r of enviados) {
-      const inf = r.influencers;
-      if (!inf || !inf.telefono || !r.fecha_envio) continue;
-      const prev = porInf[r.influencer_id];
-      if (!prev || new Date(r.fecha_envio) < new Date(prev.fecha_envio))
-        porInf[r.influencer_id] = { fecha_envio: r.fecha_envio, inf };
+    for (const inf of todas) {
+      if (!inf.telefono || !inf.fecha_envio) continue;
+      const dias = Math.floor((Date.now() - new Date(inf.fecha_envio).getTime()) / 86400000);
+      if (dias > ONBOARDING_DIAS_MAX) continue;
+      porInf[inf.id] = { fecha_envio: inf.fecha_envio, inf };
     }
     for (const id of Object.keys(porInf)) {
       const g = porInf[id];
@@ -3358,6 +3367,46 @@ async function runOnboardingVentas() {
     console.log(`[cron/onboarding] ${enviadosCount} mensajes enviados`);
   } catch (e) { console.error('[cron/onboarding] Error:', e.message); }
   return enviadosCount;
+}
+
+// ── "¿Ya te llegó?" ─────────────────────────────────────────────────────────
+//
+// Este mensaje se mandó UNA vez, el 19-may-2026, y nunca más: el servicio
+// `cron-confirmacion-llegada` de Railway dispara un curl sin la clave que la
+// ruta exige y lleva cinco meses recibiendo 401 cada quince minutos. Por eso
+// vuelve a vivir aquí, en el planificador de la app, donde no hay clave que
+// pasar.
+//
+// ⚠️ La ventana superior no es un detalle: hay 152 creadoras con producto
+// despachado que nunca confirmaron, y a las de hace meses un "¿ya te llegó?"
+// les llega como una marca que no sabe lo que hizo. Se les pregunta solo
+// mientras la respuesta todavía sirve para algo.
+const LLEGADA_DIAS_MIN = Number(process.env.LLEGADA_DIAS_MIN || 5);
+const LLEGADA_DIAS_MAX = Number(process.env.LLEGADA_DIAS_MAX || 45);
+
+function candidatasParaLlegada(todas) {
+  const hoy = new Date();
+  return todas.filter(i => {
+    if (!i.fecha_envio) return false;
+    if (i.fecha_confirmacion_recibo) return false;   // ya dijo que le llegó
+    const dias = Math.floor((hoy - new Date(i.fecha_envio)) / 86400000);
+    return dias >= LLEGADA_DIAS_MIN && dias <= LLEGADA_DIAS_MAX;
+  });
+}
+
+async function runCronConfirmacionLlegada() {
+  console.log('[cron/llegada] Ejecutando...');
+  try {
+    const todas = await supabase.getInfluencersConTelefono();
+    await correrTanda({
+      clave: 'cron/llegada',
+      candidatas: candidatasParaLlegada(todas),
+      template: 'confirmacion_llegada_influencers',
+      enviar: enviarConfirmacionLlegada,
+    });
+  } catch (e) {
+    console.error('[cron/llegada] Error:', e.message);
+  }
 }
 
 // A quién le toca el mensaje de la foto: ya confirmó que le llegó el producto,
@@ -3462,7 +3511,7 @@ function revisarCrons() {
 
   // No disparar corridas atrasadas en la fecha marcada (pero sí marcarlas como hechas)
   if (hoy === CRON_SKIP_DATE) {
-    ultimoIdeas = ultimoOnboarding = ultimoSeguimiento = ultimoPedirFoto = hoy;
+    ultimoIdeas = ultimoOnboarding = ultimoSeguimiento = ultimoPedirFoto = ultimoLlegada = hoy;
     return;
   }
 
@@ -3475,6 +3524,13 @@ function revisarCrons() {
   if (horaUTC >= 16 && ultimoOnboarding !== hoy) {
     ultimoOnboarding = hoy;
     runOnboardingVentas();
+  }
+  // Diario desde las 15:00 UTC (10am Bogotá) — "¿ya te llegó?"
+  // Va antes que el de la foto a propósito: la foto se pide contando desde que
+  // confirma, así que primero hay que darle la ocasión de confirmar.
+  if (horaUTC >= 15 && ultimoLlegada !== hoy) {
+    ultimoLlegada = hoy;
+    runCronConfirmacionLlegada();
   }
   // Diario desde las 16:00 UTC (11am Bogotá) — pedir la foto del carrusel
   if (horaUTC >= 16 && ultimoPedirFoto !== hoy) {
