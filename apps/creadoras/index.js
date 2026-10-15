@@ -9,7 +9,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { calcularScore, calcularNivel, calcularTier } = require('./scoring');
 const { enviarRecordatorioContenido, enviarResetPassword } = require('./email');
-const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarUGCBienvenida, enviarUGCConfirmacionRegistro, enviarAcuerdo, enviarRegaloEnCamino, enviarRegaloLlego, enviarIdeasVideo, enviarChecklistPublicar, enviarVenderMas, enviarCierreQuincena, enviarCuponSinUsar, enviarRecordarCodigoReportar, enviarInvitacionMarketplace } = require('./whatsapp');
+const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, enviarFeedbackContenido, enviarIdeasContenido, enviarReenganche, enviarEncuestaProductos, enviarConfirmacionLlegada, enviarSeguimientoProductos, enviarPedirFoto, enviarUGCBienvenida, enviarUGCConfirmacionRegistro, enviarAcuerdo, enviarRegaloEnCamino, enviarRegaloLlego, enviarIdeasVideo, enviarChecklistPublicar, enviarVenderMas, enviarCierreQuincena, enviarCuponSinUsar, enviarRecordarCodigoReportar, enviarInvitacionMarketplace } = require('./whatsapp');
 const acuerdo = require('./acuerdo');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
@@ -1703,6 +1703,57 @@ app.post('/api/cron/seguimiento-productos', async (req, res) => {
       candidatas,
       template: 'seguimiento_productos_brujeria',
       enviar: enviarSeguimientoProductos,
+    }));
+  } catch (e) {
+    if (!res.headersSent) res.status(500).json({ error: e.message });
+  }
+});
+
+// ── CRON PEDIR FOTO (diario — 7 días después de confirmar llegada) ──────────
+//
+// Le pide a la creadora una foto de sus rizos para el carrusel "Nuestras
+// rizadas". Hasta ahora la foto solo se pedía en dos pantallas que ella tenía
+// que llegar a ver —la bienvenida del kit y el final del formulario de
+// entrega—, así que solo la mandaba quien pasara por ahí.
+//
+// El filtro es el mismo que el de seguimiento: ya confirmó que le llegó, han
+// pasado 7 días, y todavía no ha entregado contenido. `correrTanda` se encarga
+// de no mandarle dos veces a la misma, aunque el cron corra de más.
+app.post('/api/cron/pedir-foto', async (req, res) => {
+  const secret = req.headers['x-cron-secret'] || req.query.secret;
+  const validSecret = secret === config.import_token
+    || (config.tally_webhook_secret && secret === config.tally_webhook_secret);
+  if (!validSecret) return res.status(401).json({ error: 'No autorizado' });
+
+  const DIAS = Number(req.query.dias || process.env.DIAS_PEDIR_FOTO || 7);
+  try {
+    const hoy = new Date();
+    const todas = await supabase.getInfluencersConTelefono();
+    const candidatas = todas.filter(i => {
+      if (!i.fecha_confirmacion_recibo) return false;
+      if (['Contenido Entregado', 'Calificada'].includes(i.status)) return false;
+      const dias = Math.floor((hoy - new Date(i.fecha_confirmacion_recibo)) / (1000 * 60 * 60 * 24));
+      return dias >= DIAS;
+    });
+
+    // debug=1 enseña a quién le tocaría sin mandar nada. Sirve para mirar la
+    // lista antes de prender el cron.
+    if (req.query.debug === '1') {
+      return res.json({
+        dias: DIAS,
+        candidatas: candidatas.length,
+        quienes: candidatas.map(i => ({ nombre: i.nombre, status: i.status, confirmo: i.fecha_confirmacion_recibo })),
+      });
+    }
+
+    res.json({ ok: true, candidatas: candidatas.length, mensaje: 'Procesando en background' });
+
+    setImmediate(() => correrTanda({
+      clave: 'cron/pedir-foto',
+      candidatas,
+      template: 'seguimiento_foto_brujeria',
+      enviar: enviarPedirFoto,
+      ...(req.query.force === '1' ? { forzar: true } : {}),
     }));
   } catch (e) {
     if (!res.headersSent) res.status(500).json({ error: e.message });

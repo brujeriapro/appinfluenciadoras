@@ -168,6 +168,23 @@ async function enviarSeguimientoProductos(influencer) {
   return enviarTemplate(influencer.telefono, 'seguimiento_productos_brujeria', [nombre]);
 }
 
+// Pedir la foto para el carrusel "Nuestras rizadas" — 7 días después de que
+// confirma que le llegó el producto.
+// Template: seguimiento_foto_brujeria · Variables: {{1}} nombre
+// Botón URL estático → /fotos
+//
+// Es plantilla aparte de `seguimiento_productos_brujeria` a propósito: esa ya
+// existe en Meta con otro texto, y pisarla cambiaría un mensaje aprobado por
+// otro sin que quede rastro de cuál se mandó.
+//
+// El momento no es el despacho sino una semana después de que la tiene en la
+// mano: pedirle una foto de rizos el día que sale el paquete es pedirle una
+// foto de algo que todavía no ha usado.
+async function enviarPedirFoto(influencer) {
+  const nombre = influencer.nombre?.split(' ')[0] || influencer.nombre || 'creadora';
+  return enviarTemplate(influencer.telefono, 'seguimiento_foto_brujeria', [nombre]);
+}
+
 // Bienvenida programa UGC para leads externos (Meta Lead Ads) — Mensaje 1
 // Template: ugc_bienvenida_creadoras · Variables: {{1}} nombre
 async function enviarUGCBienvenida(telefono, nombre) {
@@ -265,6 +282,7 @@ module.exports = {
   enviarEncuestaProductos,
   enviarConfirmacionLlegada,
   enviarSeguimientoProductos,
+  enviarPedirFoto,
   enviarUGCBienvenida,
   enviarUGCConfirmacionRegistro,
   enviarAcuerdo,
