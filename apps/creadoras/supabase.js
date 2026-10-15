@@ -224,8 +224,21 @@ async function updatePasswordHash(id, password_hash) {
 }
 
 // Notificaciones enviadas
-async function registrarNotificacion(influencer_id, template_name, enviado_por = 'admin') {
-  return supabasePost('notificaciones_enviadas', { influencer_id, template_name, enviado_por });
+/**
+ * Anota algo en el historial de una creadora.
+ *
+ * `tipo` separa dos cosas que esta tabla guardaba mezcladas bajo el mismo
+ * nombre de plantilla:
+ *   - 'envio'     → le mandamos ese mensaje.
+ *   - 'respuesta' → ella nos confirmó algo (que le llegó el paquete, p.ej.).
+ *
+ * Sin esa distinción, `confirmacion_llegada_influencers` parecía vivo —498
+ * registros, el último de ayer— cuando el mensaje solo salió el 19-may-2026:
+ * los 189 posteriores eran confirmaciones suyas. Cualquier conteo de "cuántos
+ * mensajes mandamos" tiene que filtrar por tipo = 'envio'.
+ */
+async function registrarNotificacion(influencer_id, template_name, enviado_por = 'admin', tipo = 'envio') {
+  return supabasePost('notificaciones_enviadas', { influencer_id, template_name, enviado_por, tipo });
 }
 
 /**
@@ -236,11 +249,16 @@ async function registrarNotificacion(influencer_id, template_name, enviado_por =
  *
  * Deliberadamente no es un delete genérico: borra una fila concreta por
  * (influencer_id, template_name) y nada más.
+ *
+ * Y solo de tipo 'envio': lo que se deshace es la reserva de un mensaje que no
+ * salió. Sin ese filtro, un envío fallido se llevaría por delante la
+ * constancia de que la creadora confirmó que le llegó el paquete.
  */
 async function borrarNotificacion(influencer_id, template_name) {
   const url = new URL(`${BASE_URL}/notificaciones_enviadas`);
   url.searchParams.set('influencer_id', `eq.${influencer_id}`);
   url.searchParams.set('template_name', `eq.${template_name}`);
+  url.searchParams.set('tipo', 'eq.envio');
   const res = await fetch(url.toString(), { method: 'DELETE', headers: HEADERS });
   if (!res.ok) throw new Error(`Supabase DELETE notificaciones_enviadas: ${res.status}`);
   return true;
@@ -263,10 +281,21 @@ async function getNotificadosPorTemplate(template_name) {
   return supabaseGet('notificaciones_enviadas', { select: 'influencer_id', template_name: `eq.${template_name}` });
 }
 
+/**
+ * ¿Ya le mandamos este mensaje a esta creadora? Es el freno que impide repetir
+ * un envío.
+ *
+ * Mira solo `tipo = 'envio'`: una confirmación suya no es un mensaje nuestro, y
+ * contarla haría que el cron creyera haber mandado algo que nunca salió. Quien
+ * ya confirmó igual queda fuera por otro lado —los filtros de candidatas
+ * excluyen a quien tiene `fecha_confirmacion_recibo`—, así que esto no la hace
+ * elegible de nuevo.
+ */
 async function yaEnviadoTemplate(influencer_id, template_name) {
   const results = await supabaseGet('notificaciones_enviadas', {
     influencer_id: `eq.${influencer_id}`,
     template_name: `eq.${template_name}`,
+    tipo: 'eq.envio',
     limit: 1,
     select: 'id',
   });

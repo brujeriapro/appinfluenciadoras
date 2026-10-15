@@ -1150,7 +1150,7 @@ app.post('/api/influencer/confirmar-recibo', authMiddleware, async (req, res) =>
       fecha_confirmacion_recibo: new Date().toISOString().split('T')[0],
       paquete_no_llego: false,
     });
-    await supabase.registrarNotificacion(influencer.id, 'confirmacion_llegada_influencers', 'influencer');
+    await supabase.registrarNotificacion(influencer.id, 'confirmacion_llegada_influencers', 'influencer', 'respuesta');
     console.log(`[confirmar-recibo] ${influencer.nombre} confirmÃ³ recibo desde el portal`);
     res.json({ ok: true });
   } catch (e) {
@@ -1621,7 +1621,7 @@ app.post('/webhook/wa', async (req, res) => {
           fecha_confirmacion_recibo: new Date().toISOString().split('T')[0],
           paquete_no_llego: false,
         });
-        await supabase.registrarNotificacion(influencer.id, 'confirmacion_llegada_influencers', 'influencer');
+        await supabase.registrarNotificacion(influencer.id, 'confirmacion_llegada_influencers', 'influencer', 'respuesta');
         console.log(`[webhook/wa] ${influencer.nombre} confirmÃ³ recibo del paquete`);
 
       } else if (boton === 'No me ha llegado') {
@@ -1783,7 +1783,7 @@ app.post('/api/bienvenida-kit', async (req, res) => {
       fecha_planeada_publicacion: fecha_planeada || null,
       paquete_no_llego: false,
     });
-    await supabase.registrarNotificacion(inf.id, 'confirmacion_llegada_influencers', 'influencer');
+    await supabase.registrarNotificacion(inf.id, 'confirmacion_llegada_influencers', 'influencer', 'respuesta');
     console.log(`[bienvenida-kit] ${inf.nombre} confirmÃ³ recibo | planea publicar: ${fecha_planeada}`);
     res.json({ ok: true });
   } catch (e) {
