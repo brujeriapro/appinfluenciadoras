@@ -1727,14 +1727,8 @@ app.post('/api/cron/pedir-foto', async (req, res) => {
 
   const DIAS = Number(req.query.dias || process.env.DIAS_PEDIR_FOTO || 7);
   try {
-    const hoy = new Date();
     const todas = await supabase.getInfluencersConTelefono();
-    const candidatas = todas.filter(i => {
-      if (!i.fecha_confirmacion_recibo) return false;
-      if (['Contenido Entregado', 'Calificada'].includes(i.status)) return false;
-      const dias = Math.floor((hoy - new Date(i.fecha_confirmacion_recibo)) / (1000 * 60 * 60 * 24));
-      return dias >= DIAS;
-    });
+    const candidatas = candidatasParaFoto(todas, DIAS);
 
     // debug=1 enseña a quién le tocaría sin mandar nada. Sirve para mirar la
     // lista antes de prender el cron.
@@ -3317,6 +3311,7 @@ app.listen(PORT, () => {
 let ultimoIdeas = null;
 let ultimoSeguimiento = null;
 let ultimoOnboarding = null;
+let ultimoPedirFoto = null;
 
 // Secuencia de onboarding de ventas — un paso por creadora por corrida, sin repetir
 const SECUENCIA_ONBOARDING = [
@@ -3363,6 +3358,42 @@ async function runOnboardingVentas() {
     console.log(`[cron/onboarding] ${enviadosCount} mensajes enviados`);
   } catch (e) { console.error('[cron/onboarding] Error:', e.message); }
   return enviadosCount;
+}
+
+// A quién le toca el mensaje de la foto: ya confirmó que le llegó el producto,
+// pasaron DIAS desde entonces, y todavía no ha entregado contenido.
+//
+// Vive aparte porque la usan dos: este cron y la ruta POST /api/cron/pedir-foto
+// (que además tiene ?debug=1 para mirar la lista sin mandar nada).
+function candidatasParaFoto(todas, dias) {
+  const hoy = new Date();
+  return todas.filter(i => {
+    if (!i.fecha_confirmacion_recibo) return false;
+    if (['Contenido Entregado', 'Calificada'].includes(i.status)) return false;
+    return Math.floor((hoy - new Date(i.fecha_confirmacion_recibo)) / 86400000) >= dias;
+  });
+}
+
+// Pide la foto para el carrusel "Nuestras rizadas".
+//
+// Va por el planificador interno de la app y NO por un servicio cron de
+// Railway: el de `cron-confirmacion-llegada` lleva tiempo disparando un curl
+// sin la clave que la ruta exige, así que recibe 401 cada 15 minutos y no
+// manda nada. Aquí no hay clave que pasar ni servicio aparte que se desconfigure.
+async function runCronPedirFoto() {
+  console.log('[cron/pedir-foto] Ejecutando...');
+  try {
+    const dias = Number(process.env.DIAS_PEDIR_FOTO || 7);
+    const todas = await supabase.getInfluencersConTelefono();
+    await correrTanda({
+      clave: 'cron/pedir-foto',
+      candidatas: candidatasParaFoto(todas, dias),
+      template: 'seguimiento_foto_brujeria',
+      enviar: enviarPedirFoto,
+    });
+  } catch (e) {
+    console.error('[cron/pedir-foto] Error:', e.message);
+  }
 }
 
 async function runCronIdeas() {
@@ -3431,7 +3462,7 @@ function revisarCrons() {
 
   // No disparar corridas atrasadas en la fecha marcada (pero sí marcarlas como hechas)
   if (hoy === CRON_SKIP_DATE) {
-    ultimoIdeas = ultimoOnboarding = ultimoSeguimiento = hoy;
+    ultimoIdeas = ultimoOnboarding = ultimoSeguimiento = ultimoPedirFoto = hoy;
     return;
   }
 
@@ -3444,6 +3475,11 @@ function revisarCrons() {
   if (horaUTC >= 16 && ultimoOnboarding !== hoy) {
     ultimoOnboarding = hoy;
     runOnboardingVentas();
+  }
+  // Diario desde las 16:00 UTC (11am Bogotá) — pedir la foto del carrusel
+  if (horaUTC >= 16 && ultimoPedirFoto !== hoy) {
+    ultimoPedirFoto = hoy;
+    runCronPedirFoto();
   }
   // Lunes desde las 14:00 UTC (9am Bogotá) — seguimiento semanal
   if (diaUTC === 1 && horaUTC >= 14 && ultimoSeguimiento !== hoy) {
