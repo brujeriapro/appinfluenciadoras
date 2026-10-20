@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>La fórmula que falta — Brujería Capilar</title>
+<meta name="description" content="Nueve fórmulas listas en el laboratorio. Solo una entra a producción. Tú eliges cuál.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400..700;1,400..700&family=Space+Grotesk:wght@300..700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* Una pregunta por pantalla. La decisión (paso 3) es la única que ocupa
+     la pantalla entera: es la que de verdad importa. */
+  :root{
+    --luz:#FFFBEA; --niebla:#EFE3FB; --hechizo:#C0298B; --pocion:#8525B7;
+    --cosmos:#2A1140; --chispa:#FF7B78; --turquesa:#1FB6BD;
+    --display:'Bodoni Moda',Georgia,serif;
+    --texto:'Space Grotesk',-apple-system,Helvetica,Arial,sans-serif;
+    --mono:'Space Mono',Consolas,monospace;
+    color-scheme:light;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--luz); color:var(--cosmos); font-family:var(--texto);
+    font-size:16px; line-height:1.6;
+    background-image:radial-gradient(120% 70% at 50% -10%, rgba(192,41,139,.14), transparent 60%),
+                     radial-gradient(90% 60% at 10% 110%, rgba(133,37,183,.12), transparent 60%);
+    background-attachment:fixed;
+    min-height:100vh;
+  }
+  .wrap{
+    max-width:620px; margin:0 auto; min-height:100vh;
+    padding-left:max(18px,env(safe-area-inset-left,0px));
+    padding-right:max(18px,env(safe-area-inset-right,0px));
+    padding-block:26px 48px;
+    display:flex; flex-direction:column;
+  }
+
+  /* Progreso */
+  .barra{height:3px;background:rgba(42,17,64,.12);border-radius:99px;overflow:hidden;margin-bottom:28px;flex:none}
+  .barra i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--chispa),var(--hechizo) 55%,var(--pocion));transition:width .45s cubic-bezier(.2,.8,.2,1)}
+
+  .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--pocion);margin:0 0 14px}
+  h1{font-family:var(--display);font-weight:700;font-size:clamp(32px,8vw,46px);line-height:1.05;margin:0 0 16px;text-wrap:balance}
+  h2{font-family:var(--display);font-weight:700;font-size:clamp(24px,5.5vw,31px);line-height:1.15;margin:0 0 8px;text-wrap:balance}
+  .sub{margin:0 0 26px;font-size:15.5px;opacity:.82}
+  em{font-style:italic;color:var(--hechizo)}
+
+  .paso{display:none;animation:entra .4s ease both;flex:1}
+  .paso.on{display:block}
+  @keyframes entra{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.paso{animation:none}.barra i{transition:none}}
+
+  /* Opciones */
+  .ops{display:grid;gap:9px;margin:0 0 24px}
+  .op{
+    display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;
+    background:#fff;border:1.5px solid rgba(42,17,64,.13);border-radius:13px;
+    padding:15px 16px;cursor:pointer;font:inherit;color:inherit;
+    transition:border-color .16s,background .16s,transform .1s;
+  }
+  .op:hover{border-color:var(--hechizo)}
+  .op:active{transform:scale(.995)}
+  .op:focus-visible{outline:2.5px solid var(--pocion);outline-offset:2px}
+  .op[aria-pressed="true"]{border-color:var(--hechizo);background:#FFF4FB;box-shadow:inset 0 0 0 1px var(--hechizo)}
+  .op .tick{
+    flex:none;width:21px;height:21px;border-radius:50%;margin-top:1px;
+    border:1.5px solid rgba(42,17,64,.26);display:grid;place-items:center;
+    font-size:12px;color:#fff;line-height:1;
+  }
+  .op[aria-pressed="true"] .tick{background:var(--hechizo);border-color:var(--hechizo)}
+  .op .tt{font-weight:600;display:block}
+  .op .dd{display:block;font-size:13.5px;opacity:.72;margin-top:2px}
+
+  textarea,input[type=email]{
+    width:100%;font:inherit;color:inherit;background:#fff;
+    border:1.5px solid rgba(42,17,64,.15);border-radius:13px;padding:14px 15px;
+  }
+  textarea{min-height:104px;resize:vertical}
+  textarea:focus,input:focus{outline:none;border-color:var(--hechizo)}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    background:var(--hechizo);color:var(--luz);border:0;border-radius:99px;
+    padding:16px 34px;font:inherit;font-weight:700;cursor:pointer;width:100%;
+    transition:filter .16s;
+  }
+  .btn:hover{filter:brightness(1.07)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn.ghost{background:transparent;color:var(--pocion);font-weight:600;padding:12px;width:auto}
+  .pie{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px}
+  .nota{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;opacity:.5}
+
+  /* Cierre */
+  .cupon{
+    background:var(--cosmos);color:var(--luz);border-radius:18px;padding:30px 24px;text-align:center;margin:0 0 22px;
+  }
+  .cupon .codigo{
+    font-family:var(--mono);font-weight:700;font-size:30px;letter-spacing:.12em;
+    display:block;margin:12px 0 6px;color:#fff;
+  }
+  .copiar{background:rgba(255,255,255,.14);color:var(--luz);border:0;border-radius:99px;padding:10px 22px;font:inherit;font-size:14px;cursor:pointer;margin-top:10px}
+  .err{color:#B3261E;font-size:14px;margin:10px 0 0;min-height:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="barra" aria-hidden="true"><i id="prog"></i></div>
+
+  <!-- 0 · portada -->
+  <section class="paso on" data-paso="0">
+    <p class="eyebrow">✦ Brujería Capilar · Laboratorio</p>
+    <h1>Tenemos nueve fórmulas listas.<br><em>Solo una se fabrica.</em></h1>
+    <p class="sub">Están terminadas, con su brief y todo, esperando turno. No podemos producirlas todas este año, así que la que entra la eliges tú.<br><br>Son dos minutos. Al final te damos <strong>30% en tu próxima compra</strong> por ayudarnos.</p>
+    <button class="btn" data-ir="1">Entrar al laboratorio</button>
+    <p class="nota" style="margin-top:18px">8 preguntas · sin respuestas incorrectas</p>
+  </section>
+
+  <!-- 1 · cabello -->
+  <section class="paso" data-paso="1">
+    <p class="eyebrow">01 · Tu cabello</p>
+    <h2>¿Cómo es tu pelo cuando lo dejas secar al aire?</h2>
+    <p class="sub">Sin plancha, sin secador, sin nada.</p>
+    <div class="ops" data-campo="tipo_cabello" data-max="1">
+      <button class="op" value="ondulado"><span class="tick">✓</span><span><span class="tt">Ondulado</span><span class="dd">Hace eses suaves, se alisa solo si lo peino</span></span></button>
+      <button class="op" value="rizado"><span class="tick">✓</span><span><span class="tt">Rizado</span><span class="dd">Rizos marcados en espiral</span></span></button>
+      <button class="op" value="crespo"><span class="tick">✓</span><span><span class="tt">Crespo</span><span class="dd">Rizo muy cerrado o en zigzag, encoge bastante</span></span></button>
+      <button class="op" value="mixto"><span class="tick">✓</span><span><span class="tt">De todo un poco</span><span class="dd">Distinto arriba que abajo, o según el día</span></span></button>
+    </div>
+    <div class="pie"><button class="btn ghost" data-ir="0">← Atrás</button><button class="btn" style="width:auto" data-ir="2" disabled>Siguiente</button></div>
+  </section>
+
+  <!-- 2 · problema -->
+  <section class="paso" data-paso="2">
+    <p class="eyebrow">02 · La pelea de siempre</p>
+    <h2>¿Qué es lo que más te cuesta?</h2>
+    <p class="sub">Elige hasta dos.</p>
+    <div class="ops" data-campo="problemas" data-max="2">
+      <button class="op" value="frizz"><span class="tick">✓</span><span><span class="tt">El frizz</span><span class="dd">Se esponja con la humedad o a las horas</span></span></button>
+      <button class="op" value="definicion"><span class="tick">✓</span><span><span class="tt">Que el rizo no se marca</span><span class="dd">Queda a medias, ni liso ni rizado</span></span></button>
+      <button class="op" value="resequedad"><span class="tick">✓</span><span><span class="tt">Reseco y áspero</span><span class="dd">Se siente de paja por más que lo hidrate</span></span></button>
+      <button class="op" value="quiebre"><span class="tick">✓</span><span><span class="tt">Se quiebra o se cae</span><span class="dd">Puntas abiertas, pelitos rotos</span></span></button>
+      <button class="op" value="volumen"><span class="tick">✓</span><span><span class="tt">Sin volumen</span><span class="dd">Aplastado en la raíz</span></span></button>
+      <button class="op" value="raiz_grasa"><span class="tick">✓</span><span><span class="tt">Raíz grasa, puntas secas</span><span class="dd">Dos problemas en la misma cabeza</span></span></button>
+      <button class="op" value="dura_poco"><span class="tick">✓</span><span><span class="tt">Me dura un día</span><span class="dd">Al segundo día ya no sirve</span></span></button>
+    </div>
+    <div class="pie"><button class="btn ghost" data-ir="1">← Atrás</button><button class="btn" style="width:auto" data-ir="3" disabled>Siguiente</button></div>
+  </section>
+
+  <!-- 3 · la votación -->
+  <section class="paso" data-paso="3">
+    <p class="eyebrow">03 · Tu voto</p>
+    <h2>¿Cuál quieres que fabriquemos?</h2>
+    <p class="sub">Estas son las nueve. Escoge <strong>máximo dos</strong> — si pudieras tenerlas mañana, ¿cuáles serían?</p>
+    <div class="ops" data-campo="formulas" data-max="2">
+      <button class="op" value="acondicionador"><span class="tick">✓</span><span><span class="tt">Acondicionador de rizos</span><span class="dd">Hidratación profunda, se puede usar también como leave-in</span></span></button>
+      <button class="op" value="cowash"><span class="tick">✓</span><span><span class="tt">Co-wash</span><span class="dd">Lavar sin shampoo, para no resecar el rizo</span></span></button>
+      <button class="op" value="gel"><span class="tick">✓</span><span><span class="tt">Gel definidor</span><span class="dd">Definición firme que aguanta, sin dejar el pelo acartonado</span></span></button>
+      <button class="op" value="oleo"><span class="tick">✓</span><span><span class="tt">Óleo capilar</span><span class="dd">Brillo y puntas selladas, sin peso ni grasa</span></span></button>
+      <button class="op" value="proteinas"><span class="tick">✓</span><span><span class="tt">Mascarilla de proteínas</span><span class="dd">Para pelo quebradizo, decolorado o con mucho calor encima</span></span></button>
+      <button class="op" value="activador"><span class="tick">✓</span><span><span class="tt">Activador de rizos</span><span class="dd">Spray para revivir el rizo al segundo y tercer día</span></span></button>
+      <button class="op" value="mousse"><span class="tick">✓</span><span><span class="tt">Mousse</span><span class="dd">Volumen desde la raíz sin apelmazar</span></span></button>
+      <button class="op" value="alisado"><span class="tick">✓</span><span><span class="tt">Alisado temporal</span><span class="dd">Liso que dura hasta el siguiente lavado, sin química</span></span></button>
+      <button class="op" value="otra"><span class="tick">✓</span><span><span class="tt">Ninguna. Yo quiero otra cosa</span><span class="dd">Nos la cuentas en la siguiente</span></span></button>
+    </div>
+    <div id="caja-otra" hidden style="margin:-10px 0 22px">
+      <textarea id="otra_idea" placeholder="¿Cuál sería? Dinos con tus palabras…" maxlength="200"></textarea>
+    </div>
+    <div class="pie"><button class="btn ghost" data-ir="2">← Atrás</button><button class="btn" style="width:auto" data-ir="4" disabled>Siguiente</button></div>
+  </section>
+
+  <!-- 4 · precio -->
+  <section class="paso" data-paso="4">
+    <p class="eyebrow">04 · Lo que vale</p>
+    <h2>¿Cuánto pagarías por esa fórmula?</h2>
+    <p class="sub">Sé honesta, es justo lo que necesitamos saber.</p>
+    <div class="ops" data-campo="precio" data-max="1">
+      <button class="op" value="menos_30"><span class="tick">✓</span><span class="tt">Menos de $30.000</span></button>
+      <button class="op" value="30_45"><span class="tick">✓</span><span class="tt">Entre $30.000 y $45.000</span></button>
+      <button class="op" value="45_60"><span class="tick">✓</span><span class="tt">Entre $45.000 y $60.000</span></button>
+      <button class="op" value="60_80"><span class="tick">✓</span><span class="tt">Entre $60.000 y $80.000</span></button>
+      <button class="op" value="mas_80"><span class="tick">✓</span><span class="tt">Más de $80.000, si de verdad funciona</span></button>
+    </div>
+    <div class="pie"><button class="btn ghost" data-ir="3">← Atrás</button><button class="btn" style="width:auto" data-ir="5" disabled>Siguiente</button></div>
+  </section>
+
+  <!-- 5 · la competencia -->
+  <section class="paso" data-paso="5">
+    <p class="eyebrow">05 · La pregunta incómoda</p>
+    <h2>¿Qué le compras a <em>otra marca</em> porque nosotros no lo tenemos?</h2>
+    <p class="sub">Dinos cuál y por qué te gusta. Esto es lo que más nos sirve de toda la encuesta, en serio.</p>
+    <textarea id="otra_marca" placeholder="Ej: el acondicionador de ___ porque es el único que me desenreda sin dejarme el pelo pesado…" maxlength="400"></textarea>
+    <div class="pie" style="margin-top:20px"><button class="btn ghost" data-ir="4">← Atrás</button><button class="btn" style="width:auto" data-ir="6">Siguiente</button></div>
+  </section>
+
+  <!-- 6 · el hueco -->
+  <section class="paso" data-paso="6">
+    <p class="eyebrow">06 · Carta blanca</p>
+    <h2>Si pudieras inventar un producto para tu pelo, ¿cuál sería?</h2>
+    <p class="sub">Algo que no exista en ninguna marca. Pide lo imposible, para eso estamos.</p>
+    <textarea id="que_falta" placeholder="Yo quisiera algo que…" maxlength="400"></textarea>
+    <div class="pie" style="margin-top:20px"><button class="btn ghost" data-ir="5">← Atrás</button><button class="btn" style="width:auto" data-ir="7">Siguiente</button></div>
+  </section>
+
+  <!-- 7 · correo -->
+  <section class="paso" data-paso="7">
+    <p class="eyebrow">07 · Tu 30%</p>
+    <h2>¿A dónde te mandamos el descuento?</h2>
+    <p class="sub">Tu correo también nos sirve para avisarte cuando la fórmula que votaste salga del laboratorio.</p>
+    <input type="email" id="email" placeholder="tucorreo@ejemplo.com" autocomplete="email" inputmode="email">
+    <p class="err" id="err"></p>
+    <button class="btn" id="enviar" style="margin-top:8px">Quiero mi 30%</button>
+    <p class="nota" style="margin-top:16px">Usamos tu correo solo para esto. Nada de spam.</p>
+  </section>
+
+  <!-- 8 · gracias -->
+  <section class="paso" data-paso="8">
+    <p class="eyebrow">✦ Listo</p>
+    <h2>Gracias. De verdad.</h2>
+    <p class="sub">Tu voto ya quedó contado. Cuando decidamos cuál se fabrica, te escribimos para contarte — y si ganó la tuya, con más razón.</p>
+    <div class="cupon">
+      <p style="margin:0;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;opacity:.75">Tu código · 30% de descuento</p>
+      <span class="codigo" id="cod">RITUAL30</span>
+      <p style="margin:0;font-size:13.5px;opacity:.78">Escríbelo al pagar en brujeriacapilar.com</p>
+      <button class="copiar" id="copiar">Copiar código</button>
+    </div>
+    <a class="btn" href="https://brujeriacapilar.com/collections/rizos?utm_source=encuesta&amp;utm_medium=web&amp;utm_campaign=formula_que_falta" style="text-decoration:none">Ir a la tienda</a>
+  </section>
+</div>
+
+<script>
+(function(){
+  var CUPON='RITUAL30', TOTAL=8;
+  var r={tipo_cabello:'',problemas:[],formulas:[],precio:''};
+  var pasos=[].slice.call(document.querySelectorAll('.paso'));
+  var prog=document.getElementById('prog');
+
+  function ir(n){
+    pasos.forEach(function(p){ p.classList.toggle('on', +p.dataset.paso===n); });
+    prog.style.width=Math.round(Math.min(n,TOTAL)/TOTAL*100)+'%';
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+
+  // Las opciones son botones, no radios: el estado vive en aria-pressed, que
+  // además es lo que lee un lector de pantalla.
+  document.querySelectorAll('.ops').forEach(function(g){
+    var campo=g.dataset.campo, max=+g.dataset.max;
+    g.querySelectorAll('.op').forEach(function(b){
+      b.setAttribute('aria-pressed','false');
+      b.addEventListener('click', function(){
+        var on=b.getAttribute('aria-pressed')==='true';
+        if(max===1){
+          g.querySelectorAll('.op').forEach(function(x){x.setAttribute('aria-pressed','false')});
+          b.setAttribute('aria-pressed', on?'false':'true');
+          r[campo]= on?'':b.value;
+        }else{
+          var sel=g.querySelectorAll('.op[aria-pressed="true"]');
+          if(!on && sel.length>=max) return;           // tope: no deja marcar más
+          b.setAttribute('aria-pressed', on?'false':'true');
+          r[campo]=[].slice.call(g.querySelectorAll('.op[aria-pressed="true"]')).map(function(x){return x.value});
+        }
+        if(campo==='formulas'){
+          document.getElementById('caja-otra').hidden = r.formulas.indexOf('otra')<0;
+        }
+        var sig=g.parentElement.querySelector('.pie .btn:not(.ghost)');
+        if(sig) sig.disabled = (max===1 ? !r[campo] : !r[campo].length);
+      });
+    });
+  });
+
+  document.querySelectorAll('[data-ir]').forEach(function(b){
+    b.addEventListener('click', function(){ if(!b.disabled) ir(+b.dataset.ir); });
+  });
+
+  var enviar=document.getElementById('enviar'), err=document.getElementById('err');
+  enviar.addEventListener('click', function(){
+    var email=document.getElementById('email').value.trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ err.textContent='Revisa el correo, parece que le falta algo.'; return; }
+    err.textContent=''; enviar.disabled=true; enviar.textContent='Guardando…';
+    fetch('/api/encuesta-rizos',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        email:email, tipo_cabello:r.tipo_cabello, problemas:r.problemas,
+        formulas:r.formulas, precio:r.precio, cupon:CUPON,
+        otra_marca:document.getElementById('otra_marca').value,
+        que_falta:document.getElementById('que_falta').value,
+        otra_idea:document.getElementById('otra_idea').value
+      })
+    }).then(function(x){ return x.json().then(function(j){ return {ok:x.ok,j:j}; }); })
+    .then(function(res){
+      if(!res.ok) throw new Error(res.j.error||'No se pudo guardar');
+      ir(8);
+    })
+    .catch(function(e){
+      err.textContent=e.message;
+      enviar.disabled=false; enviar.textContent='Quiero mi 30%';
+    });
+  });
+
+  document.getElementById('copiar').addEventListener('click', function(){
+    var b=this;
+    function listo(){ b.textContent='¡Copiado!'; setTimeout(function(){b.textContent='Copiar código'},1800); }
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(CUPON).then(listo).catch(seleccionar);
+    } else seleccionar();
+    function seleccionar(){
+      var rg=document.createRange(); rg.selectNodeContents(document.getElementById('cod'));
+      var s=window.getSelection(); s.removeAllRanges(); s.addRange(rg);
+      b.textContent='Selecciónalo y copia';
+    }
+  });
+})();
+</script>
+</body>
+</html>

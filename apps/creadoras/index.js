@@ -13,7 +13,7 @@ const { enviarBienvenidaKit, enviarRecordatorioWhatsApp, enviarBienvenidaClub, e
 const acuerdo = require('./acuerdo');
 
 // Rutas pÃºblicas â€” portal influencer, guÃ­a, auth y webhooks
-const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro', '/acuerdo', '/api/acuerdo/', '/api/wa-status', '/api/onboarding-status', '/fotos', '/api/fotos-comunidad'];
+const RUTAS_PUBLICAS = ['/influencer', '/guia', '/bienvenida-kit', '/api/bienvenida-kit', '/api/auth/', '/api/influencer/', '/api/webhooks/', '/api/cron/', '/api/admin/influencers/bulk-import', '/api/admin/notificaciones', '/api/admin/enviar-kits-bulk', '/preferencias', '/api/preferencias', '/webhook/wa', '/api/ugc/stats/', '/registro-ugc', '/bienvenida-ugc', '/guia-ugc', '/api/ugc/registro', '/acuerdo', '/api/acuerdo/', '/api/wa-status', '/api/onboarding-status', '/fotos', '/api/fotos-comunidad', '/encuesta', '/api/encuesta-rizos'];
 
 function adminAuth(req, res, next) {
   const esPublica = RUTAS_PUBLICAS.some(r => req.path === r || req.path.startsWith(r));
@@ -366,6 +366,101 @@ app.post('/api/fotos-comunidad',
 });
 
 app.get('/fotos', (req, res) => res.sendFile(path.join(__dirname, 'public', 'fotos.html')));
+
+// ── Encuesta "La fórmula que falta" ─────────────────────────────────────────
+//
+// Decide cuál de las 9 fórmulas que ya tienen brief de laboratorio entra a
+// producción, preguntándoselo a quien compra la Crema de Rizos.
+//
+// Pública como el formulario de fotos: la clienta no tiene cuenta de nada.
+// El correo es la llave —una respuesta por persona— porque si alguien la
+// llena dos veces infla el recuento de votos, que es justo lo que se va a
+// mirar para decidir en qué gastar la producción.
+app.get('/encuesta', (req, res) => res.sendFile(path.join(__dirname, 'public', 'encuesta.html')));
+
+app.post('/api/encuesta-rizos',
+  rateLimit({ windowMs: 10 * 60 * 1000, max: 20 }),
+  async (req, res) => {
+    try {
+      const b = req.body || {};
+      const email = String(b.email || '').trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        return res.status(400).json({ error: 'Necesitamos un correo válido para mandarte el cupón' });
+      }
+      if (!Array.isArray(b.formulas) || !b.formulas.length) {
+        return res.status(400).json({ error: 'Elige al menos una fórmula' });
+      }
+      const lista = (v, max) => (Array.isArray(v) ? v : []).slice(0, max).map(x => String(x).slice(0, 60));
+      const texto = (v, max) => String(v || '').trim().slice(0, max);
+
+      const fila = {
+        email,
+        tipo_cabello: texto(b.tipo_cabello, 20) || null,
+        problemas: lista(b.problemas, 3),
+        formulas: lista(b.formulas, 2),
+        precio: texto(b.precio, 30) || null,
+        otra_marca: texto(b.otra_marca, 400) || null,
+        que_falta: texto(b.que_falta, 400) || null,
+        otra_idea: texto(b.otra_idea, 200) || null,
+        cupon: texto(b.cupon, 30) || null,
+      };
+
+      // Si ya respondió, se actualiza la suya: el índice único por correo
+      // convierte el segundo envío en conflicto, y ahí lo que vale es lo último
+      // que dijo, no un voto de más.
+      const r = await fetch(`${config.supabase.url}/rest/v1/encuesta_rizos?on_conflict=email`, {
+        method: 'POST',
+        headers: {
+          apikey: config.supabase.service_role_key,
+          Authorization: `Bearer ${config.supabase.service_role_key}`,
+          'Content-Type': 'application/json',
+          Prefer: 'resolution=merge-duplicates,return=minimal',
+        },
+        body: JSON.stringify(fila),
+      });
+      if (!r.ok) throw new Error('Supabase: ' + (await r.text()).slice(0, 200));
+
+      console.log(`[encuesta] ${email} votó por ${fila.formulas.join(' + ')}`);
+      res.json({ ok: true });
+    } catch (e) {
+      console.error('[encuesta-rizos]', e.message);
+      res.status(500).json({ error: 'No pudimos guardar tu respuesta. Inténtalo de nuevo en un momento.' });
+    }
+  });
+
+// Recuento en vivo, para decidir con el dato y no con la sensación.
+app.get('/api/admin/encuesta-rizos', async (req, res) => {
+  try {
+    const r = await fetch(`${config.supabase.url}/rest/v1/encuesta_rizos?select=*&order=creado_en.desc&limit=2000`, {
+      headers: {
+        apikey: config.supabase.service_role_key,
+        Authorization: `Bearer ${config.supabase.service_role_key}`,
+      },
+    });
+    const filas = await r.json();
+    if (!Array.isArray(filas)) throw new Error(filas?.message || 'No se pudo leer');
+
+    const cuenta = (campo) => {
+      const m = {};
+      for (const f of filas) for (const v of (f[campo] || [])) m[v] = (m[v] || 0) + 1;
+      return Object.entries(m).sort((a, b) => b[1] - a[1]);
+    };
+    res.json({
+      respuestas: filas.length,
+      votos_formula: cuenta('formulas'),
+      problemas: cuenta('problemas'),
+      precio: Object.entries(filas.reduce((m, f) => (f.precio && (m[f.precio] = (m[f.precio] || 0) + 1), m), {})).sort((a, b) => b[1] - a[1]),
+      tipo_cabello: Object.entries(filas.reduce((m, f) => (f.tipo_cabello && (m[f.tipo_cabello] = (m[f.tipo_cabello] || 0) + 1), m), {})).sort((a, b) => b[1] - a[1]),
+      // Lo escrito a mano va aparte y entero: ahí está lo que no se puede contar.
+      otra_marca: filas.map(f => f.otra_marca).filter(Boolean),
+      que_falta: filas.map(f => f.que_falta).filter(Boolean),
+      otra_idea: filas.map(f => f.otra_idea).filter(Boolean),
+    });
+  } catch (e) {
+    console.error('[admin/encuesta]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // ── Revisar las fotos que manda la comunidad ─────────────────────────────────
 //
